@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>u 2.5 - دقة 4 ملم</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e67e22;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --size-bg: #e3f2fd;
+            --size-text: #0d47a1;
+            --qty-bg: #e8f5e9;
+            --qty-text: #1b5e20;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        h2 { text-align: center; color: var(--primary); margin: 10px 0; border-bottom: 3px solid var(--accent); padding-bottom: 5px; }
+
+        .info-bar { text-align: center; font-size: 0.85em; color: #666; margin-bottom: 15px; background: #eee; padding: 5px; border-radius: 8px; }
+
+        .input-card { background: #fcfcfc; border: 1px solid #ddd; padding: 12px; border-radius: 12px; margin-bottom: 10px; border-right: 5px solid var(--primary); }
+        
+        .row { display: flex; gap: 10px; align-items: flex-end; }
+        .col { flex: 1; }
+        
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        .label-blue { color: var(--size-text); }
+        .label-green { color: var(--qty-text); }
+
+        input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; box-sizing: border-box; font-size: 18px; font-weight: bold; outline: none; text-align: center; }
+        .input-size { background: var(--size-bg); color: var(--size-text); border-color: #bbdefb; }
+        .input-qty { background: var(--qty-bg); color: var(--qty-text); border-color: #c8e6c9; }
+
+        button { width: 100%; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-calc { background: var(--success); color: white; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
+
+        .result-box { background: white; margin-top: 15px; border-radius: 12px; border: 1px solid #ddd; }
+        .result-header { background: #34495e; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 12px 12px 0 0; }
+        .stock-row { padding: 12px; border-bottom: 1px solid #eee; }
+        
+        .visual-bar { display: flex; height: 50px; background: #eee; border-radius: 6px; overflow: hidden; border: 1px solid #ccc; margin: 10px 0; }
+        .bar-segment { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 13px; color: white; font-weight: bold; border-right: 1px solid rgba(255,255,255,0.4); transition: 0.3s; }
+        .bar-used { background: #3498db; position: relative; }
+        .bar-kerf { background: #333; } /* لون المنشار */
+        .bar-waste { background: var(--danger); font-size: 11px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>u 2.5</h2>
+    <div class="info-bar">طول العود: 600 سم | سمك المنشار: 4 ملم (0.4 سم)</div>
+
+    <div id="inputsContainer">
+        <div class="input-card">
+            <div class="row">
+                <div class="col">
+                    <label class="label-blue">المقاس (سم)</label>
+                    <input type="number" class="input-size" step="0.1" placeholder="0.0">
+                </div>
+                <div class="col">
+                    <label class="label-green">العدد (حبة)</label>
+                    <input type="number" class="input-qty" placeholder="0">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-add" onclick="addInput()">+ إضافة مقاس آخر</button>
+    <button class="btn-calc" onclick="calculate()">احسب الآن</button>
+
+    <div id="resultsArea"></div>
+</div>
+
+<script>
+    function addInput() {
+        const div = document.createElement('div');
+        div.className = 'input-card';
+        div.innerHTML = `
+            <div class="row">
+                <div class="col">
+                    <label class="label-blue">المقاس (سم)</label>
+                    <input type="number" class="input-size" step="0.1" placeholder="0.0">
+                </div>
+                <div class="col">
+                    <label class="label-green">العدد (حبة)</label>
+                    <input type="number" class="input-qty" placeholder="0">
+                </div>
+            </div>
+        `;
+        document.getElementById('inputsContainer').appendChild(div);
+    }
+
+    function calculate() {
+        const stockLen = 600;
+        const kerf = 0.4; // سمك المنشار 4 ملم ثابت
+        let allCuts = [];
+
+        const sizes = document.getElementsByClassName('input-size');
+        const qtys = document.getElementsByClassName('input-qty');
+
+        for(let i=0; i<sizes.length; i++) {
+            let s = parseFloat(sizes[i].value);
+            let q = parseInt(qtys[i].value);
+            if(s > 0 && q > 0) {
+                for(let j=0; j<q; j++) allCuts.push(s);
+            }
+        }
+
+        if(allCuts.length === 0) return;
+
+        // ترتيب تنازلي لتقليل الهالك
+        allCuts.sort((a, b) => b - a);
+
+        let stocks = [];
+        allCuts.forEach(cutSize => {
+            let placed = false;
+            for(let s of stocks) {
+                // نتحقق إذا كان العود يكفي (المقاس + سمك المنشار)
+                if(s.remaining >= (cutSize + kerf)) {
+                    s.cuts.push(cutSize);
+                    s.remaining -= (cutSize + kerf);
+                    placed = true;
+                    break;
+                }
+            }
+            if(!placed) {
+                stocks.push({ cuts: [cutSize], remaining: stockLen - (cutSize + kerf) });
+            }
+        });
+
+        const area = document.getElementById('resultsArea');
+        let html = `<div class="result-box"><div class="result-header">النتيجة: ${stocks.length} أعواد (6 متر)</div>`;
+
+        stocks.forEach((s, i) => {
+            let totalCuts = s.cuts.reduce((a, b) => a + b, 0);
+            let totalKerf = s.cuts.length * kerf;
+            let waste = stockLen - totalCuts - totalKerf;
+
+            html += `
+            <div class="stock-row">
+                <strong style="color:var(--primary)">العود [${i+1}]</strong>
+                <div class="visual-bar">
+                    ${s.cuts.map(c => `
+                        <div class="bar-segment bar-used" style="width: ${(c/stockLen)*100}%">${c}</div>
+                        <div class="bar-segment bar-kerf" style="width: ${(kerf/stockLen)*100}%"></div>
+                    `).join('')}
+                    <div class="bar-segment bar-waste" style="width: ${(waste/stockLen)*100}%">
+                        ${waste > 2 ? waste.toFixed(1) : ''}
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold;">
+                    <span>مجموع المقاسات: ${totalCuts.toFixed(1)} سم</span>
+                    <span style="color:var(--danger)">الهالك الصافي: ${waste.toFixed(1)} سم</span>
+                </div>
+            </div>`;
+        });
+
+        html += `</div>`;
+        area.innerHTML = html;
+    }
+</script>
+
+</body>
+</html>
