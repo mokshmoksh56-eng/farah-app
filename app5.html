@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>يومية الورشة - الإصدار النهائي مع التنبيهات</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1e3a8a; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif; background-color: var(--bg); margin: 0; padding: 5px; font-size: 11.5px;
+        }
+
+        .container {
+            max-width: 820px; margin: auto; background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        header {
+            text-align: center; background: var(--primary); color: white; padding: 6px; border-radius: 6px; margin-bottom: 10px;
+        }
+
+        header h1 { margin: 0; font-size: 1rem; }
+
+        .dashboard {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;
+        }
+
+        .card { background: white; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center; }
+        .card h3 { font-size: 0.65rem; margin: 0; color: #64748b; }
+        .card .value { font-size: 0.95rem; font-weight: 700; margin-top: 2px; }
+
+        /* منطقة التنبيه (Toast) */
+        #toast {
+            visibility: hidden; min-width: 200px; background-color: var(--success); color: #fff; text-align: center;
+            border-radius: 5px; padding: 10px; position: fixed; z-index: 1000; top: 20px; left: 50%;
+            transform: translateX(-50%); font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 1.5s; }
+
+        @keyframes fadein { from {top: 0; opacity: 0;} to {top: 20px; opacity: 1;} }
+        @keyframes fadeout { from {top: 20px; opacity: 1;} to {top: 0; opacity: 0;} }
+
+        .form-section {
+            background: #f8fafc; padding: 10px; border-radius: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; border: 1px solid transparent;
+        }
+
+        .edit-mode-active { border: 1px solid var(--warning); background: #fffbeb; }
+
+        input, select { padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: 'Cairo'; font-size: 12px; }
+
+        .in-field { border-right: 4px solid var(--success) !important; background: #f0fff4; font-weight: bold; }
+        .out-field { border-right: 4px solid var(--danger) !important; background: #fff5f5; font-weight: bold; }
+
+        .btn-save { grid-column: span 3; background: var(--primary); color: white; border: none; padding: 8px; border-radius: 5px; font-weight: 700; cursor: pointer; }
+        .btn-edit-active { background: var(--warning); color: black; }
+
+        .tools-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+
+        .table-wrapper { overflow-x: auto; border-radius: 6px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        th { background: #f8fafc; padding: 6px; font-size: 11px; border-bottom: 1px solid #e2e8f0; color: #475569; }
+        td { padding: 5px 4px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 11.5px; }
+
+        .td-in { color: var(--success); font-weight: bold; background: #fafffa; }
+        .td-out { color: var(--danger); font-weight: bold; background: #fffafa; }
+        .badge { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
+
+        .action-btns button { border: none; background: none; cursor: pointer; font-size: 14px; margin: 0 2px; }
+        
+        @media (max-width: 600px) {
+            .form-section { grid-template-columns: 1fr 1fr; }
+            .btn-save { grid-column: span 2 !important; }
+            .dashboard { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast">تم الحفظ بنجاح ✓</div>
+
+<div class="container">
+    <header>
+        <h1>حسابات الورشة والمحلات 2026</h1>
+    </header>
+
+    <div class="dashboard">
+        <div class="card"><h3>يومي</h3><div class="value" id="day-total" style="color:var(--success)">0</div></div>
+        <div class="card"><h3>شهري</h3><div class="value" id="month-total">0</div></div>
+        <div class="card"><h3>مصاريف سنة</h3><div class="value" id="year-out" style="color:var(--danger)">0</div></div>
+        <div class="card"><h3>الصافي</h3><div class="value" id="year-net" style="color:var(--primary)">0</div></div>
+    </div>
+
+    <div class="form-section" id="form-container">
+        <select id="entry-shop">
+            <option value="زبون">-- ( زبون ) --</option>
+            <option value="عاملون فرح">-- ( عاملون فرح ) --</option>
+            <option>السيد ياسين</option>
+            <option>محمد عبد الله</option>
+            <option>هاني رخام</option>
+            <option>أحمد رخام</option>
+            <option>السعيد تال</option>
+            <option>هاني زجاج</option>
+            <option>مصاريف نثرية</option>
+        </select>
+        <input type="text" id="entry-customer" list="cust-list" placeholder="الاسم">
+        <datalist id="cust-list"></datalist>
+        <input type="datetime-local" id="entry-date">
+        <input type="text" id="entry-desc" placeholder="البيان (التفاصيل)">
+        <input type="number" id="entry-in" class="in-field" placeholder="داخل (+)">
+        <input type="number" id="entry-out" class="out-field" placeholder="خارج (-)">
+        <input type="hidden" id="edit-id" value="">
+        <button class="btn-save" id="btn-main" onclick="processEntry()">حفظ العملية</button>
+        <button id="btn-cancel" onclick="resetForm()" style="display:none; grid-column: span 3; font-size:10px; background:#64748b; color:white; border:none; margin-top:2px; border-radius:3px; cursor:pointer;">إلغاء التعديل</button>
+    </div>
+
+    <div class="tools-row">
+        <input type="text" id="searchBox" placeholder="🔍 بحث..." onkeyup="loadData()" style="padding: 4px; font-size:12px; border-radius: 4px; border: 1px solid #ddd; width: 180px;">
+        <button onclick="exportToCSV()" style="background:#10b981; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px;">Excel</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:120px">التاريخ والوقت</th>
+                    <th>الجهة</th>
+                    <th>الاسم</th>
+                    <th>البيان</th>
+                    <th>داخل</th>
+                    <th>خارج</th>
+                    <th style="width:60px">إجراء</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    window.onload = function() { setActualTime(); loadData(); };
+
+    function setActualTime() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
+    }
+
+    function showToast(message, isError = false) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.style.backgroundColor = isError ? "#ef4444" : "#10b981";
+        toast.className = "show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2000);
+    }
+
+    function processEntry() {
+        const shop = document.getElementById('entry-shop').value;
+        const customer = document.getElementById('entry-customer').value || "عام";
+        const date = document.getElementById('entry-date').value;
+        const desc = document.getElementById('entry-desc').value || "-";
+        const inVal = parseFloat(document.getElementById('entry-in').value) || 0;
+        const outVal = parseFloat(document.getElementById('entry-out').value) || 0;
+        const editId = document.getElementById('edit-id').value;
+
+        if (inVal === 0 && outVal === 0) { showToast("أدخل مبلغاً أولاً!", true); return; }
+
+        let data = JSON.parse(localStorage.getItem('workshop_compact_v10')) || [];
+        if (editId) {
+            const index = data.findIndex(item => item.id == editId);
+            if (index !== -1) data[index] = { ...data[index], shop, customer, date, desc, inVal, outVal };
+            showToast("تم تعديل البيانات بنجاح");
+        } else {
+            data.push({ shop, customer, date, desc, inVal, outVal, id: Date.now() });
+            showToast("تم الحفظ بنجاح ✓");
+        }
+
+        localStorage.setItem('workshop_compact_v10', JSON.stringify(data));
+        resetForm();
+        loadData();
+    }
+
+    function loadData() {
+        const tableBody = document.getElementById('table-body');
+        const searchVal = document.getElementById('searchBox').value.toLowerCase();
+        const data = JSON.parse(localStorage.getItem('workshop_compact_v10')) || [];
+        const custDatalist = document.getElementById('cust-list');
+        
+        tableBody.innerHTML = "";
+        custDatalist.innerHTML = "";
+        let uniqueCusts = new Set();
+        let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
+        const now = new Date();
+
+        data.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).forEach((item) => {
+            const rowDate = new Date(item.date);
+            const isToday = rowDate.toDateString() === now.toDateString();
+            const isThisMonth = rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear();
+
+            if (isToday) totals.day += (item.inVal - item.outVal);
+            if (isThisMonth) totals.month += (item.inVal - item.outVal);
+            totals.yearOut += item.outVal;
+            totals.yearNet += (item.inVal - item.outVal);
+
+            if (item.customer !== "عام") uniqueCusts.add(item.customer);
+
+            if (item.customer.toLowerCase().includes(searchVal) || item.desc.toLowerCase().includes(searchVal) || item.shop.includes(searchVal)) {
+                const row = `<tr>
+                    <td style="font-size: 9.5px; color: #64748b;">${item.date.replace('T', ' ')}</td>
+                    <td><span class="badge">${item.shop}</span></td>
+                    <td style="font-weight:600;">${item.customer}</td>
+                    <td style="font-size: 10.5px; color: #444;">${item.desc}</td>
+                    <td class="td-in">${item.inVal.toLocaleString() || '-'}</td>
+                    <td class="td-out">${item.outVal.toLocaleString() || '-'}</td>
+                    <td class="action-btns">
+                        <button onclick="startEdit(${item.id})">✏️</button>
+                        <button onclick="deleteItem(${item.id})">🗑️</button>
+                    </td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            }
+        });
+
+        document.getElementById('day-total').innerText = totals.day.toLocaleString();
+        document.getElementById('month-total').innerText = totals.month.toLocaleString();
+        document.getElementById('year-out').innerText = totals.yearOut.toLocaleString();
+        document.getElementById('year-net').innerText = totals.yearNet.toLocaleString();
+        uniqueCusts.forEach(c => custDatalist.innerHTML += `<option value="${c}">`);
+    }
+
+    function startEdit(id) {
+        const data = JSON.parse(localStorage.getItem('workshop_compact_v10'));
+        const item = data.find(i => i.id == id);
+        if (item) {
+            document.getElementById('entry-shop').value = item.shop;
+            document.getElementById('entry-customer').value = item.customer;
+            document.getElementById('entry-date').value = item.date;
+            document.getElementById('entry-desc').value = item.desc;
+            document.getElementById('entry-in').value = item.inVal;
+            document.getElementById('entry-out').value = item.outVal;
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('btn-main').innerText = "تحديث البيانات";
+            document.getElementById('btn-main').classList.add('btn-edit-active');
+            document.getElementById('btn-cancel').style.display = "block";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('edit-id').value = "";
+        document.getElementById('entry-customer').value = "";
+        document.getElementById('entry-desc').value = "";
+        document.getElementById('entry-in').value = "";
+        document.getElementById('entry-out').value = "";
+        document.getElementById('btn-main').innerText = "حفظ العملية";
+        document.getElementById('btn-main').classList.remove('btn-edit-active');
+        document.getElementById('btn-cancel').style.display = "none";
+        setActualTime();
+    }
+
+    function deleteItem(id) {
+        if(confirm("هل أنت متأكد من الحذف؟")) {
+            let data = JSON.parse(localStorage.getItem('workshop_compact_v10'));
+            data = data.filter(item => item.id !== id);
+            localStorage.setItem('workshop_compact_v10', JSON.stringify(data));
+            loadData();
+            showToast("تم الحذف بنجاح", true);
+        }
+    }
+
+    function exportToCSV() {
+        const data = JSON.parse(localStorage.getItem('workshop_compact_v10')) || [];
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFFالتاريخ,الجهة,الاسم,البيان,داخل,خارج\n";
+        data.forEach(item => csvContent += `${item.date},${item.shop},${item.customer},${item.desc},${item.inVal},${item.outVal}\n`);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", "حسابات_الورشة_2026.csv");
+        document.body.appendChild(link);
+        link.click();
+    }
+</script>
+
+</body>
+</html>
