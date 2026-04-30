@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل تسليمات 2026 - النسخة الاحترافية</title>
+    <style>
+        :root {
+            --nav-bg: #1a2a3a;
+            --border-color: #e0e6ed;
+            --today-bg: #fff9c4;
+            --friday-bg: #fff5f5;
+            --accent: #3498db;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 0; color: #333; }
+        
+        /* الهيدر الذكي */
+        header {
+            background: var(--nav-bg); color: white; padding: 8px 20px;
+            position: sticky; top: 0; z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .search-area { display: flex; align-items: center; gap: 10px; }
+        .search-box { 
+            padding: 6px 15px; width: 250px; border: none; border-radius: 4px; 
+            outline: none; font-size: 14px;
+        }
+
+        .btn-today { background: var(--accent); border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .btn-today:hover { background: #2980b9; }
+
+        .container { padding: 10px; }
+
+        /* الجدول الكثيف */
+        table { 
+            width: 100%; border-collapse: collapse; background: white; 
+            table-layout: fixed; font-size: 13px;
+        }
+        
+        th { 
+            background: #f1f4f7; color: #444; padding: 8px; 
+            position: sticky; top: 48px; z-index: 900;
+            border: 1px solid var(--border-color); font-weight: bold;
+        }
+
+        td { 
+            border: 1px solid var(--border-color); padding: 4px 6px; 
+            text-align: center; vertical-align: middle;
+            transition: 0.2s;
+        }
+
+        /* تنسيق الأعمدة */
+        .col-date { width: 140px; font-weight: bold; color: #2c3e50; background: #fdfdfd; }
+        .col-day { width: 80px; font-weight: 500; }
+        .col-client { width: 18%; }
+        .col-note { width: auto; text-align: right; }
+        .col-status { width: 90px; }
+
+        /* حالات خاصة */
+        tr:nth-child(even) { background-color: #fafafa; }
+        tr:hover { background-color: #f1f7ff; }
+        .friday { background-color: var(--friday-bg) !important; color: #c0392b; }
+        .is-today { background-color: var(--today-bg) !important; outline: 1px solid #f1c40f; }
+
+        /* منطقة الكتابة */
+        [contenteditable] { 
+            outline: none; min-height: 20px; width: 100%; display: block; 
+            word-wrap: break-word; overflow: hidden;
+        }
+        [contenteditable]:focus { background: #fffde7; }
+
+        /* الأدوات */
+        .actions { display: flex; gap: 5px; }
+        .actions button { padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; color: white; }
+        .btn-save { background: #27ae60; }
+        .btn-clear { background: #95a5a6; }
+
+        #saveNotice {
+            position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.7);
+            color: white; padding: 5px 15px; border-radius: 20px; display: none; font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <h1 style="margin:0; font-size: 18px;">📋 سجل تسليمات 2026</h1>
+        <button class="btn-today" onclick="goToToday()">📍 اليوم</button>
+    </div>
+
+    <div class="search-area">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔎 بحث سريع عن عميل..." oninput="search()">
+        <div class="actions">
+            <button class="btn-save" onclick="exportData()">📥 Excel</button>
+            <button class="btn-clear" onclick="clearData()">🧹 مسح</button>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <table id="mainTable">
+        <thead>
+            <tr>
+                <th class="col-date">التاريخ</th>
+                <th class="col-day">اليوم</th>
+                <th class="col-client">العميل (1)</th>
+                <th class="col-client">العميل (2)</th>
+                <th class="col-note">ملاحظات وطلبات</th>
+                <th class="col-status">الحالة</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<div id="saveNotice">تم الحفظ تلقائياً...</div>
+
+<script>
+    const tableBody = document.getElementById('tableBody');
+    const year = 2026;
+    const daysArr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+    function init() {
+        let date = new Date(year, 0, 1);
+        const today = new Date();
+        const todayStr = `${today.getDate()}-${today.getMonth() + 1}`;
+
+        while (date.getFullYear() === year) {
+            const d = date.getDate();
+            const m = date.getMonth() + 1;
+            const id = `${d}-${m}`;
+            const dayName = daysArr[date.getDay()];
+            
+            const tr = document.createElement('tr');
+            if(dayName === "الجمعة") tr.classList.add('friday');
+            if(id === todayStr) {
+                tr.classList.add('is-today');
+                tr.id = 'todayRow';
+            }
+
+            tr.innerHTML = `
+                <td class="col-date">${year} / ${m} / ${d}</td>
+                <td class="col-day">${dayName}</td>
+                <td><div contenteditable="true" oninput="save('${id}-c1', this.innerText)"></div></td>
+                <td><div contenteditable="true" oninput="save('${id}-c2', this.innerText)"></div></td>
+                <td class="col-note"><div contenteditable="true" oninput="save('${id}-n', this.innerText)"></div></td>
+                <td><div contenteditable="true" oninput="save('${id}-s', this.innerText)">➖</div></td>
+            `;
+            tableBody.appendChild(tr);
+            date.setDate(date.getDate() + 1);
+        }
+        loadData();
+        goToToday();
+    }
+
+    function save(key, val) {
+        localStorage.setItem(key, val);
+        const notice = document.getElementById('saveNotice');
+        notice.style.display = 'block';
+        clearTimeout(window.sTimer);
+        window.sTimer = setTimeout(() => notice.style.display = 'none', 600);
+    }
+
+    function loadData() {
+        const divs = document.querySelectorAll('[contenteditable="true"]');
+        divs.forEach(div => {
+            const key = div.getAttribute('oninput').match(/'([^']+)'/)[1];
+            const data = localStorage.getItem(key);
+            if(data) div.innerText = data;
+        });
+    }
+
+    function search() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const rows = tableBody.getElementsByTagName('tr');
+        for (let r of rows) {
+            r.style.display = r.innerText.toLowerCase().includes(q) ? "" : "none";
+        }
+    }
+
+    function goToToday() {
+        const todayRow = document.getElementById('todayRow');
+        if(todayRow) todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function exportData() {
+        let csv = "\ufeffالتاريخ,اليوم,العميل 1,العميل 2,الملاحظات,الحالة\n";
+        let date = new Date(year, 0, 1);
+        while (date.getFullYear() === year) {
+            const id = `${date.getDate()}-${date.getMonth()+1}`;
+            csv += `${year}/${date.getMonth()+1}/${date.getDate()},${daysArr[date.getDay()]},${localStorage.getItem(id+'-1')||''},${localStorage.getItem(id+'-2')||''},${localStorage.getItem(id+'-n')||''},${localStorage.getItem(id+'-s')||''}\n`;
+            date.setDate(date.getDate() + 1);
+        }
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `سجل_عمل_2026.csv`; a.click();
+    }
+
+    function clearData() {
+        if(confirm("مسح السجل بالكامل؟")) { localStorage.clear(); location.reload(); }
+    }
+
+    init();
+</script>
+
+</body>
+</html>
