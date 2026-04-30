@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل تسليمات 2026 - 2027 (Compact)</title>
+    <style>
+        :root {
+            --nav-bg: #1a2a3a;
+            --delivered-bg: #d63031; 
+            --friday-bg: #f1f2f6;    
+            --accent: #3498db;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background: #f4f7f6; margin: 0; font-weight: 700; color: #2d3436;
+        }
+        
+        header {
+            background: var(--nav-bg); color: white; padding: 8px 20px;
+            position: sticky; top: 0; z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .stats { font-size: 12px; background: rgba(255,255,255,0.1); padding: 2px 10px; border-radius: 10px; }
+
+        table { 
+            width: 100%; border-collapse: collapse; background: white; 
+            font-size: 13px; table-layout: fixed;
+        }
+        
+        th { 
+            background: #34495e; color: white; padding: 6px; 
+            position: sticky; top: 43px; z-index: 900; 
+            border: 1px solid #2c3e50; font-size: 12px;
+        }
+
+        td { 
+            border: 1px solid #ddd; padding: 2px 4px; 
+            text-align: center; vertical-align: middle;
+        }
+
+        /* توزيع المساحات المتوازن */
+        .col-date { width: 100px; font-size: 11px; }
+        .col-day { width: 75px; }
+        .col-client { width: 25%; }
+        .col-client2 { width: 25%; }
+        .col-note { width: 25%; }
+        .col-status { width: 100px; }
+
+        /* تمييز الجمعة */
+        .friday-row { background-color: var(--friday-bg) !important; }
+        .friday-row td:nth-child(2) { color: #e74c3c; font-weight: 900; }
+
+        /* تم التسليم - أحمر كامل */
+        .row-done { background-color: var(--delivered-bg) !important; color: white !important; }
+        .row-done select { background: white; color: black; border: none; font-size: 11px; }
+
+        .year-header {
+            background: #1e272e; color: #feca57;
+            font-size: 14px; padding: 5px; text-align: center;
+        }
+
+        [contenteditable] { 
+            outline: none; min-height: 20px; width: 100%; display: block; 
+            word-wrap: break-word; text-align: center; line-height: 1.2;
+        }
+
+        select {
+            width: 100%; padding: 1px; font-weight: 800; cursor: pointer;
+            border-radius: 3px; border: 1px solid #ccc; font-size: 11px;
+        }
+
+        .btn-today { 
+            background: var(--accent); color: white; border: none; 
+            padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: 800; font-size: 12px;
+        }
+
+        #saveNotice { 
+            position: fixed; bottom: 20px; left: 20px; background: #27ae60; 
+            color: white; padding: 6px 15px; border-radius: 4px; display: none; z-index: 2000; font-size: 11px;
+        }
+
+        .is-today { background: #fff9c4 !important; border: 2px solid #f1c40f !important; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <h2 style="margin:0; font-size: 15px;">📋 سجل 2026 - 2027</h2>
+        <div class="stats" id="statsCounter">تم: 0</div>
+    </div>
+    <button class="btn-today" onclick="goToToday()">📍 اليوم</button>
+</header>
+
+<div class="container" style="padding: 0;">
+    <table id="mainTable">
+        <thead>
+            <tr>
+                <th class="col-date">التاريخ</th>
+                <th class="col-day">اليوم</th>
+                <th class="col-client">العميل (1)</th>
+                <th class="col-client2">العميل (2)</th>
+                <th class="col-note">الملاحظات</th>
+                <th class="col-status">الحالة</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<div id="saveNotice">✓ تم الحفظ</div>
+
+<script>
+    const tableBody = document.getElementById('tableBody');
+    const startYear = 2026;
+    const endYear = 2027;
+    const daysArr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+    function init() {
+        let date = new Date(startYear, 0, 1);
+        const today = new Date();
+        const todayStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
+        let currentYear = startYear;
+        const fragment = document.createDocumentFragment();
+
+        while (date.getFullYear() <= endYear) {
+            const d = date.getDate();
+            const m = date.getMonth() + 1;
+            const y = date.getFullYear();
+            const id = `${d}-${m}-${y}`;
+            const dayName = daysArr[date.getDay()];
+
+            if (y !== currentYear) {
+                const hr = document.createElement('tr');
+                hr.className = 'year-header';
+                hr.innerHTML = `<td colspan="6">عام ${y}</td>`;
+                fragment.appendChild(hr);
+                currentYear = y;
+            }
+            
+            const tr = document.createElement('tr');
+            if (dayName === "الجمعة") tr.classList.add('friday-row');
+            if(id === todayStr) { tr.id = 'todayRow'; tr.classList.add('is-today'); }
+
+            tr.innerHTML = `
+                <td>${d}/${m}/${y}</td>
+                <td>${dayName}</td>
+                <td><div contenteditable="true" oninput="save('${id}-c1', this.innerText)"></div></td>
+                <td><div contenteditable="true" oninput="save('${id}-c2', this.innerText)"></div></td>
+                <td><div contenteditable="true" oninput="save('${id}-n', this.innerText)"></div></td>
+                <td>
+                    <select onchange="handleStatusChange('${id}-s', this)">
+                        <option value="pending">⏳ إنتظار</option>
+                        <option value="done">✅ تم</option>
+                    </select>
+                </td>
+            `;
+            fragment.appendChild(tr);
+            date.setDate(date.getDate() + 1);
+        }
+        tableBody.appendChild(fragment);
+        loadData();
+        updateCounter();
+    }
+
+    function handleStatusChange(key, el) {
+        const row = el.closest('tr');
+        el.value === 'done' ? row.classList.add('row-done') : row.classList.remove('row-done');
+        save(key, el.value);
+        updateCounter();
+    }
+
+    function save(key, val) {
+        localStorage.setItem(key, val);
+        const notice = document.getElementById('saveNotice');
+        notice.style.display = 'block';
+        clearTimeout(window.st);
+        window.st = setTimeout(() => notice.style.display = 'none', 600);
+    }
+
+    function loadData() {
+        document.querySelectorAll('[contenteditable="true"]').forEach(div => {
+            const k = div.getAttribute('oninput').match(/'([^']+)'/)[1];
+            const data = localStorage.getItem(k);
+            if(data) div.innerText = data;
+        });
+
+        document.querySelectorAll('select').forEach(sel => {
+            const k = sel.getAttribute('onchange').match(/'([^']+)'/)[1];
+            const data = localStorage.getItem(k);
+            if(data) {
+                sel.value = data;
+                if(data === 'done') sel.closest('tr').classList.add('row-done');
+            }
+        });
+    }
+
+    function updateCounter() {
+        const count = document.querySelectorAll('.row-done').length;
+        document.getElementById('statsCounter').innerText = `تم: ${count}`;
+    }
+
+    function goToToday() {
+        const row = document.getElementById('todayRow');
+        if(row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    init();
+</script>
+
+</body>
+</html>
