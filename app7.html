@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>خزنتي - الإصدار الذهبي المطور</title>
+    <style>
+        :root {
+            --primary: #4834d4;
+            --success: #2ecc71;
+            --danger: #ff4757;
+            --loan: #f0932b;
+            --bg: #f1f2f6;
+            --gold: #d4af37;
+            /* ألوان الصفوف الخفيفة */
+            --bg-success: #e3fcef;
+            --bg-danger: #ffeef0;
+            --bg-loan: #fff9ee;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background-color: var(--bg); margin: 0; padding: 8px;
+        }
+
+        .header-title {
+            text-align: center; font-weight: bold; color: var(--primary);
+            margin: 5px 0; font-size: 18px; border-bottom: 2px solid var(--gold);
+        }
+
+        .search-container { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 5px 0; }
+        .search-bar {
+            width: 100%; padding: 10px; border-radius: 20px; border: 2px solid var(--primary);
+            font-size: 15px; outline: none; box-sizing: border-box;
+        }
+
+        #searchStatus { text-align: center; font-size: 12px; font-weight: bold; margin: 3px 0; padding: 5px; border-radius: 8px; display: none; }
+        .found { background: #e3fcef; color: var(--success); }
+        .not-found { background: #ffeef0; color: var(--danger); }
+
+        .stats { display: flex; gap: 5px; margin-bottom: 10px; }
+        .stat-card {
+            flex: 1; background: white; padding: 8px 2px; border-radius: 10px;
+            text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .stat-card b { font-size: 14px; color: var(--primary); display: block; }
+
+        .main-card {
+            background: white; padding: 12px; border-radius: 12px;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.05); margin-bottom: 12px;
+        }
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+        .btn { border: none; padding: 12px 2px; border-radius: 8px; color: white; font-weight: bold; font-size: 12px; }
+        .btn-in { background: var(--success); }
+        .btn-out { background: var(--danger); }
+        .btn-loan { background: var(--loan); }
+
+        /* الجدول المضغوط والملون */
+        .table-section { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #f8f9fa; padding: 6px; color: #666; font-size: 10px; }
+        
+        /* تقليل الارتفاع لأقل درجة */
+        td { padding: 4px 5px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); line-height: 1.2; }
+
+        /* ألوان الصفوف بالكامل */
+        .row-in { background-color: var(--bg-success); }
+        .row-out { background-color: var(--bg-danger); }
+        .row-loan { background-color: var(--bg-loan); }
+
+        .big-date { font-size: 17px; font-weight: 900; color: var(--primary); display: block; }
+        .amt-text { font-size: 15px; font-weight: bold; }
+        .wa-btn { text-decoration: none; font-size: 16px; }
+        .del-btn { color: #bbb; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="header-title">خزنتي - التنسيق الذهبي المطور</div>
+
+    <div class="search-container">
+        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو التاريخ..." oninput="render()">
+    </div>
+    <div id="searchStatus"></div>
+
+    <div class="stats">
+        <div class="stat-card">وارد<b id="tin">0</b></div>
+        <div class="stat-card">منصرف<b id="tout">0</b></div>
+        <div class="stat-card">الصافي<b id="tnet">0</b></div>
+    </div>
+
+    <div class="main-card">
+        <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+            <input type="text" id="newName" placeholder="أضف اسم جديد...">
+            <button onclick="addNewName()" style="background:var(--primary); color:white; border:none; border-radius:8px; padding:0 12px; font-weight:bold;">+</button>
+        </div>
+        <select id="userSelect" onchange="render()"></select>
+        <input type="number" id="phone" placeholder="واتساب">
+        <input type="number" id="amount" placeholder="المبلغ">
+        <input type="text" id="note" placeholder="البيان">
+        <div class="btn-group">
+            <button class="btn btn-in" onclick="save('in')">إيداع</button>
+            <button class="btn btn-out" onclick="save('out')">سحب</button>
+            <button class="btn btn-loan" onclick="save('loan')">سلفية</button>
+        </div>
+    </div>
+
+    <div class="table-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>الاسم والبيان</th>
+                    <th>المبلغ</th>
+                    <th>حذف</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+<script>
+    let names = JSON.parse(localStorage.getItem('GOLD_V2_NAMES')) || ["أحمد رمضان"];
+    let db = JSON.parse(localStorage.getItem('GOLD_V2_DB')) || [];
+
+    function addNewName() {
+        const val = document.getElementById('newName').value.trim();
+        if(val && !names.includes(val)) {
+            names.push(val);
+            localStorage.setItem('GOLD_V2_NAMES', JSON.stringify(names));
+            document.getElementById('newName').value = '';
+            sync();
+        }
+    }
+
+    function sync() {
+        const sel = document.getElementById('userSelect');
+        const curr = sel.value;
+        sel.innerHTML = '<option value="">الكل...</option>';
+        names.sort().forEach(n => sel.innerHTML += `<option value="${n}">${n}</option>`);
+        sel.value = curr;
+    }
+
+    function save(type) {
+        const name = document.getElementById('userSelect').value;
+        const phone = document.getElementById('phone').value;
+        const amt = parseFloat(document.getElementById('amount').value);
+        const note = document.getElementById('note').value;
+
+        if(!name || isNaN(amt)) return alert("أدخل البيانات");
+
+        db.unshift({
+            id: Date.now(), name, 
+            phone: phone.startsWith('0') ? '2' + phone : phone,
+            amt: (type === 'in' ? amt : -amt),
+            type, note: note || (type === 'in' ? 'إيداع' : 'سحب'),
+            date: new Date().toLocaleDateString('ar-EG')
+        });
+
+        localStorage.setItem('GOLD_V2_DB', JSON.stringify(db));
+        document.getElementById('amount').value = '';
+        render();
+    }
+
+    function render() {
+        const query = document.getElementById('search').value.trim().toLowerCase();
+        const statusDiv = document.getElementById('searchStatus');
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        let tin = 0, tout = 0, foundCount = 0;
+
+        db.forEach(item => {
+            if(item.amt > 0) tin += item.amt; else tout += Math.abs(item.amt);
+
+            if(item.name.toLowerCase().includes(query) || item.date.includes(query)) {
+                foundCount++;
+                // تحديد كلاس الصف بناء على النوع
+                let rowClass = item.amt > 0 ? 'row-in' : (item.type === 'loan' ? 'row-loan' : 'row-out');
+                let amtColor = item.amt > 0 ? 'var(--success)' : (item.type === 'loan' ? 'var(--loan)' : 'var(--danger)');
+                
+                const userHistory = db.filter(r => r.name === item.name);
+                const bal = userHistory.reduce((s, r) => s + r.amt, 0);
+                const waMsg = `*تقرير:* ${item.name}\n💰 المبلغ: ${item.amt}\n⚖️ رصيدك: ${bal}`;
+
+                tbody.innerHTML += `
+                    <tr class="${rowClass}">
+                        <td><span class="big-date">${item.date}</span></td>
+                        <td style="text-align:right">
+                            <b>${item.name}</b><br>
+                            <small style="color:#777">${item.note}</small> | 
+                            <a href="https://wa.me/${item.phone}?text=${encodeURIComponent(waMsg)}" class="wa-btn">🟢</a>
+                        </td>
+                        <td class="amt-text" style="color:${amtColor}">${item.amt}</td>
+                        <td><span class="del-btn" onclick="del(${item.id})">🗑️</span></td>
+                    </tr>
+                `;
+            }
+        });
+
+        if (query === "") statusDiv.style.display = "none";
+        else {
+            statusDiv.style.display = "block";
+            if (foundCount > 0) { statusDiv.innerText = "✅ تم العثور"; statusDiv.className = "found"; }
+            else { statusDiv.innerText = "❌ لا يوجد"; statusDiv.className = "not-found"; }
+        }
+
+        document.getElementById('tin').innerText = tin;
+        document.getElementById('tout').innerText = tout;
+        document.getElementById('tnet').innerText = tin - tout;
+    }
+
+    function del(id) { if(confirm("حذف؟")) { db = db.filter(i => i.id !== id); localStorage.setItem('GOLD_V2_DB', JSON.stringify(db)); render(); } }
+
+    sync();
+    render();
+</script>
+</body>
+</html>
