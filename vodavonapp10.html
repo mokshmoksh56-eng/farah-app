@@ -3,119 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vodafone Cash Smart Pay</title>
+    <title>Vodafone Cash - Red Edition</title>
     <style>
-        :root { --voda-red: #e60000; --whatsapp-green: #25D366; }
+        :root { 
+            --voda-red: #e60000; /* أحمر فودافون الرسمي */
+            --dark-gray: #333333;
+            --bg-light: #f4f4f4;
+            --white: #ffffff;
+        }
         
         body { 
             font-family: 'Segoe UI', Tahoma, sans-serif; 
-            margin: 0; background: #ffffff;
-            min-height: 100vh; display: flex; justify-content: center;
+            margin: 0; background: var(--bg-light);
+            display: flex; justify-content: center; padding: 20px;
         }
 
-        .app-container { width: 100%; max-width: 420px; padding: 20px; }
-
-        .card { 
-            background: white; border-radius: 25px; padding: 25px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #eee;
+        .app-card { 
+            width: 100%; max-width: 400px; background: var(--white); 
+            border-radius: 20px; padding: 25px;
+            box-shadow: 0 10px 30px rgba(230, 0, 0, 0.1);
+            border-top: 6px solid var(--voda-red);
         }
 
-        .preview-screen {
-            background: #fdfdfd; border: 2px solid #f0f0f0; padding: 20px;
-            border-radius: 18px; margin-bottom: 20px; text-align: center;
+        /* Tabs */
+        .tabs {
+            display: flex; background: #f0f0f0; border-radius: 12px;
+            margin-bottom: 25px; padding: 4px;
         }
-        .preview-number { font-size: 26px; color: var(--voda-red); font-weight: bold; display: block; }
 
-        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-        
-        select, input {
+        .tab-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 10px;
+            cursor: pointer; font-weight: bold; color: #666; transition: 0.3s;
+        }
+
+        .tab-btn.active { background: var(--voda-red); color: white; }
+
+        /* SIM Selector */
+        .sim-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .sim-option {
+            flex: 1; padding: 10px; border: 2px solid #eee;
+            border-radius: 10px; text-align: center; cursor: pointer;
+            font-weight: bold; color: #888;
+        }
+        .sim-option.active { border-color: var(--voda-red); color: var(--voda-red); background: rgba(230, 0, 0, 0.05); }
+
+        .info-panel {
+            background: #fffafa; border: 1px solid rgba(230, 0, 0, 0.2);
+            border-radius: 15px; padding: 15px; text-align: center; margin-bottom: 20px;
+        }
+
+        .code-preview { direction: ltr; font-family: monospace; font-size: 20px; color: var(--voda-red); font-weight: bold; }
+
+        label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: bold; }
+
+        input {
             width: 100%; padding: 14px; margin-bottom: 15px; 
-            border: 1.5px solid #eee; border-radius: 12px;
-            background: #fafafa; font-size: 16px; box-sizing: border-box;
+            border: 1.5px solid #ddd; border-radius: 12px;
+            font-size: 16px; box-sizing: border-box; outline: none;
+        }
+        input:focus { border-color: var(--voda-red); }
+
+        .btn-main {
+            width: 100%; padding: 16px; background: var(--voda-red); 
+            color: white; border: none; border-radius: 12px;
+            font-size: 18px; font-weight: bold; cursor: pointer;
         }
 
-        .btn-send {
-            width: 100%; padding: 18px; background: var(--voda-red); color: white;
-            border: none; border-radius: 15px; font-size: 18px; font-weight: bold;
-            cursor: pointer; margin-bottom: 10px;
+        /* Modal */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content { 
+            background: white; width: 85%; max-width: 320px; padding: 25px; 
+            border-radius: 20px; text-align: center; 
         }
 
-        /* أزرار الواتساب والطباعة */
-        .extra-actions { display: flex; gap: 10px; margin-top: 10px; }
-        
-        .btn-action {
-            flex: 1; padding: 12px; border: none; border-radius: 12px;
-            font-weight: bold; cursor: pointer; color: white; font-size: 14px;
-            display: flex; align-items: center; justify-content: center; gap: 5px;
-        }
-        .btn-whatsapp { background: var(--whatsapp-green); }
-        .btn-print { background: #333; }
+        .confirm-btn { background: var(--voda-red); color: white; border: none; padding: 12px 25px; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; }
+        .cancel-btn { background: none; color: #999; border: none; padding: 10px; cursor: pointer; margin-top: 5px; width: 100%; }
 
-        /* إخفاء الأزرار عند الطباعة فعلياً */
-        @media print {
-            .btn-send, .extra-actions, select, .btn-group, label, .btn-contact { display: none !important; }
-            body { background: white; }
-            .card { box-shadow: none; border: none; }
-        }
+        .section { display: none; }
+        .section.active { display: block; }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div class="card" id="printableArea">
-        <h2 style="text-align: center; margin-top: 0; color: var(--voda-red);">إيصال تحويل ذكي</h2>
+<div class="app-card">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: var(--voda-red); margin: 0;">فودافون كاش</h2>
+    </div>
 
-        <div class="preview-screen">
-            <span id="simLabel" style="font-size: 12px; color: #777;">بيانات العملية</span>
-            <span id="bigNumber" class="preview-number">----------</span>
-            <span id="amountLabel" style="font-size: 14px; font-weight: bold;">المبلغ: 0 ج.م</span>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('transfer', this)">تحويل</button>
+        <button class="tab-btn" onclick="switchTab('balance', this)">الرصيد</button>
+    </div>
+
+    <label>اختر الشريحة:</label>
+    <div class="sim-selector">
+        <div class="sim-option active" id="sim1" onclick="setSim(1)">SIM 1</div>
+        <div class="sim-option" id="sim2" onclick="setSim(2)">SIM 2</div>
+    </div>
+
+    <div id="transfer" class="section active">
+        <div class="info-panel">
+            <div id="liveCode" class="code-preview">*9*7*الرقم*المبلغ#</div>
         </div>
+        <input type="tel" id="ph" placeholder="رقم الموبايل" maxlength="11" oninput="update()">
+        <input type="number" id="am" placeholder="المبلغ" oninput="update()">
+        <button onclick="check()" class="btn-main">تحويل الآن 📞</button>
+    </div>
 
-        <div class="no-print">
-            <label>شريحة الإرسال:</label>
-            <select id="sim_select" onchange="updateUI()">
-                <option value="SIM 1">الشريحة الأولى (SIM 1)</option>
-                <option value="SIM 2">الشريحة الثانية (SIM 2)</option>
-            </select>
-
-            <label>رقم المستلم:</label>
-            <input type="tel" id="target_phone" placeholder="010XXXXXXXX" maxlength="11" oninput="updateUI()">
-
-            <label>المبلغ:</label>
-            <input type="number" id="amount" placeholder="أدخل المبلغ" oninput="updateUI()">
-
-            <button onclick="execute()" class="btn-send">تأكيد واتصال 📞</button>
+    <div id="balance" class="section">
+        <div class="info-panel">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">كود الاستعلام عن الرصيد:</p>
+            <div class="code-preview">*9*13#</div>
         </div>
+        <button onclick="getBalance()" class="btn-main" style="background: var(--dark-gray);">اطلب الكود 🔍</button>
+    </div>
+</div>
 
-        <div class="extra-actions">
-            <button onclick="sendWhatsApp()" class="btn-action btn-whatsapp">واتساب ✅</button>
-            <button onclick="window.print()" class="btn-action btn-print">طباعة 🖨️</button>
-        </div>
+<div class="modal" id="modal">
+    <div class="modal-content">
+        <h3 style="color: var(--voda-red); margin-top: 0;">تأكيد التحويل</h3>
+        <p style="font-size: 14px; color: #555;">هل أنت متأكد من مراجعة الرقم والمبلغ؟</p>
+        <div id="mPh" style="font-size: 22px; font-weight: bold; margin: 10px 0;"></div>
+        <div id="mAm" style="font-weight: bold; color: var(--voda-red); font-size: 18px; margin-bottom: 15px;"></div>
+        <button class="confirm-btn" onclick="go()">نعم، تأكيد التحويل</button>
+        <button class="cancel-btn" onclick="closeM()">إلغاء</button>
     </div>
 </div>
 
 <script>
-    function updateUI() {
-        document.getElementById('bigNumber').innerText = document.getElementById('target_phone').value || "----------";
-        document.getElementById('simLabel').innerText = "عبر: " + document.getElementById('sim_select').value;
-        document.getElementById('amountLabel').innerText = "المبلغ المطلوب: " + (document.getElementById('amount').value || "0") + " ج.م";
+    let currentSim = 1;
+
+    function switchTab(id, btn) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        btn.classList.add('active');
     }
 
-    function execute() {
-        const phone = document.getElementById('target_phone').value;
-        const amt = document.getElementById('amount').value;
-        if (phone.length === 11 && amt > 0) {
-            window.location.href = `tel:*9*7*${phone}*${amt}%23`;
-        } else { alert("بيانات غير مكتملة"); }
+    function setSim(n) {
+        currentSim = n;
+        document.getElementById('sim1').classList.toggle('active', n === 1);
+        document.getElementById('sim2').classList.toggle('active', n === 2);
     }
 
-    function sendWhatsApp() {
-        const phone = document.getElementById('target_phone').value;
-        const amt = document.getElementById('amount').value;
-        if (phone && amt) {
-            const msg = `أهلاً، سأقوم بتحويل مبلغ ${amt} جنيهاً إلى رقمك ${phone} عبر فودافون كاش الآن.`;
-            window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-        } else { alert("اكتب الرقم والمبلغ أولاً"); }
+    function update() {
+        const p = document.getElementById('ph').value || "الرقم";
+        const a = document.getElementById('am').value || "المبلغ";
+        document.getElementById('liveCode').innerText = `*9*7*${p}*${a}#`;
+    }
+
+    function check() {
+        const p = document.getElementById('ph').value;
+        const a = document.getElementById('am').value;
+        if(p.length === 11 && a > 0) {
+            document.getElementById('mPh').innerText = p;
+            document.getElementById('mAm').innerText = a + " ج.م";
+            document.getElementById('modal').style.display = 'flex';
+        } else { alert("يرجى إدخال بيانات صحيحة"); }
+    }
+
+    function closeM() { document.getElementById('modal').style.display = 'none'; }
+
+    function go() {
+        const p = document.getElementById('ph').value;
+        const a = document.getElementById('am').value;
+        closeM();
+        alert(`برجاء الضغط على اتصال من (SIM ${currentSim})`);
+        window.location.href = `tel:*9*7*${p}*${a}%23`;
+    }
+
+    function getBalance() {
+        alert(`برجاء الضغط على اتصال من (SIM ${currentSim})`);
+        window.location.href = `tel:*9*13%23`;
     }
 </script>
 
