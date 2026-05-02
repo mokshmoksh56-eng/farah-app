@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منظومة حضور طلخا - تعديل وحذف</title>
+    <title>منظومة حضور طلخا - التحكم الكامل</title>
     <style>
         :root { --turquoise: #008b8b; --danger: #d32f2f; --green: #2e7d32; --blue: #007bff; --orange: #fd7e14; --light-sky: #e0ffff; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -23,25 +23,23 @@
         .info-input { width: 100%; border: 2px solid #eee; border-radius: 8px; padding: 10px; font-size: 15px; font-weight: bold; outline: none; }
 
         .actions { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
-        .btn-main { width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        .btn-main { width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
         .punch-btn { background: var(--turquoise); box-shadow: 0 4px 0 #005f5f; }
-        .punch-btn:disabled { background: #bbb; box-shadow: none; cursor: not-allowed; }
         
         .vacation-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .btn-reg { background: var(--blue); }
         .btn-emg { background: var(--orange); }
-        .btn-manual { background: #fff; border: 2px dashed var(--turquoise); color: var(--turquoise); padding: 10px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 5px; }
-
+        
         .table-wrap { padding: 0 8px 15px; max-height: 280px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
         th { background: #e0f2f2; padding: 12px 5px; color: var(--turquoise); border-bottom: 2px solid var(--turquoise); position: sticky; top: 0; }
-        td { padding: 10px 2px; border-bottom: 1px solid #eee; font-weight: bold; }
+        td { padding: 12px 2px; border-bottom: 1px solid #eee; font-weight: bold; }
 
-        .row-actions { display: flex; gap: 8px; justify-content: center; }
-        .edit-btn { color: var(--turquoise); cursor: pointer; font-size: 16px; background: none; border: none; }
-        .del-btn { color: var(--danger); cursor: pointer; font-size: 16px; background: none; border: none; }
+        .row-actions { display: flex; gap: 5px; justify-content: center; }
+        .edit-btn { color: var(--turquoise); cursor: pointer; background: none; border: none; font-size: 14px; }
+        .del-btn { color: var(--danger); cursor: pointer; background: none; border: none; font-size: 14px; }
 
-        .footer { padding: 20px; text-align: center; font-size: 12px; color: #aaa; }
+        .footer { padding: 20px; text-align: center; font-size: 11px; color: #aaa; }
     </style>
 </head>
 <body onload="init()">
@@ -55,10 +53,10 @@
     <div class="dashboard">
         <div class="dash-card"><span class="dash-label">كود البصمة</span><span id="dash-id" class="dash-val">---</span></div>
         <div class="dash-card"><span class="dash-label">وقت الحضور</span><span id="today-punch" class="dash-val">--:--</span></div>
-        <div class="dash-card"><span class="dash-label">تأخير شهري</span><span id="sum-late" class="dash-val" style="color:var(--danger)">0</span></div>
-        <div class="dash-card"><span class="dash-label">دقائق متبقية</span><span id="rem-mins" class="dash-val" style="color:var(--green)">60</span></div>
-        <div class="dash-card"><span class="dash-label">إعتيادي</span><span id="reg-left" class="dash-val">30</span></div>
-        <div class="dash-card"><span class="dash-label">عارضة</span><span id="emg-left" class="dash-val">7</span></div>
+        <div class="dash-card"><span class="dash-label">تأخير (د)</span><span id="sum-late" class="dash-val" style="color:var(--danger)">0</span></div>
+        <div class="dash-card"><span class="dash-label">رصيد دقايق</span><span id="rem-mins" class="dash-val" style="color:var(--green)">60</span></div>
+        <div class="dash-card" onclick="editBase('reg')"><span class="dash-label">اعتيادي ✍️</span><span id="reg-left" class="dash-val" style="color:var(--blue)">30</span></div>
+        <div class="dash-card" onclick="editBase('emg')"><span class="dash-label">عارضة ✍️</span><span id="emg-left" class="dash-val" style="color:var(--orange)">7</span></div>
     </div>
 
     <div class="user-fields">
@@ -67,14 +65,11 @@
     </div>
 
     <div class="actions">
-        <button id="main-punch-btn" class="btn-main punch-btn" onclick="handlePunch(null, null, false)">تسجيل بصمة الآن 📲</button>
-        
+        <button id="main-punch-btn" class="btn-main punch-btn" onclick="handlePunch(null, null)">تسجيل بصمة الآن 📲</button>
         <div class="vacation-group">
-            <button class="btn-main btn-reg" onclick="addVacation('اعتيادي')">إجازة إعتيادي</button>
-            <button class="btn-main btn-emg" onclick="addVacation('عارضة')">إجازة عارضة</button>
+            <button class="btn-main btn-reg" onclick="manualVacation('اعتيادي')">إجازة اعتيادي 🌴</button>
+            <button class="btn-main btn-emg" onclick="manualVacation('عارضة')">إجازة عارضة ⚠️</button>
         </div>
-        
-        <button id="manual-btn" class="btn-manual" onclick="manualEntry()">نسيت أسجل (حتى ٢ ظ) ✍️</button>
     </div>
 
     <div class="table-wrap">
@@ -92,15 +87,16 @@
     </div>
 
     <div class="footer">
-        منظومة محطة طلخا الرقمية - إصدار التحكم الكامل
-        <br>
-        <span onclick="resetAll()" style="color:#ddd; cursor:pointer; text-decoration:underline;">تصفير السجل</span>
+        محطة كهرباء طلخا - إدارة الحضور والإجازات
+        <br><span onclick="resetAll()" style="color:#ddd; cursor:pointer; text-decoration:underline;">تصفير السجل</span>
     </div>
 </div>
 
 <script>
     let db = JSON.parse(localStorage.getItem('talkha_db')) || [];
     let vacations = JSON.parse(localStorage.getItem('talkha_vacs')) || [];
+    let baseReg = localStorage.getItem('base_reg') || 30;
+    let baseEmg = localStorage.getItem('base_emg') || 7;
 
     function init() {
         document.getElementById('u-name').value = localStorage.getItem('u_name') || "";
@@ -113,79 +109,56 @@
     function fixNums(str) {
         if(!str) return "";
         let s = str.toString();
-        const persianNums = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
-        for (let i = 0; i < 10; i++) s = s.replace(persianNums[i], i);
+        const p = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
+        for (let i = 0; i < 10; i++) s = s.replace(p[i], i);
         return s;
-    }
-
-    function getFormattedDate() {
-        const now = new Date();
-        return now.getDate() + " / " + (now.getMonth() + 1) + " / " + now.getFullYear();
     }
 
     function updateTime() {
         const now = new Date();
         document.getElementById('digital-clock').innerText = now.toLocaleTimeString('en-GB');
-        document.getElementById('full-date').innerText = getFormattedDate();
+        document.getElementById('full-date').innerText = now.getDate() + " / " + (now.getMonth() + 1) + " / " + now.getFullYear();
     }
 
-    function handlePunch(mH, mM, isManual) {
+    function editBase(type) {
+        let val = prompt("تعديل الرصيد السنوي المتبقي:", type==='reg'?baseReg:baseEmg);
+        if(val) {
+            if(type==='reg') { baseReg = fixNums(val); localStorage.setItem('base_reg', baseReg); }
+            else { baseEmg = fixNums(val); localStorage.setItem('base_emg', baseEmg); }
+            render();
+        }
+    }
+
+    function handlePunch(mH, mM) {
         const now = new Date();
         const h = mH !== null ? mH : now.getHours();
         const m = mM !== null ? mM : now.getMinutes();
-        const totalMins = h * 60 + m;
         const dateKey = now.toDateString();
 
         if (db.find(e => e.fullDate === dateKey) || vacations.find(e => e.fullDate === dateKey)) {
-            alert("⚠️ مسجل لك حالة اليوم بالفعل!");
-            return;
+            alert("⚠️ مسجل لك حالة اليوم بالفعل!"); return;
         }
 
-        const limitMins = isManual ? 840 : 490;
-        if (totalMins > limitMins) { alert("تجاوزت الوقت المسموح!"); return; }
-
-        const late = totalMins > 475 ? totalMins - 475 : 0;
-        const timeStr = (h % 12 || 12) + ":" + (m < 10 ? '0' + m : m) + (h >= 12 ? ' م' : ' ص');
-
+        const late = (h * 60 + m) > 475 ? (h * 60 + m) - 475 : 0;
         db.unshift({
             id: Date.now(),
             fullDate: dateKey,
-            displayDate: getFormattedDate(),
-            time: timeStr,
+            displayDate: now.getDate() + " / " + (now.getMonth() + 1) + " / " + now.getFullYear(),
+            time: (h % 12 || 12) + ":" + (m < 10 ? '0' + m : m) + (h >= 12 ? ' م' : ' ص'),
             late: late,
             type: 'work'
         });
-
         localStorage.setItem('talkha_db', JSON.stringify(db));
         render();
     }
 
-    function manualEntry() {
-        let input = prompt("أدخل وقت الحضور (مثال ٧.٣٠):");
-        if (input) {
-            input = fixNums(input).replace(':', '.'); 
-            const parts = input.split('.');
-            if (parts.length === 2) {
-                let h = parseInt(parts[0]);
-                let m = parseInt(parts[1]);
-                if (h >= 1 && h < 7) h += 12; 
-                if (!isNaN(h) && !isNaN(m)) handlePunch(h, m, true);
-            }
-        }
-    }
-
-    function addVacation(type) {
-        const now = new Date();
-        const dateKey = now.toDateString();
-        if (db.find(e => e.fullDate === dateKey) || vacations.find(e => e.fullDate === dateKey)) {
-            alert("مسجل لك حالة اليوم بالفعل!");
-            return;
-        }
-        if (confirm(`تسجيل اليوم ${type}؟`)) {
+    function manualVacation(type) {
+        let dateInput = prompt(`تاريخ الإجازة:`, (new Date().getDate()) + " / " + (new Date().getMonth() + 1) + " / " + new Date().getFullYear());
+        if (dateInput) {
             vacations.unshift({
                 id: Date.now(),
-                fullDate: dateKey,
-                displayDate: getFormattedDate(),
+                fullDate: "Manual_" + Date.now(),
+                displayDate: fixNums(dateInput),
                 time: '---',
                 late: 0,
                 type: type
@@ -200,31 +173,30 @@
         if(!item) return;
 
         if (item.type === 'work') {
-            let newTime = prompt("تعديل وقت الحضور (مثال ٨.١٥):", fixNums(item.time));
-            if (newTime) {
+            let newTime = prompt("تعديل الوقت (مثال ٧.٤٥):", fixNums(item.time));
+            if(newTime) {
                 newTime = fixNums(newTime).replace(':', '.');
-                const parts = newTime.split('.');
-                if (parts.length === 2) {
-                    let h = parseInt(parts[0]);
-                    let m = parseInt(parts[1]);
+                const p = newTime.split('.');
+                if(p.length === 2) {
+                    let h = parseInt(p[0]); let m = parseInt(p[1]);
                     if (h >= 1 && h < 7) h += 12;
-                    let totalMins = h * 60 + m;
-                    item.late = totalMins > 475 ? totalMins - 475 : 0;
+                    item.late = (h * 60 + m) > 475 ? (h * 60 + m) - 475 : 0;
                     item.time = (h % 12 || 12) + ":" + (m < 10 ? '0' + m : m) + (h >= 12 ? ' م' : ' ص');
                 }
             }
         } else {
-            let newType = confirm("هل تريد تحويل الإجازة؟ \n موافق = اعتيادي | إلغاء = عارضة");
-            item.type = newType ? "اعتيادي" : "عارضة";
+            let newDate = prompt("تعديل تاريخ الإجازة:", item.displayDate);
+            if(newDate) item.displayDate = fixNums(newDate);
+            let changeType = confirm("تحويل النوع؟ \n موافق = اعتيادي | إلغاء = عارضة");
+            item.type = changeType ? "اعتيادي" : "عارضة";
         }
-        
         localStorage.setItem('talkha_db', JSON.stringify(db));
         localStorage.setItem('talkha_vacs', JSON.stringify(vacations));
         render();
     }
 
     function deleteRow(id) {
-        if(confirm("حذف هذا التسجيل؟")) {
+        if(confirm("حذف هذا السطر؟")) {
             db = db.filter(i => i.id !== id);
             vacations = vacations.filter(i => i.id !== id);
             localStorage.setItem('talkha_db', JSON.stringify(db));
@@ -235,19 +207,17 @@
 
     function render() {
         const body = document.getElementById('log-body');
-        const nowKey = new Date().toDateString();
         body.innerHTML = '';
-        let totalLate = 0, regCount = 0, emgCount = 0, todayTime = "--:--", foundToday = false;
+        let totalLate = 0, regUsed = 0, emgUsed = 0, todayTime = "--:--", foundToday = false;
+        const nowKey = new Date().toDateString();
 
         document.getElementById('dash-id').innerText = fixNums(document.getElementById('u-id').value) || "---";
 
         const all = [...db, ...vacations].sort((a,b) => b.id - a.id);
-
         all.forEach(entry => {
             if (entry.type === 'work') totalLate += entry.late;
-            if (entry.type === 'اعتيادي') regCount++;
-            if (entry.type === 'عارضة') emgCount++;
-
+            else if (entry.type === 'اعتيادي') regUsed++;
+            else if (entry.type === 'عارضة') emgUsed++;
             if (entry.fullDate === nowKey) { todayTime = entry.time; foundToday = true; }
 
             body.innerHTML += `
@@ -266,12 +236,10 @@
 
         document.getElementById('main-punch-btn').disabled = foundToday;
         document.getElementById('main-punch-btn').innerText = foundToday ? "تم التسجيل اليوم ✅" : "تسجيل بصمة الآن 📲";
-        document.getElementById('manual-btn').style.display = foundToday ? "none" : "block";
-
         document.getElementById('sum-late').innerText = totalLate;
         document.getElementById('rem-mins').innerText = Math.max(0, 60 - totalLate);
-        document.getElementById('reg-left').innerText = 30 - regCount;
-        document.getElementById('emg-left').innerText = 7 - emgCount;
+        document.getElementById('reg-left').innerText = baseReg - regUsed;
+        document.getElementById('emg-left').innerText = baseEmg - emgUsed;
         document.getElementById('today-punch').innerText = todayTime;
     }
 
@@ -282,7 +250,7 @@
     }
 
     function resetAll() {
-        if (confirm("⚠️ تصفير السجل بالكامل؟")) { localStorage.clear(); location.reload(); }
+        if(confirm("مسح السجل؟")) { localStorage.clear(); location.reload(); }
     }
 </script>
 </body>
