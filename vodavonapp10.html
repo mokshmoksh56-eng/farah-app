@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vodafone Cash Fix</title>
+    <title>Vodafone Cash - Final Fix</title>
     <style>
-        :root { --voda: #e60000; }
-        body { font-family: sans-serif; background: #f4f4f4; display: flex; justify-content: center; padding: 20px; }
-        .card { width: 100%; max-width: 400px; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-top: 6px solid var(--voda); }
-        .tabs { display: flex; background: #eee; border-radius: 10px; padding: 5px; margin-bottom: 20px; }
-        .tab { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
-        .tab.active { background: var(--voda); color: white; }
-        .sim-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-        .sim { flex: 1; padding: 10px; border: 1.5px solid #ddd; border-radius: 10px; text-align: center; cursor: pointer; font-weight: bold; color: #888; }
-        .sim.active { border-color: var(--voda); color: var(--voda); background: #fff5f5; }
+        :root { --voda-red: #e60000; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f9f9f9; display: flex; justify-content: center; padding: 20px; }
+        .card { width: 100%; max-width: 400px; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 5px solid var(--voda-red); }
+        .tabs { display: flex; background: #eee; border-radius: 12px; padding: 5px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 10px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .tab.active { background: var(--voda-red); color: white; }
+        .sim-selector { display: flex; gap: 10px; margin-bottom: 15px; }
+        .sim-opt { flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 10px; text-align: center; cursor: pointer; font-weight: bold; color: #888; }
+        .sim-opt.active { border-color: var(--voda-red); color: var(--voda-red); background: #fff5f5; }
+        .display-box { background: #fafafa; border: 1px dashed var(--voda-red); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; }
+        .code-text { direction: ltr; display: block; font-size: 22px; font-weight: bold; color: var(--voda-red); }
         input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1.5px solid #ddd; border-radius: 12px; box-sizing: border-box; font-size: 16px; outline: none; }
-        .btn { width: 100%; padding: 16px; background: var(--voda); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .preview { background: #fafafa; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; border: 1px dashed #ccc; }
-        .code-display { direction: ltr; display: block; font-size: 22px; font-weight: bold; color: var(--voda); }
+        .btn-call { width: 100%; padding: 16px; background: var(--voda-red); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
         .section { display: none; }
         .section.active { display: block; }
     </style>
@@ -26,68 +26,66 @@
 
 <div class="card">
     <div class="tabs">
-        <button class="tab active" onclick="tab('t', this)">تحويل أموال</button>
-        <button class="tab" onclick="tab('b', this)">معرفة رصيد</button>
+        <button class="tab active" onclick="openTab('t', this)">تحويل</button>
+        <button class="tab" onclick="openTab('b', this)">رصيد</button>
     </div>
 
-    <div class="sim-bar">
-        <div class="sim active" id="sim1" onclick="setSim(1)">SIM 1</div>
-        <div class="sim" id="sim2" onclick="setSim(2)">SIM 2</div>
+    <div class="sim-selector">
+        <div class="sim-opt active" id="sim1" onclick="setSim(1)">SIM 1</div>
+        <div class="sim-opt" id="sim2" onclick="setSim(2)">SIM 2</div>
     </div>
 
     <div id="t" class="section active">
-        <div class="preview">
-            <span style="font-size: 12px; color: #999;">الكود الذي سيظهر في الاتصال:</span>
-            <span id="pCode" class="code-display">*9*7*الرقم*المبلغ#</span>
+        <div class="display-box">
+            <span id="pCode" class="code-text">*9*7*الرقم*المبلغ#</span>
         </div>
-        <input type="tel" id="phone" placeholder="رقم المستلم (010...)" maxlength="11" oninput="up()">
-        <input type="number" id="amt" placeholder="المبلغ" oninput="up()">
-        <button class="btn" onclick="runT()">طلب كود التحويل 📞</button>
+        <input type="tel" id="tel" placeholder="رقم الموبايل" maxlength="11" oninput="upd()">
+        <input type="number" id="val" placeholder="المبلغ" oninput="upd()">
+        <button class="btn-call" onclick="doT()">اتصال وتحويل 📞</button>
     </div>
 
     <div id="b" class="section">
-        <div class="preview">
-            <span style="font-size: 12px; color: #999;">كود الرصيد:</span>
-            <span class="code-display">*9*13#</span>
+        <div class="display-box">
+            <span class="code-text">*9*13#</span>
         </div>
-        <button class="btn" onclick="runB()" style="background: #333;">طلب كود الرصيد 🔍</button>
+        <button class="btn-call" onclick="doB()" style="background: #333;">معرفة الرصيد 🔍</button>
     </div>
 </div>
 
 <script>
-    let activeSim = 1;
-    function tab(id, b) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    let s = 1;
+    function openTab(id, b) {
+        document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         b.classList.add('active');
     }
     function setSim(n) {
-        activeSim = n;
-        document.getElementById('sim1').className = n===1 ? 'sim active' : 'sim';
-        document.getElementById('sim2').className = n===2 ? 'sim active' : 'sim';
+        s = n;
+        document.getElementById('sim1').className = n===1 ? 'sim-opt active' : 'sim-opt';
+        document.getElementById('sim2').className = n===2 ? 'sim-opt active' : 'sim-opt';
     }
-    function up() {
-        const p = document.getElementById('phone').value || "الرقم";
-        const a = document.getElementById('amt').value || "المبلغ";
-        document.getElementById('pCode').innerText = `*9*7*${p}*${a}#`;
-    }
-    
-    // الحل النهائي لمشكلة الكود: استخدام الرمز البرمجي الخاص بالشباك %23 بشكل صحيح
-    function runT() {
-        const p = document.getElementById('phone').value;
-        const a = document.getElementById('amt').value;
-        if(p.length === 11 && a > 0) {
-            if(confirm(`هل أنت متأكد من التحويل لـ ${p}؟\nتأكد من اختيار SIM ${activeSim}`)) {
-                // الربط المباشر لضمان عدم حدوث تداخل أرقام
-                window.location.href = "tel:*9*7*" + p + "*" + a + "%23";
-            }
-        } else { alert("البيانات ناقصة"); }
+    function upd() {
+        const p = document.getElementById('tel').value || "الرقم";
+        const v = document.getElementById('val').value || "المبلغ";
+        document.getElementById('pCode').innerText = `*9*7*${p}*${v}#`;
     }
 
-    function runB() {
-        alert(`تأكد من اختيار SIM ${activeSim}`);
-        window.location.href = "tel:*9*13%23";
+    // هنا "الزتونة" عشان الكود يظهر صح في الموبايل
+    function doT() {
+        const p = document.getElementById('tel').value;
+        const v = document.getElementById('val').value;
+        if(p.length === 11 && v > 0) {
+            if(confirm(`متأكد من الرقم ${p}؟\n(استخدم SIM ${s})`)) {
+                // استخدام %23 بدلاً من # لضمان ظهورها في لوحة الاتصال
+                window.location.href = "tel:*9*7*" + p + "*" + v + "#";
+            }
+        } else { alert("راجع البيانات"); }
+    }
+
+    function doB() {
+        alert(`تأكد من استخدام SIM ${s}`);
+        window.location.href = "tel:*9*13#";
     }
 </script>
 
