@@ -36,8 +36,10 @@
         .del-btn { color: var(--danger); background: none; border: none; font-size: 20px; cursor: pointer; }
 
         #modalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-        .modal-box { background: white; width: 85%; max-width: 350px; border-radius: 25px; padding: 25px; text-align: center; }
-        .time-select { padding: 10px; border-radius: 12px; border: 2px solid var(--turquoise); font-size: 24px; font-weight: bold; width: 80px; text-align: center; }
+        .modal-box { background: white; width: 90%; max-width: 380px; border-radius: 25px; padding: 25px; text-align: center; }
+        .date-input { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #ddd; font-size: 18px; text-align: center; margin-top: 10px; }
+        .time-select-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0; direction: ltr; }
+        .time-select { padding: 10px; border-radius: 12px; border: 2px solid #ddd; font-size: 22px; width: 85px; text-align: center; }
     </style>
 </head>
 <body onload="init()">
@@ -79,8 +81,8 @@
     </div>
 
     <div class="actions">
-        <button id="main-punch-btn" class="btn-main" onclick="handlePunch(null, null)">تسجيل بصمة الآن 📲</button>
-        <button id="manual-punch-btn" class="btn-main btn-manual" onclick="openManualWheel()">تسجيل يدوي (بأثر رجعي) ✍️</button>
+        <button id="main-punch-btn" class="btn-main" onclick="handlePunch(null, null, new Date())">تسجيل بصمة الآن 📲</button>
+        <button id="manual-punch-btn" class="btn-main btn-manual" onclick="openManualWheel()">تسجيل يدوي / تعديل يوم سابق ✍️</button>
     </div>
 
     <div class="table-wrap">
@@ -93,14 +95,16 @@
 
 <div id="modalOverlay">
     <div class="modal-box">
-        <h3 style="color:var(--turquoise);">تحديد وقت الحضور</h3>
-        <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin:20px 0; direction:ltr;">
+        <h3 style="color:var(--turquoise);">تعديل البيانات</h3>
+        <label>اختر التاريخ:</label>
+        <input type="date" id="manual-date-picker" class="date-input">
+        <div class="time-select-container">
             <select id="wheel-hr" class="time-select"></select>
             <span style="font-size:24px; font-weight:bold;">:</span>
             <select id="wheel-mn" class="time-select"></select>
         </div>
-        <button class="btn-main" style="background:var(--turquoise); box-shadow:none;" onclick="submitManual()">تأكيد ✅</button>
-        <button class="btn-main" style="background:#eee; color:#666; margin-top:10px; box-shadow:none; font-size:15px;" onclick="closeModal()">إلغاء</button>
+        <button class="btn-main" style="background:var(--turquoise); box-shadow:none; margin-bottom:10px;" onclick="submitManual()">حفظ البيانات ✅</button>
+        <button class="btn-main" style="background:#f5f5f5; color:#666; box-shadow:none;" onclick="closeModal()">إلغاء</button>
     </div>
 </div>
 
@@ -111,7 +115,7 @@
     let bEmg = localStorage.getItem('b_emg') || 7;
 
     function init() {
-        fillWheels();
+        fillTimeWheels();
         document.getElementById('u-name').value = localStorage.getItem('u_n') || "";
         document.getElementById('u-id').value = localStorage.getItem('u_i') || "";
         updateTime(); setInterval(updateTime, 1000);
@@ -120,10 +124,11 @@
 
     function fixAr(s) { return s.toString().replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d)); }
 
-    function fillWheels() {
+    function fillTimeWheels() {
         const h = document.getElementById('wheel-hr'), m = document.getElementById('wheel-mn');
         for(let i=7; i<=15; i++) h.innerHTML += `<option value="${i}">${i}</option>`;
         for(let i=0; i<=59; i++) m.innerHTML += `<option value="${i}">${i < 10 ? '0' + i : i}</option>`;
+        document.getElementById('manual-date-picker').valueAsDate = new Date();
     }
 
     function updateTime() {
@@ -135,64 +140,49 @@
 
     function updateBtnColor() {
         const now = new Date();
-        const hrs = now.getHours();
-        const mins = now.getMinutes();
-        const total = hrs * 60 + mins;
+        const total = now.getHours() * 60 + now.getMinutes();
         const btn = document.getElementById('main-punch-btn');
-        const nowKey = now.toDateString();
-        const isLogged = [...db, ...vacs].find(e => e.fDate === nowKey);
+        const isLogged = [...db, ...vacs].find(e => e.fDate === now.toDateString());
         
         if (isLogged) {
-            btn.style.background = "#bdc3c7";
-            btn.style.boxShadow = "none";
-            btn.innerText = "تم تسجيل الحضور اليوم ✅";
-            btn.disabled = true;
-            return;
+            btn.style.background = "#bdc3c7"; btn.disabled = true; btn.innerText = "تم تسجيل حضور اليوم ✅";
+        } else {
+            btn.disabled = false; btn.innerText = "تسجيل بصمة الآن 📲";
+            if (total < 480) btn.style.background = "var(--green)";
+            else if (total <= 490) btn.style.background = "var(--blue)";
+            else btn.style.background = "var(--danger)";
         }
-
-        if (total < 480) { 
-            btn.style.background = "var(--green)";
-            btn.style.boxShadow = "0 5px 0 #1b5e20";
-        } else if (total <= 490) { 
-            btn.style.background = "var(--blue)";
-            btn.style.boxShadow = "0 5px 0 #0056b3";
-        } else { 
-            btn.style.background = "var(--danger)";
-            btn.style.boxShadow = "0 5px 0 #a52727";
-        }
-        btn.disabled = false;
-        btn.innerText = "تسجيل بصمة الآن 📲";
     }
 
-    function saveUserInfo() {
-        localStorage.setItem('u_n', document.getElementById('u-name').value);
-        localStorage.setItem('u_i', document.getElementById('u-id').value);
-        render();
-    }
+    function handlePunch(h, m, dateInput) {
+        const finalDate = new Date(dateInput);
+        const finalH = h !== null ? h : finalDate.getHours();
+        const finalM = m !== null ? m : finalDate.getMinutes();
+        const tot = finalH * 60 + finalM;
+        const dateKey = finalDate.toDateString();
 
-    function handlePunch(customH, customM) {
-        const now = new Date();
-        const h = customH !== null ? customH : now.getHours(), m = customM !== null ? customM : now.getMinutes();
-        const tot = h * 60 + m, dateKey = now.toDateString();
-
-        if([...db, ...vacs].find(e => e.fDate === dateKey)) return alert("مسجل اليوم مسبقاً!");
-
+        // تم إلغاء رسالة المنع للسماح بالتعديل المفتوح
         if (tot > 490) {
             let c = prompt("الوقت تجاوز 8:10 ص! اختر:\n(١) اعتيادي\n(٢) عارضة\n(٣) تصريح");
             c = fixAr(c || "");
-            if(c==="1") { register(dateKey, '---', 0, 'اعتيادي'); alert("تم تسجيل حضورك (اعتيادي) بنجاح ✅"); }
-            else if(c==="2") { register(dateKey, '---', 0, 'عارضة'); alert("تم تسجيل حضورك (عارضة) بنجاح ✅"); }
-            else if(c==="3") { register(dateKey, formatTime(h, m), (tot-475), 'تصريح'); alert("تم تسجيل حضورك (تصريح) بنجاح ✅"); }
+            if(c==="1") register(dateKey, finalDate, '---', 0, 'اعتيادي');
+            else if(c==="2") register(dateKey, finalDate, '---', 0, 'عارضة');
+            else if(c==="3") register(dateKey, finalDate, formatTime(finalH, finalM), (tot-475), 'تصريح');
+            else return; 
         } else {
-            register(dateKey, formatTime(h, m), (tot>475?tot-475:0), 'منتظم');
-            alert("تم تسجيل حضورك بنجاح ✅\nيومك سعيد!");
+            register(dateKey, finalDate, formatTime(finalH, finalM), (tot>475?tot-475:0), 'منتظم');
         }
+        alert("تم الحفظ بنجاح ✅");
     }
 
-    function register(fDate, time, late, type) {
-        const now = new Date();
-        const fullDateStr = now.getDate() + " / " + (now.getMonth() + 1) + " / " + now.getFullYear();
-        const item = { id: Date.now(), fDate, dDate: fullDateStr, time, late, type };
+    function register(fDate, dObj, time, late, type) {
+        const item = { 
+            id: Date.now(), 
+            fDate, 
+            dDate: dObj.getDate() + " / " + (dObj.getMonth() + 1) + " / " + dObj.getFullYear(), 
+            time, late, type, 
+            sortKey: dObj.getTime() 
+        };
         if(type==='اعتيادي'||type==='عارضة') vacs.unshift(item); else db.unshift(item);
         saveAndRender();
     }
@@ -200,58 +190,55 @@
     function formatTime(h, m) { return (h%12||12)+":"+(m<10?'0'+m:m)+(h>=12?' م':' ص'); }
     function openManualWheel() { document.getElementById('modalOverlay').style.display = 'flex'; }
     function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+    
     function submitManual() {
+        const d = document.getElementById('manual-date-picker').value;
         const h = parseInt(document.getElementById('wheel-hr').value);
         const m = parseInt(document.getElementById('wheel-mn').value);
-        handlePunch(h, m); closeModal();
+        if(!d) return alert("اختر التاريخ");
+        handlePunch(h, m, d);
+        closeModal();
     }
 
     function render() {
         const body = document.getElementById('log-body'); body.innerHTML = '';
-        let lateSum = 0, rUsed = 0, eUsed = 0, found = false;
+        let lateSum = 0, rUsed = 0, eUsed = 0;
         const nowKey = new Date().toDateString();
 
         document.getElementById('dash-name').innerText = localStorage.getItem('u_n') || "---";
         document.getElementById('dash-code').innerText = fixAr(localStorage.getItem('u_i')) || "---";
 
-        const all = [...db, ...vacs].sort((a,b) => b.id - a.id);
+        const all = [...db, ...vacs].sort((a,b) => b.sortKey - a.sortKey);
         all.forEach(e => {
             if(e.type==='منتظم'||e.type==='تصريح') lateSum += e.late;
             if(e.type==='اعتيادي') rUsed++; if(e.type==='عارضة') eUsed++;
-            if(e.fDate === nowKey) { document.getElementById('today-punch').innerText = e.time; found = true; }
-
-            body.innerHTML += `<tr style="background:${e.type==='منتظم'||e.type==='تصريح'?'':'#fffcf5'}">
-                <td>${e.dDate}</td><td>${e.time}</td>
-                <td style="color:${e.late>0?'red':(e.type==='منتظم'?'green':'blue')}">${e.type === 'منتظم' && e.late > 0 ? e.late + 'د' : e.type}</td>
-                <td><button class="del-btn" onclick="deleteRow(${e.id})">🗑️</button></td>
-            </tr>`;
+            if(e.fDate === nowKey) document.getElementById('today-punch').innerText = e.time;
+            body.innerHTML += `<tr><td>${e.dDate}</td><td>${e.time}</td><td style="color:${e.late>0?'red':'green'}">${e.type}${e.late>0?' '+e.late+'د':''}</td><td><button class="del-btn" onclick="deleteRow(${e.id})">🗑️</button></td></tr>`;
         });
         
         document.getElementById('sum-late').innerText = lateSum;
         document.getElementById('rem-mins').innerText = Math.max(0, 60 - lateSum);
         document.getElementById('reg-left').innerText = bReg - rUsed;
         document.getElementById('emg-left').innerText = bEmg - eUsed;
-        
         updateBtnColor();
-        document.getElementById('manual-punch-btn').style.display = found ? 'none' : 'block';
     }
 
+    function saveUserInfo() {
+        localStorage.setItem('u_n', document.getElementById('u-name').value);
+        localStorage.setItem('u_i', document.getElementById('u-id').value);
+        render();
+    }
+    function deleteRow(id) { if(confirm("حذف؟")) { db = db.filter(i => i.id !== id); vacs = vacs.filter(i => i.id !== id); saveAndRender(); } }
+    function saveAndRender() { localStorage.setItem('t_db', JSON.stringify(db)); localStorage.setItem('t_vacs', JSON.stringify(vacs)); render(); }
+    function resetSystem() { if(confirm("مسح الكل؟")) { localStorage.clear(); location.reload(); } }
     function editManualBalance(type) {
-        let current = type === 'reg' ? bReg : bEmg;
-        let val = prompt("تعديل الرصيد المتبقي:", current);
-        if (val !== null) {
-            let num = parseInt(fixAr(val));
-            if (!isNaN(num)) {
-                if (type === 'reg') { bReg = num; localStorage.setItem('b_reg', num); }
-                else { bEmg = num; localStorage.setItem('b_emg', num); }
-                render();
-            }
+        let val = prompt("الرصيد الجديد:");
+        if (val) {
+            if (type === 'reg') { bReg = val; localStorage.setItem('b_reg', val); }
+            else { bEmg = val; localStorage.setItem('b_emg', val); }
+            render();
         }
     }
-
-    function deleteRow(id) { if(confirm("حذف السطر؟")) { db = db.filter(i => i.id !== id); vacs = vacs.filter(i => i.id !== id); saveAndRender(); } }
-    function saveAndRender() { localStorage.setItem('t_db', JSON.stringify(db)); localStorage.setItem('t_vacs', JSON.stringify(vacs)); render(); }
-    function resetSystem() { if(confirm("هل تريد مسح جميع البيانات والبدء من جديد؟")) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
