@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منظومة فرح 2026 | PRO Bold</title>
+    <title>منظومة فرح 2026 | PRO Bold Red Edition</title>
     <style>
         :root {
             --whatsapp-green: #25D366;
@@ -13,6 +13,8 @@
             --white: #ffffff;
             --danger: #d32f2f;
             --warning: #f57c00;
+            --today-red-bg: #ffebee; /* خلفية حمراء فاتحة جداً لليوم الحالي */
+            --today-red-border: #ff1744; /* إطار أحمر فاقع */
         }
 
         body {
@@ -71,7 +73,24 @@
         }
 
         .days-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;}
-        .day-box { background: #f1f3f5; padding: 10px; border-radius: 12px; border: 1px solid #e0e0e0; text-align: center; }
+        .day-box { 
+            background: #f1f3f5; padding: 10px; border-radius: 12px; 
+            border: 1px solid #e0e0e0; text-align: center; transition: 0.3s;
+        }
+        
+        /* التظليل الأحمر لليوم الحالي */
+        .day-box.is-today {
+            border: 2px solid var(--today-red-border);
+            background: var(--today-red-bg);
+            box-shadow: 0 0 12px rgba(255, 23, 68, 0.25);
+            transform: scale(1.03);
+            position: relative;
+        }
+        .day-box.is-today .day-name { 
+            color: var(--danger); 
+            font-weight: 900;
+        }
+
         .day-name { font-size: 12px; font-weight: 900; color: #333; margin-bottom: 8px; display: block; }
         
         .btn-group { display: flex; gap: 3px; margin-bottom: 10px; }
@@ -222,6 +241,9 @@
         const savedData = JSON.parse(localStorage.getItem(`f_pro_data_w${week}`)) || [];
         const container = document.getElementById('cardsList');
         
+        // الحصول على اسم اليوم الحالي بالعربية بدقة
+        const todayName = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date());
+
         container.innerHTML = workerList.filter(w => w.active).map((worker, idx) => {
             const data = savedData.find(s => s.name === worker.name) || {sal:'', loans:['','','','','',''], att:[1,1,1,1,1,1]};
             return `
@@ -234,17 +256,20 @@
                         <input type="number" class="val-sal" value="${data.sal}" oninput="calculateCard(${idx})" placeholder="0">
                     </div>
                     <div class="days-grid">
-                        ${[0,1,2,3,4,5].map(dIdx => `
-                            <div class="day-box">
-                                <span class="day-name">${days[dIdx]}</span>
-                                <div class="btn-group">
-                                    <button class="btn-att ${data.att[dIdx]==1?'active':''}" data-v="1" onclick="setAttendance(this,${idx})">ح</button>
-                                    <button class="btn-att ${data.att[dIdx]==0.5?'active':''}" data-v="0.5" onclick="setAttendance(this,${idx})">½</button>
-                                    <button class="btn-att ${data.att[dIdx]==0?'active':''}" data-v="0" onclick="setAttendance(this,${idx})">غ</button>
+                        ${[0,1,2,3,4,5].map(dIdx => {
+                            const isToday = (days[dIdx] === todayName) ? 'is-today' : '';
+                            return `
+                                <div class="day-box ${isToday}">
+                                    <span class="day-name">${days[dIdx]} ${isToday ? '<br><b>(اليوم)</b>' : ''}</span>
+                                    <div class="btn-group">
+                                        <button class="btn-att ${data.att[dIdx]==1?'active':''}" data-v="1" onclick="setAttendance(this,${idx})">ح</button>
+                                        <button class="btn-att ${data.att[dIdx]==0.5?'active':''}" data-v="0.5" onclick="setAttendance(this,${idx})">½</button>
+                                        <button class="btn-att ${data.att[dIdx]==0?'active':''}" data-v="0" onclick="setAttendance(this,${idx})">غ</button>
+                                    </div>
+                                    <input type="number" class="input-loan" value="${data.loans[dIdx]}" placeholder="سلفة" oninput="calculateCard(${idx})">
                                 </div>
-                                <input type="number" class="input-loan" value="${data.loans[dIdx]}" placeholder="سلفة" oninput="calculateCard(${idx})">
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                     <div class="card-res">
                         <span style="color:var(--danger)">سلف: <span class="res-loan">0</span></span>
@@ -325,7 +350,6 @@
         let phone = document.getElementById('targetPhone').value.trim();
         if(!phone) { alert("أدخل رقم هاتف أولاً"); return; }
         
-        // معالجة الرقم المصري تلقائياً
         phone = phone.replace(/\D/g, ''); 
         if (phone.startsWith('0')) { phone = '2' + phone; }
 
