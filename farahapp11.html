@@ -421,9 +421,45 @@ function searchC1() {
 }
 
 function sendWA(id) {
-    const c = document.getElementById(`c1-card-${id}`), name = c.querySelector('.c1-n').value, phone = c.querySelector('.c1-w').value, total = c.querySelector('.c1-t').value || 0, remaining = document.getElementById(`c1-rem-n-${id}`).innerText;
-    if(!phone) { alert("أدخل رقم الواتساب"); return; }
-    const msg = `*فرح للمطابخ*%0A*السيد:* ${name}%0A*إجمالي:* ${total} ج.م%0A*المتبقي:* ${remaining}`;
+    const c = document.getElementById(`c1-card-${id}`);
+    const name = c.querySelector('.c1-n').value;
+    const phone = c.querySelector('.c1-w').value;
+    const total = parseFloat(c.querySelector('.c1-t').value) || 0;
+    const remaining = document.getElementById(`c1-rem-n-${id}`).innerText;
+    
+    if(!phone) { 
+        alert("⚠️ يرجى إدخال رقم الواتساب أولاً"); 
+        return; 
+    }
+
+    // تجميع تفاصيل الدفعات بالتواريخ
+    let paymentsDetail = "";
+    const pDates = c.querySelectorAll('.c1-pd');
+    const pValues = c.querySelectorAll('.c1-pv');
+    let totalPaid = 0;
+
+    pValues.forEach((input, index) => {
+        const val = parseFloat(input.value) || 0;
+        const date = pDates[index].value;
+        if (val > 0) {
+            totalPaid += val;
+            paymentsDetail += `%0A✅ دفعة: ${val.toLocaleString()} ج.م بتاريخ (${date || 'غير محدد'})`;
+        }
+    });
+
+    // تنسيق نص الرسالة النهائي
+    let msg = `*منظومة فرح للمطابخ 2026* 🏠%0A`;
+    msg += `*بيان حساب للعميل:* ${name}%0A`;
+    msg += `------------------------------%0A`;
+    msg += `*💰 إجمالي المتفق عليه:* ${total.toLocaleString()} ج.م%0A`;
+    msg += `------------------------------%0A`;
+    msg += `*📥 الدفعات المستلمة:* ${paymentsDetail || '%0Aلا توجد دفعات مسجلة بعد'}%0A`;
+    msg += `------------------------------%0A`;
+    msg += `*💵 إجمالي المدفوع:* ${totalPaid.toLocaleString()} ج.م%0A`;
+    msg += `*⚠️ المتبقي المطلوب:* ${remaining}%0A`;
+    msg += `------------------------------%0A`;
+    msg += `*نشكركم لتعاملكم معنا.. نسعد بخدمتكم* ✨`;
+
     window.open(`https://wa.me/2${phone}?text=${msg}`, '_blank');
 }
 
@@ -510,7 +546,6 @@ function calcW2(idx) {
     let deduct = sal - earned;
     let net = earned - loan; 
 
-    // تحديث التقرير الداخلي
     card.querySelector('.rep-base-sal').innerText = sal.toLocaleString();
     card.querySelector('.rep-day-val').innerText = dayVal.toFixed(2);
     card.querySelector('.rep-att-days').innerText = att;
