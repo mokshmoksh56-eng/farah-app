@@ -41,10 +41,11 @@
         .c1-n { background-color: #e3f2fd !important; border-right: 6px solid #0a3d62 !important; color: #0a3d62 !important; }
         .c1-w { background-color: #e8f5e9 !important; border-right: 6px solid #25D366 !important; } 
         .c1-t { font-size: 24px !important; color: #0a3d62; background: #fdfdfd; border: 2px solid #0a3d62; } 
+        .c1-note { background-color: #fff9c4 !important; border-right: 6px solid #f1c40f !important; height: 80px; resize: none; }
         .btn-wa { background: #25D366; color: white; border: none; padding: 12px; border-radius: 15px; cursor: pointer; font-weight: bold; flex: 1; transition: 0.3s; }
         .pay-word-box { background: #fff; border: 1.5px solid #3c6382; padding: 8px; border-radius: 10px; font-size: 14px; font-weight: 900; color: #0a3d62; min-height: 35px; margin-top: 5px; text-align: center; }
 
-        /* تنسيقات العمال والورشة (نفس الكود السابق) */
+        /* تنسيقات العمال والورشة */
         .header-2 { background: #075E54; color: white; padding: 20px; text-align: center; border-radius: 0 0 25px 25px; }
         .dash-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px; background: #075E54; color: white; }
         .worker-card-2 { background: white; border-radius: 18px; padding: 18px; margin: 15px; border-top: 6px solid #128C7E; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -209,15 +210,23 @@ function tafBasic(n) {
     return t;
 }
 
-/* ---------------- ديون الزبائن (معدل) ---------------- */
+/* ---------------- ديون الزبائن (المدمج بالملاحظات) ---------------- */
 function initClients1() {
     const grid = document.getElementById('grid-1'); grid.innerHTML = "";
     for (let i = 1; i <= 100; i++) {
         const card = document.createElement('div'); card.className = 'card-1'; card.id = `c1-card-${i}`;
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:15px"><span style="font-weight:bold; color:#3c6382">ملف زبون #${i}</span><span id="c1-date-${i}" style="font-size:10px; color:#aaa"></span></div>
+            
             <label>👤 اسم الزبون:</label><input type="text" class="c1-n c1-input" oninput="saveC1(${i}, false)">
             <label>📱 رقم الواتساب:</label><input type="tel" class="c1-w c1-input" placeholder="01xxxxxxxxx" oninput="saveC1(${i}, false)">
+            
+            <label>📝 ملاحظات الطلبية (اللون/الخامات):</label>
+            <textarea class="c1-note c1-input" placeholder="" oninput="saveC1(${i}, false)"></textarea>
+            
+            <label>📅 موعد التركيب المتوقع:</label>
+            <input type="date" class="c1-target-date c1-input" oninput="saveC1(${i}, false)">
+
             <label>💰 إجمالي الاتفاق:</label><input type="number" class="c1-t c1-input" oninput="upC1(${i})">
             <div class="arabic-box-1" id="c1-word-${i}"></div>
             
@@ -260,32 +269,19 @@ function upC1(id) {
     const c = document.getElementById(`c1-card-${id}`); 
     const t = parseFloat(c.querySelector('.c1-t').value) || 0;
     document.getElementById(`c1-word-${id}`).innerText = toArabic(t);
-    
     let p = 0;
     const valInputs = c.querySelectorAll('.c1-pv');
     const wordBoxes = c.querySelectorAll('.pay-word-box');
-    
     valInputs.forEach((v, idx) => {
-        const val = parseFloat(v.value) || 0; 
-        p += val;
+        const val = parseFloat(v.value) || 0; p += val;
         wordBoxes[idx].innerText = val > 0 ? toArabic(val) : "-";
     });
-
     const r = t - p;
-
-    // تحديث الأرقام الجديدة
     document.getElementById(`c1-paid-n-${id}`).innerText = p.toLocaleString('ar-EG') + ' ج.م';
     document.getElementById(`c1-rem-n-${id}`).innerText = r.toLocaleString('ar-EG') + ' ج.م';
-    
     const remWordBox = document.getElementById(`c1-rem-w-${id}`);
-    if (r <= 0 && t > 0) {
-        c.classList.add('paid');
-        remWordBox.innerText = 'تم السداد بالكامل ✓';
-    } else {
-        c.classList.remove('paid');
-        remWordBox.innerText = r > 0 ? "متبقي: " + toArabic(r) : "";
-    }
-    
+    if (r <= 0 && t > 0) { c.classList.add('paid'); remWordBox.innerText = 'تم السداد بالكامل ✓'; }
+    else { c.classList.remove('paid'); remWordBox.innerText = r > 0 ? "متبقي: " + toArabic(r) : ""; }
     saveC1(id, false); refreshStats1();
 }
 
@@ -293,6 +289,7 @@ function saveC1(id, toast) {
     const c = document.getElementById(`c1-card-${id}`);
     const data = {
         n: c.querySelector('.c1-n').value, w: c.querySelector('.c1-w').value, t: c.querySelector('.c1-t').value,
+        note: c.querySelector('.c1-note').value, targetDate: c.querySelector('.c1-target-date').value,
         ps: Array.from(c.querySelectorAll('.c1-pd')).map((_, idx) => ({ d: c.querySelectorAll('.c1-pd')[idx].value, v: c.querySelectorAll('.c1-pv')[idx].value })),
         d: new Date().toLocaleDateString('ar-EG')
     };
@@ -306,6 +303,7 @@ function loadC1(id) {
     if (s) {
         const d = JSON.parse(s); const c = document.getElementById(`c1-card-${id}`);
         c.querySelector('.c1-n').value = d.n || ''; c.querySelector('.c1-w').value = d.w || ''; c.querySelector('.c1-t').value = d.t || '';
+        c.querySelector('.c1-note').value = d.note || ''; c.querySelector('.c1-target-date').value = d.targetDate || '';
         d.ps.forEach((p, i) => { if (c.querySelectorAll('.c1-pd')[i]) { c.querySelectorAll('.c1-pd')[i].value = p.d; c.querySelectorAll('.c1-pv')[i].value = p.v; } });
         upC1(id);
     }
@@ -331,17 +329,19 @@ function sendWA(id) {
     const c = document.getElementById(`c1-card-${id}`);
     const name = c.querySelector('.c1-n').value;
     const phone = c.querySelector('.c1-w').value;
+    const note = c.querySelector('.c1-note').value;
+    const tDate = c.querySelector('.c1-target-date').value;
     const total = c.querySelector('.c1-t').value || 0;
     const remaining = document.getElementById(`c1-rem-n-${id}`).innerText;
     if(!phone) { alert("يرجى إدخال رقم الواتساب أولاً"); return; }
     let payStr = ""; let totalPaid = 0;
     const dates = c.querySelectorAll('.c1-pd'), values = c.querySelectorAll('.c1-pv');
     values.forEach((v, i) => { if(v.value > 0) { payStr += `• تاريخ ${dates[i].value || '؟'}: (${v.value} ج.م)%0A`; totalPaid += parseFloat(v.value); } });
-    const msg = `*فرح للمطابخ - كشف حساب*%0A*السيد/ة:* ${name}%0A----------------------------%0A*إجمالي الاتفاق:* ${total} ج.م%0A*المسدد:* ${totalPaid} ج.م%0A*المتبقي:* ${remaining}%0A%0A*سجل الدفعات:*%0A${payStr || 'لا يوجد'}%0A----------------------------%0A*شكراً لتعاملكم معنا*`;
+    const msg = `*فرح للمطابخ - كشف حساب*%0A*السيد/ة:* ${name}%0A----------------------------%0A*الملاحظات:* ${note || '-'}%0A*موعد التركيب:* ${tDate || 'يحدد لاحقاً'}%0A----------------------------%0A*إجمالي الاتفاق:* ${total} ج.م%0A*المسدد:* ${totalPaid} ج.م%0A*المتبقي:* ${remaining}%0A%0A*سجل الدفعات:*%0A${payStr || 'لا يوجد'}%0A----------------------------%0A*شكراً لتعاملكم معنا*`;
     window.open(`https://wa.me/2${phone}?text=${msg}`, '_blank');
 }
 
-/* ---------------- رواتب العمال والورشة (نفس الكود) ---------------- */
+/* ---------------- رواتب العمال والورشة ---------------- */
 let workersArr2 = JSON.parse(localStorage.getItem('f_workers_list_final')) || [
     { name: 'السيد ياسين' }, { name: 'محمد عبد الله' }, { name: 'هاني رخام' },
     { name: 'أحمد رخام' }, { name: 'السعيد تال' }, { name: 'هاني زجاج' }
@@ -384,7 +384,12 @@ function saveWS4() { const entry = { s: document.getElementById('ws-shop-4').val
 function loadWS4() { const data = JSON.parse(localStorage.getItem('f_ws4_final_v1')) || []; const tbody = document.getElementById('ws-body-4'); tbody.innerHTML = ""; let dN = 0, mN = 0, oT = 0, rT = 0; const now = new Date(); data.sort((a, b) => new Date(b.d) - new Date(a.d)).forEach(item => { const rd = new Date(item.d); if (rd.toDateString() === now.toDateString()) dN += (item.i - item.o); if (rd.getMonth() === now.getMonth()) mN += (item.i - item.o); oT += item.o; rT += (item.i - item.o); let h = rd.getHours(), am = h >= 12 ? 'م' : 'ص'; h = h % 12 || 12; tbody.innerHTML += `<tr><td>${rd.getDate()}/${rd.getMonth() + 1}<br><small>${h}:${String(rd.getMinutes()).padStart(2, '0')} ${am}</small></td><td>${item.s}</td><td style="font-weight:bold">${item.c}</td><td>${item.b}</td><td style="color:green; font-weight:bold;">${item.i||'-'}</td><td style="color:red; font-weight:bold;">${item.o||'-'}</td><td><button onclick="delWS4(${item.id})" style="border:none; background:none; cursor:pointer; font-size:18px;">🗑️</button></td></tr>`; }); document.getElementById('ws-day').innerText = dN.toLocaleString(); document.getElementById('ws-month').innerText = mN.toLocaleString(); document.getElementById('ws-out').innerText = oT.toLocaleString(); document.getElementById('ws-total').innerText = rT.toLocaleString(); }
 function delWS4(id) { if (confirm("حذف؟")) { let data = JSON.parse(localStorage.getItem('f_ws4_final_v1')); data = data.filter(x => x.id != id); localStorage.setItem('f_ws4_final_v1', JSON.stringify(data)); loadWS4(); } }
 
-window.onload = function () { initClients1(); initWorkers2(); initDelivery3(); initWS4(); };
+window.onload = function () { 
+    initClients1(); 
+    initWorkers2(); 
+    initDelivery3(); 
+    initWS4(); 
+};
 </script>
 </body>
 </html>
