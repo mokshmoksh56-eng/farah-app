@@ -166,11 +166,7 @@ function openTab(evt, tabId) {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     evt.currentTarget.classList.add('active');
-
-    // إذا تم فتح تبويب التسليمات، اذهب لليوم تلقائياً
-    if(tabId === 'tab-delivery') {
-        setTimeout(goToday3, 100); 
-    }
+    if(tabId === 'tab-delivery') { setTimeout(goToday3, 100); }
 }
 
 function showToast() {
@@ -266,168 +262,81 @@ function refreshStats1() {
     }
     document.getElementById('stat-debt-1').innerText = td.toLocaleString('ar-EG') + ' ج.م'; document.getElementById('stat-cust-1').innerText = cc; document.getElementById('stat-paid-1').innerText = pc;
 }
+
+/* --- التعديل المطلوب: دالة واتساب المحترفة --- */
 function sendWA1(id) {
-    const c = document.getElementById(`c1-card-${id}`); const ph = c.querySelector('.c1-p').value; if (!ph) return alert("سجل الرقم!");
-    const msg = `*💎 كشف حساب فرح للمطابخ*\n👤 العميل: ${c.querySelector('.c1-n').value}\n💵 المتبقي المطلوب: ${document.getElementById(`c1-rem-n-${id}`).innerText}`;
+    const c = document.getElementById(`c1-card-${id}`);
+    const ph = c.querySelector('.c1-p').value;
+    const name = c.querySelector('.c1-n').value;
+    const total = c.querySelector('.c1-t').value || 0;
+    const remaining = document.getElementById(`c1-rem-n-${id}`).innerText;
+    const remainingWords = document.getElementById(`c1-rem-w-${id}`).innerText;
+
+    if (!ph) return alert("⚠️ يرجى تسجيل رقم الموبايل أولاً!");
+
+    // تجميع بيانات الدفعات المسجلة
+    let paymentsDetails = "";
+    const pDates = c.querySelectorAll('.c1-pd');
+    const pValues = c.querySelectorAll('.c1-pv');
+    let totalPaid = 0;
+
+    pValues.forEach((input, index) => {
+        const val = parseFloat(input.value) || 0;
+        const date = pDates[index].value;
+        if (val > 0) {
+            totalPaid += val;
+            paymentsDetails += `👈 دفع ${val} ج.م بتاريخ ${date || 'غير محدد'}\n`;
+        }
+    });
+
+    const msg = `*💎 كشف حساب | فرح للمطابخ 2026* \n\n` +
+                `*👤 العميل:* ${name}\n` +
+                `*💰 إجمالي الاتفاق:* ${total} ج.م\n` +
+                `----------------------------------\n` +
+                `*📑 سجل الدفعات المستلمة:*\n` +
+                (paymentsDetails || "_لا يوجد دفعات مسجلة بعد_\n") +
+                `----------------------------------\n` +
+                `*✅ إجمالي المدفوع:* ${totalPaid} ج.م\n` +
+                `*⚠️ المتبقي المطلوب:* ${remaining}\n` +
+                `*✍️ فقط:* ${remainingWords}\n\n` +
+                `_شكراً لثقتكم بنا، يسعدنا دائماً خدمتكم_`;
+
     window.open(`https://wa.me/2${ph.trim()}?text=${encodeURIComponent(msg)}`);
 }
+
 function searchC1() {
     const v = document.getElementById('search-1').value.toLowerCase();
     document.querySelectorAll('.card-1').forEach(c => { c.style.display = c.querySelector('.c1-n').value.toLowerCase().includes(v) ? '' : 'none'; });
 }
 
-/* ---------------- رواتب العمال ---------------- */
+/* ---------------- رواتب العمال (الأكواد الباقية كما هي) ---------------- */
 let workersArr2 = JSON.parse(localStorage.getItem('f_workers_list_final')) || [{ name: 'عامل 1' }];
-
-function getWeekNum(date) {
-    const start = new Date(date.getFullYear(), 0, 1);
-    return Math.ceil((((date - start) / 86400000) + start.getDay() + 1) / 7);
-}
-
-function initWorkers2() {
-    const now = new Date(); document.getElementById('date-now-2').innerText = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
-    updateArchiveSelect2(); renderWorkers2();
-}
-
-function addWorker2() {
-    const n = document.getElementById('new-worker-name').value.trim();
-    if (n) { workersArr2.push({ name: n }); localStorage.setItem('f_workers_list_final', JSON.stringify(workersArr2)); document.getElementById('new-worker-name').value = ""; renderWorkers2(); updateArchiveSelect2(); showToast(); }
-}
-
-function updateArchiveSelect2() {
-    const s = document.getElementById('archive-sel-2');
-    s.innerHTML = '<option value="">-- اختر عامل لمراجعة الأرشيف --</option>' + workersArr2.map(w => `<option>${w.name}</option>`).join('');
-}
-
-function loadArchive2() {
-    const name = document.getElementById('archive-sel-2').value; const res = document.getElementById('archive-res-2');
-    if (!name) { res.innerHTML = ""; return; }
-    let total = 0; let rows = "";
-    for (let i = 1; i <= 53; i++) {
-        const d = JSON.parse(localStorage.getItem(`f_w2_data_w${i}`)) || []; const r = d.find(x => x.n === name);
-        if (r && r.s > 0) { let att = r.at.reduce((a, b) => parseFloat(a) + parseFloat(b), 0); let loan = r.ls.reduce((a, b) => (parseFloat(a) || 0) + (parseFloat(b) || 0), 0); let net = ((r.s / 6) * att) - loan; total += net; if (net != 0) rows += `<div>📅 إسبوع ${i} | حضور: ${att} يوم | الصافي: <strong>${net.toFixed(2)} ج.م</strong></div>`; }
-    }
-    res.innerHTML = rows + `<div style="background:#075E54; color:white; padding:10px; margin-top:10px; border-radius:8px; text-align:center; font-weight:bold;">💰 إجمالي المقبوض الكلي: ${total.toFixed(2)} ج.م</div>`;
-}
-
-function renderWorkers2() {
-    const week = getWeekNum(new Date()); const saved = JSON.parse(localStorage.getItem(`f_w2_data_w${week}`)) || [];
-    const container = document.getElementById('workers-list-2'); const todayName = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date());
-    container.innerHTML = workersArr2.map((w, idx) => {
-        const d = saved.find(s => s.n === w.name) || { s: '', ls: ['', '', '', '', '', ''], at: [1, 1, 1, 1, 1, 1] };
-        return `
-            <div class="worker-card-2" id="w2-card-${idx}">
-                <div style="display:flex; justify-content:space-between; align-items:center;"><h3>${w.name}</h3><button onclick="delW2(${idx})" style="color:red; border:none; background:none; font-size:22px; cursor:pointer;">🗑️</button></div>
-                <label style="font-weight:bold; font-size:13px;">الراتب الإسبوعي الكامل:</label><input type="number" class="w2-sal" value="${d.s}" oninput="calcW2(${idx})" style="width:100%; padding:10px; border:2px solid #ddd; border-radius:10px; font-weight:bold;">
-                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:10px;">
-                    ${['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'].map((day, di) => `
-                        <div class="day-box-2 ${day === todayName ? 'is-today' : ''}">
-                            <div style="font-size:11px; font-weight:bold;">${day}</div>
-                            <div style="display:flex; gap:2px; margin:4px 0;"><button class="btn-att-2 ${d.at[di] == 1 ? 'active' : ''}" data-v="1" onclick="setAtt2(this,${idx})">ح</button><button class="btn-att-2 ${d.at[di] == 0.5 ? 'active' : ''}" data-v="0.5" onclick="setAtt2(this,${idx})">½</button><button class="btn-att-2 ${d.at[di] == 0 ? 'active' : ''}" data-v="0" onclick="setAtt2(this,${idx})">غ</button></div>
-                            <input type="number" class="w2-loan" value="${d.ls[di]}" placeholder="سلفة" oninput="calcW2(${idx})" style="width:100%; text-align:center; border:1px solid #ddd; font-weight:bold; color:red;">
-                        </div>
-                    `).join('')}
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-top:15px; font-weight:900;"><span>سلف: <span class="w2-res-l">0</span></span><span>الصافي: <span class="w2-res-n">0</span></span></div>
-            </div>
-        `;
-    }).join('');
-    workersArr2.forEach((_, i) => calcW2(i));
-}
-
+function getWeekNum(date) { const start = new Date(date.getFullYear(), 0, 1); return Math.ceil((((date - start) / 86400000) + start.getDay() + 1) / 7); }
+function initWorkers2() { const now = new Date(); document.getElementById('date-now-2').innerText = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }); updateArchiveSelect2(); renderWorkers2(); }
+function addWorker2() { const n = document.getElementById('new-worker-name').value.trim(); if (n) { workersArr2.push({ name: n }); localStorage.setItem('f_workers_list_final', JSON.stringify(workersArr2)); document.getElementById('new-worker-name').value = ""; renderWorkers2(); updateArchiveSelect2(); showToast(); } }
+function updateArchiveSelect2() { const s = document.getElementById('archive-sel-2'); s.innerHTML = '<option value="">-- اختر عامل لمراجعة الأرشيف --</option>' + workersArr2.map(w => `<option>${w.name}</option>`).join(''); }
+function loadArchive2() { const name = document.getElementById('archive-sel-2').value; const res = document.getElementById('archive-res-2'); if (!name) { res.innerHTML = ""; return; } let total = 0; let rows = ""; for (let i = 1; i <= 53; i++) { const d = JSON.parse(localStorage.getItem(`f_w2_data_w${i}`)) || []; const r = d.find(x => x.n === name); if (r && r.s > 0) { let att = r.at.reduce((a, b) => parseFloat(a) + parseFloat(b), 0); let loan = r.ls.reduce((a, b) => (parseFloat(a) || 0) + (parseFloat(b) || 0), 0); let net = ((r.s / 6) * att) - loan; total += net; if (net != 0) rows += `<div>📅 إسبوع ${i} | حضور: ${att} يوم | الصافي: <strong>${net.toFixed(2)} ج.م</strong></div>`; } } res.innerHTML = rows + `<div style="background:#075E54; color:white; padding:10px; margin-top:10px; border-radius:8px; text-align:center; font-weight:bold;">💰 إجمالي المقبوض الكلي: ${total.toFixed(2)} ج.م</div>`; }
+function renderWorkers2() { const week = getWeekNum(new Date()); const saved = JSON.parse(localStorage.getItem(`f_w2_data_w${week}`)) || []; const container = document.getElementById('workers-list-2'); const todayName = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()); container.innerHTML = workersArr2.map((w, idx) => { const d = saved.find(s => s.n === w.name) || { s: '', ls: ['', '', '', '', '', ''], at: [1, 1, 1, 1, 1, 1] }; return `<div class="worker-card-2" id="w2-card-${idx}"><div style="display:flex; justify-content:space-between; align-items:center;"><h3>${w.name}</h3><button onclick="delW2(${idx})" style="color:red; border:none; background:none; font-size:22px; cursor:pointer;">🗑️</button></div><label style="font-weight:bold; font-size:13px;">الراتب الإسبوعي الكامل:</label><input type="number" class="w2-sal" value="${d.s}" oninput="calcW2(${idx})" style="width:100%; padding:10px; border:2px solid #ddd; border-radius:10px; font-weight:bold;"><div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:10px;">${['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'].map((day, di) => `<div class="day-box-2 ${day === todayName ? 'is-today' : ''}"><div style="font-size:11px; font-weight:bold;">${day}</div><div style="display:flex; gap:2px; margin:4px 0;"><button class="btn-att-2 ${d.at[di] == 1 ? 'active' : ''}" data-v="1" onclick="setAtt2(this,${idx})">ح</button><button class="btn-att-2 ${d.at[di] == 0.5 ? 'active' : ''}" data-v="0.5" onclick="setAtt2(this,${idx})">½</button><button class="btn-att-2 ${d.at[di] == 0 ? 'active' : ''}" data-v="0" onclick="setAtt2(this,${idx})">غ</button></div><input type="number" class="w2-loan" value="${d.ls[di]}" placeholder="سلفة" oninput="calcW2(${idx})" style="width:100%; text-align:center; border:1px solid #ddd; font-weight:bold; color:red;"></div>`).join('')}</div><div style="display:flex; justify-content:space-between; margin-top:15px; font-weight:900;"><span>سلف: <span class="w2-res-l">0</span></span><span>الصافي: <span class="w2-res-n">0</span></span></div></div>`; }).join(''); workersArr2.forEach((_, i) => calcW2(i)); }
 function setAtt2(btn, idx) { Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active')); btn.classList.add('active'); calcW2(idx); }
-function calcW2(idx) {
-    const card = document.getElementById(`w2-card-${idx}`); if (!card) return;
-    const sal = parseFloat(card.querySelector('.w2-sal').value) || 0;
-    let loan = 0; card.querySelectorAll('.w2-loan').forEach(i => loan += parseFloat(i.value) || 0);
-    let att = 0; card.querySelectorAll('.btn-att-2.active').forEach(b => att += parseFloat(b.dataset.v));
-    let net = ((sal / 6) * att) - loan; card.querySelector('.w2-res-l').innerText = loan; card.querySelector('.w2-res-n').innerText = net.toFixed(2);
-    saveW2(); updateTotals2();
-}
-function saveW2() {
-    const week = getWeekNum(new Date());
-    const data = Array.from(document.querySelectorAll('.worker-card-2')).map(c => ({ n: c.querySelector('h3').innerText, s: c.querySelector('.w2-sal').value, ls: Array.from(c.querySelectorAll('.w2-loan')).map(i => i.value), at: Array.from(c.querySelectorAll('.btn-att-2.active')).map(b => b.dataset.v) }));
-    localStorage.setItem(`f_w2_data_w${week}`, JSON.stringify(data));
-}
-function updateTotals2() {
-    let ts = 0, tl = 0, tn = 0;
-    document.querySelectorAll('.worker-card-2').forEach(c => { ts += parseFloat(c.querySelector('.w2-sal').value) || 0; tl += parseFloat(c.querySelector('.w2-res-l').innerText) || 0; tn += parseFloat(c.querySelector('.w2-res-n').innerText) || 0; });
-    document.getElementById('sum-sal-2').innerText = ts.toLocaleString(); document.getElementById('sum-loan-2').innerText = tl.toLocaleString(); document.getElementById('sum-net-2').innerText = tn.toLocaleString();
-}
+function calcW2(idx) { const card = document.getElementById(`w2-card-${idx}`); if (!card) return; const sal = parseFloat(card.querySelector('.w2-sal').value) || 0; let loan = 0; card.querySelectorAll('.w2-loan').forEach(i => loan += parseFloat(i.value) || 0); let att = 0; card.querySelectorAll('.btn-att-2.active').forEach(b => att += parseFloat(b.dataset.v)); let net = ((sal / 6) * att) - loan; card.querySelector('.w2-res-l').innerText = loan; card.querySelector('.w2-res-n').innerText = net.toFixed(2); saveW2(); updateTotals2(); }
+function saveW2() { const week = getWeekNum(new Date()); const data = Array.from(document.querySelectorAll('.worker-card-2')).map(c => ({ n: c.querySelector('h3').innerText, s: c.querySelector('.w2-sal').value, ls: Array.from(c.querySelectorAll('.w2-loan')).map(i => i.value), at: Array.from(c.querySelectorAll('.btn-att-2.active')).map(b => b.dataset.v) })); localStorage.setItem(`f_w2_data_w${week}`, JSON.stringify(data)); }
+function updateTotals2() { let ts = 0, tl = 0, tn = 0; document.querySelectorAll('.worker-card-2').forEach(c => { ts += parseFloat(c.querySelector('.w2-sal').value) || 0; tl += parseFloat(c.querySelector('.w2-res-l').innerText) || 0; tn += parseFloat(c.querySelector('.w2-res-n').innerText) || 0; }); document.getElementById('sum-sal-2').innerText = ts.toLocaleString(); document.getElementById('sum-loan-2').innerText = tl.toLocaleString(); document.getElementById('sum-net-2').innerText = tn.toLocaleString(); }
 function delW2(idx) { if (confirm("حذف العامل؟")) { workersArr2.splice(idx, 1); localStorage.setItem('f_workers_list_final', JSON.stringify(workersArr2)); renderWorkers2(); updateArchiveSelect2(); } }
 
 /* ---------------- سجل التسليمات ---------------- */
-function initDelivery3() {
-    const tbody = document.getElementById('tbody-3'); tbody.innerHTML = "";
-    let d = new Date(2026, 0, 1);
-    const today = new Date();
-    const todayStr = today.getDate() + "-" + (today.getMonth() + 1) + "-" + today.getFullYear();
-    
-    for (let i = 0; i < 730; i++) {
-        const d_num = d.getDate(), m_num = d.getMonth() + 1, y_num = d.getFullYear();
-        const id = d_num + "-" + m_num + "-" + y_num;
-        const tr = document.createElement('tr');
-        
-        if (d.getDay() === 5) tr.classList.add('friday-3');
-        if (id === todayStr) { 
-            tr.id = 'today-3'; 
-            tr.classList.add('is-today-3'); 
-        }
-
-        tr.innerHTML = `
-            <td>${d_num}/${m_num}/${y_num}</td>
-            <td>${["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"][d.getDay()]}</td>
-            <td><input type="text" value="${localStorage.getItem(id + 'a') || ''}" oninput="s3('${id}a',this.value)"></td>
-            <td><input type="text" value="${localStorage.getItem(id + 'b') || ''}" oninput="s3('${id}b',this.value)"></td>
-            <td><input type="text" value="${localStorage.getItem(id + 'n') || ''}" oninput="s3('${id}n',this.value)"></td>
-            <td><select onchange="st3('${id}s',this)"><option value="p" ${localStorage.getItem(id + 's') === 'p' ? 'selected' : ''}>⏳</option><option value="d" ${localStorage.getItem(id + 's') === 'd' ? 'selected' : ''}>✅</option></select></td>
-        `;
-        if (localStorage.getItem(id + 's') === 'd') tr.classList.add('done-3');
-        tbody.appendChild(tr); d.setDate(d.getDate() + 1);
-    }
-}
+function initDelivery3() { const tbody = document.getElementById('tbody-3'); tbody.innerHTML = ""; let d = new Date(2026, 0, 1); const today = new Date(); const todayStr = today.getDate() + "-" + (today.getMonth() + 1) + "-" + today.getFullYear(); for (let i = 0; i < 730; i++) { const d_num = d.getDate(), m_num = d.getMonth() + 1, y_num = d.getFullYear(); const id = d_num + "-" + m_num + "-" + y_num; const tr = document.createElement('tr'); if (d.getDay() === 5) tr.classList.add('friday-3'); if (id === todayStr) { tr.id = 'today-3'; tr.classList.add('is-today-3'); } tr.innerHTML = `<td>${d_num}/${m_num}/${y_num}</td><td>${["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"][d.getDay()]}</td><td><input type="text" value="${localStorage.getItem(id + 'a') || ''}" oninput="s3('${id}a',this.value)"></td><td><input type="text" value="${localStorage.getItem(id + 'b') || ''}" oninput="s3('${id}b',this.value)"></td><td><input type="text" value="${localStorage.getItem(id + 'n') || ''}" oninput="s3('${id}n',this.value)"></td><td><select onchange="st3('${id}s',this)"><option value="p" ${localStorage.getItem(id + 's') === 'p' ? 'selected' : ''}>⏳</option><option value="d" ${localStorage.getItem(id + 's') === 'd' ? 'selected' : ''}>✅</option></select></td>`; if (localStorage.getItem(id + 's') === 'd') tr.classList.add('done-3'); tbody.appendChild(tr); d.setDate(d.getDate() + 1); } }
 function s3(k, v) { localStorage.setItem(k, v); }
 function st3(k, el) { localStorage.setItem(k, el.value); if (el.value === 'd') el.closest('tr').classList.add('done-3'); else el.closest('tr').classList.remove('done-3'); }
-
-// وظيفة الذهاب لليوم (مع تحسين الوصول)
-function goToday3() { 
-    const todayRow = document.getElementById('today-3');
-    if (todayRow) {
-        todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-}
+function goToday3() { const todayRow = document.getElementById('today-3'); if (todayRow) { todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
 
 /* ---------------- يومية الورشة ---------------- */
-function initWS4() {
-    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('ws-date-4').value = now.toISOString().slice(0, 16);
-    loadWS4();
-}
-function saveWS4() {
-    const entry = { s: document.getElementById('ws-shop-4').value, c: document.getElementById('ws-cust-4').value || "عام", d: document.getElementById('ws-date-4').value, b: document.getElementById('ws-desc-4').value || "-", i: parseFloat(document.getElementById('ws-in-4').value) || 0, o: parseFloat(document.getElementById('ws-out-val-4').value) || 0, id: Date.now() };
-    if (entry.i === 0 && entry.o === 0) return alert("أدخل مبلغ!");
-    let data = JSON.parse(localStorage.getItem('f_ws4_final_v1')) || []; data.push(entry); localStorage.setItem('f_ws4_final_v1', JSON.stringify(data));
-    document.getElementById('ws-cust-4').value = ""; document.getElementById('ws-desc-4').value = ""; document.getElementById('ws-in-4').value = ""; document.getElementById('ws-out-val-4').value = "";
-    loadWS4(); showToast();
-}
-function loadWS4() {
-    const data = JSON.parse(localStorage.getItem('f_ws4_final_v1')) || []; const tbody = document.getElementById('ws-body-4'); tbody.innerHTML = "";
-    let dNet = 0, mNet = 0, yOut = 0, yTotal = 0; const now = new Date();
-    data.sort((a, b) => new Date(b.d) - new Date(a.d)).forEach(item => {
-        const rd = new Date(item.d); if (rd.toDateString() === now.toDateString()) dNet += (item.i - item.o); if (rd.getMonth() === now.getMonth()) mNet += (item.i - item.o); yOut += item.o; yTotal += (item.i - item.o);
-        let h = rd.getHours(), am = h >= 12 ? 'مساءً' : 'صباحاً'; h = h % 12 || 12;
-        tbody.innerHTML += `<tr><td>${rd.getDate()}/${rd.getMonth() + 1}<br><span class="time-cell-4">${h}:${String(rd.getMinutes()).padStart(2, '0')} ${am}</span></td><td>${item.s}</td><td style="font-weight:bold">${item.c}</td><td>${item.b}</td><td style="color:#059669; font-weight:bold">${item.i || '-'}</td><td style="color:#dc2626; font-weight:bold">${item.o || '-'}</td><td><button onclick="delWS4(${item.id})" style="border:none; background:none; cursor:pointer; font-size:18px;">🗑️</button></td></tr>`;
-    });
-    document.getElementById('ws-day').innerText = dNet.toLocaleString(); document.getElementById('ws-month').innerText = mNet.toLocaleString(); document.getElementById('ws-out').innerText = yOut.toLocaleString(); document.getElementById('ws-total').innerText = yTotal.toLocaleString();
-}
+function initWS4() { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); document.getElementById('ws-date-4').value = now.toISOString().slice(0, 16); loadWS4(); }
+function saveWS4() { const entry = { s: document.getElementById('ws-shop-4').value, c: document.getElementById('ws-cust-4').value || "عام", d: document.getElementById('ws-date-4').value, b: document.getElementById('ws-desc-4').value || "-", i: parseFloat(document.getElementById('ws-in-4').value) || 0, o: parseFloat(document.getElementById('ws-out-val-4').value) || 0, id: Date.now() }; if (entry.i === 0 && entry.o === 0) return alert("أدخل مبلغ!"); let data = JSON.parse(localStorage.getItem('f_ws4_final_v1')) || []; data.push(entry); localStorage.setItem('f_ws4_final_v1', JSON.stringify(data)); document.getElementById('ws-cust-4').value = ""; document.getElementById('ws-desc-4').value = ""; document.getElementById('ws-in-4').value = ""; document.getElementById('ws-out-val-4').value = ""; loadWS4(); showToast(); }
+function loadWS4() { const data = JSON.parse(localStorage.getItem('f_ws4_final_v1')) || []; const tbody = document.getElementById('ws-body-4'); tbody.innerHTML = ""; let dNet = 0, mNet = 0, yOut = 0, yTotal = 0; const now = new Date(); data.sort((a, b) => new Date(b.d) - new Date(a.d)).forEach(item => { const rd = new Date(item.d); if (rd.toDateString() === now.toDateString()) dNet += (item.i - item.o); if (rd.getMonth() === now.getMonth()) mNet += (item.i - item.o); yOut += item.o; yTotal += (item.i - item.o); let h = rd.getHours(), am = h >= 12 ? 'مساءً' : 'صباحاً'; h = h % 12 || 12; tbody.innerHTML += `<tr><td>${rd.getDate()}/${rd.getMonth() + 1}<br><span class="time-cell-4">${h}:${String(rd.getMinutes()).padStart(2, '0')} ${am}</span></td><td>${item.s}</td><td style="font-weight:bold">${item.c}</td><td>${item.b}</td><td style="color:#059669; font-weight:bold">${item.i || '-'}</td><td style="color:#dc2626; font-weight:bold">${item.o || '-'}</td><td><button onclick="delWS4(${item.id})" style="border:none; background:none; cursor:pointer; font-size:18px;">🗑️</button></td></tr>`; }); document.getElementById('ws-day').innerText = dNet.toLocaleString(); document.getElementById('ws-month').innerText = mNet.toLocaleString(); document.getElementById('ws-out').innerText = yOut.toLocaleString(); document.getElementById('ws-total').innerText = yTotal.toLocaleString(); }
 function delWS4(id) { if (confirm("حذف العملية؟")) { let data = JSON.parse(localStorage.getItem('f_ws4_final_v1')); data = data.filter(x => x.id != id); localStorage.setItem('f_ws4_final_v1', JSON.stringify(data)); loadWS4(); } }
 
 window.onload = function () {
-    initClients1(); 
-    initWorkers2(); 
-    initDelivery3(); 
-    initWS4();
-    // تنفيذ الذهاب لليوم احتياطياً عند أول تحميل
+    initClients1(); initWorkers2(); initDelivery3(); initWS4();
     setTimeout(goToday3, 500);
 };
 </script>
