@@ -53,10 +53,15 @@
         .pay-row-1 { display: grid; grid-template-columns: 120px 1fr; gap: 10px; margin-bottom: 10px; }
         .result-box-1 { background: #0a3d62; color: white; padding: 20px; border-radius: 20px; text-align: center; margin-top: 10px; }
         
-        /* التعديل المخصص لتكبير الأرقام */
         .c1-input { width: 100%; padding: 12px; border-radius: 12px; border: 1.5px solid #ddd; margin-bottom: 10px; font-weight: bold; font-size: 15px; }
-        .c1-t { font-size: 24px !important; color: #0a3d62; background: #fdfdfd; border: 2px solid #0a3d62; } /* تكبير إجمالي الاتفاق */
-        .c1-pv { font-size: 18px !important; color: #128C7E; border: 1.5px solid #128C7E; } /* تكبير مبالغ الدفعات */
+        
+        /* تمييز خانة اسم الزبون */
+        .c1-n { background-color: #e3f2fd !important; border-right: 6px solid #0a3d62 !important; color: #0a3d62 !important; }
+        
+        .c1-t { font-size: 24px !important; color: #0a3d62; background: #fdfdfd; border: 2px solid #0a3d62; } 
+        
+        /* سجل الدفعات واضح باللون الأسود */
+        .c1-pv, .c1-pd { color: #000000 !important; font-weight: 900 !important; border: 1.5px solid #000 !important; font-size: 16px !important; }
     </style>
     <div class="header-1">
         <h1>فرح للمطابخ</h1>
@@ -216,7 +221,6 @@ function initClients1() {
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:15px"><span style="font-weight:bold; color:#3c6382">ملف زبون #${i}</span><span id="c1-date-${i}" style="font-size:10px; color:#aaa"></span></div>
             <label>👤 اسم الزبون:</label><input type="text" class="c1-n c1-input" oninput="saveC1(${i}, false)">
-            <label>📱 موبايل:</label><input type="tel" class="c1-p c1-input" oninput="saveC1(${i}, false)">
             <label>💰 إجمالي الاتفاق:</label><input type="number" class="c1-t c1-input" oninput="upC1(${i})">
             <div class="arabic-box-1" id="c1-word-${i}"></div>
             <div style="background:rgba(0,0,0,0.02); padding:15px; border-radius:20px; margin:15px 0; border:1px solid #eee;">
@@ -224,7 +228,7 @@ function initClients1() {
                 ${[1,2,3,4,5].map(x => `<div class="pay-row-1"><input type="date" class="c1-pd" oninput="saveC1(${i}, false)"><input type="number" class="c1-pv" placeholder="المبلغ" oninput="upC1(${i})"></div>`).join('')}
             </div>
             <div class="result-box-1"><div id="c1-rem-n-${i}" style="font-size:24px; font-weight:bold;">0</div><div id="c1-rem-w-${i}" style="font-size:14px; color:#00d2ff; font-weight:bold;"></div></div>
-            <div style="display:flex; gap:10px; margin-top:20px;"><button onclick="saveC1(${i}, true)" style="flex:1; background:#3c6382; color:white; border:none; padding:12px; border-radius:15px; cursor:pointer; font-weight:bold;">💾 حفظ</button><button onclick="sendWA1(${i})" style="flex:1; background:#218c74; color:white; border:none; padding:12px; border-radius:15px; cursor:pointer; font-weight:bold;">📱 واتساب</button></div>
+            <div style="display:flex; gap:10px; margin-top:20px;"><button onclick="saveC1(${i}, true)" style="flex:1; background:#3c6382; color:white; border:none; padding:12px; border-radius:15px; cursor:pointer; font-weight:bold;">💾 حفظ</button></div>
         `;
         grid.appendChild(card); loadC1(i);
     }
@@ -242,7 +246,7 @@ function upC1(id) {
 function saveC1(id, toast) {
     const c = document.getElementById(`c1-card-${id}`);
     const data = {
-        n: c.querySelector('.c1-n').value, p: c.querySelector('.c1-p').value, t: c.querySelector('.c1-t').value,
+        n: c.querySelector('.c1-n').value, t: c.querySelector('.c1-t').value,
         ps: Array.from(c.querySelectorAll('.c1-pd')).map((_, idx) => ({ d: c.querySelectorAll('.c1-pd')[idx].value, v: c.querySelectorAll('.c1-pv')[idx].value })),
         d: new Date().toLocaleDateString('ar-EG')
     };
@@ -254,7 +258,7 @@ function loadC1(id) {
     const s = localStorage.getItem(`f_c1_v7_${id}`);
     if (s) {
         const d = JSON.parse(s); const c = document.getElementById(`c1-card-${id}`);
-        c.querySelector('.c1-n').value = d.n || ''; c.querySelector('.c1-p').value = d.p || ''; c.querySelector('.c1-t').value = d.t || '';
+        c.querySelector('.c1-n').value = d.n || ''; c.querySelector('.c1-t').value = d.t || '';
         d.ps.forEach((p, i) => { if (c.querySelectorAll('.c1-pd')[i]) { c.querySelectorAll('.c1-pd')[i].value = p.d; c.querySelectorAll('.c1-pv')[i].value = p.v; } });
         upC1(id);
     }
@@ -266,40 +270,6 @@ function refreshStats1() {
         if (s) { const d = JSON.parse(s); if (!d.n) continue; cc++; let p = 0; d.ps.forEach(v => p += parseFloat(v.v) || 0); let r = (parseFloat(d.t) || 0) - p; if (r > 0) td += r; if (r <= 0 && d.t > 0) pc++; }
     }
     document.getElementById('stat-debt-1').innerText = td.toLocaleString('ar-EG') + ' ج.م'; document.getElementById('stat-cust-1').innerText = cc; document.getElementById('stat-paid-1').innerText = pc;
-}
-
-function sendWA1(id) {
-    const c = document.getElementById(`c1-card-${id}`);
-    const ph = c.querySelector('.c1-p').value;
-    const name = c.querySelector('.c1-n').value;
-    const total = c.querySelector('.c1-t').value || 0;
-    const remaining = document.getElementById(`c1-rem-n-${id}`).innerText;
-    const remainingWords = document.getElementById(`c1-rem-w-${id}`).innerText;
-    if (!ph) return alert("⚠️ يرجى تسجيل رقم الموبايل أولاً!");
-    let paymentsDetails = "";
-    const pDates = c.querySelectorAll('.c1-pd');
-    const pValues = c.querySelectorAll('.c1-pv');
-    let totalPaid = 0;
-    pValues.forEach((input, index) => {
-        const val = parseFloat(input.value) || 0;
-        const date = pDates[index].value;
-        if (val > 0) {
-            totalPaid += val;
-            paymentsDetails += `👈 دفع ${val} ج.م بتاريخ ${date || 'غير محدد'}\n`;
-        }
-    });
-    const msg = `*💎 كشف حساب | فرح للمطابخ 2026* \n\n` +
-                `*👤 العميل:* ${name}\n` +
-                `*💰 إجمالي الاتفاق:* ${total} ج.م\n` +
-                `----------------------------------\n` +
-                `*📑 سجل الدفعات المستلمة:*\n` +
-                (paymentsDetails || "_لا يوجد دفعات مسجلة بعد_\n") +
-                `----------------------------------\n` +
-                `*✅ إجمالي المدفوع:* ${totalPaid} ج.م\n` +
-                `*⚠️ المتبقي المطلوب:* ${remaining}\n` +
-                `*✍️ فقط:* ${remainingWords}\n\n` +
-                `_شكراً لثقتكم بنا، يسعدنا دائماً خدمتكم_`;
-    window.open(`https://wa.me/2${ph.trim()}?text=${encodeURIComponent(msg)}`);
 }
 
 function searchC1() {
