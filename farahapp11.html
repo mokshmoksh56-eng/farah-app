@@ -45,7 +45,6 @@
         .c1-note { background-color: #fff9c4 !important; border-right: 6px solid #f1c40f !important; height: 80px; resize: none; }
         .btn-wa { background: #25D366; color: white; border: none; padding: 12px; border-radius: 15px; cursor: pointer; font-weight: bold; flex: 1; transition: 0.3s; }
         
-        /* تنسيق تفقيط الدفعات الفرعية */
         .sub-pay-word { font-size: 11px; color: #218c74; background: #f0fff4; padding: 4px 8px; border-radius: 8px; margin-top: -5px; margin-bottom: 10px; font-weight: bold; min-height: 15px; text-align: center; border: 1px dashed #218c74; }
 
         /* تنسيقات الرواتب */
@@ -58,6 +57,11 @@
         .btn-att-2.active[data-v="1"] { background: #25D366; color: white; }
         .btn-att-2.active[data-v="0.5"] { background: orange; color: white; }
         .btn-att-2.active[data-v="0"] { background: #d32f2f; color: white; }
+        
+        /* تقرير العامل */
+        .worker-rep-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; background: #f8fafc; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .worker-rep-table td { padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; }
+        .rep-title { background: #128C7E; color: white; text-align: center; padding: 5px; font-size: 13px; }
 
         /* تنسيق التسليمات */
         .table-3 { width: 100%; border-collapse: collapse; background: white; font-size: 13px; font-weight: 700; }
@@ -82,7 +86,6 @@
         .ws-table-4 th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; }
         .ws-table-4 td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: center; }
         
-        /* تنسيق خلية التاريخ المزدوجة */
         .dt-cell { font-size: 11px; line-height: 1.3; font-weight: bold; color: #34495e; }
         .tm-cell { display: block; color: #7f8c8d; font-size: 10px; margin-top: 2px; }
     </style>
@@ -171,9 +174,6 @@
             <input type="text" id="new-worker-name" placeholder="اسم عامل جديد..." style="flex:1; padding:12px; border-radius:10px; border:2px solid #ddd; font-weight:bold;">
             <button onclick="addWorker2()" style="background:#128C7E; color:white; border:none; padding:0 25px; border-radius:10px; cursor:pointer; font-weight:bold;">إضافة عامل</button>
         </div>
-        <label style="font-weight:900; color:#075E54">📊 أرشيف العامل:</label>
-        <select id="archive-sel-2" onchange="loadArchive2()" style="width:100%; padding:12px; border-radius:10px; border:2px solid #128C7E; margin-top:5px; font-weight:bold;"></select>
-        <div id="archive-res-2" style="margin-top:15px; border:1px solid #eee; padding:10px; border-radius:10px; background:#fdfdfd;"></div>
     </div>
     <div id="workers-list-2"></div>
 </div>
@@ -201,14 +201,16 @@
     </div>
     <div class="ws-form-4">
         <select id="ws-shop-4" style="padding:10px; border-radius:8px; border:1px solid #ddd; font-weight:bold;">
-            <option value="زبون">👤 زبون خارجي</option>
-            <option value="السيد ياسين">👷 السيد ياسين</option>
-            <option value="محمد عبد الله">👷 محمد عبد الله</option>
-            <option value="هاني رخام">👷 هاني رخام</option>
-            <option value="أحمد رخام">👷 أحمد رخام</option>
-            <option value="السعيد تال">👷 السعيد تال</option>
-            <option value="هاني زجاج">👷 هاني زجاج</option>
-            <option value="مصاريف نثرية">💸 مصاريف نثرية</option>
+            <option value="زبون">👤 زبون</option>
+            <option value="عمال">👷 عمال</option>
+            <option value="الومنيوم">🏢 الومنيوم</option>
+            <option value="خشب">🪵 خشب</option>
+            <option value="اكسسوارات الومنيوم">🔩 اكسسوارات الومنيوم</option>
+            <option value="اكسسوارات خشب">🪛 اكسسوارات خشب</option>
+            <option value="رخام">💎 رخام</option>
+            <option value="سيارة">🚚 سيارة</option>
+            <option value="حديد">🏗️ حديد</option>
+            <option value="غير ذلك">✨ غير ذلك</option>
         </select>
         <input type="text" id="ws-cust-4" placeholder="الاسم/التفاصيل" style="padding:10px; border-radius:8px; border:1px solid #ddd;">
         <input type="datetime-local" id="ws-date-4" style="padding:10px; border-radius:8px; border:1px solid #ddd;">
@@ -238,12 +240,9 @@ function showToast() {
     t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2000);
 }
 
-// دالة توليد التقرير الماسي
 function generateReport() {
     const now = new Date();
     document.getElementById('report-date-now').innerText = "تاريخ التقرير: " + now.toLocaleString('ar-EG');
-
-    // 1. حسابات الديون
     let totalContracts = 0, totalCollected = 0, custCount = 0;
     for (let i = 1; i <= 100; i++) {
         const s = localStorage.getItem(`f_c1_v7_${i}`);
@@ -261,21 +260,18 @@ function generateReport() {
     document.getElementById('rep-total-collected').innerText = totalCollected.toLocaleString() + " ج.م";
     document.getElementById('rep-total-debts').innerText = (totalContracts - totalCollected).toLocaleString() + " ج.م";
 
-    // 2. حسابات اليومية (الشهر الحالي)
     const wsData = JSON.parse(localStorage.getItem('f_ws4_final_v1')) || [];
     let wsIn = 0, wsOut = 0;
     wsData.forEach(item => {
         const itemDate = new Date(item.d);
         if (itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear()) {
-            wsIn += item.i;
-            wsOut += item.o;
+            wsIn += item.i; wsOut += item.o;
         }
     });
     document.getElementById('rep-ws-in').innerText = wsIn.toLocaleString() + " ج.م";
     document.getElementById('rep-ws-out').innerText = wsOut.toLocaleString() + " ج.م";
     document.getElementById('rep-ws-net').innerText = (wsIn - wsOut).toLocaleString() + " ج.م";
 
-    // 3. حسابات الرواتب (الأسبوع الحالي)
     function getWeek(d) { const s = new Date(d.getFullYear(), 0, 1); return Math.ceil((((d - s) / 86400000) + s.getDay() + 1) / 7); }
     const week = getWeek(now);
     const workerData = JSON.parse(localStorage.getItem(`f_w2_data_w${week}`)) || [];
@@ -291,18 +287,14 @@ function generateReport() {
     document.getElementById('rep-total-loans').innerText = totLoan.toLocaleString() + " ج.م";
     document.getElementById('rep-net-salaries').innerText = netSal.toLocaleString() + " ج.م";
 
-    // 4. حسابات التسليمات
     const todayStr = now.getDate() + "-" + (now.getMonth() + 1) + "-" + now.getFullYear();
     const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
     const tomorrowStr = tomorrow.getDate() + "-" + (tomorrow.getMonth() + 1) + "-" + tomorrow.getFullYear();
-    
     let delToday = 0, delTomorrow = 0;
     if(localStorage.getItem(todayStr+'a') || localStorage.getItem(todayStr+'b')) delToday++;
     if(localStorage.getItem(tomorrowStr+'a') || localStorage.getItem(tomorrowStr+'b')) delTomorrow++;
-    
     document.getElementById('rep-del-today').innerText = delToday;
     document.getElementById('rep-del-tomorrow').innerText = delTomorrow;
-    document.getElementById('rep-del-week').innerText = "راجع الجدول";
 }
 
 /* ---------------- ديون الزبائن ---------------- */
@@ -341,7 +333,7 @@ function initClients1() {
     for (let i = 1; i <= 100; i++) {
         const card = document.createElement('div'); card.className = 'card-1'; card.id = `c1-card-${i}`;
         card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; margin-bottom:15px"><span style="font-weight:bold; color:#3c6382">ملف زبون #${i}</span><span id="c1-date-${i}" style="font-size:10px; color:#aaa"></span></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px"><span style="font-weight:bold; color:#3c6382">ملف زبون #${i}</span></div>
             <label>👤 اسم الزبون:</label><input type="text" class="c1-n c1-input" oninput="saveC1(${i}, false)">
             <label>📱 رقم الواتساب:</label><input type="tel" class="c1-w c1-input" placeholder="01xxxxxxxxx" oninput="saveC1(${i}, false)">
             <label>📝 ملاحظات الطلبية:</label><textarea class="c1-note c1-input" oninput="saveC1(${i}, false)"></textarea>
@@ -359,7 +351,7 @@ function initClients1() {
                     </div>
                 `).join('')}
             </div>
-            <div style="display: flex; justify-content: space-around; background: #0a3d62; color: white; padding: 15px; border-radius: 15px; margin-top: 15px;">
+            <div style="display: flex; justify-content: space-around; background: #0a3d62; color: white; padding: 15px; border-radius: 15px;">
                 <div><small>مدفوع</small><div id="c1-paid-n-${i}">0</div></div>
                 <div><small>متبقي</small><div id="c1-rem-n-${i}">0</div></div>
             </div>
@@ -377,10 +369,8 @@ function upC1(id) {
     const t = parseFloat(c.querySelector('.c1-t').value) || 0;
     document.getElementById(`c1-word-${id}`).innerText = toArabic(t);
     let p = 0;
-    const pvs = c.querySelectorAll('.c1-pv');
-    pvs.forEach((v, idx) => {
-        const val = parseFloat(v.value) || 0;
-        p += val;
+    c.querySelectorAll('.c1-pv').forEach((v, idx) => {
+        const val = parseFloat(v.value) || 0; p += val;
         const wBox = document.getElementById(`c1-pv-word-${id}-${idx}`);
         if(wBox) wBox.innerText = val > 0 ? toArabic(val) : "";
     });
@@ -393,7 +383,6 @@ function upC1(id) {
 
 function saveC1(id, toast) {
     const c = document.getElementById(`c1-card-${id}`);
-    if(!c) return;
     const data = {
         n: c.querySelector('.c1-n').value, w: c.querySelector('.c1-w').value, t: c.querySelector('.c1-t').value,
         note: c.querySelector('.c1-note').value, targetDate: c.querySelector('.c1-target-date').value,
@@ -410,9 +399,7 @@ function loadC1(id) {
         const d = JSON.parse(s), c = document.getElementById(`c1-card-${id}`);
         c.querySelector('.c1-n').value = d.n || ''; c.querySelector('.c1-w').value = d.w || ''; c.querySelector('.c1-t').value = d.t || '';
         c.querySelector('.c1-note').value = d.note || ''; c.querySelector('.c1-target-date').value = d.targetDate || '';
-        if(d.ps) {
-            d.ps.forEach((p, i) => { if (c.querySelectorAll('.c1-pd')[i]) { c.querySelectorAll('.c1-pd')[i].value = p.d; c.querySelectorAll('.c1-pv')[i].value = p.v; } });
-        }
+        if(d.ps) d.ps.forEach((p, i) => { if (c.querySelectorAll('.c1-pd')[i]) { c.querySelectorAll('.c1-pd')[i].value = p.d; c.querySelectorAll('.c1-pv')[i].value = p.v; } });
         upC1(id);
     }
 }
@@ -442,19 +429,118 @@ function sendWA(id) {
 
 /* ---------------- رواتب العمال ---------------- */
 let workersArr2 = JSON.parse(localStorage.getItem('f_workers_list_final')) || [{ name: 'السيد ياسين' }, { name: 'محمد عبد الله' }, { name: 'هاني رخام' }, { name: 'أحمد رخام' }, { name: 'السعيد تال' }, { name: 'هاني زجاج' }];
+
 function getWeekNum(date) { const start = new Date(date.getFullYear(), 0, 1); return Math.ceil((((date - start) / 86400000) + start.getDay() + 1) / 7); }
-function initWorkers2() { const now = new Date(); document.getElementById('date-now-2').innerText = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }); updateArchiveSelect2(); renderWorkers2(); }
-function addWorker2() { const n = document.getElementById('new-worker-name').value.trim(); if (n) { workersArr2.push({ name: n }); localStorage.setItem('f_workers_list_final', JSON.stringify(workersArr2)); document.getElementById('new-worker-name').value = ""; renderWorkers2(); updateArchiveSelect2(); showToast(); } }
-function updateArchiveSelect2() { const s = document.getElementById('archive-sel-2'); if(s) s.innerHTML = '<option value="">-- اختر عامل --</option>' + workersArr2.map(w => `<option>${w.name}</option>`).join(''); }
-function renderWorkers2() { const week = getWeekNum(new Date()), saved = JSON.parse(localStorage.getItem(`f_w2_data_w${week}`)) || [], container = document.getElementById('workers-list-2'), todayName = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()); if(!container) return; container.innerHTML = workersArr2.map((w, idx) => { const d = saved.find(s => s.n === w.name) || { s: '', ls: ['', '', '', '', '', ''], at: [1, 1, 1, 1, 1, 1] }; return `<div class="worker-card-2" id="w2-card-${idx}"><div style="display:flex; justify-content:space-between;"><h3>${w.name}</h3><button onclick="delW2(${idx})" style="color:red; border:none; background:none;">🗑️</button></div><label>الراتب:</label><input type="number" class="w2-sal" value="${d.s}" oninput="calcW2(${idx})"><div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:10px;">${['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'].map((day, di) => `<div class="day-box-2 ${day === todayName ? 'is-today' : ''}"><div>${day}</div><div style="display:flex; gap:2px;"><button class="btn-att-2 ${d.at[di] == 1 ? 'active' : ''}" data-v="1" onclick="setAtt2(this,${idx})">ح</button><button class="btn-att-2 ${d.at[di] == 0.5 ? 'active' : ''}" data-v="0.5" onclick="setAtt2(this,${idx})">½</button><button class="btn-att-2 ${d.at[di] == 0 ? 'active' : ''}" data-v="0" onclick="setAtt2(this,${idx})">غ</button></div><input type="number" class="w2-loan" value="${d.ls[di]}" placeholder="سلفة" oninput="calcW2(${idx})"></div>`).join('')}</div><div style="display:flex; justify-content:space-between; margin-top:10px; font-weight:900;"><span>سلف: <span class="w2-res-l">0</span></span><span>صافي: <span class="w2-res-n">0</span></span></div></div>`; }).join(''); workersArr2.forEach((_, i) => calcW2(i)); }
+
+function initWorkers2() { 
+    const now = new Date(); 
+    document.getElementById('date-now-2').innerText = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }); 
+    renderWorkers2(); 
+}
+
+function addWorker2() { 
+    const n = document.getElementById('new-worker-name').value.trim(); 
+    if (n) { 
+        workersArr2.push({ name: n }); 
+        localStorage.setItem('f_workers_list_final', JSON.stringify(workersArr2)); 
+        document.getElementById('new-worker-name').value = ""; 
+        renderWorkers2(); 
+        showToast(); 
+    } 
+}
+
+function delW2(idx) {
+    if (confirm("هل أنت متأكد من حذف هذا العامل نهائياً؟")) {
+        workersArr2.splice(idx, 1);
+        localStorage.setItem('f_workers_list_final', JSON.stringify(workersArr2));
+        renderWorkers2();
+        showToast();
+    }
+}
+
+function renderWorkers2() { 
+    const week = getWeekNum(new Date()), saved = JSON.parse(localStorage.getItem(`f_w2_data_w${week}`)) || [], container = document.getElementById('workers-list-2'), todayName = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()); 
+    if(!container) return; 
+    container.innerHTML = workersArr2.map((w, idx) => { 
+        const d = saved.find(s => s.n === w.name) || { s: '', ls: ['', '', '', '', '', ''], at: [1, 1, 1, 1, 1, 1] }; 
+        return `
+        <div class="worker-card-2" id="w2-card-${idx}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0">${w.name}</h3>
+                <button onclick="delW2(${idx})" style="color:#d32f2f; border:none; background:none; cursor:pointer; font-size:18px;">🗑️</button>
+            </div>
+            <label>الراتب:</label><input type="number" class="w2-sal" value="${d.s}" placeholder="0" oninput="calcW2(${idx})">
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:10px;">
+                ${['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'].map((day, di) => `
+                    <div class="day-box-2 ${day === todayName ? 'is-today' : ''}">
+                        <div>${day}</div>
+                        <div style="display:flex; gap:2px;">
+                            <button class="btn-att-2 ${d.at[di] == 1 ? 'active' : ''}" data-v="1" onclick="setAtt2(this,${idx})">ح</button>
+                            <button class="btn-att-2 ${d.at[di] == 0.5 ? 'active' : ''}" data-v="0.5" onclick="setAtt2(this,${idx})">½</button>
+                            <button class="btn-att-2 ${d.at[di] == 0 ? 'active' : ''}" data-v="0" onclick="setAtt2(this,${idx})">غ</button>
+                        </div>
+                        <input type="number" class="w2-loan" value="${d.ls[di]}" placeholder="سلفة" oninput="calcW2(${idx})">
+                    </div>`).join('')}
+            </div>
+            
+            <table class="worker-rep-table">
+                <tr class="rep-title"><td colspan="2">التقرير المالي لهذا الأسبوع</td></tr>
+                <tr><td>إجمالي الراتب الأسبوعي</td><td><span class="rep-base-sal">0</span> ج.م</td></tr>
+                <tr><td>قيمة يوم العمل</td><td><span class="rep-day-val">0</span> ج.م</td></tr>
+                <tr><td>إجمالي الحضور</td><td><span class="rep-att-days">0</span> يوم</td></tr>
+                <tr><td>خصم الغياب / التأخير</td><td><span class="rep-deduct" style="color:red">0</span> ج.م</td></tr>
+                <tr><td>إجمالي السلف</td><td><span class="w2-res-l" style="color:orange">0</span> ج.م</td></tr>
+                <tr style="background:#e6fff0; font-size:15px; color:#075E54;"><td>صافي المستحق للصرف</td><td><span class="w2-res-n">0</span> ج.م</td></tr>
+            </table>
+        </div>`; 
+    }).join(''); 
+    workersArr2.forEach((_, i) => calcW2(i)); 
+}
+
 function setAtt2(btn, idx) { Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active')); btn.classList.add('active'); calcW2(idx); }
-function calcW2(idx) { const card = document.getElementById(`w2-card-${idx}`); if (!card) return; const sal = parseFloat(card.querySelector('.w2-sal').value) || 0; let loan = 0; card.querySelectorAll('.w2-loan').forEach(i => loan += parseFloat(i.value) || 0); let att = 0; card.querySelectorAll('.btn-att-2.active').forEach(b => att += parseFloat(b.dataset.v)); let net = ((sal / 6) * att) - loan; card.querySelector('.w2-res-l').innerText = loan; card.querySelector('.w2-res-n').innerText = net.toFixed(2); saveW2(); updateTotals2(); }
-function saveW2() { const week = getWeekNum(new Date()), data = Array.from(document.querySelectorAll('.worker-card-2')).map(c => ({ n: c.querySelector('h3').innerText, s: c.querySelector('.w2-sal').value, ls: Array.from(c.querySelectorAll('.w2-loan')).map(i => i.value), at: Array.from(c.querySelectorAll('.btn-att-2.active')).map(b => b.dataset.v) })); localStorage.setItem(`f_w2_data_w${week}`, JSON.stringify(data)); }
-function updateTotals2() { let ts = 0, tl = 0, tn = 0; document.querySelectorAll('.worker-card-2').forEach(c => { ts += parseFloat(c.querySelector('.w2-sal').value) || 0; tl += parseFloat(c.querySelector('.w2-res-l').innerText) || 0; tn += parseFloat(c.querySelector('.w2-res-n').innerText) || 0; }); if(document.getElementById('sum-sal-2')) document.getElementById('sum-sal-2').innerText = ts.toLocaleString(); if(document.getElementById('sum-loan-2')) document.getElementById('sum-loan-2').innerText = tl.toLocaleString(); if(document.getElementById('sum-net-2')) document.getElementById('sum-net-2').innerText = tn.toLocaleString(); }
+
+function calcW2(idx) { 
+    const card = document.getElementById(`w2-card-${idx}`); if (!card) return; 
+    const sal = parseFloat(card.querySelector('.w2-sal').value) || 0; 
+    let loan = 0; card.querySelectorAll('.w2-loan').forEach(i => loan += parseFloat(i.value) || 0); 
+    let att = 0; card.querySelectorAll('.btn-att-2.active').forEach(b => att += parseFloat(b.dataset.v)); 
+    
+    let dayVal = sal / 6;
+    let earned = dayVal * att;
+    let deduct = sal - earned;
+    let net = earned - loan; 
+
+    // تحديث التقرير الداخلي
+    card.querySelector('.rep-base-sal').innerText = sal.toLocaleString();
+    card.querySelector('.rep-day-val').innerText = dayVal.toFixed(2);
+    card.querySelector('.rep-att-days').innerText = att;
+    card.querySelector('.rep-deduct').innerText = deduct.toFixed(2);
+    card.querySelector('.w2-res-l').innerText = loan.toLocaleString(); 
+    card.querySelector('.w2-res-n').innerText = net.toFixed(2); 
+
+    saveW2(); updateTotals2(); 
+}
+
+function saveW2() { 
+    const week = getWeekNum(new Date()), data = Array.from(document.querySelectorAll('.worker-card-2')).map(c => ({ n: c.querySelector('h3').innerText, s: c.querySelector('.w2-sal').value, ls: Array.from(c.querySelectorAll('.w2-loan')).map(i => i.value), at: Array.from(c.querySelectorAll('.btn-att-2.active')).map(b => b.dataset.v) })); 
+    localStorage.setItem(`f_w2_data_w${week}`, JSON.stringify(data)); 
+}
+
+function updateTotals2() { 
+    let ts = 0, tl = 0, tn = 0; 
+    document.querySelectorAll('.worker-card-2').forEach(c => { 
+        ts += parseFloat(c.querySelector('.w2-sal').value) || 0; 
+        tl += parseFloat(c.querySelector('.w2-res-l').innerText) || 0; 
+        tn += parseFloat(c.querySelector('.w2-res-n').innerText) || 0; 
+    }); 
+    document.getElementById('sum-sal-2').innerText = ts.toLocaleString(); 
+    document.getElementById('sum-loan-2').innerText = tl.toLocaleString(); 
+    document.getElementById('sum-net-2').innerText = tn.toLocaleString(); 
+}
 
 /* ---------------- سجل التسليمات ---------------- */
 function initDelivery3() {
-    const tbody = document.getElementById('tbody-3'); if(!tbody) return; tbody.innerHTML = "";
+    const tbody = document.getElementById('tbody-3'); tbody.innerHTML = "";
     let d = new Date(2026, 0, 1); const now = new Date(); const todayStr = now.getDate() + "-" + (now.getMonth() + 1) + "-" + now.getFullYear();
     const days = ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
     for (let i = 0; i < 730; i++) {
@@ -482,29 +568,14 @@ function loadWS4() {
         if (rd.toDateString() === now.toDateString()) dN += (item.i - item.o); 
         if (rd.getMonth() === now.getMonth()) mN += (item.i - item.o); 
         oT += item.o; rT += (item.i - item.o); 
-        
-        // تعديل عمود التاريخ ليشمل السنة واليوم والشهر والوقت
         const dateStr = `${rd.getFullYear()}/${rd.getMonth() + 1}/${rd.getDate()}`;
         const timeStr = rd.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-
-        tbody.innerHTML += `
-            <tr>
-                <td class="dt-cell">
-                    ${dateStr}
-                    <span class="tm-cell">${timeStr}</span>
-                </td>
-                <td>${item.s}</td>
-                <td>${item.c}</td>
-                <td>${item.b}</td>
-                <td style="color:green; font-weight:bold;">${item.i.toLocaleString()}</td>
-                <td style="color:red; font-weight:bold;">${item.o.toLocaleString()}</td>
-                <td><button onclick="delWS4(${item.id})" style="border:none; background:none; cursor:pointer;">🗑️</button></td>
-            </tr>`; 
+        tbody.innerHTML += `<tr><td class="dt-cell">${dateStr}<span class="tm-cell">${timeStr}</span></td><td>${item.s}</td><td>${item.c}</td><td>${item.b}</td><td style="color:green; font-weight:bold;">${item.i.toLocaleString()}</td><td style="color:red; font-weight:bold;">${item.o.toLocaleString()}</td><td><button onclick="delWS4(${item.id})" style="border:none; background:none; cursor:pointer;">🗑️</button></td></tr>`; 
     }); 
-    if(document.getElementById('ws-day')) document.getElementById('ws-day').innerText = dN.toLocaleString(); 
-    if(document.getElementById('ws-month')) document.getElementById('ws-month').innerText = mN.toLocaleString(); 
-    if(document.getElementById('ws-out')) document.getElementById('ws-out').innerText = oT.toLocaleString(); 
-    if(document.getElementById('ws-total')) document.getElementById('ws-total').innerText = rT.toLocaleString(); 
+    document.getElementById('ws-day').innerText = dN.toLocaleString(); 
+    document.getElementById('ws-month').innerText = mN.toLocaleString(); 
+    document.getElementById('ws-out').innerText = oT.toLocaleString(); 
+    document.getElementById('ws-total').innerText = rT.toLocaleString(); 
 }
 function delWS4(id) { if (confirm("حذف؟")) { let data = JSON.parse(localStorage.getItem('f_ws4_final_v1')); data = data.filter(x => x.id != id); localStorage.setItem('f_ws4_final_v1', JSON.stringify(data)); loadWS4(); } }
 
