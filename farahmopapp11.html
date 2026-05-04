@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>سجل مالي احترافي</title>
+    <title>سجل مالي احترافي مع بحث</title>
     <style>
         :root { 
             --in-bg: #27ae60; --out-bg: #e74c3c; --dark: #2c3e50; 
-            --white: #ffffff; --border-red: #ff0000;
+            --white: #ffffff; --border-red: #ff0000; --search-blue: #3498db;
         }
 
         body { 
@@ -16,14 +16,12 @@
             overflow-x: hidden;
         }
         
-        /* رأس الصفحة */
         #currentDateHeader { 
             text-align: center; color: var(--dark); font-size: 1rem; 
             background: #fff; padding: 6px; border-radius: 10px; 
             margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* حاوية الإدخال - مخصصة لليد اليمنى */
         .input-container { 
             width: 88%; margin-right: 0; margin-left: auto; 
             background: var(--white); padding: 12px; 
@@ -38,8 +36,15 @@
             box-sizing: border-box; font-size: 1rem; font-weight: 900; 
         }
 
-        /* تمييز الاسم بإطار أحمر وكتابة سوداء */
         #n { border: 3px solid var(--border-red) !important; color: #000 !important; }
+        
+        /* تصميم خانة البحث */
+        #searchInput { 
+            border: 3px solid var(--search-blue); 
+            background-color: #f0f8ff;
+            margin-bottom: 12px;
+            padding: 12px;
+        }
 
         .type-box { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
         .type-btn { 
@@ -57,7 +62,6 @@
             font-weight: 900; font-size: 1.2rem;
         }
 
-        /* الجدول المضغوط للمحمول */
         .table-section { background: var(--white); border-radius: 12px; overflow: hidden; }
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 480px; }
@@ -79,7 +83,6 @@
         .day-label { display: block; font-size: 0.7rem; line-height: 1; color: #333; }
         .time-label { display: block; font-size: 0.65rem; color: #1a73e8; border-top: 1px dashed #999; }
 
-        /* التقرير الصغير */
         .mini-report { 
             display: flex; justify-content: space-around; 
             background: var(--dark); color: #fff; 
@@ -108,6 +111,10 @@
         <input type="number" id="amt" placeholder="المبلغ" inputmode="decimal">
         <input type="text" id="b" placeholder="البيان">
         <button class="btn-save" onclick="addOrUpdate()">حفظ المعاملة ✅</button>
+    </div>
+
+    <div style="padding: 0 10px;">
+        <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو البيان..." onkeyup="renderTable()">
     </div>
 
     <div class="table-section">
@@ -194,11 +201,19 @@
 
         function renderTable() {
             const tbody = document.getElementById('tb');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             tbody.innerHTML = "";
+            
             let tIn = 0; let tOut = 0;
 
-            dataList.slice().reverse().forEach((item) => {
-                tIn += item.in; tOut += item.out;
+            // تصفية البيانات بناءً على البحث
+            const filteredData = dataList.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || 
+                item.note.toLowerCase().includes(searchTerm)
+            );
+
+            // عرض البيانات المصفاة (من الأحدث للأقدم)
+            filteredData.slice().reverse().forEach((item) => {
                 const realIndex = dataList.indexOf(item);
                 const row = tbody.insertRow();
                 row.className = item.in > 0 ? "row-in" : "row-out";
@@ -215,6 +230,13 @@
                     </td>
                 `;
             });
+
+            // حساب الإجماليات لكل البيانات (حتى تظل دقيقة بغض النظر عن البحث)
+            dataList.forEach(item => {
+                tIn += item.in;
+                tOut += item.out;
+            });
+
             document.getElementById('repIn').innerText = "+" + tIn;
             document.getElementById('repOut').innerText = "-" + tOut;
             document.getElementById('repNet').innerText = (tIn - tOut);
