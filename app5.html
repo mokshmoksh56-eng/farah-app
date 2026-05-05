@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>يومية الورشة 2026 - الإصدار النهائي المطور</title>
+    <title>يومية الورشة 2026 - الإصدار المتكامل</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -75,9 +75,9 @@
         }
 
         input, select {
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            border-radius: 8px;
             font-family: 'Cairo';
             font-size: 14px;
             font-weight: 700;
@@ -94,21 +94,33 @@
             cursor: pointer;
         }
 
+        .whatsapp-section {
+            background: #f0fdf4;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid var(--whatsapp);
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .whatsapp-section input { flex: 1; min-width: 200px; border: 1px solid var(--whatsapp); font-size: 16px; }
+
         .btn-whatsapp {
-            width: 100%;
             background: var(--whatsapp);
             color: white;
             border: none;
-            padding: 12px;
+            padding: 12px 20px;
             border-radius: 8px;
             font-weight: 800;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             font-size: 1rem;
-            margin-bottom: 15px;
+            flex: 1;
         }
 
         .search-area {
@@ -122,8 +134,13 @@
             flex-wrap: wrap;
         }
 
-        .search-input-wrapper { flex: 2; min-width: 200px; }
-        .search-area input { width: 100%; box-sizing: border-box; }
+        .search-input-wrapper { flex: 3; min-width: 250px; }
+        .search-area input { 
+            width: 100%; 
+            box-sizing: border-box; 
+            background: #eff6ff;
+            border: 1px solid var(--primary);
+        }
 
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
@@ -138,6 +155,7 @@
             .form-section { grid-template-columns: 1fr; }
             .btn-save { grid-column: span 1; }
             .dashboard { grid-template-columns: 1fr 1fr; }
+            .whatsapp-section { flex-direction: column; }
         }
     </style>
 </head>
@@ -177,21 +195,25 @@
         <button class="btn-save" id="btn-main" onclick="processEntry()">حفظ العملية</button>
     </div>
 
-    <button class="btn-whatsapp" onclick="sendWhatsAppReport()">
-        💬 إرسال تقرير (الاسم - البيان - المبلغ) عبر واتساب
-    </button>
+    <div class="whatsapp-section">
+        <input type="number" id="wa-number" placeholder="أدخل رقم الواتساب للحفظ (مثال: 2010...)">
+        <button class="btn-whatsapp" onclick="sendWhatsAppReport()">
+            💬 إرسال سجل الورشة الكامل للواتساب
+        </button>
+    </div>
 
     <div class="search-area">
         <div class="search-input-wrapper">
-            <input type="text" id="searchBox" placeholder="🔍 ابحث بالاسم، البيان، أو رقم المبلغ..." onkeyup="loadData()">
+            <input type="text" id="searchBox" placeholder="🔍 بحث شامل (بالاسم، البيان، أو رقم المبلغ)..." onkeyup="loadData()">
         </div>
-        <select id="filterShop" onchange="loadData()">
+        <select id="filterShop" onchange="loadData()" style="font-weight: 800; background: white;">
             <option value="الكل">كل التصنيفات</option>
             <option value="زبون">زبون</option>
             <option value="عمال">عمال</option>
             <option value="الومنيوم">الومنيوم</option>
+            <option value="خشب">خشب</option>
         </select>
-        <button onclick="exportToCSV()" style="background:#059669; color:white; border:none; padding:0 15px; border-radius:6px; cursor:pointer;">Excel</button>
+        <button onclick="exportToCSV()" style="background:#059669; color:white; border:none; padding:0 15px; border-radius:6px; cursor:pointer; font-weight: 800;">Excel</button>
     </div>
 
     <div class="table-wrapper">
@@ -213,6 +235,7 @@
 </div>
 
 <script>
+    // وظيفة تحويل الأرقام العربية إلى إنجليزية لضمان البحث
     function convertToEn(str) {
         if (!str) return "";
         return str.toString().replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632);
@@ -261,7 +284,7 @@
     function loadData() {
         const tableBody = document.getElementById('table-body');
         let searchInput = document.getElementById('searchBox').value.toLowerCase().trim();
-        let searchVal = convertToEn(searchInput);
+        let searchVal = convertToEn(searchInput); // تحويل المدخلات لإنجليزية للبحث الرقمي
         const filterShop = document.getElementById('filterShop').value;
         const data = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
         
@@ -277,7 +300,7 @@
             if (rowDate.getMonth() === now.getMonth()) totals.month += itemNet;
             totals.yearOut += item.outVal; totals.yearNet += itemNet;
 
-            // البحث المطور: اسم، بيان، أو أرقام المبالغ
+            // محرك البحث الشامل: يدعم الاسم، البيان، المبالغ (داخل/خارج)
             const matchesSearch = item.customer.toLowerCase().includes(searchVal) || 
                                  item.desc.toLowerCase().includes(searchVal) ||
                                  item.inVal.toString().includes(searchVal) ||
@@ -295,8 +318,8 @@
                         <td class="td-out">${item.outVal > 0 ? item.outVal.toLocaleString() : '-'}</td>
                         <td class="td-in">${item.inVal > 0 ? item.inVal.toLocaleString() : '-'}</td>
                         <td>
-                            <button onclick="startEdit(${item.id})" style="border:none; background:none; cursor:pointer;">📝</button>
-                            <button onclick="deleteItem(${item.id})" style="border:none; background:none; cursor:pointer;">🗑️</button>
+                            <button onclick="startEdit(${item.id})" style="border:none; background:none; cursor:pointer; font-size:16px;">📝</button>
+                            <button onclick="deleteItem(${item.id})" style="border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
                         </td>
                     </tr>`;
             }
@@ -309,28 +332,32 @@
 
     function sendWhatsAppReport() {
         const data = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
+        const phone = document.getElementById('wa-number').value.trim();
+        
         if (data.length === 0) return alert("لا توجد بيانات!");
+        if (!phone) return alert("يرجى إدخال رقم الهاتف أولاً!");
         
         let totalIn = 0, totalOut = 0;
-        let message = `📋 *تقرير الورشة 2026 الشامل*\n`;
+        let message = `📋 *سجل الورشة الشامل لعام 2026*\n`;
         message += `━━━━━━━━━━━━━━━\n\n`;
         
         data.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach((item, index) => {
             totalIn += item.inVal; totalOut += item.outVal;
-            message += `*${index+1}.* 👤 *${item.customer}*\n`;
-            message += `📝 ${item.desc}\n`;
-            if(item.inVal > 0) message += `💰 دخل: ${item.inVal.toLocaleString()}\n`;
-            if(item.outVal > 0) message += `💸 خارج: ${item.outVal.toLocaleString()}\n`;
-            message += `📅 ${item.date.split('T')[0]}\n`;
+            message += `*${index+1}* 📅 *التاريخ:* ${item.date.replace('T', ' ')}\n`;
+            message += `🏷️ *القسم:* ${item.shop}\n`;
+            message += `👤 *الاسم:* ${item.customer}\n`;
+            message += `📝 *البيان:* ${item.desc}\n`;
+            message += `💸 *خارج:* ${item.outVal.toLocaleString()}\n`;
+            message += `💰 *داخل:* ${item.inVal.toLocaleString()}\n`;
             message += `───────────────\n`;
         });
         
-        message += `\n📊 *الملخص النهائي:*\n`;
+        message += `\n📊 *الملخص النهائي للحسابات:*\n`;
         message += `✅ إجمالي الداخل: ${totalIn.toLocaleString()}\n`;
         message += `❌ إجمالي الخارج: ${totalOut.toLocaleString()}\n`;
         message += `💵 *الرصيد الصافي: ${(totalIn - totalOut).toLocaleString()}*`;
         
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`, '_blank');
     }
 
     function startEdit(id) {
