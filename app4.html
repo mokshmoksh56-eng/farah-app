@@ -3,213 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سجل تسليمات 2026 - 2027 (Compact)</title>
+    <title>نظام التسليمات - النسخة المدمجة</title>
     <style>
         :root {
-            --nav-bg: #1a2a3a;
-            --delivered-bg: #d63031; 
-            --friday-bg: #f1f2f6;    
+            --primary: #2c3e50;
             --accent: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --light-bg: #f4f7f6;
         }
 
+        /* تنسيق عريض 900 */
+        * { box-sizing: border-box; font-weight: 900 !important; }
+        
         body { 
             font-family: 'Segoe UI', Tahoma, sans-serif; 
-            background: #f4f7f6; margin: 0; font-weight: 700; color: #2d3436;
+            background: #d1d8e0; margin: 0; color: #2d3436; 
         }
         
         header {
-            background: var(--nav-bg); color: white; padding: 8px 20px;
+            background: var(--primary); color: white; padding: 8px 12px;
             position: sticky; top: 0; z-index: 1000;
             display: flex; justify-content: space-between; align-items: center;
         }
 
-        .stats { font-size: 12px; background: rgba(255,255,255,0.1); padding: 2px 10px; border-radius: 10px; }
+        .controls { display: flex; gap: 5px; }
+        button, select { padding: 6px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; }
 
-        table { 
-            width: 100%; border-collapse: collapse; background: white; 
-            font-size: 13px; table-layout: fixed;
+        /* الجدول الرئيسي - وضع التصغير */
+        table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; }
+        th { 
+            background: #34495e; color: white; padding: 6px 2px; 
+            position: sticky; top: 43px; z-index: 900; font-size: 12px;
+        }
+        td { border: 1px solid #b2bec3; padding: 1px 2px; text-align: center; height: 32px; font-size: 13px; }
+
+        .row-done { background-color: #ff7675 !important; color: white !important; }
+        .row-done input { color: white !important; }
+        .friday-row { background-color: #dfe6e9 !important; }
+        .is-today { outline: 3px solid var(--accent); background: #fff9c4 !important; z-index: 5; }
+
+        /* مدخلات مدمجة */
+        .name-input { width: 100%; border: none; background: transparent; text-align: center; outline: none; font-size: 13px; padding: 0; }
+        .note-cell { 
+            width: 100%; min-height: 18px; outline: none; font-size: 10px; 
+            text-align: right; overflow: hidden; white-space: nowrap; 
+            text-overflow: ellipsis; padding: 0 3px; 
+        }
+        .note-cell:focus { white-space: normal; background: white; border: 1px solid #ccc; position: relative; z-index: 10; }
+
+        /* نافذة البحث */
+        #reportModal { 
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; border-radius: 12px; box-shadow: 0 0 80px rgba(0,0,0,0.5);
+            z-index: 3000; width: 95%; max-width: 750px; max-height: 85vh; overflow: hidden;
+        }
+
+        .modal-body { padding: 10px; overflow-y: auto; background: var(--light-bg); max-height: 60vh; }
+        .search-item { 
+            background: white; margin-bottom: 5px; padding: 8px; border-radius: 6px; 
+            display: grid; grid-template-columns: 100px 1fr 40px; align-items: center; 
+            border: 1px solid #ddd; text-align: right; font-size: 12px;
         }
         
-        th { 
-            background: #34495e; color: white; padding: 6px; 
-            position: sticky; top: 43px; z-index: 900; 
-            border: 1px solid #2c3e50; font-size: 12px;
-        }
-
-        td { 
-            border: 1px solid #ddd; padding: 2px 4px; 
-            text-align: center; vertical-align: middle;
-        }
-
-        /* توزيع المساحات المتوازن */
-        .col-date { width: 100px; font-size: 11px; }
-        .col-day { width: 75px; }
-        .col-client { width: 25%; }
-        .col-client2 { width: 25%; }
-        .col-note { width: 25%; }
-        .col-status { width: 100px; }
-
-        /* تمييز الجمعة */
-        .friday-row { background-color: var(--friday-bg) !important; }
-        .friday-row td:nth-child(2) { color: #e74c3c; font-weight: 900; }
-
-        /* تم التسليم - أحمر كامل */
-        .row-done { background-color: var(--delivered-bg) !important; color: white !important; }
-        .row-done select { background: white; color: black; border: none; font-size: 11px; }
-
-        .year-header {
-            background: #1e272e; color: #feca57;
-            font-size: 14px; padding: 5px; text-align: center;
-        }
-
-        [contenteditable] { 
-            outline: none; min-height: 20px; width: 100%; display: block; 
-            word-wrap: break-word; text-align: center; line-height: 1.2;
-        }
-
-        select {
-            width: 100%; padding: 1px; font-weight: 800; cursor: pointer;
-            border-radius: 3px; border: 1px solid #ccc; font-size: 11px;
-        }
-
-        .btn-today { 
-            background: var(--accent); color: white; border: none; 
-            padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: 800; font-size: 12px;
-        }
-
-        #saveNotice { 
-            position: fixed; bottom: 20px; left: 20px; background: #27ae60; 
-            color: white; padding: 6px 15px; border-radius: 4px; display: none; z-index: 2000; font-size: 11px;
-        }
-
-        .is-today { background: #fff9c4 !important; border: 2px solid #f1c40f !important; }
+        #saveNotice { position: fixed; bottom: 15px; left: 15px; background: var(--success); color: white; padding: 8px 15px; border-radius: 6px; display: none; z-index: 4000; font-size: 12px; }
     </style>
 </head>
 <body>
 
+<datalist id="namesList"></datalist>
+
 <header>
     <div style="display: flex; align-items: center; gap: 10px;">
-        <h2 style="margin:0; font-size: 15px;">📋 سجل 2026 - 2027</h2>
-        <div class="stats" id="statsCounter">تم: 0</div>
+        <h2 style="margin:0; font-size: 16px;">📦 التسليمات</h2>
+        <select id="mainYearSelect" onchange="renderTable()"></select>
     </div>
-    <button class="btn-today" onclick="goToToday()">📍 اليوم</button>
+    <div class="controls">
+        <button onclick="showReport()" style="background: var(--warning);">🔍 بحث</button>
+        <button onclick="goToToday()" style="background: var(--accent); color: white;">📍 اليوم</button>
+    </div>
 </header>
 
-<div class="container" style="padding: 0;">
-    <table id="mainTable">
-        <thead>
-            <tr>
-                <th class="col-date">التاريخ</th>
-                <th class="col-day">اليوم</th>
-                <th class="col-client">العميل (1)</th>
-                <th class="col-client2">العميل (2)</th>
-                <th class="col-note">الملاحظات</th>
-                <th class="col-status">الحالة</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+<table id="mainTable">
+    <thead>
+        <tr>
+            <th style="width:110px">التاريخ (ي/ش/س)</th>
+            <th style="width:70px">اليوم</th>
+            <th>العميل (1)</th>
+            <th>العميل (2)</th>
+            <th>ملاحظات</th>
+            <th style="width:60px">الحالة</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<div id="reportModal">
+    <div style="background: var(--primary); color: white; padding: 10px; text-align: center;"><h3 style="margin:0; font-size: 16px;">📊 البحث الشامل</h3></div>
+    <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <select id="filterYear" onchange="generateReport()"></select>
+            <select id="filterMonth" onchange="generateReport()"><option value="all">كل الشهور</option></select>
+        </div>
+        <input type="text" id="filterText" list="namesList" placeholder="🔍 اكتب للبحث..." oninput="generateReport()" style="width:100%; padding:10px; border:2px solid var(--accent); border-radius:6px; margin-bottom: 10px;">
+        <div id="reportContent"></div>
+    </div>
+    <div id="searchStats" style="padding: 8px; text-align: center; background: #eee; border-top: 1px solid #ccc; font-size: 14px;"></div>
+    <button onclick="document.getElementById('reportModal').style.display='none'" style="width:100%; padding:12px; background:var(--danger); color:white; border:none; cursor:pointer;">إغلاق</button>
 </div>
 
 <div id="saveNotice">✓ تم الحفظ</div>
 
 <script>
-    const tableBody = document.getElementById('tableBody');
-    const startYear = 2026;
-    const endYear = 2027;
     const daysArr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+    const monthsArr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
-    function init() {
-        let date = new Date(startYear, 0, 1);
+    function setup() {
+        const currentYear = new Date().getFullYear();
+        const mainSelect = document.getElementById('mainYearSelect');
+        const searchSelect = document.getElementById('filterYear');
+        for(let y = 2024; y <= 2100; y++) {
+            mainSelect.add(new Option(y, y));
+            searchSelect.add(new Option(y, y));
+        }
+        mainSelect.value = currentYear;
+        searchSelect.value = currentYear;
+        monthsArr.forEach((m, i) => filterMonth.add(new Option(m, i + 1)));
+        renderTable();
+        setTimeout(goToToday, 600);
+    }
+
+    function renderTable() {
+        const year = parseInt(mainYearSelect.value);
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        let date = new Date(year, 0, 1);
         const today = new Date();
-        const todayStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
-        let currentYear = startYear;
-        const fragment = document.createDocumentFragment();
 
-        while (date.getFullYear() <= endYear) {
-            const d = date.getDate();
-            const m = date.getMonth() + 1;
-            const y = date.getFullYear();
-            const id = `${d}-${m}-${y}`;
+        while (date.getFullYear() === year) {
+            const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
+            const id = `${d}-${m}-${year}`;
             const dayName = daysArr[date.getDay()];
-
-            if (y !== currentYear) {
-                const hr = document.createElement('tr');
-                hr.className = 'year-header';
-                hr.innerHTML = `<td colspan="6">عام ${y}</td>`;
-                fragment.appendChild(hr);
-                currentYear = y;
-            }
-            
             const tr = document.createElement('tr');
+            
             if (dayName === "الجمعة") tr.classList.add('friday-row');
-            if(id === todayStr) { tr.id = 'todayRow'; tr.classList.add('is-today'); }
+            if (d === today.getDate() && m === (today.getMonth()+1) && y === today.getFullYear()) {
+                tr.id = 'todayRow'; tr.classList.add('is-today');
+            }
+
+            const status = localStorage.getItem(id+'-s') || 'pending';
+            if(status === 'done') tr.classList.add('row-done');
 
             tr.innerHTML = `
-                <td>${d}/${m}/${y}</td>
-                <td>${dayName}</td>
-                <td><div contenteditable="true" oninput="save('${id}-c1', this.innerText)"></div></td>
-                <td><div contenteditable="true" oninput="save('${id}-c2', this.innerText)"></div></td>
-                <td><div contenteditable="true" oninput="save('${id}-n', this.innerText)"></div></td>
+                <td style="color: var(--primary); font-size: 13px;">${d} / ${m} / ${y}</td>
+                <td style="color:${dayName==='الجمعة'?'#e74c3c':'inherit'}">${dayName}</td>
+                <td><input class="name-input" list="namesList" oninput="save('${id}-c1', this.value)" value="${localStorage.getItem(id+'-c1') || ''}"></td>
+                <td><input class="name-input" list="namesList" oninput="save('${id}-c2', this.value)" value="${localStorage.getItem(id+'-c2') || ''}"></td>
+                <td><div class="note-cell" contenteditable="true" oninput="save('${id}-n', this.innerText)">${localStorage.getItem(id+'-n') || ''}</div></td>
                 <td>
-                    <select onchange="handleStatusChange('${id}-s', this)">
-                        <option value="pending">⏳ إنتظار</option>
-                        <option value="done">✅ تم</option>
+                    <select onchange="updateStatus('${id}-s', this)" style="background:transparent; border:none; appearance:none; font-size:16px;">
+                        <option value="pending" ${status==='pending'?'selected':''}>⏳</option>
+                        <option value="done" ${status==='done'?'selected':''}>✅</option>
                     </select>
                 </td>
             `;
-            fragment.appendChild(tr);
+            tbody.appendChild(tr);
             date.setDate(date.getDate() + 1);
         }
-        tableBody.appendChild(fragment);
-        loadData();
-        updateCounter();
-    }
-
-    function handleStatusChange(key, el) {
-        const row = el.closest('tr');
-        el.value === 'done' ? row.classList.add('row-done') : row.classList.remove('row-done');
-        save(key, el.value);
-        updateCounter();
+        updateDatalist();
     }
 
     function save(key, val) {
         localStorage.setItem(key, val);
+        if (key.includes('-c1') || key.includes('-c2')) updateDatalist();
         const notice = document.getElementById('saveNotice');
         notice.style.display = 'block';
         clearTimeout(window.st);
-        window.st = setTimeout(() => notice.style.display = 'none', 600);
+        window.st = setTimeout(() => notice.style.display = 'none', 800);
     }
 
-    function loadData() {
-        document.querySelectorAll('[contenteditable="true"]').forEach(div => {
-            const k = div.getAttribute('oninput').match(/'([^']+)'/)[1];
-            const data = localStorage.getItem(k);
-            if(data) div.innerText = data;
-        });
+    function updateStatus(key, el) {
+        const row = el.closest('tr');
+        el.value === 'done' ? row.classList.add('row-done') : row.classList.remove('row-done');
+        save(key, el.value);
+    }
 
-        document.querySelectorAll('select').forEach(sel => {
-            const k = sel.getAttribute('onchange').match(/'([^']+)'/)[1];
-            const data = localStorage.getItem(k);
-            if(data) {
-                sel.value = data;
-                if(data === 'done') sel.closest('tr').classList.add('row-done');
+    function updateDatalist() {
+        const names = new Set();
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.endsWith('-c1') || key.endsWith('-c2')) {
+                const val = (localStorage.getItem(key) || "").trim();
+                if (val) names.add(val);
             }
-        });
+        }
+        namesList.innerHTML = "";
+        names.forEach(n => namesList.appendChild(new Option(n, n)));
     }
 
-    function updateCounter() {
-        const count = document.querySelectorAll('.row-done').length;
-        document.getElementById('statsCounter').innerText = `تم: ${count}`;
+    function generateReport() {
+        const yF = filterYear.value, mF = filterMonth.value, tF = filterText.value.trim().toLowerCase();
+        const container = document.getElementById('reportContent');
+        container.innerHTML = "";
+        let count = 0;
+
+        for (let m = 1; m <= 12; m++) {
+            if (mF !== "all" && m != mF) continue;
+            for (let d = 1; d <= 31; d++) {
+                const dateCheck = new Date(yF, m - 1, d);
+                if (dateCheck.getMonth() !== m - 1) continue;
+                const id = `${d}-${m}-${yF}`;
+                const c1 = localStorage.getItem(id+'-c1') || "", c2 = localStorage.getItem(id+'-c2') || "", n = localStorage.getItem(id+'-n') || "", s = localStorage.getItem(id+'-s') || "pending";
+                if (!c1 && !c2 && !n) continue;
+                const searchPool = (c1 + " " + c2 + " " + n).toLowerCase();
+                if (tF === "" || searchPool.includes(tF)) {
+                    const item = document.createElement('div');
+                    item.className = 'search-item';
+                    item.innerHTML = `<div>${d}/${m}/${yF}</div><div><b>${c1} ${c2}</b><br><small>${n}</small></div><div style="font-size:16px">${s==='done'?'✅':'⏳'}</div>`;
+                    container.appendChild(item);
+                    count++;
+                }
+            }
+        }
+        document.getElementById('searchStats').innerHTML = `إجمالي: <b>${count}</b>`;
     }
 
-    function goToToday() {
+    function showReport() { document.getElementById('reportModal').style.display = 'block'; generateReport(); }
+    function goToToday() { 
         const row = document.getElementById('todayRow');
         if(row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    init();
+    setup();
 </script>
-
 </body>
 </html>
