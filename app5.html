@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>يومية الورشة 2026 - الإصدار المتكامل</title>
+    <title>يومية الورشة 2026 - الإصدار المطور</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -196,15 +196,15 @@
     </div>
 
     <div class="whatsapp-section">
-        <input type="number" id="wa-number" placeholder="أدخل رقم الواتساب للحفظ (مثال: 2010...)">
+        <input type="number" id="wa-number" placeholder="رقم الواتساب (مثال: 010...)">
         <button class="btn-whatsapp" onclick="sendWhatsAppReport()">
-            💬 إرسال سجل الورشة الكامل للواتساب
+            💬 إرسال سجل الورشة للواتساب
         </button>
     </div>
 
     <div class="search-area">
         <div class="search-input-wrapper">
-            <input type="text" id="searchBox" placeholder="🔍 بحث شامل (بالاسم، البيان، أو رقم المبلغ)..." onkeyup="loadData()">
+            <input type="text" id="searchBox" placeholder="🔍 بحث شامل (بالاسم، البيان، أو المبلغ)..." onkeyup="loadData()">
         </div>
         <select id="filterShop" onchange="loadData()" style="font-weight: 800; background: white;">
             <option value="الكل">كل التصنيفات</option>
@@ -235,7 +235,6 @@
 </div>
 
 <script>
-    // وظيفة تحويل الأرقام العربية إلى إنجليزية لضمان البحث
     function convertToEn(str) {
         if (!str) return "";
         return str.toString().replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632);
@@ -284,7 +283,7 @@
     function loadData() {
         const tableBody = document.getElementById('table-body');
         let searchInput = document.getElementById('searchBox').value.toLowerCase().trim();
-        let searchVal = convertToEn(searchInput); // تحويل المدخلات لإنجليزية للبحث الرقمي
+        let searchVal = convertToEn(searchInput);
         const filterShop = document.getElementById('filterShop').value;
         const data = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
         
@@ -300,7 +299,6 @@
             if (rowDate.getMonth() === now.getMonth()) totals.month += itemNet;
             totals.yearOut += item.outVal; totals.yearNet += itemNet;
 
-            // محرك البحث الشامل: يدعم الاسم، البيان، المبالغ (داخل/خارج)
             const matchesSearch = item.customer.toLowerCase().includes(searchVal) || 
                                  item.desc.toLowerCase().includes(searchVal) ||
                                  item.inVal.toString().includes(searchVal) ||
@@ -330,34 +328,41 @@
         document.getElementById('year-net').innerText = totals.yearNet.toLocaleString();
     }
 
+    // وظيفة الواتساب المحسنة مع معالجة رمز الدولة تلقائياً
     function sendWhatsAppReport() {
         const data = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
-        const phone = document.getElementById('wa-number').value.trim();
+        let phone = document.getElementById('wa-number').value.trim();
         
         if (data.length === 0) return alert("لا توجد بيانات!");
         if (!phone) return alert("يرجى إدخال رقم الهاتف أولاً!");
+
+        // إذا بدأ الرقم بـ 01 (رقم مصري)، يتم إضافة مفتاح الدولة 2 تلقائياً
+        if (phone.startsWith('01')) {
+            phone = '2' + phone;
+        }
         
         let totalIn = 0, totalOut = 0;
         let message = `📋 *سجل الورشة الشامل لعام 2026*\n`;
         message += `━━━━━━━━━━━━━━━\n\n`;
         
-        data.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach((item, index) => {
+        const reportData = [...data].sort((a,b) => new Date(a.date) - new Date(b.date));
+        
+        reportData.forEach((item, index) => {
             totalIn += item.inVal; totalOut += item.outVal;
-            message += `*${index+1}* 📅 *التاريخ:* ${item.date.replace('T', ' ')}\n`;
-            message += `🏷️ *القسم:* ${item.shop}\n`;
-            message += `👤 *الاسم:* ${item.customer}\n`;
-            message += `📝 *البيان:* ${item.desc}\n`;
-            message += `💸 *خارج:* ${item.outVal.toLocaleString()}\n`;
-            message += `💰 *داخل:* ${item.inVal.toLocaleString()}\n`;
+            message += `*${index+1}* 📅 *ت:* ${item.date.replace('T', ' ')}\n`;
+            message += `🏷️ *ق:* ${item.shop} | 👤 ${item.customer}\n`;
+            message += `📝 *ب:* ${item.desc}\n`;
+            if(item.outVal > 0) message += `💸 *خارج:* ${item.outVal.toLocaleString()}\n`;
+            if(item.inVal > 0) message += `💰 *داخل:* ${item.inVal.toLocaleString()}\n`;
             message += `───────────────\n`;
         });
         
-        message += `\n📊 *الملخص النهائي للحسابات:*\n`;
-        message += `✅ إجمالي الداخل: ${totalIn.toLocaleString()}\n`;
-        message += `❌ إجمالي الخارج: ${totalOut.toLocaleString()}\n`;
-        message += `💵 *الرصيد الصافي: ${(totalIn - totalOut).toLocaleString()}*`;
+        message += `\n📊 *الملخص:* \n`;
+        message += `✅ داخل: ${totalIn.toLocaleString()}\n`;
+        message += `❌ خارج: ${totalOut.toLocaleString()}\n`;
+        message += `💵 *الصافي: ${(totalIn - totalOut).toLocaleString()}*`;
         
-        window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`, '_blank');
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
     }
 
     function startEdit(id) {
