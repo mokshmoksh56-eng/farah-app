@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>يومية الورشة 2026 - الإصدار الكامل</title>
+    <title>يومية الورشة 2026 - الإصدار النهائي المطور</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -94,10 +94,6 @@
             cursor: pointer;
         }
 
-        .action-buttons {
-            margin-bottom: 15px;
-        }
-
         .btn-whatsapp {
             width: 100%;
             background: var(--whatsapp);
@@ -112,6 +108,7 @@
             justify-content: center;
             gap: 10px;
             font-size: 1rem;
+            margin-bottom: 15px;
         }
 
         .search-area {
@@ -165,8 +162,7 @@
             <option value="الومنيوم">💎 الومنيوم</option>
             <option value="فيبر">🎨 فيبر</option>
             <option value="خشب">🪵 خشب</option>
-            <option value="اكسسوارات الومنيوم">⚙️ اكسسوارات الومنيوم</option>
-            <option value="اكسسوارات خشب">🛠️ اكسسوارات خشب</option>
+            <option value="اكسسوارات">⚙️ اكسسوارات</option>
             <option value="رخام">🪨 رخام</option>
             <option value="سيارة">🚚 سيارة</option>
             <option value="حديد">🔩 حديد</option>
@@ -181,24 +177,21 @@
         <button class="btn-save" id="btn-main" onclick="processEntry()">حفظ العملية</button>
     </div>
 
-    <div class="action-buttons">
-        <button class="btn-whatsapp" onclick="sendWhatsAppReport()">
-            💬 إرسال تقرير شامل بجميع الحسابات عبر واتساب
-        </button>
-    </div>
+    <button class="btn-whatsapp" onclick="sendWhatsAppReport()">
+        💬 إرسال تقرير (الاسم - البيان - المبلغ) عبر واتساب
+    </button>
 
     <div class="search-area">
         <div class="search-input-wrapper">
-            <input type="text" id="searchBox" placeholder="🔍 ابحث بالاسم أو الرقم (عربي/إنجليزي)..." onkeyup="loadData()">
+            <input type="text" id="searchBox" placeholder="🔍 ابحث بالاسم، البيان، أو رقم المبلغ..." onkeyup="loadData()">
         </div>
-        <select id="filterShop" onchange="loadData()" style="font-weight: 800;">
+        <select id="filterShop" onchange="loadData()">
             <option value="الكل">كل التصنيفات</option>
             <option value="زبون">زبون</option>
             <option value="عمال">عمال</option>
             <option value="الومنيوم">الومنيوم</option>
-            <option value="خشب">خشب</option>
         </select>
-        <button onclick="exportToCSV()" style="background:#059669; color:white; border:none; padding:0 15px; border-radius:6px; cursor:pointer; font-weight: 800;">Excel</button>
+        <button onclick="exportToCSV()" style="background:#059669; color:white; border:none; padding:0 15px; border-radius:6px; cursor:pointer;">Excel</button>
     </div>
 
     <div class="table-wrapper">
@@ -206,7 +199,7 @@
             <thead>
                 <tr>
                     <th style="width: 140px;">التاريخ</th>
-                    <th>التصنيف</th>
+                    <th>القسم</th>
                     <th>الاسم</th>
                     <th>البيان</th>
                     <th>خارج</th>
@@ -220,12 +213,9 @@
 </div>
 
 <script>
-    // وظيفة تحويل الأرقام العربية لإنجليزي للبحث
     function convertToEn(str) {
         if (!str) return "";
-        return str.toString().replace(/[٠-٩]/g, function(d) {
-            return d.charCodeAt(0) - 1632;
-        });
+        return str.toString().replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632);
     }
 
     window.onload = function() { setActualTime(); loadData(); };
@@ -287,10 +277,12 @@
             if (rowDate.getMonth() === now.getMonth()) totals.month += itemNet;
             totals.yearOut += item.outVal; totals.yearNet += itemNet;
 
+            // البحث المطور: اسم، بيان، أو أرقام المبالغ
             const matchesSearch = item.customer.toLowerCase().includes(searchVal) || 
-                                 item.desc.toLowerCase().includes(searchVal) || 
-                                 item.inVal.toString().includes(searchVal) || 
+                                 item.desc.toLowerCase().includes(searchVal) ||
+                                 item.inVal.toString().includes(searchVal) ||
                                  item.outVal.toString().includes(searchVal);
+            
             const matchesFilter = (filterShop === "الكل" || item.shop.includes(filterShop));
 
             if (matchesSearch && matchesFilter) {
@@ -303,8 +295,8 @@
                         <td class="td-out">${item.outVal > 0 ? item.outVal.toLocaleString() : '-'}</td>
                         <td class="td-in">${item.inVal > 0 ? item.inVal.toLocaleString() : '-'}</td>
                         <td>
-                            <button onclick="startEdit(${item.id})" style="border:none; background:none; cursor:pointer; font-size:16px;">📝</button>
-                            <button onclick="deleteItem(${item.id})" style="border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
+                            <button onclick="startEdit(${item.id})" style="border:none; background:none; cursor:pointer;">📝</button>
+                            <button onclick="deleteItem(${item.id})" style="border:none; background:none; cursor:pointer;">🗑️</button>
                         </td>
                     </tr>`;
             }
@@ -313,6 +305,32 @@
         document.getElementById('month-total').innerText = totals.month.toLocaleString();
         document.getElementById('year-out').innerText = totals.yearOut.toLocaleString();
         document.getElementById('year-net').innerText = totals.yearNet.toLocaleString();
+    }
+
+    function sendWhatsAppReport() {
+        const data = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
+        if (data.length === 0) return alert("لا توجد بيانات!");
+        
+        let totalIn = 0, totalOut = 0;
+        let message = `📋 *تقرير الورشة 2026 الشامل*\n`;
+        message += `━━━━━━━━━━━━━━━\n\n`;
+        
+        data.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach((item, index) => {
+            totalIn += item.inVal; totalOut += item.outVal;
+            message += `*${index+1}.* 👤 *${item.customer}*\n`;
+            message += `📝 ${item.desc}\n`;
+            if(item.inVal > 0) message += `💰 دخل: ${item.inVal.toLocaleString()}\n`;
+            if(item.outVal > 0) message += `💸 خارج: ${item.outVal.toLocaleString()}\n`;
+            message += `📅 ${item.date.split('T')[0]}\n`;
+            message += `───────────────\n`;
+        });
+        
+        message += `\n📊 *الملخص النهائي:*\n`;
+        message += `✅ إجمالي الداخل: ${totalIn.toLocaleString()}\n`;
+        message += `❌ إجمالي الخارج: ${totalOut.toLocaleString()}\n`;
+        message += `💵 *الرصيد الصافي: ${(totalIn - totalOut).toLocaleString()}*`;
+        
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
     }
 
     function startEdit(id) {
@@ -337,31 +355,6 @@
             localStorage.setItem('workshop_2026_v2', JSON.stringify(data.filter(i => i.id !== id)));
             loadData();
         }
-    }
-
-    function sendWhatsAppReport() {
-        const data = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
-        if (data.length === 0) return alert("لا توجد بيانات!");
-        
-        let totalIn = 0, totalOut = 0;
-        let message = `📋 *تقرير ورشة 2026 الشامل*\n`;
-        message += `==================\n\n`;
-        
-        data.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach((item, index) => {
-            totalIn += item.inVal; totalOut += item.outVal;
-            message += `*${index+1}.* 📅 ${item.date.replace('T', ' ')}\n`;
-            message += `👤 *${item.customer}* | 🏷️ *${item.shop}*\n`;
-            if(item.inVal > 0) message += `✅ دخل: ${item.inVal}\n`;
-            if(item.outVal > 0) message += `❌ خارج: ${item.outVal}\n`;
-            message += `📝 ${item.desc}\n------------------\n`;
-        });
-        
-        message += `\n📊 *الملخص النهائي:*\n`;
-        message += `💰 إجمالي الداخل: ${totalIn}\n`;
-        message += `💸 إجمالي الخارج: ${totalOut}\n`;
-        message += `💵 *الرصيد الصافي: ${totalIn - totalOut}*`;
-        
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     }
 
     function exportToCSV() {
