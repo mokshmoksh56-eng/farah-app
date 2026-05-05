@@ -328,41 +328,52 @@
         document.getElementById('year-net').innerText = totals.yearNet.toLocaleString();
     }
 
-    // وظيفة الواتساب المحسنة مع معالجة رمز الدولة تلقائياً
+    // وظيفة الواتساب المحدثة لتشمل كل التفاصيل
     function sendWhatsAppReport() {
         const data = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
         let phone = document.getElementById('wa-number').value.trim();
         
-        if (data.length === 0) return alert("لا توجد بيانات!");
+        if (data.length === 0) return alert("لا توجد بيانات لإرسالها!");
         if (!phone) return alert("يرجى إدخال رقم الهاتف أولاً!");
 
-        // إذا بدأ الرقم بـ 01 (رقم مصري)، يتم إضافة مفتاح الدولة 2 تلقائياً
         if (phone.startsWith('01')) {
             phone = '2' + phone;
         }
         
         let totalIn = 0, totalOut = 0;
-        let message = `📋 *سجل الورشة الشامل لعام 2026*\n`;
+        let message = `📋 *تقرير حسابات الورشة 2026*\n`;
+        message += `📅 تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}\n`;
         message += `━━━━━━━━━━━━━━━\n\n`;
         
+        // ترتيب البيانات حسب التاريخ من الأقدم للأحدث للتقرير
         const reportData = [...data].sort((a,b) => new Date(a.date) - new Date(b.date));
         
         reportData.forEach((item, index) => {
-            totalIn += item.inVal; totalOut += item.outVal;
-            message += `*${index+1}* 📅 *ت:* ${item.date.replace('T', ' ')}\n`;
-            message += `🏷️ *ق:* ${item.shop} | 👤 ${item.customer}\n`;
-            message += `📝 *ب:* ${item.desc}\n`;
-            if(item.outVal > 0) message += `💸 *خارج:* ${item.outVal.toLocaleString()}\n`;
-            if(item.inVal > 0) message += `💰 *داخل:* ${item.inVal.toLocaleString()}\n`;
+            totalIn += item.inVal; 
+            totalOut += item.outVal;
+            
+            let formattedDate = item.date.replace('T', ' ');
+            
+            message += `*(${index + 1})* 🗓️ *ت:* ${formattedDate}\n`;
+            message += `🔹 *القسم:* ${item.shop}\n`;
+            message += `👤 *الاسم:* ${item.customer}\n`;
+            message += `📝 *البيان:* ${item.desc}\n`;
+            
+            if(item.inVal > 0)  message += `💰 *داخل:* ${item.inVal.toLocaleString()} ج.م\n`;
+            if(item.outVal > 0) message += `💸 *خارج:* ${item.outVal.toLocaleString()} ج.م\n`;
+            
             message += `───────────────\n`;
         });
         
-        message += `\n📊 *الملخص:* \n`;
-        message += `✅ داخل: ${totalIn.toLocaleString()}\n`;
-        message += `❌ خارج: ${totalOut.toLocaleString()}\n`;
-        message += `💵 *الصافي: ${(totalIn - totalOut).toLocaleString()}*`;
+        const net = totalIn - totalOut;
+        message += `\n📊 *الملخص النهائي للميزانية:*\n`;
+        message += `📥 إجمالي الداخل: ${totalIn.toLocaleString()} ج.م\n`;
+        message += `📤 إجمالي الخارج: ${totalOut.toLocaleString()} ج.م\n`;
+        message += `━━━━━━━━━━━━━━━\n`;
+        message += `💵 *الرصيد الصافي: ${net.toLocaleString()} ج.م*`;
         
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        window.open(waUrl, '_blank');
     }
 
     function startEdit(id) {
