@@ -229,13 +229,50 @@
     }
 
     function sendWA(id) {
-        const c = document.getElementById(`card-${id}`);
-        const phone = c.querySelector('.c-phone').value;
-        const name = c.querySelector('.c-name').value || "عميلنا";
+        const card = document.getElementById(`card-${id}`);
+        const name = card.querySelector('.c-name').value || "عميلنا العزيز";
+        const phone = card.querySelector('.c-phone').value;
+        const total = card.querySelector('.c-total').value || 0;
+        const notes = card.querySelector('.c-notes').value;
+        
+        if (!phone) {
+            alert("يرجى إدخال رقم الهاتف أولاً!");
+            return;
+        }
+
+        // تجميع تفاصيل الدفعات والتواريخ
+        let paymentsSummary = "";
+        const rows = card.querySelectorAll('.pay-row');
+        rows.forEach((row, index) => {
+            const date = row.querySelector('.p-date').value;
+            const val = row.querySelector('.p-val').value;
+            if (val > 0) {
+                paymentsSummary += `🔹 دفعة ${index + 1}: ${val} ج.م | بتاريخ: ${date || '---'}\n`;
+            }
+        });
+
         const remNum = document.getElementById(`rem-n-${id}`).innerText;
         const remWord = document.getElementById(`rem-w-${id}`).innerText;
-        if(!phone) return alert("يرجى إدخال رقم الهاتف!");
-        const msg = `*فرح للمطابخ*%0Aالعميل: ${name}%0A${remNum}%0A*${remWord}*`;
+
+        // صياغة الرسالة النهائية بشكل منسق
+        let msg = `*فرح للمطابخ | 2026*%0A`;
+        msg += `---------------------------%0A`;
+        msg += `👤 *العميل:* ${name}%0A`;
+        msg += `💰 *إجمالي الاتفاق:* ${total} ج.م%0A`;
+        msg += `---------------------------%0A`;
+        msg += `📝 *بيان الدفعات:*%0A${window.encodeURIComponent(paymentsSummary)}`;
+        msg += `---------------------------%0A`;
+        msg += `💵 *${remNum}*%0A`;
+        msg += `📑 *فقط:* ${remWord}%0A`;
+        
+        if(notes) {
+            msg += `---------------------------%0A`;
+            msg += `📌 *ملاحظات:* ${notes}%0A`;
+        }
+        
+        msg += `---------------------------%0A`;
+        msg += `شكراً لتعاملكم معنا ✨`;
+
         window.open(`https://wa.me/2${phone.trim()}?text=${msg}`, '_blank');
     }
 </script>
