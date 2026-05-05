@@ -115,28 +115,53 @@
 
     function setup() {
         const yrSelect = document.getElementById('yearSelect');
-        const currentYear = new Date().getFullYear();
-        // توليد قائمة سنوات ديناميكية من 2026 إلى الحالي + 10 سنوات
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        
+        // توليد قائمة سنوات
         for(let y = 2026; y <= currentYear + 10; y++) {
             yrSelect.add(new Option("سنة " + y, y));
         }
         yrSelect.value = currentYear >= 2026 ? currentYear : 2026;
-        initWeeks();
+        
+        initWeeks(true); // تمرير true لتفعيل التحديد التلقائي للأسبوع الحالي
         updateWorkerEditor();
         updateArchiveDropdown();
     }
 
-    function initWeeks() {
+    function initWeeks(isInitialLoad = false) {
         const yr = document.getElementById('yearSelect').value;
         const wkSelect = document.getElementById('weekSelect');
+        const now = new Date();
+        const todayTime = now.getTime();
         wkSelect.innerHTML = "";
+        
         let date = new Date(yr, 0, 1);
-        while (date.getDay() !== 6) date.setDate(date.getDate() + 1);
+        while (date.getDay() !== 6) date.setDate(date.getDate() + 1); // أول سبت في السنة
+        
+        let currentWeekIndex = 1;
+
         for(let i=1; i<=52; i++) {
-            let startStr = `${date.getDate()}/${date.getMonth()+1}`;
-            let end = new Date(date); end.setDate(date.getDate() + 5);
+            let start = new Date(date);
+            let startStr = `${start.getDate()}/${start.getMonth()+1}`;
+            let end = new Date(date); 
+            end.setDate(date.getDate() + 5); 
+            
             wkSelect.add(new Option(`إسبوع ${i} (${startStr} - ${end.getDate()}/${end.getMonth()+1})`, i));
+            
+            let nextSaturday = new Date(date);
+            nextSaturday.setDate(date.getDate() + 7);
+            
+            // إذا كان اليوم يقع بين بداية الأسبوع وفجر السبت التالي
+            if (todayTime >= start.getTime() && todayTime < nextSaturday.getTime()) {
+                currentWeekIndex = i;
+            }
+            
             date.setDate(date.getDate() + 7);
+        }
+
+        if (isInitialLoad && yr == now.getFullYear()) {
+            wkSelect.value = currentWeekIndex;
         }
         loadWeekData();
     }
@@ -237,7 +262,6 @@
         document.getElementById('reportRows').innerHTML = rows;
     }
 
-    // وظيفة الأرشيف المطورة للبحث في كل السنين المخزنة
     function buildArchiveHistory() {
         const name = document.getElementById('archiveSearch').value;
         const display = document.getElementById('archiveContent');
@@ -246,19 +270,15 @@
         
         let html = ""; 
         let grand = 0;
-        
-        // جلب كل المفاتيح الموجودة في الذاكرة وفلترة مفاتيح البيانات فقط
         let keys = Object.keys(localStorage).filter(k => k.startsWith('f_v5_')).sort().reverse();
 
         keys.forEach(key => {
             let data = JSON.parse(localStorage.getItem(key)) || [];
             let r = data.find(rec => rec.name === name);
             if(r) {
-                // استخراج السنة والإسبوع من اسم المفتاح (f_v5_2026_w1)
                 let parts = key.split('_');
                 let year = parts[2];
                 let week = parts[3].replace('w', '');
-                
                 let l = r.loans.reduce((a, b) => (parseFloat(a)||0) + (parseFloat(b)||0), 0);
                 let a = r.att.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
                 let sal = parseFloat(r.sal) || 0;
@@ -316,4 +336,3 @@
 </script>
 </body>
 </html>
- 
