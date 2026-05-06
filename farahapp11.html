@@ -7,10 +7,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* تم تغيير الألوان إلى درجات الفيروزي الغامق */
-            --primary: #008080;   /* فيروزى غامق (Teal) */
-            --accent: #005f5f;    /* درجة أغمق للظلال */
-            --bg-color: #004d4d;  /* خلفية داكنة جداً للمساحات العامة */
+            --primary: #008080;   
+            --accent: #005f5f;    
+            --bg-color: #004d4d;  
             --white: #ffffff;
             --wa-light-green: #a2f9c1;
         }
@@ -26,7 +25,6 @@
         }
 
         header {
-            /* تدرج لوني فيروزي احترافي */
             background: linear-gradient(135deg, var(--primary), var(--accent));
             color: white;
             padding: 10px 20px;
@@ -49,9 +47,7 @@
             transition: transform 0.2s ease;
         }
 
-        .hide-nav { 
-            display: none !important;
-        }
+        .hide-nav { display: none !important; }
 
         .nav-item {
             display: flex;
@@ -68,12 +64,7 @@
         .nav-item.active { color: var(--white); }
         .nav-item.whatsapp { color: var(--wa-light-green); }
 
-        main { 
-            flex: 1; 
-            position: relative; 
-            background: var(--bg-color); 
-        }
-        
+        main { flex: 1; position: relative; background: var(--bg-color); }
         iframe { width: 100%; height: 100%; border: none; display: none; }
         iframe.active { display: block; }
 
@@ -104,8 +95,8 @@
     <div class="nav-item" onclick="showTab('gyab', this)"><i>👷</i><span>العمال</span></div>
     <div class="nav-item" onclick="showTab('tslem', this)"><i>📅</i><span>التسليمات</span></div>
     <div class="nav-item" onclick="showTab('takarer', this)"><i>📊</i><span>التقارير</span></div>
-    <div class="nav-item whatsapp" onclick="backupToWhatsApp()"><i>💾</i><span>حفظ</span></div>
-    <div class="nav-item whatsapp" onclick="restoreFromWhatsApp()"><i>📂</i><span>استعادة</span></div>
+    <div class="nav-item whatsapp" onclick="backupData()"><i>💾</i><span>نسخة</span></div>
+    <div class="nav-item whatsapp" onclick="restoreData()"><i>📂</i><span>استعادة</span></div>
 </nav>
 
 <script>
@@ -118,29 +109,66 @@
         el.classList.add('active');
     }
 
-    function backupToWhatsApp() {
+    // وظيفة الحفظ: تقوم بإنشاء ملف ومشاركته (واتساب أو غيره)
+    async function backupData() {
         const allData = JSON.stringify(localStorage);
-        const message = encodeURIComponent("Azemaa Pro Backup:\n\n" + allData);
-        window.open(`https://wa.me/?text=${message}`, '_blank');
-    }
+        const blob = new Blob([allData], { type: 'application/json' });
+        const file = new File([blob], "Azemaa_Backup_2026.json", { type: 'application/json' });
 
-    function restoreFromWhatsApp() {
-        const data = prompt("قم بلصق كود النسخة الاحتياطية هنا:");
-        if (data) {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
-                let cleanData = data;
-                if (data.includes(":\n\n")) cleanData = data.split(":\n\n")[1];
-                const parsed = JSON.parse(cleanData);
-                Object.keys(parsed).forEach(k => localStorage.setItem(k, parsed[k]));
-                alert("تمت استعادة البيانات بنجاح!");
-                location.reload();
-            } catch (e) { alert("الكود غير صحيح!"); }
+                await navigator.share({
+                    files: [file],
+                    title: 'نسخة احتياطية - Azemaa Pro',
+                    text: 'قم بحفظ هذا الملف في محادثتك الخاصة أو إرساله للرقم المطلوب.'
+                });
+            } catch (err) {
+                console.error("Share failed:", err);
+            }
+        } else {
+            // حل احتياطي في حال كان المتصفح لا يدعم المشاركة المباشرة
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Azemaa_Backup_2026.json';
+            a.click();
+            alert("تم تحميل ملف النسخة الاحتياطية على جهازك. يمكنك الآن إرساله يدوياً عبر واتساب.");
         }
     }
 
+    // وظيفة الاستعادة: تفتح ملف النسخة وتحدث الـ localStorage
+    function restoreData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = e => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = event => {
+                try {
+                    const parsed = JSON.parse(event.target.result);
+                    // مسح البيانات القديمة قبل وضع الجديدة (اختياري)
+                    if(confirm("هل أنت متأكد؟ سيتم استبدال البيانات الحالية ببيانات الملف.")) {
+                        localStorage.clear();
+                        Object.keys(parsed).forEach(k => localStorage.setItem(k, parsed[k]));
+                        alert("✅ تم استعادة البيانات بنجاح! سيتم إعادة تشغيل التطبيق.");
+                        location.reload();
+                    }
+                } catch (e) {
+                    alert("❌ خطأ: هذا الملف غير صالح أو تالف.");
+                }
+            };
+            reader.readAsText(file);
+        };
+        
+        input.click();
+    }
+
+    // إخفاء القائمة عند ظهور الكيبورد
     const initialHeight = window.innerHeight;
     const navElement = document.getElementById('mainNav');
-
     window.addEventListener('resize', () => {
         if (window.innerHeight < initialHeight * 0.85) {
             navElement.classList.add('hide-nav');
