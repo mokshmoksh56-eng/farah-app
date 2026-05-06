@@ -109,64 +109,51 @@
         el.classList.add('active');
     }
 
-    // وظيفة الحفظ: تقوم بإنشاء ملف ومشاركته (واتساب أو غيره)
-    async function backupData() {
-        const allData = JSON.stringify(localStorage);
-        const blob = new Blob([allData], { type: 'application/json' });
-        const file = new File([blob], "Azemaa_Backup_2026.json", { type: 'application/json' });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    files: [file],
-                    title: 'نسخة احتياطية - Azemaa Pro',
-                    text: 'قم بحفظ هذا الملف في محادثتك الخاصة أو إرساله للرقم المطلوب.'
-                });
-            } catch (err) {
-                console.error("Share failed:", err);
-            }
-        } else {
-            // حل احتياطي في حال كان المتصفح لا يدعم المشاركة المباشرة
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'Azemaa_Backup_2026.json';
-            a.click();
-            alert("تم تحميل ملف النسخة الاحتياطية على جهازك. يمكنك الآن إرساله يدوياً عبر واتساب.");
+    // وظيفة الحفظ: تحويل البيانات لكود Base64 لتقليص الحجم وإرساله للواتساب
+    function backupData() {
+        try {
+            const allData = JSON.stringify(localStorage);
+            // تحويل النص لترميز يقلل الحجم ويمنع أخطاء الحروف الخاصة
+            const encodedData = btoa(unescape(encodeURIComponent(allData)));
+            
+            const message = encodeURIComponent("Azemaa_Backup_2026:\n\n" + encodedData);
+            const whatsappUrl = `https://wa.me/?text=${message}`;
+            
+            // فتح واتساب
+            window.open(whatsappUrl, '_blank');
+        } catch (e) {
+            alert("حدث خطأ أثناء إعداد النسخة!");
         }
     }
 
-    // وظيفة الاستعادة: تفتح ملف النسخة وتحدث الـ localStorage
+    // وظيفة الاستعادة: فك كود الـ Base64 وإرجاعه للـ localStorage
     function restoreData() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        
-        input.onchange = e => {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = event => {
-                try {
-                    const parsed = JSON.parse(event.target.result);
-                    // مسح البيانات القديمة قبل وضع الجديدة (اختياري)
-                    if(confirm("هل أنت متأكد؟ سيتم استبدال البيانات الحالية ببيانات الملف.")) {
-                        localStorage.clear();
-                        Object.keys(parsed).forEach(k => localStorage.setItem(k, parsed[k]));
-                        alert("✅ تم استعادة البيانات بنجاح! سيتم إعادة تشغيل التطبيق.");
-                        location.reload();
-                    }
-                } catch (e) {
-                    alert("❌ خطأ: هذا الملف غير صالح أو تالف.");
+        const code = prompt("قم بلصق كود النسخة الاحتياطية المستلم من الواتساب هنا:");
+        if (code) {
+            try {
+                let cleanCode = code.trim();
+                // إذا كان المستخدم نسخ الرسالة بالكامل، نأخذ الجزء المشفر فقط
+                if (cleanCode.includes(":\n\n")) {
+                    cleanCode = cleanCode.split(":\n\n")[1];
                 }
-            };
-            reader.readAsText(file);
-        };
-        
-        input.click();
+                
+                // فك التشفير واسترجاع البيانات
+                const decodedData = decodeURIComponent(escape(atob(cleanCode)));
+                const parsed = JSON.parse(decodedData);
+                
+                if(confirm("هل أنت متأكد؟ سيتم حذف البيانات الحالية واستبدالها بالنسخة الجديدة.")) {
+                    localStorage.clear();
+                    Object.keys(parsed).forEach(k => localStorage.setItem(k, parsed[k]));
+                    alert("✅ تمت استعادة البيانات بنجاح!");
+                    location.reload();
+                }
+            } catch (e) {
+                alert("❌ الكود غير صحيح! تأكد من نسخ الكود بشكل كامل.");
+            }
+        }
     }
 
-    // إخفاء القائمة عند ظهور الكيبورد
+    // إخفاء القائمة عند ظهور لوحة المفاتيح
     const initialHeight = window.innerHeight;
     const navElement = document.getElementById('mainNav');
     window.addEventListener('resize', () => {
