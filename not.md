@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>سجل مالي احترافي مع بحث</title>
+    <style>
+        :root { 
+            --in-bg: #27ae60; --out-bg: #e74c3c; --dark: #2c3e50; 
+            --white: #ffffff; --border-red: #ff0000; --search-blue: #3498db;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #dcdde1; margin: 0; padding: 5px; font-weight: 900;
+            overflow-x: hidden;
+        }
+        
+        #currentDateHeader { 
+            text-align: center; color: var(--dark); font-size: 1rem; 
+            background: #fff; padding: 6px; border-radius: 10px; 
+            margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .input-container { 
+            width: 88%; margin-right: 0; margin-left: auto; 
+            background: var(--white); padding: 12px; 
+            border-radius: 20px 0 0 20px; 
+            box-shadow: -4px 4px 12px rgba(0,0,0,0.2); 
+            margin-bottom: 15px; border: 2px solid var(--dark);
+        }
+
+        input { 
+            width: 100%; padding: 10px; margin-bottom: 8px; 
+            border: 2px solid var(--dark); border-radius: 8px; 
+            box-sizing: border-box; font-size: 1rem; font-weight: 900; 
+        }
+
+        #n { border: 3px solid var(--border-red) !important; color: #000 !important; }
+        
+        /* تصميم خانة البحث */
+        #searchInput { 
+            border: 3px solid var(--search-blue); 
+            background-color: #f0f8ff;
+            margin-bottom: 12px;
+            padding: 12px;
+        }
+
+        .type-box { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+        .type-btn { 
+            width: 100%; padding: 12px; border: 2px solid var(--dark); 
+            border-radius: 8px; font-weight: 900; font-size: 1.1rem;
+            text-align: center; background: #eee; cursor: pointer; 
+        }
+
+        .active-in { background: var(--in-bg) !important; color: #fff !important; }
+        .active-out { background: var(--out-bg) !important; color: #fff !important; }
+        
+        .btn-save { 
+            width: 100%; padding: 15px; background: var(--dark); 
+            color: #fff; border: none; border-radius: 8px; 
+            font-weight: 900; font-size: 1.2rem;
+        }
+
+        .table-section { background: var(--white); border-radius: 12px; overflow: hidden; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 480px; }
+        th { background: var(--dark); color: #fff; padding: 6px; font-size: 0.7rem; border: 1px solid #fff; }
+        
+        td { 
+            padding: 4px 2px; border-bottom: 1.5px solid #000; 
+            text-align: center; font-size: 0.85rem; font-weight: 900; 
+        }
+
+        .row-in { background-color: #c8e6c9 !important; } 
+        .row-out { background-color: #ffcdd2 !important; } 
+        .name-cell { color: #000 !important; border-right: 3px solid var(--border-red) !important; }
+
+        .action-btns { display: flex; gap: 4px; justify-content: center; }
+        .btn-edit { background: #3498db; color: #fff; border: none; padding: 5px 8px; border-radius: 4px; }
+        .btn-delete { background: #e74c3c; color: #fff; border: none; padding: 5px 8px; border-radius: 4px; }
+
+        .day-label { display: block; font-size: 0.7rem; line-height: 1; color: #333; }
+        .time-label { display: block; font-size: 0.65rem; color: #1a73e8; border-top: 1px dashed #999; }
+
+        .mini-report { 
+            display: flex; justify-content: space-around; 
+            background: var(--dark); color: #fff; 
+            padding: 10px; border-radius: 10px; 
+            font-size: 0.85rem; margin-top: 10px;
+        }
+        
+        .btn-whatsapp { 
+            width: 100%; padding: 14px; background: #25D366; 
+            color: #fff; border: none; border-radius: 10px; 
+            font-weight: 900; font-size: 1.1rem; margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="currentDateHeader"></div>
+
+    <div class="input-container">
+        <input type="datetime-local" id="dt">
+        <input type="text" id="n" placeholder="الاسم (جهة المعاملة)">
+        <div class="type-box">
+            <div id="btnIn" class="type-btn active-in" onclick="setType('in')">➕ دخول</div>
+            <div id="btnOut" class="type-btn" onclick="setType('out')">➖ خروج</div>
+        </div>
+        <input type="number" id="amt" placeholder="المبلغ" inputmode="decimal">
+        <input type="text" id="b" placeholder="البيان">
+        <button class="btn-save" onclick="addOrUpdate()">حفظ المعاملة ✅</button>
+    </div>
+
+    <div style="padding: 0 10px;">
+        <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو البيان..." onkeyup="renderTable()">
+    </div>
+
+    <div class="table-section">
+        <div class="table-wrap">
+            <table id="t">
+                <thead>
+                    <tr>
+                        <th>اليوم/التاريخ</th>
+                        <th style="background: var(--border-red)">الاسم</th>
+                        <th>دخول</th>
+                        <th>خروج</th>
+                        <th>البيان</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="tb"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mini-report">
+        <div>دخول: <span id="repIn" style="color:#00ff00">+0</span></div>
+        <div>خروج: <span id="repOut" style="color:#ff4d4d">-0</span></div>
+        <div>الصافي: <span id="repNet" style="color:#ffff00">0</span></div>
+    </div>
+
+    <button class="btn-whatsapp" onclick="sendDetailedWhatsApp()">إرسال التقرير للواتساب 📱</button>
+
+    <script>
+        let editIndex = null; 
+        let currentType = 'in'; 
+        let dataList = JSON.parse(localStorage.getItem('myFinancialData')) || []; 
+
+        function setType(type) {
+            currentType = type;
+            document.getElementById('btnIn').classList.toggle('active-in', type === 'in');
+            document.getElementById('btnOut').classList.toggle('active-out', type === 'out');
+        }
+
+        function setupPage() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('currentDateHeader').innerText = dateStr;
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('dt').value = now.toISOString().slice(0, 16);
+            renderTable();
+        }
+
+        function saveData() {
+            localStorage.setItem('myFinancialData', JSON.stringify(dataList));
+        }
+
+        function addOrUpdate() {
+            const name = document.getElementById('n').value;
+            const amount = parseFloat(document.getElementById('amt').value) || 0;
+            const fullDt = document.getElementById('dt').value;
+            const note = document.getElementById('b').value || "-";
+
+            if (!name || amount === 0) { alert("أدخل الاسم والمبلغ"); return; }
+            const dtObj = new Date(fullDt);
+            const dayName = dtObj.toLocaleDateString('ar-EG', { weekday: 'long' });
+            const dateStr = dtObj.toLocaleDateString('ar-EG', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeStr = dtObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+            const item = { 
+                fullDate: fullDt, dayDisplay: dayName, dateDisplay: dateStr, 
+                timeDisplay: timeStr, name, in: currentType === 'in' ? amount : 0, 
+                out: currentType === 'out' ? amount : 0, note 
+            };
+
+            if (editIndex !== null) {
+                dataList[editIndex] = item;
+                editIndex = null;
+                document.querySelector('.btn-save').innerText = "حفظ المعاملة ✅";
+            } else {
+                dataList.push(item);
+            }
+            
+            saveData();
+            renderTable();
+            document.getElementById('n').value = ""; document.getElementById('amt').value = ""; document.getElementById('b').value = "";
+            setupPage();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tb');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            tbody.innerHTML = "";
+            
+            let tIn = 0; let tOut = 0;
+
+            // تصفية البيانات بناءً على البحث
+            const filteredData = dataList.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || 
+                item.note.toLowerCase().includes(searchTerm)
+            );
+
+            // عرض البيانات المصفاة (من الأحدث للأقدم)
+            filteredData.slice().reverse().forEach((item) => {
+                const realIndex = dataList.indexOf(item);
+                const row = tbody.insertRow();
+                row.className = item.in > 0 ? "row-in" : "row-out";
+
+                row.innerHTML = `
+                    <td><span class="day-label">${item.dayDisplay}</span>${item.dateDisplay}<span class="time-label">${item.timeDisplay}</span></td>
+                    <td class="name-cell">${item.name}</td>
+                    <td>${item.in > 0 ? item.in : '-'}</td>
+                    <td>${item.out > 0 ? item.out : '-'}</td>
+                    <td style="font-size:0.7rem; max-width:80px; overflow:hidden;">${item.note}</td>
+                    <td class="action-btns">
+                        <button class="btn-edit" onclick="editItem(${realIndex})">✏️</button>
+                        <button class="btn-delete" onclick="deleteItem(${realIndex})">🗑️</button>
+                    </td>
+                `;
+            });
+
+            // حساب الإجماليات لكل البيانات (حتى تظل دقيقة بغض النظر عن البحث)
+            dataList.forEach(item => {
+                tIn += item.in;
+                tOut += item.out;
+            });
+
+            document.getElementById('repIn').innerText = "+" + tIn;
+            document.getElementById('repOut').innerText = "-" + tOut;
+            document.getElementById('repNet').innerText = (tIn - tOut);
+        }
+
+        function editItem(index) {
+            editIndex = index;
+            const item = dataList[index];
+            document.getElementById('dt').value = item.fullDate;
+            document.getElementById('n').value = item.name;
+            document.getElementById('amt').value = item.in > 0 ? item.in : item.out;
+            document.getElementById('b').value = item.note;
+            setType(item.in > 0 ? 'in' : 'out');
+            document.querySelector('.btn-save').innerText = "تحديث 🔄";
+            window.scrollTo(0,0);
+        }
+
+        function deleteItem(index) {
+            if (confirm("حذف هذه المعاملة؟")) {
+                dataList.splice(index, 1);
+                saveData();
+                renderTable();
+            }
+        }
+
+        function sendDetailedWhatsApp() {
+            if (dataList.length === 0) return;
+            let message = `*📊 تقرير مالي شامل*%0A%0A`;
+            dataList.forEach((item, i) => {
+                let typeStr = item.in > 0 ? "🟢 دخول" : "🔴 خروج";
+                message += `${i+1}- *${item.name}*%0A ← التاريخ: ${item.dateDisplay}%0A ← النوع: ${typeStr}%0A ← المبلغ: ${item.in || item.out}%0A------------------%0A`;
+            });
+            message += `%0A*💰 الصافي: ${document.getElementById('repNet').innerText}*`;
+            window.open(`https://wa.me/?text=${message}`, '_blank');
+        }
+
+        setupPage();
+    </script>
+</body>
+</html>
