@@ -142,12 +142,9 @@
         const archMSel = document.getElementById('archMonthSearch');
         const archYSel = document.getElementById('archYearSearch');
         const now = new Date();
-        
         for(let i=1; i<=31; i++) { dSel.add(new Option(i, i, i === now.getDate(), i === now.getDate())); }
-        
         archMSel.add(new Option("-- كل الشهور --", "all"));
         for(let i=1; i<=12; i++) { archMSel.add(new Option(i.toString().padStart(2, '0'), i-1)); }
-        
         archYSel.add(new Option("-- كل السنوات --", "all"));
         for(let i=2024; i<=2030; i++) {
             ySel.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear()));
@@ -174,19 +171,14 @@
     function handleDateChange() {
         const pickedDate = new Date(document.getElementById('datePicker').value);
         if (isNaN(pickedDate)) return;
-        
-        // تعديل التاريخ ليكون بداية الأسبوع (السبت)
-        let dayOfWeek = pickedDate.getDay(); // 6 = Saturday, 0 = Sunday...
+        let dayOfWeek = pickedDate.getDay();
         let diffToSaturday = (dayOfWeek === 6) ? 0 : (dayOfWeek + 1);
-        
         let saturday = new Date(pickedDate);
         saturday.setDate(pickedDate.getDate() - diffToSaturday);
-        
         currentWeekID = saturday.toISOString().split('T')[0];
         currentWeekDates = [];
         for(let i=0; i<6; i++) {
-            let d = new Date(saturday); 
-            d.setDate(saturday.getDate() + i);
+            let d = new Date(saturday); d.setDate(saturday.getDate() + i);
             currentWeekDates.push(d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear());
         }
         document.getElementById('currentDayTitle').innerText = saturday.toLocaleDateString('ar-EG', {day: 'numeric', month: 'long'});
@@ -196,7 +188,6 @@
     function loadWeekData() {
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_PREFIX + currentWeekID)) || [];
         const container = document.getElementById('cardsList');
-        
         container.innerHTML = masterWorkers.map((worker, idx) => {
             let d = saved.find(s => s.name === worker.name) || {sal:'', loans:['','','','','',''], att:[1,1,1,1,1,1], note:''};
             return `
@@ -204,33 +195,17 @@
                     <div class="card-name">${worker.name}</div>
                     <input type="text" inputmode="decimal" class="salary-input" value="${d.sal}" oninput="recalc(${idx})" placeholder="الراتب الأسبوعي">
                     <div class="days-grid">
-                        ${[0,1,2,3,4,5].map(di => `
-                            <div class="day-box">
-                                <span class="day-date">${currentWeekDates[di]}</span>
-                                <div class="att-btns">
-                                    <button class="btn-tgl ${d.att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx})">ح</button>
-                                    <button class="btn-tgl ${d.att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx})">½</button>
-                                    <button class="btn-tgl ${d.att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx})">غ</button>
-                                </div>
-                                <input type="text" inputmode="decimal" class="loan-input" value="${d.loans[di] || ''}" oninput="recalc(${idx})" placeholder="سلفه">
-                            </div>`).join('')}
+                        ${[0,1,2,3,4,5].map(di => `<div class="day-box"><span class="day-date">${currentWeekDates[di]}</span><div class="att-btns"><button class="btn-tgl ${d.att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx})">ح</button><button class="btn-tgl ${d.att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx})">½</button><button class="btn-tgl ${d.att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx})">غ</button></div><input type="text" inputmode="decimal" class="loan-input" value="${d.loans[di] || ''}" oninput="recalc(${idx})" placeholder="سلفه"></div>`).join('')}
                     </div>
-                    <textarea class="note-input" placeholder="ملاحظات..." rows="2" oninput="saveCurrentState()">${d.note || ''}</textarea>
-                    <div class="card-footer">
-                        <div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>قسط: <span class="sum-inst">0</span></span></div>
-                        <div class="footer-line" style="font-size:14px; color:var(--dark-green);"><span>الصافي:</span> <span class="sum-n">0</span></div>
-                    </div>
+                    <textarea class="note-input" placeholder="ملاحظات..." rows="2">${d.note || ''}</textarea>
+                    <div class="card-footer"><div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>قسط: <span class="sum-inst">0</span></span></div><div class="footer-line" style="font-size:14px; color:var(--dark-green);"><span>الصافي:</span> <span class="sum-n">0</span></div></div>
                     <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال واتساب 🟢</button>
                 </div>`;
         }).join('');
         masterWorkers.forEach((_, i) => recalc(i));
     }
 
-    function toggleAtt(btn, idx) { 
-        Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active')); 
-        btn.classList.add('active'); 
-        recalc(idx); 
-    }
+    function toggleAtt(btn, idx) { Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active')); btn.classList.add('active'); recalc(idx); }
     
     function recalc(idx) {
         const c = document.getElementById(`card-${idx}`); if(!c) return;
@@ -238,13 +213,9 @@
         let sal = parseFloat(c.querySelector('.salary-input').value) || 0;
         let lTotal = 0; c.querySelectorAll('.loan-input').forEach(i => lTotal += parseFloat(i.value) || 0);
         let aTotal = 0; c.querySelectorAll('.btn-tgl.active').forEach(b => aTotal += parseFloat(b.dataset.v));
-        
         let inst = (aTotal > 0) ? (parseFloat(worker.inst_weekly) || 0) : 0; 
         let net = Math.round(((sal / 6) * aTotal) - lTotal - inst);
-        
-        c.querySelector('.sum-l').innerText = lTotal; 
-        c.querySelector('.sum-inst').innerText = inst; 
-        c.querySelector('.sum-n').innerText = net > 0 ? net : 0;
+        c.querySelector('.sum-l').innerText = lTotal; c.querySelector('.sum-inst').innerText = inst; c.querySelector('.sum-n').innerText = net > 0 ? net : 0;
         refreshStats();
     }
 
@@ -252,12 +223,53 @@
         let gL = 0, gN = 0, gS = 0;
         document.querySelectorAll('.worker-card').forEach(c => {
             gL += (parseFloat(c.querySelector('.sum-l').innerText) || 0) + (parseFloat(c.querySelector('.sum-inst').innerText) || 0);
-            gN += parseFloat(c.querySelector('.sum-n').innerText) || 0; 
-            gS += parseFloat(c.querySelector('.salary-input').value) || 0;
+            gN += parseFloat(c.querySelector('.sum-n').innerText) || 0; gS += parseFloat(c.querySelector('.salary-input').value) || 0;
         });
-        document.getElementById('stat-sal').innerText = gS; 
-        document.getElementById('stat-loan').innerText = gL; 
-        document.getElementById('stat-net').innerText = gN;
+        document.getElementById('stat-sal').innerText = gS; document.getElementById('stat-loan').innerText = gL; document.getElementById('stat-net').innerText = gN;
+    }
+
+    function shareToWhatsApp(idx) {
+        const c = document.getElementById(`card-${idx}`);
+        const workerName = c.querySelector('.card-name').innerText;
+        const baseSalary = c.querySelector('.salary-input').value || 0;
+        const totalLoans = c.querySelector('.sum-l').innerText;
+        const installment = c.querySelector('.sum-inst').innerText;
+        const netAmount = c.querySelector('.sum-n').innerText;
+        const notes = c.querySelector('.note-input').value;
+
+        let attendance = 0, halfDays = 0, absence = 0;
+        c.querySelectorAll('.btn-tgl.active').forEach(btn => {
+            const val = btn.dataset.v;
+            if (val == "1") attendance++; else if (val == "0.5") halfDays++; else if (val == "0") absence++;
+        });
+
+        const totalAttendance = attendance + (halfDays * 0.5);
+        const totalDeductions = parseFloat(totalLoans) + parseFloat(installment);
+
+        const msg = `*📊 تقرير الراتب الأسبوعي - AZEMAA PRO*
+---------------------------------------
+👤 *العامل:* ${workerName}
+📅 *الأسبوع:* ${currentWeekDates[0]}
+---------------------------------------
+💰 *الراتب الأساسي:* ${baseSalary} ج.م
+
+✅ *تفاصيل الحضور:*
+- حضور كامل: ${attendance} يوم
+- نصف يوم: ${halfDays}
+- غياب: ${absence}
+⭐ *إجمالي الحضور:* ${totalAttendance} يوم
+
+💸 *الخصومات والسلف:*
+- سلف: ${totalLoans} ج.م
+- قسط أسبوعي: ${installment} ج.م
+- إجمالي الخصم: ${totalDeductions} ج.م
+
+💵 *الصافي المستحق:* ${netAmount} ج.م
+---------------------------------------
+${notes ? `📝 *ملاحظة:* ${notes}\n---------------------------------------` : ''}
+*تم الاستخراج بواسطة نظام AZEMAA PRO*`;
+
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
     }
 
     function saveWeek() {
@@ -280,24 +292,16 @@
         const searchMonth = document.getElementById('archMonthSearch').value;
         const searchYear = document.getElementById('archYearSearch').value;
         const display = document.getElementById('archiveContent');
-        
         if(!selectedName) { display.innerHTML = ""; return; }
-        
         let html = "";
-        let keys = Object.keys(localStorage)
-                        .filter(k => k.startsWith(STORAGE_KEY_PREFIX))
-                        .sort()
-                        .reverse();
-        
+        let keys = Object.keys(localStorage).filter(k => k.startsWith(STORAGE_KEY_PREFIX)).sort().reverse();
         keys.forEach(key => {
             const dataArr = JSON.parse(localStorage.getItem(key));
             const d = dataArr.find(r => r.name === selectedName);
-            
             if(d) {
                 const weekDateObj = new Date(key);
                 if (searchMonth !== "all" && weekDateObj.getMonth() != searchMonth) return;
                 if (searchYear !== "all" && weekDateObj.getFullYear() != searchYear) return;
-                
                 let rows = ""; let totalLoans = 0;
                 d.loans.forEach((loan, i) => {
                     const lVal = parseFloat(loan) || 0; totalLoans += lVal;
@@ -305,82 +309,21 @@
                     const attLabel = attVal == 1 ? "حاضر" : (attVal == 0.5 ? "½ يوم" : "غائب");
                     rows += `<tr><td>${weekdays[i]} <br> ${d.fullDates ? d.fullDates[i] : ''}</td><td>${attLabel}</td><td style="color:red">${lVal > 0 ? lVal : '-'}</td></tr>`;
                 });
-                
                 const attSum = d.att.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
                 const net = Math.max(0, Math.round(((parseFloat(d.sal)/6)*attSum) - totalLoans - (d.instPaid||0)));
-                
-                html += `
-                <div class="history-card">
-                    <div class="history-header">
-                        <span>📅 أسبوع: ${d.fullDates ? d.fullDates[0] : key}</span>
-                        <b>صافي: ${net} ج.م</b>
-                    </div>
-                    <div style="padding:8px; font-size:12px; background:#f0f7f6;">
-                        💰 الراتب: ${d.sal} | 💸 سلف: ${totalLoans} | 🏦 قسط: ${d.instPaid || 0}
-                    </div>
-                    ${d.note ? '<div style="padding:8px; font-size:11px; background:#fff8e1;">📝 '+d.note+'</div>' : ''}
-                    <table class="archive-table">
-                        <thead><tr><th>اليوم</th><th>الحالة</th><th>سلف</th></tr></thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </div>`;
+                html += `<div class="history-card"><div class="history-header"><span>📅 أسبوع: ${d.fullDates ? d.fullDates[0] : key}</span><b>صافي: ${net} ج.م</b></div><div style="padding:8px; font-size:12px; background:#f0f7f6;">💰 الراتب: ${d.sal} | 💸 سلف: ${totalLoans} | 🏦 قسط: ${d.instPaid || 0}</div>${d.note ? '<div style="padding:8px; font-size:11px; background:#fff8e1;">📝 '+d.note+'</div>' : ''}<table class="archive-table"><thead><tr><th>اليوم</th><th>الحالة</th><th>سلف</th></tr></thead><tbody>${rows}</tbody></table></div>`;
             }
         });
         display.innerHTML = html || `<center style='padding:20px; color:red;'>لا توجد بيانات محفوظة لهذا العامل</center>`;
     }
 
-    function resetArchSearch() { 
-        document.getElementById('archMonthSearch').value = "all"; 
-        document.getElementById('archYearSearch').value = "all"; 
-        buildArchiveHistory(); 
-    }
-
-    function shareToWhatsApp(idx) {
-        const c = document.getElementById(`card-${idx}`);
-        const workerName = c.querySelector('.card-name').innerText;
-        const net = c.querySelector('.sum-n').innerText;
-        const msg = `*تقرير راتب: ${workerName}*\n*الأسبوع:* ${currentWeekDates[0]}\n*الصافي المستحق:* ${net} ج.م\nتم الاستخراج بواسطة AZEMAA PRO`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-    }
-
-    function addNewWorker() { 
-        let name = document.getElementById('workerNameInp').value.trim(); 
-        if(name) { 
-            masterWorkers.push({id: Date.now(), name: name, inst_weekly: ''}); 
-            saveMaster(true); 
-            document.getElementById('workerNameInp').value = ""; 
-        } 
-    }
-
+    function resetArchSearch() { document.getElementById('archMonthSearch').value = "all"; document.getElementById('archYearSearch').value = "all"; buildArchiveHistory(); }
+    function addNewWorker() { let name = document.getElementById('workerNameInp').value.trim(); if(name) { masterWorkers.push({id: Date.now(), name: name, inst_weekly: ''}); saveMaster(true); document.getElementById('workerNameInp').value = ""; } }
     function updateInst(idx, val) { masterWorkers[idx].inst_weekly = val; saveMaster(); }
-
-    function saveMaster(refreshUI = false) { 
-        localStorage.setItem(STORAGE_KEY_WORKERS, JSON.stringify(masterWorkers)); 
-        if(refreshUI) { updateWorkerEditor(); updateArchiveDropdown(); loadWeekData(); } 
-    }
-
-    function updateWorkerEditor() { 
-        document.getElementById('workerListEditor').innerHTML = masterWorkers.map((w, i) => `
-            <div style="padding:10px; border:1px solid #ddd; background:#fff; margin-bottom:8px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
-                <b>${w.name}</b>
-                <div style="display:flex; gap:5px;">
-                    <input type="number" placeholder="قسط" style="width:60px; padding:5px" value="${w.inst_weekly}" oninput="updateInst(${i}, this.value)">
-                    <button onclick="removeWorker(${i})" style="color:red; border:none; background:none; font-size:18px;">🗑️</button>
-                </div>
-            </div>`).join(''); 
-    }
-
-    function removeWorker(i) { 
-        if(confirm("هل أنت متأكد من حذف العامل؟ (السجلات القديمة ستبقى محفوظة)")) { 
-            masterWorkers.splice(i,1); 
-            saveMaster(true); 
-        } 
-    }
-
-    function updateArchiveDropdown() { 
-        document.getElementById('archiveSearch').innerHTML = '<option value="">-- اختر العامل لعرض سجلاته --</option>' + 
-        masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join(''); 
-    }
+    function saveMaster(refreshUI = false) { localStorage.setItem(STORAGE_KEY_WORKERS, JSON.stringify(masterWorkers)); if(refreshUI) { updateWorkerEditor(); updateArchiveDropdown(); loadWeekData(); } }
+    function updateWorkerEditor() { document.getElementById('workerListEditor').innerHTML = masterWorkers.map((w, i) => `<div style="padding:10px; border:1px solid #ddd; background:#fff; margin-bottom:8px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;"><b>${w.name}</b><div style="display:flex; gap:5px;"><input type="number" placeholder="قسط" style="width:60px; padding:5px" value="${w.inst_weekly}" oninput="updateInst(${i}, this.value)"><button onclick="removeWorker(${i})" style="color:red; border:none; background:none; font-size:18px;">🗑️</button></div></div>`).join(''); }
+    function removeWorker(i) { if(confirm("هل أنت متأكد؟")) { masterWorkers.splice(i,1); saveMaster(true); } }
+    function updateArchiveDropdown() { document.getElementById('archiveSearch').innerHTML = '<option value="">-- اختر العامل لعرض سجلاته --</option>' + masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join(''); }
 
     window.onload = setup;
 </script>
