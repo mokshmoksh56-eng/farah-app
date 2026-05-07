@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تقارير Azemaa Pro 2026</title>
+    <title>أرشيف تقارير Azemaa Pro | 50 عام</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -14,8 +14,17 @@
             --danger: #ff7675;
         }
         body { font-family: 'Cairo', sans-serif; background: var(--bg-color); color: white; padding: 15px; margin: 0; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
         
+        .archive-header { 
+            background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary);
+        }
+
+        select { 
+            padding: 8px 15px; border-radius: 10px; border: 2px solid var(--accent); 
+            background: var(--bg-color); color: white; font-weight: 900; font-family: 'Cairo'; outline: none;
+        }
+
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .card { 
             background: var(--card-bg); padding: 15px; border-radius: 15px; 
@@ -26,118 +35,113 @@
         .card h3 { margin: 0; font-size: 0.8rem; color: var(--accent); opacity: 0.9; }
         .card .value { margin: 8px 0 0; font-size: 1.3rem; font-weight: 900; }
         
-        .section-title { grid-column: span 2; font-size: 1rem; margin: 10px 0 5px; color: #fff; border-right: 4px solid var(--accent); padding-right: 10px; }
-        
-        .btn-refresh {
-            grid-column: span 2; background: var(--accent); color: #004d4d; 
-            border: none; padding: 12px; border-radius: 10px; font-weight: 900;
-            cursor: pointer; margin-top: 15px; width: 100%; font-size: 1rem;
+        .section-title { 
+            grid-column: span 2; font-size: 1rem; margin: 15px 0 5px; color: #fff; 
+            border-right: 4px solid var(--accent); padding-right: 10px;
+        }
+
+        .summary-box {
+            grid-column: span 2; background: #fff; color: #004d4d; 
+            padding: 15px; border-radius: 15px; text-align: center; margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2 style="margin:0;">📊 التقارير الختامية 2026</h2>
+    <div class="archive-header">
+        <h2 style="margin:0; font-size: 1rem;">🗄️ أرشيف (50 سنة)</h2>
+        <select id="yearFilter" onchange="renderReports()"></select>
     </div>
 
-    <div class="grid">
-        <div class="section-title">💼 حسابات الزبائن (العقود)</div>
-        <div class="card full-width">
-            <h3>إجمالي قيمة الاتفاقات</h3>
-            <div class="value" id="z-total">0</div>
-        </div>
-        <div class="card">
-            <h3>المحصل (داخل)</h3>
-            <div class="value" id="z-in" style="color: var(--accent);">0</div>
-        </div>
-        <div class="card">
-            <h3>المتبقي بالسوق</h3>
-            <div class="value" id="z-out" style="color: var(--danger);">0</div>
-        </div>
-
-        <div class="section-title">💸 حركة الخزينة (اليومية)</div>
-        <div class="card">
-            <h3>إجمالي المصاريف</h3>
-            <div class="value" id="y-out">0</div>
-        </div>
-        <div class="card">
-            <h3>صافي الربح الحالي</h3>
-            <div class="value" id="y-net" style="color: var(--accent);">0</div>
-        </div>
-
-        <div class="section-title">👷 رواتب العمال (الأسبوع الحالي)</div>
-        <div class="card">
-            <h3>سلف العمال</h3>
-            <div class="value" id="g-loans">0</div>
-        </div>
-        <div class="card">
-            <h3>صافي الأجور المستحقة</h3>
-            <div class="value" id="g-net" style="color: #ffda79;">0</div>
-        </div>
-    </div>
-
-    <button class="btn-refresh" onclick="renderReports()">تحديث البيانات المدمجة 🔄</button>
+    <div class="grid" id="reportGrid"></div>
 
     <script>
+        // توليد السنوات تلقائياً لـ 50 سنة
+        function setupYears() {
+            const select = document.getElementById('yearFilter');
+            const currentYear = new Date().getFullYear();
+            for (let i = 2024; i <= 2074; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.innerHTML = "سنة " + i;
+                if (i === currentYear) opt.selected = true;
+                select.appendChild(opt);
+            }
+        }
+
         function renderReports() {
-            // 1. حسابات الزبائن (zbon.html) - مفتاح: azemaa_pro_v1_
-            let zTotalAgreed = 0;
-            let zTotalPaid = 0;
+            const selectedYear = document.getElementById('yearFilter').value;
+            const grid = document.getElementById('reportGrid');
+            
+            // 1. حسابات الزبائن (zbon.html)
+            let zTotalAgreed = 0, zTotalPaid = 0;
             for (let i = 1; i <= 100; i++) {
                 const data = JSON.parse(localStorage.getItem(`azemaa_pro_v1_${i}`));
                 if (data) {
-                    zTotalAgreed += parseFloat(data.t) || 0;
+                    let hasYearData = false;
                     if (data.pays) {
-                        data.pays.forEach(p => zTotalPaid += parseFloat(p.vl) || 0);
+                        data.pays.forEach(p => {
+                            if (p.dt && p.dt.startsWith(selectedYear)) {
+                                zTotalPaid += parseFloat(p.vl) || 0;
+                                hasYearData = true;
+                            }
+                        });
                     }
+                    if (hasYearData) zTotalAgreed += parseFloat(data.t) || 0;
                 }
             }
 
-            // 2. حسابات اليومية (yom.html) - مفتاح: workshop_2026_v2
-            let yTotalIn = 0;
-            let yTotalOut = 0;
+            // 2. حسابات اليومية (yom.html)
+            let yTotalIn = 0, yTotalOut = 0;
             const yData = JSON.parse(localStorage.getItem('workshop_2026_v2')) || [];
             yData.forEach(item => {
-                yTotalIn += parseFloat(item.inVal) || 0;
-                yTotalOut += parseFloat(item.outVal) || 0;
+                if (item.date && item.date.startsWith(selectedYear)) {
+                    yTotalIn += parseFloat(item.inVal) || 0;
+                    yTotalOut += parseFloat(item.outVal) || 0;
+                }
             });
 
-            // 3. حسابات العمال (gyab.html) - مفاتيح تبدأ بـ f_v5_
-            let gTotalLoans = 0;
-            let gTotalNet = 0;
-            // سنبحث في الـ localStorage عن أحدث أسبوع تم تسجيله للعمال
+            // 3. حسابات العمال (gyab.html)
+            let gTotalLoans = 0, gTotalNet = 0;
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('f_v5_')) {
+                if (key.startsWith(`f_v5_${selectedYear}`)) {
                     const weekData = JSON.parse(localStorage.getItem(key)) || [];
                     weekData.forEach(w => {
-                        // حساب السلف
                         if (w.loans) w.loans.forEach(l => gTotalLoans += parseFloat(l) || 0);
-                        
-                        // حساب الصافي (المعادلة المستخدمة في gyab.html)
-                        let sal = parseFloat(w.sal) || 0;
-                        let att = 0; if(w.att) w.att.forEach(a => att += parseFloat(a));
-                        let loansSum = 0; if(w.loans) w.loans.forEach(l => loansSum += parseFloat(l) || 0);
-                        let net = Math.round(((sal / 6) * att) - loansSum);
+                        let sal = parseFloat(w.sal) || 0, att = 0;
+                        if(w.att) w.att.forEach(a => att += parseFloat(a));
+                        let lSum = 0; if(w.loans) w.loans.forEach(l => lSum += parseFloat(l) || 0);
+                        let net = Math.round(((sal / 6) * att) - lSum);
                         if(net > 0) gTotalNet += net;
                     });
                 }
             });
 
-            // تحديث الواجهة
-            document.getElementById('z-total').innerText = zTotalAgreed.toLocaleString() + " ج.م";
-            document.getElementById('z-in').innerText = zTotalPaid.toLocaleString() + " ج.م";
-            document.getElementById('z-out').innerText = (zTotalAgreed - zTotalPaid).toLocaleString() + " ج.م";
-            
-            document.getElementById('y-out').innerText = yTotalOut.toLocaleString() + " ج.م";
-            document.getElementById('y-net').innerText = (yTotalIn - yTotalOut).toLocaleString() + " ج.م";
-            
-            document.getElementById('g-loans').innerText = gTotalLoans.toLocaleString() + " ج.م";
-            document.getElementById('g-net').innerText = gTotalNet.toLocaleString() + " ج.م";
+            grid.innerHTML = `
+                <div class="section-title">💼 تعاملات الزبائن لعام ${selectedYear}</div>
+                <div class="card full-width"><h3>إجمالي اتفاقات السنة</h3><div class="value">${zTotalAgreed.toLocaleString()} ج.م</div></div>
+                <div class="card"><h3>المحصل فعلياً</h3><div class="value" style="color:var(--accent)">${zTotalPaid.toLocaleString()}</div></div>
+                <div class="card"><h3>ديون معلقة</h3><div class="value" style="color:var(--danger)">${(zTotalAgreed - zTotalPaid).toLocaleString()}</div></div>
+
+                <div class="section-title">💸 ميزانية الورشة</div>
+                <div class="card"><h3>مصاريف خامات</h3><div class="value">${yTotalOut.toLocaleString()}</div></div>
+                <div class="card"><h3>صافي الربح</h3><div class="value" style="color:var(--accent)">${(yTotalIn - yTotalOut).toLocaleString()}</div></div>
+
+                <div class="section-title">👷 أجور العمال</div>
+                <div class="card"><h3>إجمالي السلف</h3><div class="value">${gTotalLoans.toLocaleString()}</div></div>
+                <div class="card"><h3>الرواتب المدفوعة</h3><div class="value" style="color:#ffda79">${gTotalNet.toLocaleString()}</div></div>
+
+                <div class="summary-box">
+                    <h3 style="margin:0; font-size:0.9rem;">💰 ملخص السنة المالي</h3>
+                    <div style="font-size:1.5rem; font-weight:900;">${(yTotalIn - yTotalOut - gTotalNet).toLocaleString()} ج.م</div>
+                </div>
+            `;
         }
 
-        // التنفيذ عند التحميل
-        window.onload = renderReports;
+        window.onload = function() {
+            setupYears();
+            renderReports();
+        };
     </script>
 </body>
 </html>
