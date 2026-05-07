@@ -27,7 +27,11 @@
         input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 14px; font-weight: 700; }
         .btn-save { grid-column: span 3; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; }
         
-        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px; }
+        .search-area { background: #fff; padding: 10px; border-radius: 10px; border: 2px solid var(--primary); margin-bottom: 10px; display: flex; gap: 8px; }
+        .search-area input { flex: 2; background: #f0f7ff; border: 1px solid var(--primary); }
+        .search-area select { flex: 1; border: 1px solid var(--primary); font-weight: 800; }
+
+        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
         th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 900; }
         td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: 700; }
@@ -41,7 +45,7 @@
         .btn-del { color: var(--danger); }
         .btn-wa { font-size: 18px; background: none; }
 
-        @media (max-width: 600px) { .form-section { grid-template-columns: 1fr; } .btn-save { grid-column: span 1; } .dashboard { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .form-section { grid-template-columns: 1fr; } .btn-save { grid-column: span 1; } .dashboard { grid-template-columns: 1fr 1fr; } .search-area { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -81,6 +85,23 @@
         <input type="number" id="entry-in" style="border-right: 4px solid var(--success)" placeholder="مبلغ داخل (+)">
         <input type="hidden" id="edit-id">
         <button class="btn-save" id="btn-main" onclick="processEntry()">حفظ العملية</button>
+    </div>
+
+    <div class="search-area">
+        <input type="text" id="searchBox" placeholder="🔍 بحث بالاسم أو البيان..." onkeyup="loadData()">
+        <select id="filterShop" onchange="loadData()">
+            <option value="الكل">🔍 كل الأقسام</option>
+            <option value="زبون">👤 زبون</option>
+            <option value="عمال">👷 عمال</option>
+            <option value="الومنيوم">💎 الومنيوم</option>
+            <option value="فيبر">🎨 فيبر</option>
+            <option value="خشب">🪵 خشب</option>
+            <option value="اكسسوارات">⚙️ اكسسوارات</option>
+            <option value="رخام">🪨 رخام</option>
+            <option value="سيارة">🚚 سيارة</option>
+            <option value="حديد">🔩 حديد</option>
+            <option value="غير ذلك">✨ غير ذلك</option>
+        </select>
     </div>
 
     <div class="table-wrapper">
@@ -149,31 +170,40 @@
 
     function loadData() {
         const tableBody = document.getElementById('table-body'), 
+              filterShop = document.getElementById('filterShop').value,
+              searchVal = document.getElementById('searchBox').value.toLowerCase(),
               data = JSON.parse(localStorage.getItem('workshop_data')) || [];
+              
         tableBody.innerHTML = "";
         let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
         const now = new Date();
 
         data.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).forEach((item) => {
             const rowDate = new Date(item.date), itemNet = item.inVal - item.outVal;
+            
             if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
             if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
             if (rowDate.getFullYear() === currentYear) { totals.yearOut += item.outVal; totals.yearNet += itemNet; }
 
-            tableBody.innerHTML += `
-                <tr>
-                    <td style="font-size:11px;">${item.date.replace('T', ' ')}</td>
-                    <td><span class="badge">${item.shop}</span></td>
-                    <td>${item.customer}</td>
-                    <td>${item.desc}</td>
-                    <td class="td-out">${item.outVal || '-'}</td>
-                    <td class="td-in">${item.inVal || '-'}</td>
-                    <td style="white-space: nowrap;">
-                        <button class="btn-action btn-wa" onclick="sendToWhatsAppDirect(${item.id})" title="إرسال للواتساب">🟢</button>
-                        <button class="btn-action btn-edit" onclick="startEdit(${item.id})"><span>📝</span> تعديل</button>
-                        <button class="btn-action btn-del" onclick="deleteItem(${item.id})" title="حذف">🗑️</button>
-                    </td>
-                </tr>`;
+            const matchSearch = item.customer.toLowerCase().includes(searchVal) || item.desc.toLowerCase().includes(searchVal);
+            const matchShop = (filterShop === "الكل" || item.shop === filterShop);
+
+            if (matchSearch && matchShop) {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td style="font-size:11px;">${item.date.replace('T', ' ')}</td>
+                        <td><span class="badge">${item.shop}</span></td>
+                        <td>${item.customer}</td>
+                        <td>${item.desc}</td>
+                        <td class="td-out">${item.outVal || '-'}</td>
+                        <td class="td-in">${item.inVal || '-'}</td>
+                        <td style="white-space: nowrap;">
+                            <button class="btn-action btn-wa" onclick="sendToWhatsAppDirect(${item.id})" title="إرسال للواتساب">🟢</button>
+                            <button class="btn-action btn-edit" onclick="startEdit(${item.id})"><span>📝</span> تعديل</button>
+                            <button class="btn-action btn-del" onclick="deleteItem(${item.id})" title="حذف">🗑️</button>
+                        </td>
+                    </tr>`;
+            }
         });
         document.getElementById('day-total').innerText = totals.day.toLocaleString();
         document.getElementById('month-total').innerText = totals.month.toLocaleString();
