@@ -91,7 +91,7 @@
 
     <div class="table-wrapper">
         <table>
-            <thead><tr><th>التاريخ</th><th>القسم</th><th>الاسم</th><th>البيان</th><th>خارج</th><th>داخل</th><th>إجراء</th></tr></thead>
+            <thead><tr><th>التاريخ والوقت</th><th>القسم</th><th>الاسم</th><th>البيان</th><th>خارج</th><th>داخل</th><th>إجراء</th></tr></thead>
             <tbody id="table-body"></tbody>
         </table>
     </div>
@@ -108,6 +108,19 @@
 
     function arToEn(str) {
         return str.replace(/[٠-٩]/g, function(d) { return d.charCodeAt(0) - 1632; });
+    }
+
+    // دالة تحويل الوقت لتنسيق 12 ساعة (ص/م)
+    function formatTime12h(dateStr) {
+        const date = new Date(dateStr);
+        let hours = date.getHours();
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'م' : 'ص';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // الساعة 0 تصبح 12
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        return `${day}/${month} - ${hours}:${minutes} ${ampm}`;
     }
 
     function saveWorkshopName() {
@@ -181,7 +194,7 @@
             if (matchSearch) {
                 tableBody.innerHTML += `
                     <tr>
-                        <td style="font-size:11px;">${item.date.replace('T', ' ')}</td>
+                        <td style="font-size:11px; white-space: nowrap;">${formatTime12h(item.date)}</td>
                         <td><span class="badge">${item.shop}</span></td>
                         <td>${item.customer}</td>
                         <td>${item.desc}</td>
@@ -205,9 +218,11 @@
         const data = JSON.parse(localStorage.getItem('workshop_data')) || [];
         const item = data.find(i => i.id == id);
         const workshop = document.getElementById('workshop-name').value || "ورشة العمل";
+        
+        // تنسيق الوقت للواتساب
+        const timeFormatted = formatTime12h(item.date);
         const dateObj = new Date(item.date);
         const dayName = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
-        const cleanDate = dateObj.toLocaleDateString('ar-EG', { year: 'numeric', month: 'numeric', day: 'numeric' });
 
         let msg = `🧾 *إيصال عملية - ${workshop}*\n━━━━━━━━━━━━━━━\n`;
         if(item.inVal > 0) {
@@ -216,7 +231,7 @@
         if(item.outVal > 0) {
             msg += `⚠️ *تم خروج:* ${item.outVal.toLocaleString()} ج.م\n👤 *إلى:* ${item.customer}\n`;
         }
-        msg += `🔹 *القسم:* ${item.shop}\n📝 *البيان:* ${item.desc}\n━━━━━━━━━━━━━━━\n📅 *اليوم:* ${dayName}\n🗓️ *التاريخ:* ${cleanDate}\n━━━━━━━━━━━━━━━`;
+        msg += `🔹 *القسم:* ${item.shop}\n📝 *البيان:* ${item.desc}\n━━━━━━━━━━━━━━━\n📅 *التوقيت:* ${dayName} | ${timeFormatted}\n━━━━━━━━━━━━━━━`;
         window.location.href = `whatsapp://send?text=${encodeURIComponent(msg)}`;
     }
 
