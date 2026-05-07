@@ -65,9 +65,6 @@
         .archive-table th { background: #f1f1f1; padding: 8px; color: #555; border-bottom: 1px solid #ddd; }
         .archive-table td { padding: 10px 4px; text-align: center; border-bottom: 1px solid #f9f9f9; line-height: 1.4; }
 
-        .search-row { display: flex; gap: 5px; margin-bottom: 10px; }
-        .search-row select { flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid #ccc; font-weight: 800; font-size: 12px; background: #fff; }
-
         .footer-nav { position: fixed; bottom: 0; width: 100%; background: white; padding: 12px; display: flex; box-sizing: border-box; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 2000; }
     </style>
 </head>
@@ -88,10 +85,10 @@
         <div class="date-selectors">
             <select id="dayPicker" onchange="updateDateFromSelectors()"></select>
             <select id="monthPicker" onchange="updateDateFromSelectors()">
-                <option value="0">يناير (01)</option><option value="1">فبراير (02)</option><option value="2">مارس (03)</option>
-                <option value="3">أبريل (04)</option><option value="4">مايو (05)</option><option value="5">يونيو (06)</option>
-                <option value="6">يوليو (07)</option><option value="7">أغسطس (08)</option><option value="8">سبتمبر (09)</option>
-                <option value="9">أكتوبر (10)</option><option value="10">نوفمبر (11)</option><option value="11">ديسمبر (12)</option>
+                <option value="0">01</option><option value="1">02</option><option value="2">03</option>
+                <option value="3">04</option><option value="4">05</option><option value="5">06</option>
+                <option value="6">07</option><option value="7">08</option><option value="8">09</option>
+                <option value="9">10</option><option value="10">11</option><option value="11">12</option>
             </select>
             <select id="yearPicker" onchange="updateDateFromSelectors()"></select>
         </div>
@@ -110,16 +107,11 @@
     <div id="cardsList"></div>
 
     <div class="archive-zone">
-        <h3 style="text-align:center; color: var(--dark-green); margin:0 0 10px 0;">📂 أرشيف الرواتب</h3>
+        <h3 style="text-align:center; color: var(--dark-green); margin:0 0 15px 0;">📂 أرشيف الرواتب الشامل</h3>
         <div style="margin-bottom:10px;">
-            <select id="archiveSearch" onchange="buildArchiveHistory()" style="width:100%; padding:12px; border-radius:10px; font-weight:900; border:2px solid var(--teal);"></select>
+            <select id="archiveSearch" onchange="buildArchiveHistory()" style="width:100%; padding:15px; border-radius:12px; font-weight:900; border:2px solid var(--teal); background: #fff;"></select>
         </div>
-        <div class="search-row">
-            <select id="archMonthSearch" onchange="buildArchiveHistory()"></select>
-            <select id="archYearSearch" onchange="buildArchiveHistory()"></select>
-            <button onclick="resetArchSearch()" style="background: #ccc; border:none; border-radius:8px; padding:0 10px; font-size:10px;">كل الشهور</button>
-        </div>
-        <div id="archiveContent" style="margin-top:15px;"></div>
+        <div id="archiveContent"></div>
     </div>
 </div>
 
@@ -139,17 +131,9 @@
     function initDateSelectors() {
         const dSel = document.getElementById('dayPicker');
         const ySel = document.getElementById('yearPicker');
-        const archMSel = document.getElementById('archMonthSearch');
-        const archYSel = document.getElementById('archYearSearch');
         const now = new Date();
         for(let i=1; i<=31; i++) { dSel.add(new Option(i, i, i === now.getDate(), i === now.getDate())); }
-        archMSel.add(new Option("-- كل الشهور --", "all"));
-        for(let i=1; i<=12; i++) { archMSel.add(new Option(i.toString().padStart(2, '0'), i-1)); }
-        archYSel.add(new Option("-- كل السنوات --", "all"));
-        for(let i=2024; i<=2030; i++) {
-            ySel.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear()));
-            archYSel.add(new Option(i, i));
-        }
+        for(let i=2024; i<=2035; i++) { ySel.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear())); }
         document.getElementById('monthPicker').value = now.getMonth();
         updateDateFromSelectors();
     }
@@ -181,7 +165,7 @@
             let d = new Date(saturday); d.setDate(saturday.getDate() + i);
             currentWeekDates.push(d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear());
         }
-        document.getElementById('currentDayTitle').innerText = saturday.toLocaleDateString('ar-EG', {day: 'numeric', month: 'long'});
+        document.getElementById('currentDayTitle').innerText = saturday.toLocaleDateString('ar-EG', {day: 'numeric', month: 'long', year: 'numeric'});
         loadWeekData();
     }
 
@@ -236,39 +220,11 @@
         const installment = c.querySelector('.sum-inst').innerText;
         const netAmount = c.querySelector('.sum-n').innerText;
         const notes = c.querySelector('.note-input').value;
-
-        let attendance = 0, halfDays = 0, absence = 0;
-        c.querySelectorAll('.btn-tgl.active').forEach(btn => {
-            const val = btn.dataset.v;
-            if (val == "1") attendance++; else if (val == "0.5") halfDays++; else if (val == "0") absence++;
-        });
-
-        const totalAttendance = attendance + (halfDays * 0.5);
-        const totalDeductions = parseFloat(totalLoans) + parseFloat(installment);
-
-        const msg = `*📊 تقرير الراتب الأسبوعي - AZEMAA PRO*
----------------------------------------
-👤 *العامل:* ${workerName}
-📅 *الأسبوع:* ${currentWeekDates[0]}
----------------------------------------
-💰 *الراتب الأساسي:* ${baseSalary} ج.م
-
-✅ *تفاصيل الحضور:*
-- حضور كامل: ${attendance} يوم
-- نصف يوم: ${halfDays}
-- غياب: ${absence}
-⭐ *إجمالي الحضور:* ${totalAttendance} يوم
-
-💸 *الخصومات والسلف:*
-- سلف: ${totalLoans} ج.م
-- قسط أسبوعي: ${installment} ج.م
-- إجمالي الخصم: ${totalDeductions} ج.م
-
-💵 *الصافي المستحق:* ${netAmount} ج.م
----------------------------------------
-${notes ? `📝 *ملاحظة:* ${notes}\n---------------------------------------` : ''}
-*تم الاستخراج بواسطة نظام AZEMAA PRO*`;
-
+        let att = 0, half = 0, abs = 0;
+        c.querySelectorAll('.btn-tgl.active').forEach(b => { if(b.dataset.v=="1") att++; else if(b.dataset.v=="0.5") half++; else abs++; });
+        const totalAtt = att + (half*0.5);
+        const totalDed = parseFloat(totalLoans) + parseFloat(installment);
+        const msg = `*📊 تقرير الراتب الأسبوعي - AZEMAA PRO*\n---------------------------------------\n👤 *العامل:* ${workerName}\n📅 *الأسبوع:* ${currentWeekDates[0]}\n---------------------------------------\n💰 *الراتب الأساسي:* ${baseSalary} ج.م\n✅ *الحضور:* ${totalAtt} أيام (${att} ح، ${half} ½، ${abs} غ)\n💸 *الخصومات:* سلف ${totalLoans} + قسط ${installment}\n💵 *الصافي:* ${netAmount} ج.م\n---------------------------------------\n${notes ? `📝 *ملاحظة:* ${notes}` : ''}\n*تم الاستخراج بواسطة نظام AZEMAA PRO*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
     }
 
@@ -283,47 +239,53 @@ ${notes ? `📝 *ملاحظة:* ${notes}\n--------------------------------------
             fullDates: currentWeekDates 
         }));
         localStorage.setItem(STORAGE_KEY_PREFIX + currentWeekID, JSON.stringify(data));
-        alert("✔️ تم حفظ بيانات هذا الأسبوع بنجاح");
+        alert("✔️ تم الحفظ بنجاح");
         buildArchiveHistory();
     }
 
     function buildArchiveHistory() {
         const selectedName = document.getElementById('archiveSearch').value;
-        const searchMonth = document.getElementById('archMonthSearch').value;
-        const searchYear = document.getElementById('archYearSearch').value;
         const display = document.getElementById('archiveContent');
         if(!selectedName) { display.innerHTML = ""; return; }
+        
         let html = "";
-        let keys = Object.keys(localStorage).filter(k => k.startsWith(STORAGE_KEY_PREFIX)).sort().reverse();
+        let keys = Object.keys(localStorage).filter(k => k.startsWith(STORAGE_KEY_PREFIX));
+        keys.sort((a,b) => b.localeCompare(a)); // الأحدث أولاً
+        
+        let foundAny = false;
         keys.forEach(key => {
             const dataArr = JSON.parse(localStorage.getItem(key));
             const d = dataArr.find(r => r.name === selectedName);
             if(d) {
-                const weekDateObj = new Date(key);
-                if (searchMonth !== "all" && weekDateObj.getMonth() != searchMonth) return;
-                if (searchYear !== "all" && weekDateObj.getFullYear() != searchYear) return;
-                let rows = ""; let totalLoans = 0;
-                d.loans.forEach((loan, i) => {
-                    const lVal = parseFloat(loan) || 0; totalLoans += lVal;
-                    const attVal = d.att[i]; 
-                    const attLabel = attVal == 1 ? "حاضر" : (attVal == 0.5 ? "½ يوم" : "غائب");
-                    rows += `<tr><td>${weekdays[i]} <br> ${d.fullDates ? d.fullDates[i] : ''}</td><td>${attLabel}</td><td style="color:red">${lVal > 0 ? lVal : '-'}</td></tr>`;
+                foundAny = true;
+                let rows = ""; let tL = 0;
+                d.loans.forEach((l, i) => {
+                    const val = parseFloat(l) || 0; tL += val;
+                    const label = d.att[i] == 1 ? "حاضر" : (d.att[i] == 0.5 ? "½ يوم" : "غائب");
+                    rows += `<tr><td>${weekdays[i]}<br>${d.fullDates[i]}</td><td>${label}</td><td style="color:red">${val > 0 ? val : '-'}</td></tr>`;
                 });
                 const attSum = d.att.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
-                const net = Math.max(0, Math.round(((parseFloat(d.sal)/6)*attSum) - totalLoans - (d.instPaid||0)));
-                html += `<div class="history-card"><div class="history-header"><span>📅 أسبوع: ${d.fullDates ? d.fullDates[0] : key}</span><b>صافي: ${net} ج.م</b></div><div style="padding:8px; font-size:12px; background:#f0f7f6;">💰 الراتب: ${d.sal} | 💸 سلف: ${totalLoans} | 🏦 قسط: ${d.instPaid || 0}</div>${d.note ? '<div style="padding:8px; font-size:11px; background:#fff8e1;">📝 '+d.note+'</div>' : ''}<table class="archive-table"><thead><tr><th>اليوم</th><th>الحالة</th><th>سلف</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+                const net = Math.max(0, Math.round(((parseFloat(d.sal)/6)*attSum) - tL - (d.instPaid||0)));
+                html += `<div class="history-card"><div class="history-header"><span>📅 ${d.fullDates[0]}</span><b>صافي: ${net}</b></div><div style="padding:8px; font-size:12px; background:#f0f7f6;">💰 راتب: ${d.sal} | سلف: ${tL} | قسط: ${d.instPaid}</div>${d.note ? '<div style="padding:8px; font-size:11px; background:#fff8e1;">📝 '+d.note+'</div>' : ''}<table class="archive-table"><thead><tr><th>اليوم</th><th>الحالة</th><th>سلف</th></tr></thead><tbody>${rows}</tbody></table></div>`;
             }
         });
-        display.innerHTML = html || `<center style='padding:20px; color:red;'>لا توجد بيانات محفوظة لهذا العامل</center>`;
+        display.innerHTML = foundAny ? html : `<center style='padding:20px; color:red;'>⚠️ لا توجد سجلات محفوظة لهذا العامل في الأرشيف.</center>`;
     }
 
-    function resetArchSearch() { document.getElementById('archMonthSearch').value = "all"; document.getElementById('archYearSearch').value = "all"; buildArchiveHistory(); }
-    function addNewWorker() { let name = document.getElementById('workerNameInp').value.trim(); if(name) { masterWorkers.push({id: Date.now(), name: name, inst_weekly: ''}); saveMaster(true); document.getElementById('workerNameInp').value = ""; } }
+    function addNewWorker() { 
+        let name = document.getElementById('workerNameInp').value.trim(); 
+        if(name) { masterWorkers.push({id: Date.now(), name: name, inst_weekly: ''}); saveMaster(true); document.getElementById('workerNameInp').value = ""; } 
+    }
+
     function updateInst(idx, val) { masterWorkers[idx].inst_weekly = val; saveMaster(); }
     function saveMaster(refreshUI = false) { localStorage.setItem(STORAGE_KEY_WORKERS, JSON.stringify(masterWorkers)); if(refreshUI) { updateWorkerEditor(); updateArchiveDropdown(); loadWeekData(); } }
-    function updateWorkerEditor() { document.getElementById('workerListEditor').innerHTML = masterWorkers.map((w, i) => `<div style="padding:10px; border:1px solid #ddd; background:#fff; margin-bottom:8px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;"><b>${w.name}</b><div style="display:flex; gap:5px;"><input type="number" placeholder="قسط" style="width:60px; padding:5px" value="${w.inst_weekly}" oninput="updateInst(${i}, this.value)"><button onclick="removeWorker(${i})" style="color:red; border:none; background:none; font-size:18px;">🗑️</button></div></div>`).join(''); }
+    
+    function updateWorkerEditor() { 
+        document.getElementById('workerListEditor').innerHTML = masterWorkers.map((w, i) => `<div style="padding:10px; border:1px solid #ddd; background:#fff; margin-bottom:8px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;"><b>${w.name}</b><div style="display:flex; gap:5px;"><input type="number" placeholder="قسط" style="width:60px; padding:5px" value="${w.inst_weekly}" oninput="updateInst(${i}, this.value)"><button onclick="removeWorker(${i})" style="color:red; border:none; background:none;">🗑️</button></div></div>`).join(''); 
+    }
+    
     function removeWorker(i) { if(confirm("هل أنت متأكد؟")) { masterWorkers.splice(i,1); saveMaster(true); } }
-    function updateArchiveDropdown() { document.getElementById('archiveSearch').innerHTML = '<option value="">-- اختر العامل لعرض سجلاته --</option>' + masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join(''); }
+    function updateArchiveDropdown() { document.getElementById('archiveSearch').innerHTML = '<option value="">-- اختر العامل لعرض أرشيفه الشامل --</option>' + masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join(''); }
 
     window.onload = setup;
 </script>
