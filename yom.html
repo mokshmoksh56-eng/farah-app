@@ -28,8 +28,7 @@
         .btn-save { grid-column: span 3; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; }
         
         .search-area { background: #fff; padding: 10px; border-radius: 10px; border: 2px solid var(--primary); margin-bottom: 10px; display: flex; gap: 8px; }
-        .search-area input { flex: 2; background: #f0f7ff; border: 1px solid var(--primary); }
-        .search-area select { flex: 1; border: 1px solid var(--primary); font-weight: 800; }
+        .search-area input { flex: 1; background: #f0f7ff; border: 1px solid var(--primary); }
 
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
@@ -41,7 +40,6 @@
 
         .btn-action { border: none; background: #f1f5f9; cursor: pointer; padding: 5px 10px; border-radius: 5px; font-weight: 800; font-family: 'Cairo'; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; transition: 0.2s; }
         .btn-edit { color: var(--primary); border: 1px solid var(--primary); }
-        .btn-edit:hover { background: var(--primary); color: white; }
         .btn-del { color: var(--danger); }
         .btn-wa { font-size: 18px; background: none; }
 
@@ -88,20 +86,7 @@
     </div>
 
     <div class="search-area">
-        <input type="text" id="searchBox" placeholder="🔍 بحث بالاسم أو البيان..." onkeyup="loadData()">
-        <select id="filterShop" onchange="loadData()">
-            <option value="الكل">🔍 كل الأقسام</option>
-            <option value="زبون">👤 زبون</option>
-            <option value="عمال">👷 عمال</option>
-            <option value="الومنيوم">💎 الومنيوم</option>
-            <option value="فيبر">🎨 فيبر</option>
-            <option value="خشب">🪵 خشب</option>
-            <option value="اكسسوارات">⚙️ اكسسوارات</option>
-            <option value="رخام">🪨 رخام</option>
-            <option value="سيارة">🚚 سيارة</option>
-            <option value="حديد">🔩 حديد</option>
-            <option value="غير ذلك">✨ غير ذلك</option>
-        </select>
+        <input type="text" id="searchBox" placeholder="🔍 بحث شامل (اسم/بيان/مبلغ/قسم)..." onkeyup="loadData()">
     </div>
 
     <div class="table-wrapper">
@@ -121,6 +106,10 @@
         document.getElementById('workshop-name').value = localStorage.getItem('workshop_name') || "";
     };
 
+    function arToEn(str) {
+        return str.replace(/[٠-٩]/g, function(d) { return d.charCodeAt(0) - 1632; });
+    }
+
     function saveWorkshopName() {
         localStorage.setItem('workshop_name', document.getElementById('workshop-name').value);
     }
@@ -137,13 +126,14 @@
     }
 
     function processEntry() {
-        const shop = document.getElementById('entry-shop').value, 
-              customer = document.getElementById('entry-customer').value.trim() || "-", 
-              date = document.getElementById('entry-date').value, 
-              desc = document.getElementById('entry-desc').value.trim() || "-", 
-              inVal = parseFloat(document.getElementById('entry-in').value) || 0, 
-              outVal = parseFloat(document.getElementById('entry-out').value) || 0, 
-              editId = document.getElementById('edit-id').value;
+        const shopSelect = document.getElementById('entry-shop');
+        const shop = shopSelect.options[shopSelect.selectedIndex].text;
+        const customer = document.getElementById('entry-customer').value.trim() || "-";
+        const date = document.getElementById('entry-date').value;
+        const desc = document.getElementById('entry-desc').value.trim() || "-";
+        const inVal = parseFloat(document.getElementById('entry-in').value) || 0;
+        const outVal = parseFloat(document.getElementById('entry-out').value) || 0;
+        const editId = document.getElementById('edit-id').value;
 
         if (inVal === 0 && outVal === 0) { alert("يرجى إدخال مبلغ"); return; }
         
@@ -169,26 +159,26 @@
     }
 
     function loadData() {
-        const tableBody = document.getElementById('table-body'), 
-              filterShop = document.getElementById('filterShop').value,
-              searchVal = document.getElementById('searchBox').value.toLowerCase(),
-              data = JSON.parse(localStorage.getItem('workshop_data')) || [];
+        const tableBody = document.getElementById('table-body');
+        const searchVal = arToEn(document.getElementById('searchBox').value.toLowerCase());
+        const data = JSON.parse(localStorage.getItem('workshop_data')) || [];
               
         tableBody.innerHTML = "";
         let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
         const now = new Date();
 
         data.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).forEach((item) => {
-            const rowDate = new Date(item.date), itemNet = item.inVal - item.outVal;
+            const rowDate = new Date(item.date);
+            const itemNet = item.inVal - item.outVal;
             
             if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
             if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
             if (rowDate.getFullYear() === currentYear) { totals.yearOut += item.outVal; totals.yearNet += itemNet; }
 
-            const matchSearch = item.customer.toLowerCase().includes(searchVal) || item.desc.toLowerCase().includes(searchVal);
-            const matchShop = (filterShop === "الكل" || item.shop === filterShop);
+            const itemFullText = (item.customer + item.desc + item.shop + item.inVal + item.outVal).toLowerCase();
+            const matchSearch = itemFullText.includes(searchVal);
 
-            if (matchSearch && matchShop) {
+            if (matchSearch) {
                 tableBody.innerHTML += `
                     <tr>
                         <td style="font-size:11px;">${item.date.replace('T', ' ')}</td>
@@ -198,9 +188,9 @@
                         <td class="td-out">${item.outVal || '-'}</td>
                         <td class="td-in">${item.inVal || '-'}</td>
                         <td style="white-space: nowrap;">
-                            <button class="btn-action btn-wa" onclick="sendToWhatsAppDirect(${item.id})" title="إرسال للواتساب">🟢</button>
-                            <button class="btn-action btn-edit" onclick="startEdit(${item.id})"><span>📝</span> تعديل</button>
-                            <button class="btn-action btn-del" onclick="deleteItem(${item.id})" title="حذف">🗑️</button>
+                            <button class="btn-action btn-wa" onclick="sendToWhatsAppDirect(${item.id})">🟢</button>
+                            <button class="btn-action btn-edit" onclick="startEdit(${item.id})">📝 تعديل</button>
+                            <button class="btn-action btn-del" onclick="deleteItem(${item.id})">🗑️</button>
                         </td>
                     </tr>`;
             }
@@ -215,31 +205,18 @@
         const data = JSON.parse(localStorage.getItem('workshop_data')) || [];
         const item = data.find(i => i.id == id);
         const workshop = document.getElementById('workshop-name').value || "ورشة العمل";
-        
         const dateObj = new Date(item.date);
         const dayName = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
         const cleanDate = dateObj.toLocaleDateString('ar-EG', { year: 'numeric', month: 'numeric', day: 'numeric' });
 
-        let msg = `🧾 *إيصال عملية - ${workshop}*\n`;
-        msg += `━━━━━━━━━━━━━━━\n`;
-        
+        let msg = `🧾 *إيصال عملية - ${workshop}*\n━━━━━━━━━━━━━━━\n`;
         if(item.inVal > 0) {
-            msg += `✅ *تم دخول:* ${item.inVal.toLocaleString()} ج.م\n`;
-            msg += `👤 *من:* ${item.customer}\n`;
+            msg += `✅ *تم دخول:* ${item.inVal.toLocaleString()} ج.م\n👤 *من:* ${item.customer}\n`;
         }
-        
         if(item.outVal > 0) {
-            msg += `⚠️ *تم خروج:* ${item.outVal.toLocaleString()} ج.م\n`;
-            msg += `👤 *إلى:* ${item.customer}\n`;
+            msg += `⚠️ *تم خروج:* ${item.outVal.toLocaleString()} ج.م\n👤 *إلى:* ${item.customer}\n`;
         }
-
-        msg += `🔹 *القسم:* ${item.shop}\n`;
-        msg += `📝 *البيان:* ${item.desc}\n`;
-        msg += `━━━━━━━━━━━━━━━\n`;
-        msg += `📅 *اليوم:* ${dayName}\n`;
-        msg += `🗓️ *التاريخ:* ${cleanDate}\n`;
-        msg += `━━━━━━━━━━━━━━━`;
-
+        msg += `🔹 *القسم:* ${item.shop}\n📝 *البيان:* ${item.desc}\n━━━━━━━━━━━━━━━\n📅 *اليوم:* ${dayName}\n🗓️ *التاريخ:* ${cleanDate}\n━━━━━━━━━━━━━━━`;
         window.location.href = `whatsapp://send?text=${encodeURIComponent(msg)}`;
     }
 
@@ -247,7 +224,10 @@
         const data = JSON.parse(localStorage.getItem('workshop_data'));
         const item = data.find(i => i.id == id);
         if (item) {
-            document.getElementById('entry-shop').value = item.shop;
+            const entryShop = document.getElementById('entry-shop');
+            for(let i=0; i<entryShop.options.length; i++) {
+                if(entryShop.options[i].text === item.shop) { entryShop.selectedIndex = i; break; }
+            }
             document.getElementById('entry-customer').value = item.customer;
             document.getElementById('entry-date').value = item.date;
             document.getElementById('entry-desc').value = item.desc;
