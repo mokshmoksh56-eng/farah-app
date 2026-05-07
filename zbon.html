@@ -23,8 +23,11 @@
         .header { background: var(--primary); color: white; padding: 15px; text-align: center; border-radius: 0 0 30px 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .header h1 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 1px; }
 
-        .toolbar { max-width: 1100px; margin: 10px auto; padding: 0 10px; display: flex; justify-content: center; }
-        #searchInput { width: 100%; max-width: 800px; padding: 12px; border-radius: 12px; border: 2px solid var(--primary); font-size: 16px; font-weight: 900; box-shadow: 0 4px 6px rgba(0,0,0,0.05); outline: none; }
+        .toolbar { max-width: 1100px; margin: 10px auto; padding: 0 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 600px) { .toolbar { grid-template-columns: 1fr; } }
+
+        #companyNameInput { padding: 12px; border-radius: 12px; border: 2px solid #1abc9c; font-size: 16px; font-weight: 900; background: #fff; color: #072d48; outline: none; }
+        #searchInput { padding: 12px; border-radius: 12px; border: 2px solid var(--primary); font-size: 16px; font-weight: 900; box-shadow: 0 4px 6px rgba(0,0,0,0.05); outline: none; }
 
         .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 1100px; margin: 10px auto; padding: 0 10px; }
         .stat-card { background: white; padding: 8px; border-radius: 12px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-bottom: 4px solid var(--accent); }
@@ -49,27 +52,9 @@
         .c-total { background-color: #fffdf0 !important; border: 1.5px solid #f39c12 !important; color: #d35400 !important; font-size: 16px !important; }
         .p-val { background-color: #f6fff8 !important; border: 1px solid #218c74 !important; color: #1e8449 !important; }
 
-        /* تصغير خانة التقييم في الارتفاع */
-        .rating-area { 
-            display: flex; 
-            flex-direction: row-reverse; 
-            justify-content: center; 
-            margin-bottom: 5px; 
-            background: #fdfdfd; 
-            padding: 2px; /* تقليل البادينج */
-            border-radius: 8px; 
-            border: 1px solid #eee;
-            line-height: 1; /* ضغط الارتفاع */
-        }
+        .rating-area { display: flex; flex-direction: row-reverse; justify-content: center; margin-bottom: 5px; background: #fdfdfd; padding: 2px; border-radius: 8px; border: 1px solid #eee; line-height: 1; }
         .rating-area input { display: none; }
-        .rating-area label { 
-            font-size: 18px; /* تصغير حجم النجمة */
-            color: #ccc; 
-            cursor: pointer; 
-            transition: 0.2s; 
-            margin: 0 1px; 
-            padding: 0 2px;
-        }
+        .rating-area label { font-size: 18px; color: #ccc; cursor: pointer; transition: 0.2s; margin: 0 1px; padding: 0 2px; }
         .rating-area input:checked ~ label { color: var(--star-color); }
         .rating-area label:hover, .rating-area label:hover ~ label { color: var(--star-color); }
 
@@ -101,6 +86,7 @@
 </div>
 
 <div class="toolbar">
+    <input type="text" id="companyNameInput" placeholder="🏢 اكتب اسم شركتك / نشاطك هنا..." oninput="saveSettings()">
     <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو الرقم..." onkeyup="filterCards()">
 </div>
 
@@ -133,6 +119,10 @@
     }
     setInterval(updateDateTime, 1000);
     updateDateTime();
+
+    function saveSettings() {
+        localStorage.setItem('azemaa_company_name', document.getElementById('companyNameInput').value);
+    }
 
     const units = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
     const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
@@ -228,7 +218,7 @@
 
         const rem = total - paid;
         document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString()} ج.م`;
-        document.getElementById(`rem-w-${id}`).innerText = total > 0 ? (rem > 0 ? toArabic(rem) : (rem === 0 ? "خالص السداد ✓" : "زيادة")) : "--";
+        document.getElementById(`rem-w-${id}`).innerText = total > 0 ? (rem > 0 ? toArabic(rem) : (rem === 0 ? "خالس السداد ✓" : "زيادة")) : "--";
 
         if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
         
@@ -290,6 +280,10 @@
     }
 
     window.onload = () => {
+        // تحميل اسم الشركة
+        const savedCo = localStorage.getItem('azemaa_company_name');
+        if(savedCo) document.getElementById('companyNameInput').value = savedCo;
+
         for (let i = 1; i <= COUNT; i++) {
             const s = localStorage.getItem(`azemaa_pro_v5_${i}`);
             if (s) {
@@ -318,6 +312,7 @@
         const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
         const total = parseFloat(card.querySelector('.c-total').value) || 0;
+        const coName = document.getElementById('companyNameInput').value || "إدارة الحسابات";
         
         if (!phone) { alert("أدخل رقم الهاتف!"); return; }
 
@@ -329,7 +324,7 @@
         });
 
         const rem = total - paid;
-        let msg = `*AZEMAA PRO | إدارة الحسابات*%0A---------------------------%0A👤 العميل: ${name}%0A💰 الإجمالي: ${total} ج.م%0A`;
+        let msg = `*${coName}*%0A---------------------------%0A👤 العميل: ${name}%0A💰 الإجمالي: ${total} ج.م%0A`;
         
         if (rem <= 0 && total > 0) {
             msg += `✅ *الحساب خالص السداد*%0A---------------------------%0Aشكراً لتعاملكم معنا ✨ نتطلع لخدمتكم دائماً.`;
