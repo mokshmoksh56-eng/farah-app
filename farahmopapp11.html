@@ -1,51 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>azemaa pro | النسخة المطورة</title>
+    <style>
+        :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --bg: #ecf0f1; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 10px; background: var(--bg); display: flex; flex-direction: column; }
+        header { background: var(--p); color: #fff; padding: 15px; text-align: center; border-radius: 12px; margin-bottom: 10px; font-weight: bold; font-size: 1.2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .sync-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .btn { border: none; color: #fff; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn:active { transform: scale(0.98); }
+        .btn-s { background: var(--w); }
+        .btn-r { background: var(--r); }
+        .card { background: #fff; border-radius: 12px; height: 380px; border: 1px solid #ddd; margin-bottom: 15px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .h { background: #34495e; color: #fff; padding: 10px; font-size: 13px; font-weight: bold; text-align: center; }
+        iframe { flex: 1; border: none; background: #fff; }
+    </style>
+</head>
+<body>
+
+<header>🚀 azemaa pro - الحفظ الذكي</header>
+
+<div class="sync-box">
+    <button onclick="saveToWhatsApp()" class="btn btn-s">📤 حفظ النسخة (سطرين واتساب)</button>
+    <button onclick="loadFromWhatsApp()" class="btn btn-r">📥 استرجاع من الواتساب</button>
+</div>
+
+<div class="main-container">
+    <div class="card"><div class="h">💰 الديون</div><iframe src="zbon.html"></iframe></div>
+    <div class="card"><div class="h">💸 الخزينة</div><iframe src="yom.html"></iframe></div>
+    <div class="card"><div class="h">👷 العمال</div><iframe src="gyab.html"></iframe></div>
+    <div class="card"><div class="h">📅 التسليم</div><iframe src="tslem.html"></iframe></div>
+    <div class="card"><div class="h">📊 التقارير</div><iframe src="takarer.html"></iframe></div>
+</div>
+
 <script>
-    // وظيفة الضغط الفائق باستخدام GZIP المدمج في المتصفح
-    async function s() {
-        const raw = JSON.stringify(localStorage);
-        // تقليص المفاتيح يدوياً قبل الضغط العام
-        let mini = raw.replace(/"name":/g, '"n":').replace(/"price":/g, '"p":').replace(/"date":/g, '"d":');
+    // قائمة الكلمات المطلوب اختزالها لتقليل الحجم لأقصى درجة
+    const keysMap = {
+        '"name":': '"n":',
+        '"price":': '"p":',
+        '"date":': '"d":',
+        '"amount":': '"a":',
+        '"notes":': '"o":',
+        '"id":': '"i":'
+    };
+
+    function saveToWhatsApp() {
+        // 1. تجميع كل بيانات الـ LocalStorage
+        let data = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            data[key] = localStorage.getItem(key);
+        }
         
-        const stream = new Blob([mini]).stream();
-        const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
-        const response = new Response(compressedStream);
-        const buffer = await response.arrayBuffer();
+        let jsonStr = JSON.stringify(data);
         
-        // تحويل الـ Binary إلى Base64 قصير
-        let binary = '';
-        let bytes = new Uint8Array(buffer);
-        bytes.forEach((b) => binary += String.fromCharCode(b));
-        let code = btoa(binary);
+        // 2. الضغط الفائق: استبدال الكلمات برموز قصيرة جداً
+        let compressed = jsonStr;
+        for (let [full, short] of Object.entries(keysMap)) {
+            compressed = compressed.split(full).join(short);
+        }
         
-        window.location.href = `whatsapp://send?text=${encodeURIComponent(code)}`;
+        // 3. التشفير بصيغة Base64
+        let code = btoa(unescape(encodeURIComponent(compressed)));
+        
+        // 4. إنشاء الرسالة (سطرين فقط لسهولة النسخ)
+        let whatsappMsg = `*AZ-BACKUP*\n${code}`;
+        
+        // 5. الإرسال عبر الواتساب
+        window.location.href = `whatsapp://send?text=${encodeURIComponent(whatsappMsg)}`;
     }
 
-    // وظيفة فك الضغط والاسترجاع
-    async function l() {
-        let i = prompt("الصق الكود هنا:");
-        if (!i) return;
+    function loadFromWhatsApp() {
+        let input = prompt("قم بلصق الرسالة المستلمة من واتساب كاملة هنا:");
+        if (!input || input.trim() === "") return;
+        
         try {
-            let binary = atob(i.trim());
-            let bytes = new Uint8Array(binary.length);
-            for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
+            // تنظيف المدخلات (البحث عن الكود في السطر الثاني إذا وجد العنوان)
+            let cleanCode = input.includes('\n') ? input.split('\n')[1] : input;
+            cleanCode = cleanCode.trim();
+
+            // فك التشفير
+            let decoded = decodeURIComponent(escape(atob(cleanCode)));
             
-            const stream = new DecompressionStream('gzip');
-            const writer = stream.writable.getWriter();
-            writer.write(bytes);
-            writer.close();
+            // عكس عملية الضغط (إعادة الكلمات الأصلية)
+            let original = decoded;
+            for (let [full, short] of Object.entries(keysMap)) {
+                original = original.split(short).join(full);
+            }
             
-            const response = new Response(stream.readable);
-            let original = await response.text();
+            let dataObj = JSON.parse(original);
             
-            // إعادة الكلمات الأصلية
-            original = original.replace(/"n":/g, '"name":').replace(/"p":/g, '"price":').replace(/"d":/g, '"date":');
-            
-            let obj = JSON.parse(original);
-            localStorage.clear();
-            for (let k in obj) localStorage.setItem(k, obj[k]);
-            alert("✅ تم الاسترجاع بنجاح");
-            location.reload();
+            if (confirm("سيتم حذف البيانات الحالية واستبدالها بالنسخة الاحتياطية. هل أنت متأكد؟")) {
+                localStorage.clear();
+                for (let k in dataObj) {
+                    localStorage.setItem(k, dataObj[k]);
+                }
+                alert("✅ تم استرجاع البيانات بنجاح!");
+                location.reload(); // إعادة تحميل الصفحات الفرعية
+            }
         } catch (e) {
-            alert("❌ الكود تالف أو المتصفح قديم");
+            console.error(e);
+            alert("❌ خطأ: الكود غير صحيح أو ناقص. تأكد من نسخ الكود كاملاً من الواتساب.");
         }
     }
 </script>
+
+</body>
+</html>
