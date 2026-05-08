@@ -3,21 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa pro | نظام الملفات</title>
+    <title>azemaa pro | نظام المزامنة</title>
     <style>
         :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --b: #ecf0f1; }
-        body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--b); display: flex; flex-direction: column; }
-        header { background: var(--p); color: #fff; padding: 10px; text-align: center; border-radius: 8px; margin-bottom: 8px; font-size: 16px; }
-        .sync-box { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
-        .btn { border: none; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 10px; background: var(--b); display: flex; flex-direction: column; }
+        header { background: var(--p); color: #fff; padding: 12px; text-align: center; border-radius: 8px; margin-bottom: 8px; font-weight: bold; }
+        
+        /* أزرار الواتساب فوق بعض */
+        .sync-box { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; }
+        .btn { border: none; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .btn-s { background: var(--w); }
         .btn-r { background: var(--r); }
-        .main-container { display: flex; flex-direction: column; gap: 10px; }
-        .card { background: #fff; border-radius: 8px; height: 420px; border: 1px solid #ccc; display: flex; flex-direction: column; overflow: hidden; }
-        .h { background: #34495e; color: #fff; padding: 10px; font-size: 13px; font-weight: bold; }
-        iframe { flex: 1; border: none; }
-        /* إخفاء زر اختيار الملف التقليدي */
-        #file-input { display: none; }
+        .v-label { background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+
+        /* ترتيب الصفحات طولي (فوق بعض) */
+        .main-container { display: flex; flex-direction: column; gap: 15px; }
+        .card { background: #fff; border-radius: 12px; height: 450px; border: 2px solid #bdc3c7; display: flex; flex-direction: column; overflow: hidden; }
+        .h { background: #34495e; color: #fff; padding: 10px; font-size: 14px; font-weight: bold; text-align: center; }
+        iframe { flex: 1; border: none; background: white; }
     </style>
 </head>
 <body>
@@ -25,62 +28,71 @@
 <header>🚀 azemaa pro للبرمجيات</header>
 
 <div class="sync-box">
-    <button onclick="exportToFile()" class="btn btn-s">📤 حفظ (إرسال ملف للواتساب)</button>
+    <button onclick="sendCode()" class="btn btn-s">
+        <span>📤 إرسال كود النسخة للواتساب</span>
+        <span class="v-label" id="next-v">1</span>
+    </button>
     
-    <button onclick="document.getElementById('file-input').click()" class="btn btn-r">📥 استرجاع (اختيار ملف النسخة)</button>
-    <input type="file" id="file-input" accept=".txt" onchange="importFromFile(event)">
+    <button onclick="receiveCode()" class="btn btn-r">
+        <span>📥 استرجاع (لصق كود الواتساب)</span>
+        <span class="v-label" id="last-v">0</span>
+    </button>
 </div>
 
 <div class="main-container">
     <div class="card"><div class="h">💰 الديون والاتفاقيات</div><iframe src="zbon.html"></iframe></div>
     <div class="card"><div class="h">💸 حركة الخزينة</div><iframe src="yom.html"></iframe></div>
     <div class="card"><div class="h">👷 تقرير العمال</div><iframe src="gyab.html"></iframe></div>
-    <div class="card"><div class="h">📅 مواعيد الاستلام</div><iframe src="tslem.html"></iframe></div>
-    <div class="card"><div class="h">📊 التقارير العامة</div><iframe src="takarer.html"></iframe></div>
+    <div class="card"><div class="h">📅 مواعيد التسليم</div><iframe src="tslem.html"></iframe></div>
+    <div class="card report-section"><div class="h">📊 التقارير العامة</div><iframe src="takarer.html"></iframe></div>
 </div>
 
 <script>
-    // 1. تصدير البيانات كملف وإرسال تنبيه للواتساب
-    function exportToFile() {
+    let currentVer = parseInt(localStorage.getItem('az_v')) || 0;
+    const updateUI = () => {
+        document.getElementById('last-ver')?.innerText || (document.getElementById('last-v').innerText = currentVer);
+        document.getElementById('next-v').innerText = currentVer + 1;
+    };
+
+    // 1. وظيفة تحويل البيانات لكود وإرساله
+    function sendCode() {
         const data = JSON.stringify(localStorage);
-        const blob = new Blob([data], { type: 'text/plain' });
-        const date = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
-        const fileName = `azemaa_backup_${date}.txt`;
+        // تشفير البيانات وتحويلها لكود Base64
+        const code = btoa(unescape(encodeURIComponent(data)));
+        
+        currentVer++;
+        localStorage.setItem('az_v', currentVer);
+        updateUI();
 
-        // تحميل الملف على الهاتف أولاً
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        a.click();
-
-        // إرسال رسالة صغيرة جداً للواتساب للتنبيه
-        setTimeout(() => {
-            const msg = `✅ تم حفظ نسخة: ${fileName}%0Aقم بإرسال الملف الذي تم تحميله الآن لهذا الرقم.`;
-            window.location.href = `whatsapp://send?text=${msg}`;
-        }, 1000);
+        const message = `AZ_CODE[${currentVer}]:%0A${code}`;
+        window.location.href = `whatsapp://send?text=${message}`;
     }
 
-    // 2. استرجاع البيانات من ملف
-    function importFromFile(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    // 2. وظيفة استقبال الكود وإعادة البيانات
+    function receiveCode() {
+        let input = prompt("الصق كود الواتساب هنا:");
+        if (!input) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const dataObj = JSON.parse(e.target.result);
-                localStorage.clear();
-                for (let key in dataObj) {
-                    localStorage.setItem(key, dataObj[key]);
-                }
-                alert("✅ تم استرجاع البيانات من الملف بنجاح!");
-                location.reload();
-            } catch (err) {
-                alert("❌ خطأ: الملف غير صحيح.");
-            }
-        };
-        reader.readAsText(file);
+        // استخلاص الكود إذا تم نسخ النص بالكامل
+        if (input.includes(':')) {
+            input = input.split(':')[1].trim();
+        }
+
+        try {
+            const decoded = decodeURIComponent(escape(atob(input)));
+            const dataObj = JSON.parse(decoded);
+            
+            localStorage.clear();
+            Object.keys(dataObj).forEach(k => localStorage.setItem(k, dataObj[k]));
+            
+            alert("✅ تم استرجاع البيانات بنجاح!");
+            location.reload();
+        } catch (e) {
+            alert("❌ خطأ: الكود غير صحيح أو ناقص.");
+        }
     }
+
+    updateUI();
 </script>
 
 </body>
