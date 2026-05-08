@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa pro | الضغط الأقصى</title>
+    <title>azemaa pro | ضغط فائق</title>
     <style>
         :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --bg: #ecf0f1; }
         body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg); display: flex; flex-direction: column; }
@@ -22,7 +22,7 @@
 <header>🚀 azemaa pro</header>
 
 <div class="sync-box">
-    <button onclick="s()" class="btn btn-s">📤 إرسال الكود المضغوط</button>
+    <button onclick="s()" class="btn btn-s">📤 حفظ (كود سطرين)</button>
     <button onclick="l()" class="btn btn-r">📥 استرجاع الكود</button>
 </div>
 
@@ -31,37 +31,35 @@
     <div class="card"><div class="h">💸 الخزينة</div><iframe src="yom.html"></iframe></div>
     <div class="card"><div class="h">👷 العمال</div><iframe src="gyab.html"></iframe></div>
     <div class="card"><div class="h">📅 التسليم</div><iframe src="tslem.html"></iframe></div>
-    <div class="card"><div class="h">📊 التقارير</div><iframe src="takarer.html"></iframe></div>
+    <div class="card report-section"><div class="h">📊 التقارير</div><iframe src="takarer.html"></iframe></div>
 </div>
 
 <script>
-    // وظيفة الضغط الأقصى
+    // الضغط الفائق عن طريق الاختزال
     function s() {
-        let storage = {...localStorage};
-        // حذف مفاتيح الإصدار والبيانات غير الضرورية لتقليل الحجم
-        delete storage['az_v']; 
+        let raw = JSON.stringify(localStorage);
+        // استبدال الكلمات المتكررة برموز قصيرة لتقليل الحجم قبل التشفير
+        let compressed = raw.replace(/"name":/g, '"n":').replace(/"price":/g, '"p":').replace(/"date":/g, '"d":');
         
-        let d = JSON.stringify(storage);
-        // التشفير المباشر بدون فراغات
-        let c = btoa(unescape(encodeURIComponent(d))).replace(/\s+/g, '');
-        
-        // إرسال الكود الخام فقط
-        window.location.href = `whatsapp://send?text=${c}`;
+        let code = btoa(unescape(encodeURIComponent(compressed)));
+        window.location.href = `whatsapp://send?text=${code}`;
     }
 
-    // وظيفة الاسترجاع
     function l() {
         let i = prompt("الصق الكود هنا:");
         if (!i) return;
         try {
-            let d = decodeURIComponent(escape(atob(i.trim())));
-            let o = JSON.parse(d);
+            let decoded = decodeURIComponent(escape(atob(i.trim())));
+            // إعادة الكلمات الأصلية
+            let original = decoded.replace(/"n":/g, '"name":').replace(/"p":/g, '"price":').replace(/"d":/g, '"date":');
+            
+            let obj = JSON.parse(original);
             localStorage.clear();
-            for (let k in o) localStorage.setItem(k, o[k]);
-            alert("✅ تم الاسترجاع");
+            for (let k in obj) localStorage.setItem(k, obj[k]);
+            alert("✅ تم الاسترجاع بنجاح");
             location.reload();
         } catch (e) {
-            alert("❌ الكود غير مكتمل أو به خطأ");
+            alert("❌ الكود غير صحيح أو ناقص");
         }
     }
 </script>
