@@ -1,57 +1,43 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa pro | ضغط فائق</title>
-    <style>
-        :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --bg: #ecf0f1; }
-        body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg); display: flex; flex-direction: column; }
-        header { background: var(--p); color: #fff; padding: 10px; text-align: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; }
-        .sync-box { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
-        .btn { border: none; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
-        .btn-s { background: var(--w); }
-        .btn-r { background: var(--r); }
-        .card { background: #fff; border-radius: 10px; height: 400px; border: 1px solid #ccc; margin-bottom: 15px; display: flex; flex-direction: column; overflow: hidden; }
-        .h { background: #34495e; color: #fff; padding: 8px; font-size: 12px; font-weight: bold; text-align: center; }
-        iframe { flex: 1; border: none; }
-    </style>
-</head>
-<body>
-
-<header>🚀 azemaa pro</header>
-
-<div class="sync-box">
-    <button onclick="s()" class="btn btn-s">📤 حفظ (كود سطرين)</button>
-    <button onclick="l()" class="btn btn-r">📥 استرجاع الكود</button>
-</div>
-
-<div class="main-container">
-    <div class="card"><div class="h">💰 الديون</div><iframe src="zbon.html"></iframe></div>
-    <div class="card"><div class="h">💸 الخزينة</div><iframe src="yom.html"></iframe></div>
-    <div class="card"><div class="h">👷 العمال</div><iframe src="gyab.html"></iframe></div>
-    <div class="card"><div class="h">📅 التسليم</div><iframe src="tslem.html"></iframe></div>
-    <div class="card report-section"><div class="h">📊 التقارير</div><iframe src="takarer.html"></iframe></div>
-</div>
-
 <script>
-    // الضغط الفائق عن طريق الاختزال
-    function s() {
-        let raw = JSON.stringify(localStorage);
-        // استبدال الكلمات المتكررة برموز قصيرة لتقليل الحجم قبل التشفير
-        let compressed = raw.replace(/"name":/g, '"n":').replace(/"price":/g, '"p":').replace(/"date":/g, '"d":');
+    // وظيفة الضغط الفائق باستخدام GZIP المدمج في المتصفح
+    async function s() {
+        const raw = JSON.stringify(localStorage);
+        // تقليص المفاتيح يدوياً قبل الضغط العام
+        let mini = raw.replace(/"name":/g, '"n":').replace(/"price":/g, '"p":').replace(/"date":/g, '"d":');
         
-        let code = btoa(unescape(encodeURIComponent(compressed)));
-        window.location.href = `whatsapp://send?text=${code}`;
+        const stream = new Blob([mini]).stream();
+        const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
+        const response = new Response(compressedStream);
+        const buffer = await response.arrayBuffer();
+        
+        // تحويل الـ Binary إلى Base64 قصير
+        let binary = '';
+        let bytes = new Uint8Array(buffer);
+        bytes.forEach((b) => binary += String.fromCharCode(b));
+        let code = btoa(binary);
+        
+        window.location.href = `whatsapp://send?text=${encodeURIComponent(code)}`;
     }
 
-    function l() {
+    // وظيفة فك الضغط والاسترجاع
+    async function l() {
         let i = prompt("الصق الكود هنا:");
         if (!i) return;
         try {
-            let decoded = decodeURIComponent(escape(atob(i.trim())));
+            let binary = atob(i.trim());
+            let bytes = new Uint8Array(binary.length);
+            for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
+            
+            const stream = new DecompressionStream('gzip');
+            const writer = stream.writable.getWriter();
+            writer.write(bytes);
+            writer.close();
+            
+            const response = new Response(stream.readable);
+            let original = await response.text();
+            
             // إعادة الكلمات الأصلية
-            let original = decoded.replace(/"n":/g, '"name":').replace(/"p":/g, '"price":').replace(/"d":/g, '"date":');
+            original = original.replace(/"n":/g, '"name":').replace(/"p":/g, '"price":').replace(/"d":/g, '"date":');
             
             let obj = JSON.parse(original);
             localStorage.clear();
@@ -59,10 +45,7 @@
             alert("✅ تم الاسترجاع بنجاح");
             location.reload();
         } catch (e) {
-            alert("❌ الكود غير صحيح أو ناقص");
+            alert("❌ الكود تالف أو المتصفح قديم");
         }
     }
 </script>
-
-</body>
-</html>
