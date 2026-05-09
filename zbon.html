@@ -108,7 +108,7 @@
 
 <div class="toolbar">
     <input type="text" id="companyNameInput" placeholder="🏢 اسم شركتك..." oninput="saveSettings()">
-    <input type="text" id="searchInput" placeholder="🔍 ابحث عن عميل..." onkeyup="filterCards()">
+    <input type="text" id="searchInput" placeholder="🔍 ابحث في الكروت والأرشيف..." onkeyup="filterAll()">
 </div>
 
 <div class="stats-bar">
@@ -371,6 +371,7 @@
     function refreshArchive() {
         const tbody = document.getElementById('archiveBody');
         const tfoot = document.getElementById('archiveFoot');
+        const q = document.getElementById('searchInput').value.toLowerCase();
         if (!tbody) return;
         tbody.innerHTML = "";
         
@@ -382,37 +383,46 @@
             const s = localStorage.getItem(`azemaa_pro_v5_${i}`);
             if (s) {
                 const d = JSON.parse(s);
-                if (d.n && d.n.trim() !== "") {
-                    const stars = "★".repeat(d.r) + "☆".repeat(5-d.r);
-                    const fullDate = `${d.dd || ''} / ${d.dm || ''} / ${d.dy || ''}`;
-                    let pT = 0; d.pays.forEach(p => pT += cleanNum(toEnglishNums(p.vl)));
-                    let totalVal = cleanNum(toEnglishNums(d.t));
-                    let remVal = totalVal - pT;
-                    
-                    totalAll += totalVal;
-                    paidAll += pT;
-                    if(remVal > 0) remAll += remVal;
+                const name = (d.n || "").trim();
+                const phone = (d.p || "").trim();
+                const notes = (d.notes || "").trim();
 
-                    let remStr = remVal > 0 ? `${toArabicNums(remVal.toLocaleString())} ج.م` : "خالص ✓";
-                    const row = `
-                        <tr>
-                            <td>${d.n}</td>
-                            <td style="color:#c0392b;">${fullDate === ' /  / ' ? '---' : toArabicNums(fullDate)}</td>
-                            <td style="color:#d35400;">${toArabicNums(totalVal.toLocaleString())} ج.م</td>
-                            <td style="color:#27ae60;">${toArabicNums(pT.toLocaleString())} ج.م</td>
-                            <td style="font-weight:900; color:${remVal>0?'#c0392b':'#27ae60'};">${remStr}</td>
-                            <td style="color:#f1c40f;">${stars}</td>
-                            <td style="font-size:11px; color:#7f8c8d;">${d.notes || '---'}</td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
+                if (name !== "") {
+                    // التحقق من البحث
+                    const isMatched = name.toLowerCase().includes(q) || phone.toLowerCase().includes(q) || notes.toLowerCase().includes(q);
+                    
+                    if (isMatched) {
+                        const stars = "★".repeat(d.r) + "☆".repeat(5-d.r);
+                        const fullDate = `${d.dd || ''} / ${d.dm || ''} / ${d.dy || ''}`;
+                        let pT = 0; d.pays.forEach(p => pT += cleanNum(toEnglishNums(p.vl)));
+                        let totalVal = cleanNum(toEnglishNums(d.t));
+                        let remVal = totalVal - pT;
+                        
+                        totalAll += totalVal;
+                        paidAll += pT;
+                        if(remVal > 0) remAll += remVal;
+
+                        let remStr = remVal > 0 ? `${toArabicNums(remVal.toLocaleString())} ج.م` : "خالص ✓";
+                        const row = `
+                            <tr>
+                                <td>${d.n}</td>
+                                <td style="color:#c0392b;">${fullDate === ' /  / ' ? '---' : toArabicNums(fullDate)}</td>
+                                <td style="color:#d35400;">${toArabicNums(totalVal.toLocaleString())} ج.م</td>
+                                <td style="color:#27ae60;">${toArabicNums(pT.toLocaleString())} ج.م</td>
+                                <td style="font-weight:900; color:${remVal>0?'#c0392b':'#27ae60'};">${remStr}</td>
+                                <td style="color:#f1c40f;">${stars}</td>
+                                <td style="font-size:11px; color:#7f8c8d;">${d.notes || '---'}</td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    }
                 }
             }
         });
 
         tfoot.innerHTML = `
             <tr class="total-row">
-                <td colspan="2" style="text-align:center;">📊 الإجمالي العام لجميع الزبائن</td>
+                <td colspan="2" style="text-align:center;">📊 ${q ? 'نتائج البحث' : 'الإجمالي العام'}</td>
                 <td>${toArabicNums(totalAll.toLocaleString())} ج.م</td>
                 <td>${toArabicNums(paidAll.toLocaleString())} ج.م</td>
                 <td style="color:#c0392b;">${toArabicNums(remAll.toLocaleString())} ج.م</td>
@@ -421,13 +431,25 @@
         `;
     }
 
-    function filterCards() {
+    function filterAll() {
         let q = document.getElementById('searchInput').value.toLowerCase();
+        
+        // 1. فلترة الكروت (Grid)
         visibleCards.forEach(id => {
             const card = document.getElementById(`card-${id}`);
-            const text = card.querySelector('.c-name').value + card.querySelector('.c-phone').value;
-            card.style.display = text.toLowerCase().includes(q) ? "block" : "none";
+            const name = card.querySelector('.c-name').value.toLowerCase();
+            const phone = card.querySelector('.c-phone').value.toLowerCase();
+            const notes = card.querySelector('.c-notes').value.toLowerCase();
+            
+            if (name.includes(q) || phone.includes(q) || notes.includes(q)) {
+                card.style.display = "block";
+            } else {
+                card.style.display = "none";
+            }
         });
+
+        // 2. فلترة جدول الأرشيف
+        refreshArchive();
     }
 
     function saveFixedBtn(id) {
@@ -490,14 +512,12 @@
                 count++;
                 paid += val;
                 let dateVal = pDates[idx].value || "---";
-                // تفاصيل كل دفعة: التاريخ (ارقام) والمبلغ (ارقام وحروف)
                 paymentsList += `✅ دفعة ${count}: بتاريخ (${toArabicNums(dateVal)})%0A   💰 قيمتها: ${toArabicNums(val.toLocaleString())} ج.م%0A   📝 (${tafqit(val)})%0A`;
             }
         });
 
         const rem = total - paid;
         
-        // بناء الرسالة النهائية
         let msg = `✨ *تحية طيبة من ${coName}* ✨%0A`;
         msg += `أهلاً بك يا ${name}، إليك تقرير حسابك التفصيلي:%0A`;
         msg += `---------------------------%0A`;
