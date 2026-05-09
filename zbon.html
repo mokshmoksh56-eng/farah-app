@@ -52,7 +52,6 @@
         label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 1px; color: #444; }
         input, textarea { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e0; box-sizing: border-box; font-size: 13px; font-weight: 900; margin-bottom: 4px; font-family: inherit; }
         
-        .c-name { background-color: #f0f7ff !important; border: 1.5px solid #3c6382 !important; }
         .c-total { background-color: #fffdf0 !important; border: 1.5px solid #f39c12 !important; color: #d35400 !important; font-size: 16px !important; }
         
         .date-input-group { display: flex; align-items: center; background: #fff0f0; border: 1.5px solid #e74c3c; border-radius: 8px; padding: 2px 5px; direction: rtl; }
@@ -64,29 +63,22 @@
         .rating-area label { font-size: 20px; color: #ccc; cursor: pointer; }
         .rating-area input:checked ~ label { color: var(--star-color); }
 
+        .tafqit-mini { font-size: 9px; color: #3c6382; margin-bottom: 5px; font-weight: normal; min-height: 10px; }
         .tafqit-box { background: rgba(238, 247, 255, 0.9); color: #0a3d62; padding: 4px 6px; border-radius: 6px; font-size: 10px; font-weight: 800; border-right: 3px solid var(--accent); margin-bottom: 8px; min-height: 12px; }
         
         .payment-section { background: rgba(255,255,255,0.4); padding: 8px; border-radius: 12px; border: 1px dashed #aaa; margin-bottom: 8px; }
-        .pay-row { display: grid; grid-template-columns: 100px 1fr; gap: 5px; margin-bottom: 3px; }
+        .pay-row-group { margin-bottom: 6px; }
+        .pay-row { display: grid; grid-template-columns: 100px 1fr; gap: 5px; }
 
-        .result-box { background: var(--primary); color: white; padding: 10px; border-radius: 12px; text-align: center; }
-        
-        /* الأرشيف */
+        .result-box { background: var(--primary); color: white; padding: 10px; border-radius: 12px; text-align: center; min-height: 40px; display: flex; flex-direction: column; justify-content: center; }
+        .num { font-size: 18px; font-weight: 900; }
+
         .archive-section { max-width: 1100px; margin: 30px auto; padding: 0 10px; }
         .archive-header { background: #2c3e50; color: #ecf0f1; padding: 10px 15px; border-radius: 12px 12px 0 0; font-size: 16px; font-weight: 900; }
         .archive-table-container { background: white; border-radius: 0 0 12px 12px; overflow-x: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
         th { background: #f8f9fa; padding: 10px; text-align: right; font-size: 11px; border-bottom: 2px solid #dee2e6; color: #666; }
         td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #eee; white-space: nowrap; }
-        .archive-stars { color: var(--star-color); font-size: 14px; }
-        .archive-date { color: #c0392b; font-weight: bold; font-size: 12px; }
-        .archive-val { font-weight: bold; }
-        .archive-val.total { color: #d35400; }
-        .archive-val.paid { color: var(--success); }
-        .archive-val.rem { font-weight: 900; }
-        .archive-val.rem.red { color: var(--danger); }
-        .archive-val.rem.green { color: var(--success); }
-        .archive-notes { font-size: 11px; color: #7f8c8d; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 
         .btn-add-client { position: fixed; bottom: 20px; right: 20px; background: #1abc9c; color: white; width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 100; }
         
@@ -117,14 +109,13 @@
 </div>
 
 <div class="stats-bar">
-    <div class="stat-card"><h4>إجمالي الديون</h4><div id="stat-debt">0</div></div>
-    <div class="stat-card"><h4>العملاء</h4><div id="stat-cust">0</div></div>
-    <div class="stat-card"><h4>الخالص</h4><div id="stat-paid">0</div></div>
+    <div class="stat-card"><h4>إجمالي الديون</h4><div id="stat-debt">٠</div></div>
+    <div class="stat-card"><h4>العملاء</h4><div id="stat-cust">٠</div></div>
+    <div class="stat-card"><h4>الخالص</h4><div id="stat-paid">٠</div></div>
 </div>
 
 <div class="grid" id="mainGrid"></div>
 
-<!-- سجل الأرشيف المحدث -->
 <div class="archive-section">
     <div class="archive-header">🗄️ سجل العملاء (الأرشيف المالي)</div>
     <div class="archive-table-container">
@@ -148,6 +139,11 @@
 <button class="btn-add-client" onclick="addNewCard()" title="إضافة عميل جديد">+</button>
 
 <script>
+    function cleanNum(n) {
+        let num = parseFloat(n);
+        return isNaN(num) ? 0 : num;
+    }
+
     function toArabicNums(str) {
         if(!str && str !== 0) return "";
         const id = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
@@ -155,7 +151,7 @@
     }
 
     function toEnglishNums(str) {
-        if(!str) return "0";
+        if(!str) return "";
         const arabicNums = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
         let s = str.toString();
         for (let i = 0; i < 10; i++) s = s.replace(arabicNums[i], i);
@@ -234,14 +230,17 @@
                 ${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${i}" name="rating-${i}" value="${s}" onclick="updateLogic(${i})"><label for="star${s}-${i}">★</label>`).join('')}
             </div>
 
-            <label>💰 الإجمالي:</label><input type="text" class="c-total" oninput="forceEnglishNumbers(this); updateLogic(${i})">
+            <label>💰 الإجمالي:</label><input type="text" class="c-total" placeholder="أدخل الإجمالي..." oninput="forceEnglishNumbers(this); updateLogic(${i})">
             <div class="tafqit-box" id="tafqit-total-${i}"></div>
             
             <div class="payment-section">
                 ${[1,2,3,4].map(n => `
-                    <div class="pay-row">
-                        <input type="date" class="p-date" oninput="updateLogic(${i})">
-                        <input type="text" class="p-val" placeholder="المبلغ" oninput="forceEnglishNumbers(this); updateLogic(${i})">
+                    <div class="pay-row-group">
+                        <div class="pay-row">
+                            <input type="date" class="p-date" oninput="updateLogic(${i})">
+                            <input type="text" class="p-val" placeholder="المبلغ" oninput="forceEnglishNumbers(this); updateLogic(${i})">
+                        </div>
+                        <div class="tafqit-mini" id="tafqit-pay-${i}-${n}"></div>
                     </div>
                 `).join('')}
             </div>
@@ -249,8 +248,8 @@
             <textarea class="c-notes" placeholder="ملاحظات العميل..." style="min-height:40px;" oninput="updateLogic(${i})"></textarea>
 
             <div class="result-box">
-                <div class="num" id="rem-n-${i}">0 ج.م</div>
-                <div id="rem-w-${i}" style="font-size:10px; color:#00d2ff;">--</div>
+                <div class="num" id="rem-n-${i}">--</div>
+                <div id="rem-w-${i}" style="font-size:10px; color:#00d2ff;"></div>
             </div>
             
             <div class="card-footer">
@@ -269,6 +268,7 @@
                 visibleCards.push(i);
                 document.getElementById(`card-${i}`).classList.add('visible');
                 localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
+                refreshArchive();
                 return;
             }
         }
@@ -285,16 +285,40 @@
 
     function updateLogic(id) {
         const card = document.getElementById(`card-${id}`);
-        const total = parseFloat(toEnglishNums(card.querySelector('.c-total').value)) || 0;
-        let paid = 0;
-        card.querySelectorAll('.p-val').forEach(p => paid += parseFloat(toEnglishNums(p.value)) || 0);
+        const totalStr = toEnglishNums(card.querySelector('.c-total').value);
+        const total = cleanNum(totalStr);
+        
+        document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? tafqit(total) : "";
 
-        document.getElementById(`tafqit-total-${id}`).innerText = tafqit(total);
+        let paid = 0;
+        let hasPayments = false;
+        const payInputs = card.querySelectorAll('.p-val');
+        
+        payInputs.forEach((p, index) => {
+            let val = cleanNum(toEnglishNums(p.value));
+            if (val > 0) {
+                hasPayments = true;
+                document.getElementById(`tafqit-pay-${id}-${index+1}`).innerText = tafqit(val);
+            } else {
+                document.getElementById(`tafqit-pay-${id}-${index+1}`).innerText = "";
+            }
+            paid += val;
+        });
+
         const rem = total - paid;
-        document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString()} ج.م`;
-        document.getElementById(`rem-w-${id}`).innerText = total > 0 ? (rem > 0 ? tafqit(rem) : (rem === 0 ? "خالس السداد ✓" : "زيادة")) : "--";
+        const remDisplay = document.getElementById(`rem-n-${id}`);
+        const remWords = document.getElementById(`rem-w-${id}`);
+
+        if (totalStr === "" && !hasPayments) {
+            remDisplay.innerText = "--";
+            remWords.innerText = "";
+        } else {
+            remDisplay.innerText = `المتبقي: ${toArabicNums(rem.toLocaleString())} ج.م`;
+            remWords.innerText = total > 0 ? (rem > 0 ? tafqit(rem) : (rem === 0 ? "خالص السداد ✓" : "زيادة")) : "";
+        }
 
         if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
+        
         saveToLocal(id);
         refreshStats();
         refreshArchive();
@@ -311,9 +335,9 @@
             r: card.querySelector(`input[name="rating-${id}"]:checked`)?.value || 0,
             t: card.querySelector('.c-total').value,
             notes: card.querySelector('.c-notes').value,
-            pays: Array.from(card.querySelectorAll('.pay-row')).map(r => ({
-                dt: r.querySelector('.p-date').value,
-                vl: r.querySelector('.p-val').value
+            pays: Array.from(card.querySelectorAll('.p-val')).map((p, idx) => ({
+                dt: card.querySelectorAll('.p-date')[idx].value,
+                vl: p.value
             }))
         };
         localStorage.setItem(`azemaa_pro_v5_${id}`, JSON.stringify(data));
@@ -327,45 +351,44 @@
                 const d = JSON.parse(s);
                 if (d.n) {
                     cust++;
-                    let pT = 0; d.pays.forEach(p => pT += parseFloat(toEnglishNums(p.vl)) || 0);
-                    let rem = (parseFloat(toEnglishNums(d.t)) || 0) - pT;
+                    let pT = 0; d.pays.forEach(p => pT += cleanNum(toEnglishNums(p.vl)));
+                    let total = cleanNum(toEnglishNums(d.t));
+                    let rem = total - pT;
                     if (rem > 0) debt += rem;
-                    if (rem <= 0 && parseFloat(toEnglishNums(d.t)) > 0) paidCount++;
+                    if (rem <= 0 && total > 0) paidCount++;
                 }
             }
         });
-        document.getElementById('stat-debt').innerText = debt.toLocaleString() + ' ج.م';
-        document.getElementById('stat-cust').innerText = cust;
-        document.getElementById('stat-paid').innerText = paidCount;
+        document.getElementById('stat-debt').innerText = toArabicNums(debt.toLocaleString());
+        document.getElementById('stat-cust').innerText = toArabicNums(cust);
+        document.getElementById('stat-paid').innerText = toArabicNums(paidCount);
     }
 
     function refreshArchive() {
         const tbody = document.getElementById('archiveBody');
+        if (!tbody) return;
         tbody.innerHTML = "";
+        
         visibleCards.forEach(i => {
             const s = localStorage.getItem(`azemaa_pro_v5_${i}`);
             if (s) {
                 const d = JSON.parse(s);
-                if (d.n) {
+                if (d.n && d.n.trim() !== "") {
                     const stars = "★".repeat(d.r) + "☆".repeat(5-d.r);
                     const fullDate = `${d.dd || ''} / ${d.dm || ''} / ${d.dy || ''}`;
-                    
-                    let pT = 0; d.pays.forEach(p => pT += parseFloat(toEnglishNums(p.vl)) || 0);
-                    let totalVal = parseFloat(toEnglishNums(d.t)) || 0;
+                    let pT = 0; d.pays.forEach(p => pT += cleanNum(toEnglishNums(p.vl)));
+                    let totalVal = cleanNum(toEnglishNums(d.t));
                     let remVal = totalVal - pT;
-                    
                     let remStr = remVal > 0 ? `${toArabicNums(remVal.toLocaleString())} ج.م` : "خالص ✓";
-                    let remClass = remVal > 0 ? "red" : "green";
-
                     const row = `
                         <tr>
                             <td>${d.n}</td>
-                            <td class="archive-date">${fullDate === ' /  / ' ? '---' : toArabicNums(fullDate)}</td>
-                            <td class="archive-val total">${toArabicNums(totalVal.toLocaleString())} ج.م</td>
-                            <td class="archive-val paid">${toArabicNums(pT.toLocaleString())} ج.م</td>
-                            <td class="archive-val rem ${remClass}">${remStr}</td>
-                            <td class="archive-stars">${stars}</td>
-                            <td class="archive-notes" title="${d.notes}">${d.notes || '---'}</td>
+                            <td style="color:#c0392b;">${fullDate === ' /  / ' ? '---' : toArabicNums(fullDate)}</td>
+                            <td style="color:#d35400;">${toArabicNums(totalVal.toLocaleString())} ج.م</td>
+                            <td style="color:#27ae60;">${toArabicNums(pT.toLocaleString())} ج.م</td>
+                            <td style="font-weight:900; color:${remVal>0?'#c0392b':'#27ae60'};">${remStr}</td>
+                            <td style="color:#f1c40f;">${stars}</td>
+                            <td style="font-size:11px; color:#7f8c8d;">${d.notes || '---'}</td>
                         </tr>
                     `;
                     tbody.innerHTML += row;
@@ -392,7 +415,6 @@
     window.onload = () => {
         const savedCo = localStorage.getItem('azemaa_company_name');
         if(savedCo) document.getElementById('companyNameInput').value = savedCo;
-
         visibleCards.forEach(i => {
             const s = localStorage.getItem(`azemaa_pro_v5_${i}`);
             if (s) {
@@ -400,36 +422,35 @@
                 const card = document.getElementById(`card-${i}`);
                 card.querySelector('.c-name').value = d.n || '';
                 card.querySelector('.c-phone').value = d.p || '';
-                if(d.dy) card.querySelector('.d-year').value = d.dy;
-                if(d.dm) card.querySelector('.d-month').value = d.dm;
-                if(d.dd) card.querySelector('.d-day').value = d.dd;
+                card.querySelector('.d-year').value = d.dy || '';
+                card.querySelector('.d-month').value = d.dm || '';
+                card.querySelector('.d-day').value = d.dd || '';
                 if (d.r) { const rb = document.getElementById(`star${d.r}-${i}`); if(rb) rb.checked = true; }
                 card.querySelector('.c-total').value = d.t || '';
                 card.querySelector('.c-notes').value = d.notes || '';
-                const rows = card.querySelectorAll('.pay-row');
-                if (d.pays) d.pays.forEach((p, idx) => { if(rows[idx]) { rows[idx].querySelector('.p-date').value = p.dt; rows[idx].querySelector('.p-val').value = p.vl; }});
+                const pValInputs = card.querySelectorAll('.p-val');
+                const pDateInputs = card.querySelectorAll('.p-date');
+                if (d.pays) d.pays.forEach((p, idx) => { 
+                    if(pValInputs[idx]) pValInputs[idx].value = p.vl;
+                    if(pDateInputs[idx]) pDateInputs[idx].value = p.dt;
+                });
                 updateLogic(i);
             }
         });
-        refreshStats();
-        refreshArchive();
     };
 
     function sendWA(id) {
         const card = document.getElementById(`card-${id}`);
         const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
-        const total = parseFloat(toEnglishNums(card.querySelector('.c-total').value)) || 0;
+        const total = cleanNum(toEnglishNums(card.querySelector('.c-total').value));
         const coName = document.getElementById('companyNameInput').value || "إدارة الحسابات";
         const fullDate = `${card.querySelector('.d-day').value} / ${card.querySelector('.d-month').value} / ${card.querySelector('.d-year').value}`;
-
         if (!phone) { alert("أدخل الرقم!"); return; }
-
         let paid = 0;
-        card.querySelectorAll('.p-val').forEach(p => paid += parseFloat(toEnglishNums(p.value)) || 0);
+        card.querySelectorAll('.p-val').forEach(p => paid += cleanNum(toEnglishNums(p.value)));
         const rem = total - paid;
-        
-        let msg = `*${coName}*%0A---------------------------%0A👤 العميل: ${name}%0A📅 موعد الاستلام: ${toArabicNums(fullDate)}%0A💰 الإجمالي: ${toArabicNums(total)} ج.م%0A💵 المتبقي: ${toArabicNums(rem.toLocaleString())} ج.م%0A📑 فقط: ${tafqit(rem)}%0A---------------------------%0Aشكراً لتعاملكم معنا ✨`;
+        let msg = `*${coName}*%0A---------------------------%0A👤 العميل: ${name}%0A📅 موعد الاستلام: ${toArabicNums(fullDate)}%0A💰 الإجمالي: ${toArabicNums(total.toLocaleString())} ج.م%0A💵 المتبقي: ${toArabicNums(rem.toLocaleString())} ج.م%0A📑 فقط: ${tafqit(rem)}%0A---------------------------%0Aشكراً لتعاملكم معنا ✨`;
         window.open(`https://wa.me/2${phone.trim()}?text=${msg}`, '_blank');
     }
 
