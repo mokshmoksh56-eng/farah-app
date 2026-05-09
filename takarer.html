@@ -28,7 +28,7 @@
 
 <div class="header">
     <h1 id="dynamic-title">📊 التقرير المالي الموحد</h1>
-    <p>نظام ذكي يعمل تلقائياً لمدة 50 عاماً القادمة</p>
+    <p>نظام محاسبي يعتمد على بيانات اليومية والرواتب</p>
 </div>
 
 <div class="annual-summary">
@@ -45,19 +45,17 @@
 </div>
 
 <div class="stats-grid">
-    <div class="card"><h3>📈 كشف حركة الشهر</h3><table id="month-table"></table></div>
-    <div class="card" style="border-top-color: var(--success);"><h3>👷 حساب الرواتب</h3><table id="worker-table"></table></div>
+    <div class="card"><h3>📈 حركة المقبوضات والمصاريف</h3><table id="month-table"></table></div>
+    <div class="card" style="border-top-color: var(--success);"><h3>👷 ملخص الرواتب</h3><table id="worker-table"></table></div>
 </div>
 
 <script>
-    // إعداد السنوات تلقائياً (الحالية + 50 سنة)
     function setup() {
         const yrSel = document.getElementById('yearSelect');
         const monSel = document.getElementById('monthSelect');
         const now = new Date();
         const currentYear = now.getFullYear();
 
-        // توليد 50 سنة قادمة تلقائياً
         for(let y = currentYear - 2; y <= currentYear + 50; y++) {
             yrSel.add(new Option(`سنة ${y}`, y));
         }
@@ -77,7 +75,7 @@
 
         let stats = { in: 0, out: 0, workers: 0 };
 
-        // 1. الربط مع ملف اليومية (yom.html) باستخدام المفتاح: workshop_data
+        // 1. جلب البيانات من اليومية فقط (workshop_data)
         const workshopData = JSON.parse(localStorage.getItem('workshop_data')) || [];
         workshopData.forEach(item => {
             const d = new Date(item.date);
@@ -87,23 +85,9 @@
             }
         });
 
-        // 2. الربط مع ملف الزبائن (zbon.html) - مسح شامل للمفاتيح azemaa_pro_v5_
-        for(let i=0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if(key.startsWith('azemaa_pro_v5_')) {
-                const client = JSON.parse(localStorage.getItem(key));
-                if(client.pays) {
-                    client.pays.forEach(p => {
-                        const pd = new Date(p.dt);
-                        if(pd.getFullYear() == yr && pd.getMonth() == mon) {
-                            stats.in += (parseFloat(p.vl) || 0);
-                        }
-                    });
-                }
-            }
-        }
+        // تم حذف كود الزبائن (azemaa_pro_v5_) لمنع التكرار
 
-        // 3. الربط مع ملف العمال (gyab.html) - قراءة مفاتيح الأسابيع f_data_v2026_simple_
+        // 2. جلب رواتب العمال (gyab.html)
         Object.keys(localStorage).forEach(key => {
             if(key.startsWith('f_data_v2026_simple_')) {
                 const dateFromKey = key.replace('f_data_v2026_simple_', '');
@@ -113,7 +97,6 @@
                     weekData.forEach(w => {
                         let totalAtt = w.att.reduce((a, b) => (parseFloat(a)||0) + (parseFloat(b)||0), 0);
                         let totalLoans = w.loans.reduce((a, b) => (parseFloat(a)||0) + (parseFloat(b)||0), 0);
-                        // الحسبة: (الراتب اليومي * عدد الأيام) - السلف
                         let net = ((parseFloat(w.sal)/6) * totalAtt) - totalLoans;
                         stats.workers += (net > 0 ? net : 0);
                     });
@@ -121,7 +104,7 @@
             }
         });
 
-        // تحديث الواجهة بالأرقام النهائية
+        // تحديث الأرقام
         document.getElementById('ann-in').innerText = Math.round(stats.in).toLocaleString() + " ج.م";
         document.getElementById('ann-out').innerText = Math.round(stats.out).toLocaleString() + " ج.م";
         document.getElementById('ann-workers').innerText = Math.round(stats.workers).toLocaleString() + " ج.م";
@@ -131,15 +114,14 @@
         netEl.innerText = Math.round(netTotal).toLocaleString() + " ج.م";
         netEl.style.color = netTotal >= 0 ? "var(--success)" : "var(--danger)";
 
-        // ملخص الجداول
         document.getElementById('month-table').innerHTML = `
-            <tr><th>مقبوضات (يومية + زبائن)</th><td class="profit">${Math.round(stats.in).toLocaleString()}</td></tr>
-            <tr><th>مصروفات الورشة</th><td class="loss">${Math.round(stats.out).toLocaleString()}</td></tr>
-            <tr class="total-row"><th>الرصيد قبل الرواتب</th><td>${Math.round(stats.in - stats.out).toLocaleString()}</td></tr>
+            <tr><th>إجمالي المقبوضات</th><td class="profit">${Math.round(stats.in).toLocaleString()}</td></tr>
+            <tr><th>إجمالي المصروفات</th><td class="loss">${Math.round(stats.out).toLocaleString()}</td></tr>
+            <tr class="total-row"><th>الفائض قبل الرواتب</th><td>${Math.round(stats.in - stats.out).toLocaleString()}</td></tr>
         `;
         document.getElementById('worker-table').innerHTML = `
-            <tr><th>صافي الرواتب المدفوعة</th><td class="loss">${Math.round(stats.workers).toLocaleString()}</td></tr>
-            <tr class="total-row"><th>الربح الصافي النهائي</th><td>${Math.round(netTotal).toLocaleString()} ج.م</td></tr>
+            <tr><th>رواتب عمال مدفوعة</th><td class="loss">${Math.round(stats.workers).toLocaleString()}</td></tr>
+            <tr class="total-row"><th>الصافي النهائي</th><td>${Math.round(netTotal).toLocaleString()} ج.م</td></tr>
         `;
     }
 
