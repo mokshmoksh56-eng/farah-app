@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سجل الورشة - ملاحظات وآلة حاسبة</title>
+    <title>سجل الورشة الاحترافي</title>
     <style>
         :root {
             --bg-page: #f4f7f6;
@@ -35,7 +35,6 @@
 
         .main-content { max-width: 600px; margin: 0 auto; }
 
-        /* الكارت الرئيسي (السجل) */
         .main-record { 
             background: #fff; border-radius: 12px; margin-bottom: 25px; 
             overflow: hidden; border: 1px solid #ddd; border-top-width: 8px;
@@ -52,7 +51,6 @@
         
         .record-body { padding: 15px; }
         
-        /* بند ملاحظة داخلية */
         .note-item { 
             background: #fcfcfc; border: 1px solid #e0e0e0; border-right: 5px solid var(--deep-red);
             border-radius: 8px; padding: 12px; margin-bottom: 15px; position: relative;
@@ -90,7 +88,7 @@
             font-weight: bold; font-size: 0.85em; cursor: pointer; padding-top: 10px; border-top: 1px dashed #eee;
         }
 
-        /* --- تصميم الآلة الحاسبة المطور --- */
+        /* --- الآلة الحاسبة --- */
         .calc-bar { 
             position: fixed; left: 15px; bottom: 15px; 
             background: #333; color: #fff; 
@@ -128,9 +126,7 @@
     <div class="overlay" id="overlay"></div>
     <div class="calc-bar" onclick="toggleCalc(event)">🖩</div>
     
-    <!-- لوحة الآلة الحاسبة -->
     <div class="calc-panel" id="calcBox" onclick="event.stopPropagation();">
-        <div style="text-align: center; color: #888; margin-bottom: 10px; font-size: 0.8em;">اسحب للأسفل أو انقر خارجاً للإغلاق</div>
         <input type="text" id="display" readonly placeholder="0">
         <div class="calc-grid">
             <button class="calc-btn btn-clear" onclick="clearDisplay()">C</button>
@@ -164,9 +160,9 @@
     </main>
 
     <script>
-        const colors = ['#8b0000', '#2980b9', '#218c74', '#8e44ad', '#d35400', '#2c3e50'];
+        // تحميل البيانات عند فتح الصفحة
+        window.onload = loadData;
 
-        // --- وظائف الآلة الحاسبة ---
         function toggleCalc(e) {
             e.stopPropagation();
             const box = document.getElementById('calcBox');
@@ -191,79 +187,109 @@
             } catch { dInput.value = 'Error'; setTimeout(clearDisplay, 1000); }
         }
 
-        // --- وظائف السجلات والملاحظات ---
-        function createNoteItemHtml() {
+        function createNoteHTML(content = "", w = "", l = "", d = "", hasDims = false) {
             return `
                 <div class="note-item">
-                    <span class="delete-note-btn" onclick="confirmDeleteNote(this)">حذف البند ×</span>
+                    <span class="delete-note-btn" onclick="this.parentElement.remove()">حذف البند ×</span>
                     <label style="cursor:pointer; font-size: 0.85em; font-weight:bold;">
-                        <input type="checkbox" onchange="toggleDims(this)"> إضافة مقاسات (سم)
+                        <input type="checkbox" onchange="toggleDims(this)" ${hasDims ? 'checked' : ''}> إضافة مقاسات (سم)
                     </label>
-                    <div class="dims-area" style="display: none;">
-                        <div class="dim-box"><label>عرض</label><input type="text" placeholder="0"></div>
-                        <div class="dim-box"><label>طول</label><input type="text" placeholder="0"></div>
-                        <div class="dim-box"><label>عمق</label><input type="text" placeholder="0"></div>
+                    <div class="dims-area" style="display: ${hasDims ? 'grid' : 'none'};">
+                        <div class="dim-box"><label>عرض</label><input type="text" class="w" value="${w}" placeholder="0"></div>
+                        <div class="dim-box"><label>طول</label><input type="text" class="l" value="${l}" placeholder="0"></div>
+                        <div class="dim-box"><label>عمق</label><input type="text" class="d" value="${d}" placeholder="0"></div>
                     </div>
-                    <div class="text-editor" contenteditable="true" data-placeholder="اكتب تفاصيل الملاحظة هنا..."></div>
+                    <div class="text-editor" contenteditable="true">${content}</div>
                 </div>`;
         }
 
         function addNewRecord() {
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            const record = document.createElement('div');
-            record.className = 'main-record';
-            record.style.borderTopColor = randomColor;
-            
-            const now = new Date();
-            const dateStr = now.toISOString().split('T')[0];
-
-            record.innerHTML = `
-                <div class="record-header">
-                    <span class="label-guide">📌 العنوان / اسم الزبون:</span>
-                    <input type="text" class="input-field name-in" placeholder="مثلاً: مطبخ خشب - محمد علي">
-                    <span class="label-guide">📅 التاريخ:</span>
-                    <input type="date" class="input-field date-in" value="${dateStr}">
-                </div>
-                <div class="record-body">
-                    <div class="notes-container">${createNoteItemHtml()}</div>
-                    <div class="controls">
-                        <button class="btn-save" onclick="handleSave(this)">حفظ السجل ✅</button>
-                        <button class="btn-add-note" onclick="addNoteItem(this)">+ ملحوظة إضافية</button>
+            const container = document.getElementById('main-list');
+            const dateStr = new Date().toISOString().split('T')[0];
+            const recordHTML = `
+                <div class="main-record" style="border-top-color: #8b0000">
+                    <div class="record-header">
+                        <span class="label-guide">📌 العنوان / اسم الزبون:</span>
+                        <input type="text" class="input-field name-in" placeholder="مثلاً: مطبخ خشب - محمد علي">
+                        <span class="label-guide">📅 التاريخ:</span>
+                        <input type="date" class="input-field date-in" value="${dateStr}">
                     </div>
-                    <span class="remove-record-link" onclick="confirmDeleteRecord(this)">إلغاء السجل بالكامل</span>
+                    <div class="record-body">
+                        <div class="notes-container">${createNoteHTML()}</div>
+                        <div class="controls">
+                            <button class="btn-save" onclick="saveAll()">حفظ التغييرات ✅</button>
+                            <button class="btn-add-note" onclick="addNoteItem(this)">+ ملحوظة إضافية</button>
+                        </div>
+                        <span class="remove-record-link" onclick="deleteRecord(this)">إلغاء السجل بالكامل</span>
+                    </div>
                 </div>`;
-            document.getElementById('main-list').prepend(record);
-        }
-
-        function confirmDeleteNote(btn) {
-            if(confirm("هل أنت متأكد من حذف هذا البند؟")) {
-                btn.parentElement.remove();
-            }
-        }
-
-        function confirmDeleteRecord(link) {
-            if(confirm("⚠️ تنبيه: سيتم حذف السجل بالكامل. هل تريد الاستمرار؟")) {
-                link.closest('.main-record').remove();
-            }
+            container.insertAdjacentHTML('afterbegin', recordHTML);
         }
 
         function addNoteItem(btn) {
-            const container = btn.closest('.record-body').querySelector('.notes-container');
-            container.insertAdjacentHTML('beforeend', createNoteItemHtml());
+            btn.closest('.record-body').querySelector('.notes-container').insertAdjacentHTML('beforeend', createNoteHTML());
         }
 
         function toggleDims(checkbox) {
-            const area = checkbox.parentElement.nextElementSibling;
-            area.style.display = checkbox.checked ? 'grid' : 'none';
+            checkbox.parentElement.nextElementSibling.style.display = checkbox.checked ? 'grid' : 'none';
         }
 
-        function handleSave(btn) {
-            btn.innerText = "تم الحفظ ✓";
-            btn.style.backgroundColor = "#27ae60";
-            setTimeout(() => {
-                btn.innerText = "حفظ السجل ✅";
-                btn.style.backgroundColor = "var(--success-green)";
-            }, 1500);
+        function deleteRecord(link) {
+            if(confirm("هل تريد الحذف؟")) { link.closest('.main-record').remove(); saveAll(); }
+        }
+
+        // --- وظيفة الحفظ الفعلي في ذاكرة المتصفح ---
+        function saveAll() {
+            const data = [];
+            document.querySelectorAll('.main-record').forEach(rec => {
+                const notes = [];
+                rec.querySelectorAll('.note-item').forEach(n => {
+                    notes.push({
+                        hasDims: n.querySelector('input[type="checkbox"]').checked,
+                        w: n.querySelector('.w').value,
+                        l: n.querySelector('.l').value,
+                        d: n.querySelector('.d').value,
+                        text: n.querySelector('.text-editor').innerHTML
+                    });
+                });
+                data.push({
+                    name: rec.querySelector('.name-in').value,
+                    date: rec.querySelector('.date-in').value,
+                    notes: notes
+                });
+            });
+            localStorage.setItem('workshop_data', JSON.stringify(data));
+            alert("تم الحفظ بنجاح في ذاكرة الجهاز!");
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('workshop_data');
+            if(!saved) return;
+            const data = JSON.parse(saved);
+            const container = document.getElementById('main-list');
+            data.forEach(item => {
+                let notesHTML = "";
+                item.notes.forEach(n => {
+                    notesHTML += createNoteHTML(n.text, n.w, n.l, n.d, n.hasDims);
+                });
+
+                const recordHTML = `
+                    <div class="main-record" style="border-top-color: #8b0000">
+                        <div class="record-header">
+                            <input type="text" class="input-field name-in" value="${item.name}">
+                            <input type="date" class="input-field date-in" value="${item.date}">
+                        </div>
+                        <div class="record-body">
+                            <div class="notes-container">${notesHTML}</div>
+                            <div class="controls">
+                                <button class="btn-save" onclick="saveAll()">حفظ التغييرات ✅</button>
+                                <button class="btn-add-note" onclick="addNoteItem(this)">+ ملحوظة إضافية</button>
+                            </div>
+                            <span class="remove-record-link" onclick="deleteRecord(this)">إلغاء السجل بالكامل</span>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', recordHTML);
+            });
         }
     </script>
 </body>
