@@ -388,7 +388,6 @@
                 const notes = (d.notes || "").trim();
 
                 if (name !== "") {
-                    // التحقق من البحث
                     const isMatched = name.toLowerCase().includes(q) || phone.toLowerCase().includes(q) || notes.toLowerCase().includes(q);
                     
                     if (isMatched) {
@@ -433,22 +432,17 @@
 
     function filterAll() {
         let q = document.getElementById('searchInput').value.toLowerCase();
-        
-        // 1. فلترة الكروت (Grid)
         visibleCards.forEach(id => {
             const card = document.getElementById(`card-${id}`);
             const name = card.querySelector('.c-name').value.toLowerCase();
             const phone = card.querySelector('.c-phone').value.toLowerCase();
             const notes = card.querySelector('.c-notes').value.toLowerCase();
-            
             if (name.includes(q) || phone.includes(q) || notes.includes(q)) {
                 card.style.display = "block";
             } else {
                 card.style.display = "none";
             }
         });
-
-        // 2. فلترة جدول الأرشيف
         refreshArchive();
     }
 
@@ -485,6 +479,7 @@
         });
     };
 
+    // الدالة المستبدلة (إرسال واتساب بتنسيق مصري)
     function sendWA(id) {
         const card = document.getElementById(`card-${id}`);
         const name = card.querySelector('.c-name').value || "عميلنا العزيز";
@@ -493,6 +488,7 @@
         const total = cleanNum(totalRaw);
         const coName = document.getElementById('companyNameInput').value || "إدارة الحسابات";
         
+        // جلب تاريخ الاستلام بتنسيق مصري (يوم/شهر/سنة)
         const d = card.querySelector('.d-day').value;
         const m = card.querySelector('.d-month').value;
         const y = card.querySelector('.d-year').value;
@@ -511,8 +507,16 @@
             if (val > 0) {
                 count++;
                 paid += val;
-                let dateVal = pDates[idx].value || "---";
-                paymentsList += `✅ دفعة ${count}: بتاريخ (${toArabicNums(dateVal)})%0A   💰 قيمتها: ${toArabicNums(val.toLocaleString())} ج.م%0A   📝 (${tafqit(val)})%0A`;
+                
+                // معالجة تاريخ الدفعة ليظهر بتنسيق يوم/شهر/سنة
+                let rawDate = pDates[idx].value; 
+                let formattedPayDate = "---";
+                if(rawDate) {
+                    let parts = rawDate.split('-');
+                    formattedPayDate = `${parts[2]}/${parts[1]}/${parts[0]}`; 
+                }
+
+                paymentsList += `✅ دفعة ${toArabicNums(count)}: بتاريخ (${toArabicNums(formattedPayDate)})%0A   💰 قيمتها: ${toArabicNums(val.toLocaleString())} ج.م%0A   📝 (${tafqit(val)})%0A`;
             }
         });
 
