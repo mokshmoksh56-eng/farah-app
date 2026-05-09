@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سجل الورشة الذكي</title>
+    <title>سجل الورشة - ملاحظات وآلة حاسبة</title>
     <style>
         :root {
             --bg-page: #f4f7f6;
@@ -35,7 +35,7 @@
 
         .main-content { max-width: 600px; margin: 0 auto; }
 
-        /* الكارت الرئيسي */
+        /* الكارت الرئيسي (السجل) */
         .main-record { 
             background: #fff; border-radius: 12px; margin-bottom: 25px; 
             overflow: hidden; border: 1px solid #ddd; border-top-width: 8px;
@@ -90,11 +90,69 @@
             font-weight: bold; font-size: 0.85em; cursor: pointer; padding-top: 10px; border-top: 1px dashed #eee;
         }
 
-        /* آلة حاسبة عائمة */
-        .calc-float { position: fixed; left: 15px; bottom: 15px; background: #333; color: #fff; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; font-size: 1.5em; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        /* --- تصميم الآلة الحاسبة المطور --- */
+        .calc-bar { 
+            position: fixed; left: 15px; bottom: 15px; 
+            background: #333; color: #fff; 
+            width: 55px; height: 55px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-size: 1.6em;
+        }
+
+        .calc-panel { 
+            position: fixed; bottom: -100%; left: 0; width: 100%; 
+            background: #fff; border-top: 5px solid var(--deep-red); 
+            transition: 0.4s ease; z-index: 1002; padding: 20px 10px; 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+            border-radius: 20px 20px 0 0;
+            box-sizing: border-box;
+        }
+        .calc-panel.active { bottom: 0; }
+
+        #display { 
+            width: 100%; height: 60px; background: #f1f2f6; border: 2px solid #ddd; 
+            font-size: 2em; padding: 0 15px; border-radius: 10px; margin-bottom: 15px; 
+            text-align: left; direction: ltr; box-sizing: border-box;
+        }
+        .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .calc-btn { padding: 15px; font-size: 1.2em; font-weight: bold; border-radius: 10px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; }
+        .btn-clear { color: #fff; background: var(--bright-red); }
+        .btn-equal { background: var(--success-green); color: #fff; grid-column: span 2; }
+        
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001; display: none; }
     </style>
 </head>
-<body>
+<body onclick="closeCalc()">
+
+    <div class="overlay" id="overlay"></div>
+    <div class="calc-bar" onclick="toggleCalc(event)">🖩</div>
+    
+    <!-- لوحة الآلة الحاسبة -->
+    <div class="calc-panel" id="calcBox" onclick="event.stopPropagation();">
+        <div style="text-align: center; color: #888; margin-bottom: 10px; font-size: 0.8em;">اسحب للأسفل أو انقر خارجاً للإغلاق</div>
+        <input type="text" id="display" readonly placeholder="0">
+        <div class="calc-grid">
+            <button class="calc-btn btn-clear" onclick="clearDisplay()">C</button>
+            <button class="calc-btn" onclick="backspace()">DEL</button>
+            <button class="calc-btn" onclick="press('/')">÷</button>
+            <button class="calc-btn" onclick="press('*')">×</button>
+            <button class="calc-btn" onclick="press('9')">9</button>
+            <button class="calc-btn" onclick="press('8')">8</button>
+            <button class="calc-btn" onclick="press('7')">7</button>
+            <button class="calc-btn" onclick="press('-')">-</button>
+            <button class="calc-btn" onclick="press('6')">6</button>
+            <button class="calc-btn" onclick="press('5')">5</button>
+            <button class="calc-btn" onclick="press('4')">4</button>
+            <button class="calc-btn" onclick="press('+')">+</button>
+            <button class="calc-btn" onclick="press('3')">3</button>
+            <button class="calc-btn" onclick="press('2')">2</button>
+            <button class="calc-btn" onclick="press('1')">1</button>
+            <button class="calc-btn" onclick="press('.')">.</button>
+            <button class="calc-btn" onclick="press('0')">0</button>
+            <button class="calc-btn btn-equal" onclick="calculate()">=</button>
+        </div>
+    </div>
 
     <header class="header-main">
         <h1>سجل ملاحظات الورشة</h1>
@@ -105,12 +163,35 @@
         <div id="main-list"></div>
     </main>
 
-    <div class="calc-float" onclick="alert('الآلة الحاسبة متوفرة في النسخة الكاملة')">🖩</div>
-
     <script>
         const colors = ['#8b0000', '#2980b9', '#218c74', '#8e44ad', '#d35400', '#2c3e50'];
 
-        // إنشاء قالب "بند ملحوظة"
+        // --- وظائف الآلة الحاسبة ---
+        function toggleCalc(e) {
+            e.stopPropagation();
+            const box = document.getElementById('calcBox');
+            const overlay = document.getElementById('overlay');
+            box.classList.toggle('active');
+            overlay.style.display = box.classList.contains('active') ? 'block' : 'none';
+        }
+
+        function closeCalc() {
+            document.getElementById('calcBox').classList.remove('active');
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        let dInput = document.getElementById('display');
+        function press(v) { dInput.value += v; }
+        function clearDisplay() { dInput.value = ''; }
+        function backspace() { dInput.value = dInput.value.slice(0, -1); }
+        function calculate() { 
+            try { 
+                let res = eval(dInput.value);
+                dInput.value = Number.isInteger(res) ? res : res.toFixed(2);
+            } catch { dInput.value = 'Error'; setTimeout(clearDisplay, 1000); }
+        }
+
+        // --- وظائف السجلات والملاحظات ---
         function createNoteItemHtml() {
             return `
                 <div class="note-item">
@@ -118,18 +199,15 @@
                     <label style="cursor:pointer; font-size: 0.85em; font-weight:bold;">
                         <input type="checkbox" onchange="toggleDims(this)"> إضافة مقاسات (سم)
                     </label>
-                    
                     <div class="dims-area" style="display: none;">
                         <div class="dim-box"><label>عرض</label><input type="text" placeholder="0"></div>
                         <div class="dim-box"><label>طول</label><input type="text" placeholder="0"></div>
                         <div class="dim-box"><label>عمق</label><input type="text" placeholder="0"></div>
                     </div>
-                    
                     <div class="text-editor" contenteditable="true" data-placeholder="اكتب تفاصيل الملاحظة هنا..."></div>
                 </div>`;
         }
 
-        // إضافة سجل (كارت) جديد
         function addNewRecord() {
             const randomColor = colors[Math.floor(Math.random() * colors.length)];
             const record = document.createElement('div');
@@ -147,34 +225,28 @@
                     <input type="date" class="input-field date-in" value="${dateStr}">
                 </div>
                 <div class="record-body">
-                    <div class="notes-container">
-                        ${createNoteItemHtml()}
-                    </div>
+                    <div class="notes-container">${createNoteItemHtml()}</div>
                     <div class="controls">
                         <button class="btn-save" onclick="handleSave(this)">حفظ السجل ✅</button>
                         <button class="btn-add-note" onclick="addNoteItem(this)">+ ملحوظة إضافية</button>
                     </div>
                     <span class="remove-record-link" onclick="confirmDeleteRecord(this)">إلغاء السجل بالكامل</span>
                 </div>`;
-            
             document.getElementById('main-list').prepend(record);
         }
 
-        // تنبيه حذف بند واحد
         function confirmDeleteNote(btn) {
-            if(confirm("هل أنت متأكد من حذف هذا البند من الملاحظة؟")) {
+            if(confirm("هل أنت متأكد من حذف هذا البند؟")) {
                 btn.parentElement.remove();
             }
         }
 
-        // تنبيه إلغاء السجل بالكامل
         function confirmDeleteRecord(link) {
-            if(confirm("⚠️ تحذير: سيتم حذف السجل بالكامل بكل ما فيه من ملاحظات. هل تريد الاستمرار؟")) {
+            if(confirm("⚠️ تنبيه: سيتم حذف السجل بالكامل. هل تريد الاستمرار؟")) {
                 link.closest('.main-record').remove();
             }
         }
 
-        // إضافة بند جديد داخل السجل
         function addNoteItem(btn) {
             const container = btn.closest('.record-body').querySelector('.notes-container');
             container.insertAdjacentHTML('beforeend', createNoteItemHtml());
@@ -186,15 +258,12 @@
         }
 
         function handleSave(btn) {
-            btn.innerText = "جاري الحفظ...";
+            btn.innerText = "تم الحفظ ✓";
+            btn.style.backgroundColor = "#27ae60";
             setTimeout(() => {
-                btn.innerText = "تم الحفظ بنجاح ✓";
-                btn.style.backgroundColor = "#27ae60";
-                setTimeout(() => {
-                    btn.innerText = "حفظ السجل ✅";
-                    btn.style.backgroundColor = "var(--success-green)";
-                }, 1500);
-            }, 500);
+                btn.innerText = "حفظ السجل ✅";
+                btn.style.backgroundColor = "var(--success-green)";
+            }, 1500);
         }
     </script>
 </body>
