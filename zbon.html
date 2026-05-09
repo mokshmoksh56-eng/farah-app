@@ -79,6 +79,9 @@
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
         th { background: #f8f9fa; padding: 10px; text-align: right; font-size: 11px; border-bottom: 2px solid #dee2e6; color: #666; }
         td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #eee; white-space: nowrap; }
+        
+        .total-row { background: #fdf9e1 !important; font-weight: 900 !important; border-top: 2px solid #0a3d62; }
+        .total-row td { color: #0a3d62; font-size: 14px; }
 
         .btn-add-client { position: fixed; bottom: 20px; right: 20px; background: #1abc9c; color: white; width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 100; }
         
@@ -132,6 +135,7 @@
                 </tr>
             </thead>
             <tbody id="archiveBody"></tbody>
+            <tfoot id="archiveFoot"></tfoot>
         </table>
     </div>
 </div>
@@ -174,7 +178,7 @@
     const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
 
     function tafqit(n) {
-        n = Math.floor(n); if (n <= 0) return '';
+        n = Math.floor(n); if (n <= 0) return 'صفر جنيهاً';
         let res = '', k = Math.floor(n / 1000);
         if (k > 0) {
             if (k === 1) res += 'ألف '; else if (k === 2) res += 'ألفان ';
@@ -366,9 +370,14 @@
 
     function refreshArchive() {
         const tbody = document.getElementById('archiveBody');
+        const tfoot = document.getElementById('archiveFoot');
         if (!tbody) return;
         tbody.innerHTML = "";
         
+        let totalAll = 0;
+        let paidAll = 0;
+        let remAll = 0;
+
         visibleCards.forEach(i => {
             const s = localStorage.getItem(`azemaa_pro_v5_${i}`);
             if (s) {
@@ -379,6 +388,11 @@
                     let pT = 0; d.pays.forEach(p => pT += cleanNum(toEnglishNums(p.vl)));
                     let totalVal = cleanNum(toEnglishNums(d.t));
                     let remVal = totalVal - pT;
+                    
+                    totalAll += totalVal;
+                    paidAll += pT;
+                    if(remVal > 0) remAll += remVal;
+
                     let remStr = remVal > 0 ? `${toArabicNums(remVal.toLocaleString())} ج.م` : "خالص ✓";
                     const row = `
                         <tr>
@@ -395,6 +409,16 @@
                 }
             }
         });
+
+        tfoot.innerHTML = `
+            <tr class="total-row">
+                <td colspan="2" style="text-align:center;">📊 الإجمالي العام لجميع الزبائن</td>
+                <td>${toArabicNums(totalAll.toLocaleString())} ج.م</td>
+                <td>${toArabicNums(paidAll.toLocaleString())} ج.م</td>
+                <td style="color:#c0392b;">${toArabicNums(remAll.toLocaleString())} ج.م</td>
+                <td colspan="2"></td>
+            </tr>
+        `;
     }
 
     function filterCards() {
@@ -443,14 +467,61 @@
         const card = document.getElementById(`card-${id}`);
         const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
-        const total = cleanNum(toEnglishNums(card.querySelector('.c-total').value));
+        const totalRaw = toEnglishNums(card.querySelector('.c-total').value);
+        const total = cleanNum(totalRaw);
         const coName = document.getElementById('companyNameInput').value || "إدارة الحسابات";
-        const fullDate = `${card.querySelector('.d-day').value} / ${card.querySelector('.d-month').value} / ${card.querySelector('.d-year').value}`;
-        if (!phone) { alert("أدخل الرقم!"); return; }
+        
+        const d = card.querySelector('.d-day').value;
+        const m = card.querySelector('.d-month').value;
+        const y = card.querySelector('.d-year').value;
+        const fullDate = (d && m && y) ? `${d}/${m}/${y}` : "غير محدد";
+
+        if (!phone) { alert("أدخل رقم الهاتف أولاً!"); return; }
+
         let paid = 0;
-        card.querySelectorAll('.p-val').forEach(p => paid += cleanNum(toEnglishNums(p.value)));
+        let paymentsList = "";
+        const pVals = card.querySelectorAll('.p-val');
+        const pDates = card.querySelectorAll('.p-date');
+        
+        let count = 0;
+        pVals.forEach((p, idx) => {
+            let val = cleanNum(toEnglishNums(p.value));
+            if (val > 0) {
+                count++;
+                paid += val;
+                let dateVal = pDates[idx].value || "---";
+                // تفاصيل كل دفعة: التاريخ (ارقام) والمبلغ (ارقام وحروف)
+                paymentsList += `✅ دفعة ${count}: بتاريخ (${toArabicNums(dateVal)})%0A   💰 قيمتها: ${toArabicNums(val.toLocaleString())} ج.م%0A   📝 (${tafqit(val)})%0A`;
+            }
+        });
+
         const rem = total - paid;
-        let msg = `*${coName}*%0A---------------------------%0A👤 العميل: ${name}%0A📅 موعد الاستلام: ${toArabicNums(fullDate)}%0A💰 الإجمالي: ${toArabicNums(total.toLocaleString())} ج.م%0A💵 المتبقي: ${toArabicNums(rem.toLocaleString())} ج.م%0A📑 فقط: ${tafqit(rem)}%0A---------------------------%0Aشكراً لتعاملكم معنا ✨`;
+        
+        // بناء الرسالة النهائية
+        let msg = `✨ *تحية طيبة من ${coName}* ✨%0A`;
+        msg += `أهلاً بك يا ${name}، إليك تقرير حسابك التفصيلي:%0A`;
+        msg += `---------------------------%0A`;
+        msg += `👤 *العميل:* ${name}%0A`;
+        msg += `📅 *موعد الاستلام:* ${toArabicNums(fullDate)}%0A`;
+        msg += `💰 *الإجمالي:* ${toArabicNums(total.toLocaleString())} ج.م%0A`;
+        msg += `📄 *فقط:* ${tafqit(total)}%0A`;
+        msg += `---------------------------%0A`;
+        
+        if (count > 0) {
+            msg += `💳 *المدفوعات السابقة:*%0A${paymentsList}`;
+            msg += `---------------------------%0A`;
+        }
+
+        if (rem > 0) {
+            msg += `💵 *المتبقي للسداد:* ${toArabicNums(rem.toLocaleString())} ج.م%0A`;
+            msg += `📑 *فقط:* ${tafqit(rem)}%0A`;
+        } else if (total > 0 && rem <= 0) {
+            msg += `✅ *حالة الحساب:* خالص السداد، شكراً لتعاملك معنا!%0A`;
+        }
+
+        msg += `---------------------------%0A`;
+        msg += `نعتز بخدمتكم دائماً، *${coName}* ✨`;
+
         window.open(`https://wa.me/2${phone.trim()}?text=${msg}`, '_blank');
     }
 
