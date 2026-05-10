@@ -3,129 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>التقرير المالي الذكي | 50 عاماً</title>
+    <title>التقرير المالي الذكي - النسخة الأونلاين</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+
     <style>
         :root { --primary: #0f172a; --success: #059669; --danger: #dc2626; --accent: #2563eb; --bg: #f1f5f9; --warning: #fbbf24; }
+        * { box-sizing: border-box; font-weight: 900 !important; }
         body { font-family: 'Cairo', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--primary); }
         .header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 25px; }
-        .annual-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; padding: 20px; background: white; border-radius: 20px; text-align: center; margin-bottom: 25px; border-top: 6px solid var(--warning); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .ann-box span { display: block; font-size: 0.9rem; color: #64748b; font-weight: 700; }
-        .ann-box strong { font-size: 1.3rem; display: block; margin-top: 5px; }
-        .control-panel { background: white; padding: 20px; border-radius: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 15px; margin-bottom: 30px; }
-        select, button { padding: 12px 20px; border-radius: 10px; border: 2px solid #e2e8f0; font-family: 'Cairo'; font-weight: 700; cursor: pointer; }
-        .refresh-btn { background: var(--accent); color: white; border: none; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: white; padding: 25px; border-radius: 20px; border-top: 6px solid var(--accent); }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: right; padding: 12px; background: #f8fafc; color: #64748b; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 800; }
-        .profit { color: var(--success); } .loss { color: var(--danger); }
-        .total-row { background: var(--primary); color: white; }
+        
+        .annual-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; padding: 20px; background: white; border-radius: 20px; text-align: center; margin-bottom: 25px; border-top: 6px solid var(--warning); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .stat-card h3 { margin: 0; font-size: 14px; color: #64748b; }
+        .stat-card p { margin: 10px 0 0; font-size: 20px; font-weight: 900; }
+
+        .selector-area { background: white; padding: 20px; border-radius: 20px; margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; }
+        select { padding: 12px 25px; border-radius: 12px; border: 2px solid #e2e8f0; font-family: inherit; font-size: 16px; cursor: pointer; outline: none; background: #f8fafc; }
+
+        .grid-main { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
+        .report-section { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+        .report-section h2 { margin-top: 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 15px; text-align: right; border-bottom: 1px solid #f1f5f9; }
+        th { color: #64748b; font-size: 14px; }
+        .profit { color: var(--success); }
+        .loss { color: var(--danger); }
+        .total-row { background: #f8fafc; font-weight: 900; }
+        
+        #loadingOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; justify-content:center; align-items:center; z-index:2000; font-size:20px; }
     </style>
 </head>
 <body>
 
+<div id="loadingOverlay">⏳ جاري جلب البيانات من السحابة...</div>
+
 <div class="header">
-    <h1 id="dynamic-title">📊 التقرير المالي الموحد</h1>
-    <p>نظام محاسبي يعتمد على بيانات اليومية والرواتب</p>
+    <h1 style="margin:0; font-size: 24px;">التقرير المالي الذكي (Online)</h1>
+    <p style="opacity: 0.8;">تحليل الميزانية والأرباح بناءً على البيانات السحابية</p>
+</div>
+
+<div class="selector-area">
+    <select id="year-select"></select>
+    <select id="month-select">
+        <option value="0">يناير</option><option value="1">فبراير</option><option value="2">مارس</option>
+        <option value="3">أبريل</option><option value="4">مايو</option><option value="5">يونيو</option>
+        <option value="6">يوليو</option><option value="7">أغسطس</option><option value="8">سبتمبر</option>
+        <option value="9">أكتوبر</option><option value="10">نوفمبر</option><option value="11">ديسمبر</option>
+    </select>
 </div>
 
 <div class="annual-summary">
-    <div class="ann-box"><span>إجمالي التحصيل (+)</span><strong class="profit" id="ann-in">0</strong></div>
-    <div class="ann-box"><span>إجمالي المصاريف (-)</span><strong class="loss" id="ann-out">0</strong></div>
-    <div class="ann-box"><span>رواتب العمال</span><strong class="loss" id="ann-workers">0</strong></div>
-    <div class="ann-box" style="background: #f0f9ff;"><span>صافي الربح</span><strong id="ann-net">0</strong></div>
+    <div class="stat-card"><h3>إجمالي المقبوضات (السنة)</h3><p id="ann-in" class="profit">0 ج.م</p></div>
+    <div class="stat-card"><h3>إجمالي المصروفات (السنة)</h3><p id="ann-out" class="loss">0 ج.م</p></div>
+    <div class="stat-card"><h3>رواتب العمال (السنة)</h3><p id="ann-workers" class="loss" style="color: #6366f1;">0 ج.م</p></div>
+    <div class="stat-card"><h3>الصافي النهائي (السنة)</h3><p id="ann-net" style="font-size: 24px;">0 ج.م</p></div>
 </div>
 
-<div class="control-panel">
-    <select id="yearSelect" onchange="updateAll()"></select>
-    <select id="monthSelect" onchange="updateAll()"></select>
-    <button onclick="updateAll()" class="refresh-btn">🔄 تحديث البيانات</button>
-</div>
-
-<div class="stats-grid">
-    <div class="card"><h3>📈 حركة المقبوضات والمصاريف</h3><table id="month-table"></table></div>
-    <div class="card" style="border-top-color: var(--success);"><h3>👷 ملخص الرواتب</h3><table id="worker-table"></table></div>
+<div class="grid-main">
+    <div class="report-section">
+        <h2>📊 حركة الشهر المختار</h2>
+        <table id="month-table"></table>
+    </div>
+    <div class="report-section">
+        <h2>👷 رواتب العمال</h2>
+        <table id="worker-table"></table>
+    </div>
 </div>
 
 <script>
-    function setup() {
-        const yrSel = document.getElementById('yearSelect');
-        const monSel = document.getElementById('monthSelect');
-        const now = new Date();
-        const currentYear = now.getFullYear();
+    // إعدادات Firebase مأخوذة بالضبط من ملف zbon
+    const firebaseConfig = {
+        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFLHpOc1M",
+        authDomain: "farah-kitchen.firebaseapp.com",
+        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
+        projectId: "farah-kitchen",
+        storageBucket: "farah-kitchen.firebasestorage.app",
+        messagingSenderId: "702572851072",
+        appId: "1:702572851072:web:320a92c9430abba6b71b65"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-        for(let y = currentYear - 2; y <= currentYear + 50; y++) {
-            yrSel.add(new Option(`سنة ${y}`, y));
+    let cloudData = { yom: [], gyab: {} };
+
+    // ملء السنوات
+    const yearSelect = document.getElementById('year-select');
+    const currentYear = new Date().getFullYear();
+    for(let i=2024; i<=2074; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.innerText = "سنة " + i;
+        if(i === currentYear) opt.selected = true;
+        yearSelect.appendChild(opt);
+    }
+    document.getElementById('month-select').value = new Date().getMonth();
+
+    // جلب البيانات من كافة الأقسام
+    async function fetchAllData() {
+        try {
+            const [yomSnap, gyabSnap] = await Promise.all([
+                db.ref('azemaa_v5/yom').once('value'),
+                db.ref('azemaa_v5/gyab').once('value')
+            ]);
+            
+            cloudData.yom = yomSnap.val() || [];
+            cloudData.gyab = gyabSnap.val() || {};
+            
+            document.getElementById('loadingOverlay').style.display = 'none';
+            calculateStats();
+        } catch (e) {
+            alert("خطأ في جلب البيانات أونلاين: " + e.message);
         }
-        yrSel.value = currentYear;
-
-        const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-        months.forEach((m, i) => monSel.add(new Option(m, i)));
-        monSel.value = now.getMonth();
-
-        updateAll();
     }
 
-    function updateAll() {
-        const yr = document.getElementById('yearSelect').value;
-        const mon = parseInt(document.getElementById('monthSelect').value);
-        document.getElementById('dynamic-title').innerText = `📊 التقرير المالي لسنة ${yr}`;
+    function calculateStats() {
+        const targetYear = parseInt(yearSelect.value);
+        const targetMonth = parseInt(document.getElementById('month-select').value);
+        
+        let stats = { in: 0, out: 0, workers: 0, mIn: 0, mOut: 0, mWorkers: 0 };
 
-        let stats = { in: 0, out: 0, workers: 0 };
-
-        // 1. جلب البيانات من اليومية فقط (workshop_data)
-        const workshopData = JSON.parse(localStorage.getItem('workshop_data')) || [];
-        workshopData.forEach(item => {
+        // 1. حساب بيانات اليومية (المقبوضات والمصروفات)
+        cloudData.yom.forEach(item => {
+            if(!item) return;
             const d = new Date(item.date);
-            if(d.getFullYear() == yr && d.getMonth() == mon) {
-                stats.in += (parseFloat(item.inVal) || 0);
-                stats.out += (parseFloat(item.outVal) || 0);
-            }
-        });
-
-        // تم حذف كود الزبائن (azemaa_pro_v5_) لمنع التكرار
-
-        // 2. جلب رواتب العمال (gyab.html)
-        Object.keys(localStorage).forEach(key => {
-            if(key.startsWith('f_data_v2026_simple_')) {
-                const dateFromKey = key.replace('f_data_v2026_simple_', '');
-                const d = new Date(dateFromKey);
-                if(d.getFullYear() == yr && d.getMonth() == mon) {
-                    const weekData = JSON.parse(localStorage.getItem(key));
-                    weekData.forEach(w => {
-                        let totalAtt = w.att.reduce((a, b) => (parseFloat(a)||0) + (parseFloat(b)||0), 0);
-                        let totalLoans = w.loans.reduce((a, b) => (parseFloat(a)||0) + (parseFloat(b)||0), 0);
-                        let net = ((parseFloat(w.sal)/6) * totalAtt) - totalLoans;
-                        stats.workers += (net > 0 ? net : 0);
-                    });
+            if(d.getFullYear() === targetYear) {
+                stats.in += (item.inVal || 0);
+                stats.out += (item.outVal || 0);
+                
+                if(d.getMonth() === targetMonth) {
+                    stats.mIn += (item.inVal || 0);
+                    stats.mOut += (item.outVal || 0);
                 }
             }
         });
 
-        // تحديث الأرقام
-        document.getElementById('ann-in').innerText = Math.round(stats.in).toLocaleString() + " ج.م";
-        document.getElementById('ann-out').innerText = Math.round(stats.out).toLocaleString() + " ج.م";
-        document.getElementById('ann-workers').innerText = Math.round(stats.workers).toLocaleString() + " ج.م";
+        // 2. حساب بيانات الرواتب (من سجلات الغياب أونلاين)
+        Object.keys(cloudData.gyab).forEach(dateKey => {
+            const d = new Date(dateKey);
+            if(d.getFullYear() === targetYear) {
+                const weekData = cloudData.gyab[dateKey];
+                Object.values(weekData).forEach(w => {
+                    const net = parseFloat(w.net_salary || 0);
+                    const paid = net > 0 ? net : 0;
+                    stats.workers += paid;
+                    if(d.getMonth() === targetMonth) stats.mWorkers += paid;
+                });
+            }
+        });
+
+        updateUI(stats);
+    }
+
+    function updateUI(s) {
+        // تحديث السنة
+        document.getElementById('ann-in').innerText = Math.round(s.in).toLocaleString() + " ج.م";
+        document.getElementById('ann-out').innerText = Math.round(s.out).toLocaleString() + " ج.م";
+        document.getElementById('ann-workers').innerText = Math.round(s.workers).toLocaleString() + " ج.م";
         
-        const netTotal = stats.in - stats.out - stats.workers;
+        const netTotal = s.in - s.out - s.workers;
         const netEl = document.getElementById('ann-net');
         netEl.innerText = Math.round(netTotal).toLocaleString() + " ج.م";
         netEl.style.color = netTotal >= 0 ? "var(--success)" : "var(--danger)";
 
+        // تحديث الشهر
         document.getElementById('month-table').innerHTML = `
-            <tr><th>إجمالي المقبوضات</th><td class="profit">${Math.round(stats.in).toLocaleString()}</td></tr>
-            <tr><th>إجمالي المصروفات</th><td class="loss">${Math.round(stats.out).toLocaleString()}</td></tr>
-            <tr class="total-row"><th>الفائض قبل الرواتب</th><td>${Math.round(stats.in - stats.out).toLocaleString()}</td></tr>
+            <tr><th>مقبوضات الشهر</th><td class="profit">${Math.round(s.mIn).toLocaleString()}</td></tr>
+            <tr><th>مصروفات الشهر</th><td class="loss">${Math.round(s.mOut).toLocaleString()}</td></tr>
+            <tr class="total-row"><th>الفائض المبدئي</th><td>${Math.round(s.mIn - s.mOut).toLocaleString()}</td></tr>
         `;
         document.getElementById('worker-table').innerHTML = `
-            <tr><th>رواتب عمال مدفوعة</th><td class="loss">${Math.round(stats.workers).toLocaleString()}</td></tr>
-            <tr class="total-row"><th>الصافي النهائي</th><td>${Math.round(netTotal).toLocaleString()} ج.م</td></tr>
+            <tr><th>رواتب مدفوعة أونلاين</th><td class="loss">${Math.round(s.mWorkers).toLocaleString()}</td></tr>
+            <tr class="total-row"><th>صافي أرباح الشهر</th><td style="color:var(--success)">${Math.round(s.mIn - s.mOut - s.mWorkers).toLocaleString()} ج.م</td></tr>
         `;
     }
 
-    window.onload = setup;
+    yearSelect.onchange = calculateStats;
+    document.getElementById('month-select').onchange = calculateStats;
+
+    // البدء
+    fetchAllData();
 </script>
 </body>
 </html>
