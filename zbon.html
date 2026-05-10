@@ -148,18 +148,19 @@
     const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
     const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
 
-    function toArabicNums(str) { return str ? str.toString().replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][+w]) : "٠"; }
-    function toEnglishNums(str) { return str ? str.toString().replace(/[٠-٩]/g, w => "٠١٢٣٤٥٦٧٨٩".indexOf(w)) : "0"; }
+    function toArabicNums(str) { return (str === "" || str === undefined || str === null) ? "" : str.toString().replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][+w]); }
+    function toEnglishNums(str) { return (str === "" || str === undefined || str === null) ? "" : str.toString().replace(/[٠-٩]/g, w => "٠١٢٣٤٥٦٧٨٩".indexOf(w)); }
 
     function tafqit(n) {
-        n = Math.floor(n); if (n <= 0) return '';
-        let res = '', k = Math.floor(n / 1000);
+        if (!n || n <= 0) return '';
+        let nInt = Math.floor(n);
+        let res = '', k = Math.floor(nInt / 1000);
         if (k > 0) {
             if (k === 1) res += 'ألف '; else if (k === 2) res += 'ألفان ';
             else if (k <= 10) res += units[k] + ' آلاف '; else res += tafqitBasic(k) + ' ألفاً ';
-            n %= 1000;
+            nInt %= 1000;
         }
-        res += tafqitBasic(n);
+        res += tafqitBasic(nInt);
         return `فقط ${res.trim()} جنيهاً لا غير`;
     }
     
@@ -239,14 +240,16 @@
     function updateLogic(id) {
         const card = document.getElementById(`card-${id}`);
         if(!card) return;
-        const totalVal = parseFloat(toEnglishNums(card.querySelector('.c-total').value)) || 0;
-        document.getElementById(`tafqit-total-${id}`).innerText = tafqit(totalVal);
+        const totalText = toEnglishNums(card.querySelector('.c-total').value);
+        const totalVal = totalText === "" ? 0 : parseFloat(totalText);
+        document.getElementById(`tafqit-total-${id}`).innerText = totalVal > 0 ? tafqit(totalVal) : "";
         
         let paidTotal = 0;
         card.querySelectorAll('.p-val').forEach((vInput, i) => {
-            const v = parseFloat(toEnglishNums(vInput.value)) || 0;
+            const vText = toEnglishNums(vInput.value);
+            const v = vText === "" ? 0 : parseFloat(vText);
             paidTotal += v;
-            document.getElementById(`tafqit-pay-${id}-${i}`).innerText = tafqit(v);
+            document.getElementById(`tafqit-pay-${id}-${i}`).innerText = v > 0 ? tafqit(v) : "";
         });
         
         const rem = totalVal - paidTotal;
@@ -266,8 +269,13 @@
         document.querySelectorAll('.card').forEach(card => {
             const id = card.id.replace('card-', '');
             const name = card.querySelector('.c-name').value || "بدون اسم";
-            const tVal = parseFloat(toEnglishNums(card.querySelector('.c-total').value)) || 0;
-            let pVal = 0; card.querySelectorAll('.p-val').forEach(v => pVal += parseFloat(toEnglishNums(v.value)) || 0);
+            const tText = toEnglishNums(card.querySelector('.c-total').value);
+            const tVal = tText === "" ? 0 : parseFloat(tText);
+            let pVal = 0; 
+            card.querySelectorAll('.p-val').forEach(v => {
+                const vt = toEnglishNums(v.value);
+                pVal += vt === "" ? 0 : parseFloat(vt);
+            });
             const rVal = tVal - pVal;
             const date = `${card.querySelector('.d-day').value || "--"}/${card.querySelector('.d-month').value || "--"}`;
             const rating = card.querySelector(`input[name="rate-${id}"]:checked`)?.value || 0;
@@ -276,8 +284,8 @@
             summaryBody.insertAdjacentHTML('beforeend', `
                 <tr onclick="document.getElementById('card-${id}').scrollIntoView({behavior:'smooth'})">
                     <td style="color:var(--primary)">${name}</td>
-                    <td>${toArabicNums(tVal.toLocaleString())}</td>
-                    <td style="color:var(--success)">${toArabicNums(pVal.toLocaleString())}</td>
+                    <td>${tVal > 0 ? toArabicNums(tVal.toLocaleString()) : "٠"}</td>
+                    <td style="color:var(--success)">${pVal > 0 ? toArabicNums(pVal.toLocaleString()) : "٠"}</td>
                     <td style="color:var(--danger)">${toArabicNums(rVal.toLocaleString())}</td>
                     <td>${toArabicNums(date)}</td>
                     <td style="color:#f1c40f">${"⭐".repeat(rating)}</td>
@@ -299,18 +307,18 @@
         const company = document.getElementById('companyNameInput').value;
         const name = card.querySelector('.c-name').value || "العميل";
         const phone = toEnglishNums(card.querySelector('.c-phone').value);
-        const total = card.querySelector('.c-total').value || "٠";
-        const totalVal = parseFloat(toEnglishNums(total)) || 0;
+        const total = toEnglishNums(card.querySelector('.c-total').value);
+        const totalVal = total === "" ? 0 : parseFloat(total);
         const totalW = tafqit(totalVal);
         
         let paidTotal = 0;
         let paysMsg = "";
         
         card.querySelectorAll('.pay-row').forEach((row, i) => {
-            const val = row.querySelector('.p-val').value;
+            const valText = toEnglishNums(row.querySelector('.p-val').value);
             const date = row.querySelector('.p-date').value;
-            if (val && parseFloat(toEnglishNums(val)) > 0) {
-                const valNum = parseFloat(toEnglishNums(val));
+            if (valText !== "" && parseFloat(valText) > 0) {
+                const valNum = parseFloat(valText);
                 paidTotal += valNum;
                 const dText = date ? toArabicNums(date.split('-').reverse().join('/')) : "----/--/--";
                 paysMsg += `📍 *الدفعة (${toArabicNums(i+1)}):* ${toArabicNums(valNum.toLocaleString())} ج.م بتاريخ ${dText}\n`;
@@ -378,7 +386,11 @@
         if (d.r) { const star = card.querySelector(`#star-${id}-${d.r}`); if(star) star.checked = true; }
         if(d.pays) d.pays.forEach((p, i) => {
             const row = card.querySelectorAll('.pay-row')[i];
-            if(row) { row.querySelector('.p-date').value = p.dt || ""; row.querySelector('.p-val').value = p.vl || ""; }
+            if(row) { 
+                row.querySelector('.p-date').value = p.dt || ""; 
+                // نضع القيمة كما هي في قاعدة البيانات (فارغة تظل فارغة)
+                row.querySelector('.p-val').value = p.vl || ""; 
+            }
         });
         updateLogic(id);
     }
@@ -392,9 +404,14 @@
     function refreshStats() {
         let debt = 0, cust = 0, paidC = 0;
         document.querySelectorAll('.card').forEach(c => {
-            const t = parseFloat(toEnglishNums(c.querySelector('.c-total').value)) || 0;
+            const tText = toEnglishNums(c.querySelector('.c-total').value);
+            const t = tText === "" ? 0 : parseFloat(tText);
             if(t > 0) { cust++; 
-                let p = 0; c.querySelectorAll('.p-val').forEach(v => p += parseFloat(toEnglishNums(v.value)) || 0); 
+                let p = 0; 
+                c.querySelectorAll('.p-val').forEach(v => {
+                    const vt = toEnglishNums(v.value);
+                    p += vt === "" ? 0 : parseFloat(vt);
+                }); 
                 debt += (t - p > 0 ? t - p : 0); if (t - p <= 0) paidC++;
             }
         });
