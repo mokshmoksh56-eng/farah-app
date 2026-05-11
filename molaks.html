@@ -5,112 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Azemaa Pro</title>
     <style>
-        :root { --wa-dark: #075E54; --accent: #128C7E; --edit: #2196F3; --bg: #e5ddd5; }
+        :root { --wa-dark: #075E54; --accent: #128C7E; --bg: #e5ddd5; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); }
+        .container { width: 100%; max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: #fff; }
+        .header { padding: 15px; background: var(--wa-dark); color: white; text-align: center; font-weight: bold; }
+        .chat-box { flex: 1; padding: 10px; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 10px; }
         
-        body, html { height: 100%; margin: 0; padding: 0; font-family: sans-serif; background: var(--bg); overflow: hidden; }
-
-        .chat-container { width: 100%; height: 100vh; display: flex; flex-direction: column; background: white; max-width: 500px; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-
-        .header { padding: 10px; background: var(--wa-dark); color: white; text-align: center; font-size: 1rem; font-weight: bold; }
-
-        .chat-box { flex: 1; padding: 8px; overflow-y: auto; background-color: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+        .card { background: white; padding: 12px; border-radius: 10px; border-right: 5px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .note-img { width: 100%; border-radius: 8px; margin-top: 8px; }
         
-        /* تقليل عرض الكارت قليلاً */
-        .card { 
-            background: white; padding: 10px; border-radius: 10px; 
-            border-right: 4px solid var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            width: 92%; margin: 0 auto; box-sizing: border-box;
-        }
-        
-        .client-name { color: var(--wa-dark); font-weight: 900; font-size: 1.05rem; margin-bottom: 4px; display: block; }
-        .specs-row { display: flex; gap: 4px; background: #f5f5f5; padding: 4px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 6px; }
-        .note-text { font-size: 0.95rem; margin: 5px 0; color: #333; }
-        
-        #measurePanel { display: none; background: #fff; padding: 8px; border-top: 2px solid var(--accent); }
-        .compact-row { display: flex; gap: 4px; justify-content: center; margin-bottom: 6px; }
-        .compact-input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-size: 0.9rem; font-weight: bold; max-width: 80px; }
-        
-        #pNotes { width: 100%; height: 60px; font-size: 0.9rem; border: 1px solid #ccc; border-radius: 6px; padding: 8px; box-sizing: border-box; }
-
-        .footer { padding: 8px; background: #f7f7f7; border-top: 1px solid #ddd; }
-        .bottom-bar { display: flex; align-items: center; gap: 6px; }
-        
-        .write-wrap { flex: 1; background: white; border-radius: 20px; padding: 2px 10px; border: 1px solid #ccc; display: flex; align-items: center; min-height: 40px; }
-        .write-input { flex: 1; border: none; outline: none; font-size: 0.95rem; padding: 4px; }
-        
-        .btn-icon { cursor:pointer; font-size: 1.5rem; }
+        .footer { padding: 10px; background: #f0f0f0; border-top: 1px solid #ccc; }
+        .input-row { display: flex; align-items: center; gap: 8px; }
+        .btn-camera { font-size: 1.5rem; cursor: pointer; background: #eee; padding: 8px; border-radius: 50%; }
+        .write-wrap { flex: 1; border: 1px solid #ccc; border-radius: 20px; padding: 5px 10px; background: white; }
+        .write-input { border: none; outline: none; width: 100%; padding: 5px; font-size: 1rem; }
         .btn-send { color: var(--accent); font-size: 1.8rem; cursor: pointer; }
-        
-        #imgPreview { width: 35px; height: 35px; border-radius: 6px; object-fit: cover; display: none; margin-left: 6px; }
-        .note-img { width: 100%; border-radius: 6px; margin-top: 6px; max-height: 200px; object-fit: cover; }
+        #preview { width: 40px; height: 40px; object-fit: cover; border-radius: 5px; display: none; margin-right: 5px; }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
+<div class="container">
     <div class="header">Azemaa Pro</div>
     <div id="chatBox" class="chat-box"></div>
 
     <div class="footer">
-        <div id="measurePanel">
-            <div class="compact-row">
-                <input type="number" id="cWidth" class="compact-input" placeholder="عرض">
-                <input type="number" id="cHeight" class="compact-input" placeholder="طول">
-                <input type="number" id="cDepth" class="compact-input" placeholder="عمق">
-            </div>
-            <textarea id="pNotes" placeholder="الملاحظات..."></textarea>
-        </div>
-        
-        <div class="bottom-bar">
-            <span class="btn-icon" onclick="openCamera()">📸</span>
-            <span class="btn-icon" onclick="toggleMeasure()" id="ruleIcon">📏</span>
+        <div class="input-row">
+            <!-- هذا الزر يفتح الكاميرا أو المعرض مباشرة -->
+            <div class="btn-camera" onclick="document.getElementById('fileInput').click()">📸</div>
+            <input type="file" id="fileInput" accept="image/*" capture="environment" hidden onchange="showPreview(this)">
+            
             <div class="write-wrap">
-                <img id="imgPreview" src="">
-                <input type="text" id="cName" class="write-input" placeholder="الاسم...">
+                <img id="preview" src="">
+                <input type="text" id="cName" class="write-input" placeholder="اسم العميل...">
             </div>
             <span class="btn-send" onclick="saveData()">➤</span>
         </div>
     </div>
 </div>
 
-<!-- (نفس كود الجافا سكريبت السابق يعمل هنا بنفس الكفاءة) -->
 <script>
-    // .. تم اختصار الجزء البرمجي لعدم التكرار، استخدم نفس وظائف الكود السابق ..
-    let db, tempImg = null, currentEditId = null;
-    const req = indexedDB.open("AzemaaProMobileV2", 1);
+    let db, base64Img = null;
+    const req = indexedDB.open("AzemaaProV3", 1);
     req.onupgradeneeded = e => e.target.result.createObjectStore("records", { keyPath: "id", autoIncrement: true });
     req.onsuccess = e => { db = e.target.result; loadData(); };
 
-    function toggleMeasure() {
-        const p = document.getElementById('measurePanel');
-        p.style.display = (p.style.display === 'block') ? 'none' : 'block';
-    }
-
-    async function openCamera() {
-        // يمكنك إضافة كود الكاميرا هنا كما في الإصدار السابق
-        alert("وظيفة الكاميرا جاهزة");
+    // تحويل الصورة المختارة لـ Base64
+    function showPreview(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                base64Img = e.target.result;
+                const p = document.getElementById('preview');
+                p.src = base64Img;
+                p.style.display = 'block';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
     }
 
     function saveData() {
         const name = document.getElementById('cName').value;
-        if (!name) return;
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('en-GB').split('/').reverse().join('/') + " " + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        if (!name && !base64Img) return;
         
-        const data = {
-            name: name,
-            w: document.getElementById('cWidth').value,
-            h: document.getElementById('cHeight').value,
-            d: document.getElementById('cDepth').value,
-            notes: document.getElementById('pNotes').value,
-            img: tempImg,
-            date: dateStr
-        };
-
+        const data = { name: name, img: base64Img, date: new Date().toLocaleString('ar-EG') };
         db.transaction("records", "readwrite").objectStore("records").add(data).onsuccess = () => {
-            document.querySelectorAll('input, textarea').forEach(i => i.value = "");
-            tempImg = null;
-            document.getElementById('imgPreview').style.display = 'none';
+            document.getElementById('cName').value = "";
+            document.getElementById('preview').style.display = 'none';
+            base64Img = null;
             loadData();
         };
     }
@@ -120,11 +82,10 @@
         db.transaction("records", "readonly").objectStore("records").openCursor(null, 'prev').onsuccess = e => {
             const c = e.target.result;
             if (c) {
-                const v = c.value;
                 box.innerHTML += `<div class="card">
-                    <span class="client-name">👤 ${v.name}</span>
-                    <div class="note-text">${v.notes || ""}</div>
-                    <div style="font-size:0.75rem; color:#888;">📅 ${v.date}</div>
+                    <b>${c.value.name}</b><br>
+                    ${c.value.img ? `<img src="${c.value.img}" class="note-img">` : ''}
+                    <div style="font-size:0.7rem; color:#888; margin-top:5px;">${c.value.date}</div>
                 </div>`;
                 c.continue();
             }
