@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أرشيف عزيمة برو - النسخة الكاملة</title>
+    <title>أرشيف عزيمة برو - نظام تأكيد الحذف</title>
     <style>
         :root {
             --wa-dark: #075E54;
             --wa-bg: #e5ddd5;
             --accent: #128C7E;
+            --danger: #ed4956;
         }
 
         body { 
@@ -68,6 +69,7 @@
         #camPreview { width: 100%; display: block; }
 
         .speak-btn { background: #e8f5e9; color: var(--accent); border: none; padding: 2px 8px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; cursor: pointer; margin-left: 10px; }
+        .del-action-btn { color: var(--danger); border: none; background: none; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -94,7 +96,7 @@
         <div class="tools">
             <button class="btn-tool" onclick="openCamera()" title="فتح الكاميرا">📸</button>
             <button class="btn-tool" onclick="document.getElementById('fileIn').click()" title="إرفاق صورة">🖼️</button>
-            <button class="btn-tool" onclick="clearAll()" style="color:red">🗑️</button>
+            <button class="btn-tool" onclick="confirmFullDelete()" style="color:var(--danger)">🗑️</button>
             <input type="file" id="fileIn" hidden accept="image/*" onchange="previewFile(this)">
         </div>
         <div class="input-wrap">
@@ -116,7 +118,6 @@
     };
     request.onsuccess = e => { db = e.target.result; loadData(); };
 
-    // --- تحويل النص إلى كلام ---
     function speak(text) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
@@ -172,10 +173,8 @@
     function sendEverything() {
         const input = document.getElementById('noteInput');
         if (!input.value.trim() && !tempImg) return;
-
         const now = new Date();
         const dateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} | ${now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}`;
-
         const tx = db.transaction("vault", "readwrite");
         tx.objectStore("vault").add({
             text: input.value.trim(),
@@ -210,15 +209,40 @@
                 <span>🗓️ ${d.date}</span>
                 <div>
                     ${d.text ? `<button class="speak-btn" onclick="speak('${d.text.replace(/'/g, "\\'")}')">🔊 اسمع</button>` : ''}
-                    <button style="color:red; border:none; background:none; cursor:pointer;" onclick="del(${d.id})">حذف</button>
+                    <button class="del-action-btn" onclick="confirmSingleDelete(${d.id})">حذف</button>
                 </div>
             </div>
         `;
         chatBox.appendChild(card);
     }
 
-    function del(id) { db.transaction("vault", "readwrite").objectStore("vault").delete(id).onsuccess = () => loadData(); }
-    function clearAll() { if(confirm("مسح كل الأرشيف؟")) db.transaction("vault", "readwrite").objectStore("vault").clear().onsuccess = () => loadData(); }
+    // --- وظائف تأكيد الحذف الجديدة ---
+
+    // 1. حذف ملاحظة واحدة مع تأكيد
+    function confirmSingleDelete(id) {
+        if (confirm("هل أنت متأكد من حذف هذه الملاحظة نهائياً؟")) {
+            const tx = db.transaction("vault", "readwrite");
+            tx.objectStore("vault").delete(id).onsuccess = () => {
+                loadData();
+            };
+        }
+    }
+
+    // 2. حذف الأرشيف بالكامل مع تأكيد مزدوج
+    function confirmFullDelete() {
+        const check1 = confirm("⚠️ تحذير: سيتم حذف جميع الملاحظات والصور في الأرشيف!");
+        if (check1) {
+            const check2 = confirm("هل أنت متأكد حقاً؟ لا يمكن التراجع عن هذه الخطوة.");
+            if (check2) {
+                const tx = db.transaction("vault", "readwrite");
+                tx.objectStore("vault").clear().onsuccess = () => {
+                    alert("تم تصفير الأرشيف بنجاح.");
+                    loadData();
+                };
+            }
+        }
+    }
+
     function updateCount() { db.transaction("vault", "readonly").objectStore("vault").count().onsuccess = e => document.getElementById('dbCount').innerText = e.target.result + " معلومة"; }
 </script>
 
