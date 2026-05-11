@@ -39,12 +39,12 @@
         .card { border-radius: 20px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border: 1px solid #ced4da; position: relative; display: none; transition: 0.3s; }
         .card.visible { display: block; }
         .card:nth-child(odd) { background-color: var(--bg-odd); }
-        .card:even) { background-color: var(--bg-even); }
+        .card:nth-child(even) { background-color: var(--bg-even); }
         .card:focus-within { background-color: var(--active-bg) !important; border: 3px solid var(--accent); box-shadow: var(--glow); transform: scale(1.01); z-index: 5; }
         
         .card.status-pending { border-left: 10px solid #f39c12; }
-        .card.status-received { border-left: 10px solid #27ae60; }
-        .card.status-finished { border-left: 10px solid #c0392b; }
+        .card.status-received { border-left: 10px solid #c0392b; }
+        .card.status-finished { border-left: 10px solid #27ae60; }
 
         .client-head { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px; color: var(--accent); }
         .btn-delete { background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 8px; }
@@ -61,7 +61,6 @@
         .pay-row { display: grid; grid-template-columns: 100px 1fr; gap: 5px; margin-bottom: 2px; }
         .result-box { background: var(--primary); color: white; padding: 10px; border-radius: 12px; text-align: center; min-height: 40px; }
         
-        /* تحسينات الأرشيف والجدول */
         .archive-section { max-width: 1100px; margin: 30px auto; padding: 0 10px; }
         .archive-table-container { background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-height: 500px; }
         table { width: 100%; border-collapse: collapse; min-width: 850px; }
@@ -331,8 +330,12 @@
                 sumPaid += paidT;
                 sumRem += remVal;
 
-                let color = d.st==="finished"?"#d1fae5":d.st==="received"?"#dbeafe":"#fef3c7";
-                // تنسيق التاريخ يوم / شهر / سنة بالأرقام العربية
+                // منطق الألوان الجديد حسب الطلب
+                let color = "";
+                if (d.st === "pending") color = "#fef3c7"; // أصفر (تحت التنفيذ)
+                else if (d.st === "received") color = "#fee2e2"; // أحمر (تم الاستلام)
+                else if (d.st === "finished") color = "#d1fae5"; // أخضر (خالص السداد)
+                
                 let dateStr = (d.dd && d.dm && d.dy) ? `${d.dd} / ${d.dm} / ${d.dy}` : "---";
 
                 tbody.innerHTML += `<tr style="background:${color}">
@@ -341,13 +344,12 @@
                     <td>${toArabicNums(totalVal.toLocaleString())}</td>
                     <td>${toArabicNums(paidT.toLocaleString())}</td>
                     <td style="color:${remVal>0?'red':'green'}">${toArabicNums(remVal.toLocaleString())}</td>
-                    <td style="font-size:10px">${d.st === 'finished' ? 'خالص' : 'مستمر'}<br>${"★".repeat(d.r)}</td>
+                    <td style="font-size:10px">${d.st === 'finished' ? 'خالص' : d.st === 'received' ? 'مستلم' : 'قيد التنفيذ'}<br>${"★".repeat(d.r)}</td>
                     <td style="font-size:9px">${d.notes || '-'}</td>
                 </tr>`;
             }
         });
 
-        // تحديث الفوتر (المجاميع)
         document.getElementById('total-all-sum').innerText = toArabicNums(sumAll.toLocaleString()) + " ج.م";
         document.getElementById('total-paid-sum').innerText = toArabicNums(sumPaid.toLocaleString()) + " ج.م";
         document.getElementById('total-rem-sum').innerText = toArabicNums(sumRem.toLocaleString()) + " ج.م";
