@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أرشيف عزيمة برو - إصلاح الكاميرا</title>
+    <title>أرشيف عزيمة برو - إغلاق تلقائي للكاميرا</title>
     <style>
         :root {
             --wa-dark: #075E54;
@@ -50,7 +50,6 @@
 
         .footer { padding: 12px; background: #f0f0f0; border-top: 1px solid #ddd; flex-shrink: 0; }
         
-        /* منطقة معاينة المرفقات */
         #previewArea { 
             display: none; background: #fff; padding: 10px; border-radius: 10px; 
             margin-bottom: 10px; border: 2px dashed var(--accent);
@@ -63,19 +62,16 @@
         .input-wrap { display: flex; background: #fff; border-radius: 30px; padding: 3px 15px; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         input[type="text"] { flex: 1; border: none; padding: 10px; outline: none; font-size: 1rem; }
         
-        /* النافذة المنبثقة للكاميرا */
         #camOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center;
         }
-        #cameraContainer { width: 90%; background: white; border-radius: 15px; overflow: hidden; position: relative; }
+        #cameraContainer { width: 90%; background: white; border-radius: 15px; overflow: hidden; }
         #camPreview { width: 100%; display: block; background: #000; }
         .cam-controls { display: flex; background: #000; padding: 10px; gap: 10px; }
         .cam-btn { flex: 1; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-snap { background: var(--accent); color: white; }
-        .btn-close { background: #555; color: white; }
-
-        .speak-btn { background: #e8f5e9; color: var(--accent); border: none; padding: 2px 8px; border-radius: 5px; cursor: pointer; }
+        .btn-close { background: #444; color: white; }
     </style>
 </head>
 <body>
@@ -86,13 +82,13 @@
         <div id="dbCount" style="font-size: 11px;">0 معلومة</div>
     </div>
 
-    <!-- نافذة الكاميرا المنبثقة -->
+    <!-- نافذة الكاميرا -->
     <div id="camOverlay">
         <div id="cameraContainer">
             <video id="camPreview" autoplay playsinline></video>
             <div class="cam-controls">
                 <button class="cam-btn btn-snap" onclick="takeSnapshot()">📸 التقاط</button>
-                <button class="cam-btn btn-close" onclick="closeCamera()">إلغاء</button>
+                <button class="cam-btn btn-close" onclick="closeCamera()">إغلاق</button>
             </div>
         </div>
     </div>
@@ -102,7 +98,7 @@
     <div class="footer">
         <div id="previewArea">
             <img id="previewImg" src="">
-            <button onclick="cancelAttachment()" style="width:100%; margin-top:5px; background:var(--danger); color:white; border:none; border-radius:5px; padding:5px; cursor:pointer;">إلغاء الصورة</button>
+            <button onclick="cancelAttachment()" style="width:100%; margin-top:5px; background:var(--danger); color:white; border:none; border-radius:5px; padding:5px; cursor:pointer;">إلغاء الصورة المرفقة</button>
         </div>
 
         <div class="tools">
@@ -123,21 +119,12 @@
     let tempImg = null;
     let stream = null;
 
-    const request = indexedDB.open("UltraProArchiveDB_V2", 1);
+    const request = indexedDB.open("UltraProArchiveDB_V3", 1);
     request.onupgradeneeded = e => {
         db = e.target.result;
         db.createObjectStore("vault", { keyPath: "id", autoIncrement: true });
     };
     request.onsuccess = e => { db = e.target.result; loadData(); };
-
-    function speak(text) {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'ar-SA';
-            window.speechSynthesis.speak(msg);
-        }
-    }
 
     async function openCamera() {
         const overlay = document.getElementById('camOverlay');
@@ -146,23 +133,28 @@
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             video.srcObject = stream;
             overlay.style.display = 'flex';
-        } catch (err) { alert("عذراً، الكاميرا لا تعمل"); }
+        } catch (err) { alert("الكاميرا لا تعمل"); }
     }
 
+    // تعديل وظيفة الالتقاط لتغلق الكاميرا فوراً
     function takeSnapshot() {
         const video = document.getElementById('camPreview');
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
         tempImg = canvas.toDataURL('image/jpeg');
+        
         document.getElementById('previewArea').style.display = 'block';
         document.getElementById('previewImg').src = tempImg;
-        closeCamera();
+        
+        closeCamera(); // إغلاق الكاميرا آلياً بعد الالتقاط
     }
 
     function closeCamera() {
-        if (stream) stream.getTracks().forEach(t => t.stop());
-        document.getElementById('camOverlay').style.display = 'none';
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop()); // إيقاف العدسة
+        }
+        document.getElementById('camOverlay').style.display = 'none'; // إخفاء النافذة
     }
 
     function cancelAttachment() {
@@ -218,12 +210,18 @@
             <div class="meta">
                 <span>🗓️ ${d.date}</span>
                 <div>
-                    ${d.text ? `<button class="speak-btn" onclick="speak('${d.text.replace(/'/g, "\\'")}')">🔊</button>` : ''}
-                    <button style="color:red; border:none; background:none; cursor:pointer;" onclick="confirmSingleDelete(${d.id})">حذف</button>
+                    ${d.text ? `<button style="background:#e8f5e9; color:#128C7E; border:none; padding:2px 8px; border-radius:5px; cursor:pointer;" onclick="speak('${d.text.replace(/'/g, "\\'")}')">🔊</button>` : ''}
+                    <button style="color:red; border:none; background:none; cursor:pointer; margin-right:8px;" onclick="confirmSingleDelete(${d.id})">حذف</button>
                 </div>
             </div>
         `;
         chatBox.appendChild(card);
+    }
+
+    function speak(t) {
+        window.speechSynthesis.cancel();
+        const m = new SpeechSynthesisUtterance(t); m.lang = 'ar-SA';
+        window.speechSynthesis.speak(m);
     }
 
     function confirmSingleDelete(id) {
