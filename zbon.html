@@ -39,7 +39,7 @@
         .card { border-radius: 20px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border: 1px solid #ced4da; position: relative; display: none; transition: 0.3s; }
         .card.visible { display: block; }
         .card:nth-child(odd) { background-color: var(--bg-odd); }
-        .card:nth-child(even) { background-color: var(--bg-even); }
+        .card:even) { background-color: var(--bg-even); }
         .card:focus-within { background-color: var(--active-bg) !important; border: 3px solid var(--accent); box-shadow: var(--glow); transform: scale(1.01); z-index: 5; }
         
         .card.status-pending { border-left: 10px solid #f39c12; }
@@ -60,10 +60,15 @@
         .tafqit-box { background: rgba(238, 247, 255, 0.9); color: #0a3d62; padding: 4px 6px; border-radius: 6px; font-size: 10px; font-weight: 800; border-right: 3px solid var(--accent); margin-bottom: 8px; min-height: 12px; }
         .pay-row { display: grid; grid-template-columns: 100px 1fr; gap: 5px; margin-bottom: 2px; }
         .result-box { background: var(--primary); color: white; padding: 10px; border-radius: 12px; text-align: center; min-height: 40px; }
+        
+        /* تحسينات الأرشيف والجدول */
         .archive-section { max-width: 1100px; margin: 30px auto; padding: 0 10px; }
-        .archive-table-container { background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; min-width: 900px; }
-        th, td { padding: 10px; text-align: right; border-bottom: 1px solid #eee; }
+        .archive-table-container { background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-height: 500px; }
+        table { width: 100%; border-collapse: collapse; min-width: 850px; }
+        th, td { padding: 5px 8px; text-align: center; border-bottom: 1px solid #eee; font-size: 12px; line-height: 1.2; }
+        thead th { background: #072d48; color: #1abc9c; position: sticky; top: 0; font-size: 11px; z-index: 2; }
+        tfoot td { background: #f8f9fa; font-weight: 900; border-top: 2px solid var(--primary); color: var(--primary); }
+
         .btn-add-client { position: fixed; bottom: 20px; right: 20px; background: #1abc9c; color: white; width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 100; }
         .btn-card { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 900; color: white; margin: 5px; }
         #toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 30px; border-radius: 30px; display: none; z-index: 1000; }
@@ -89,12 +94,30 @@
 <div class="grid" id="mainGrid"></div>
 
 <div class="archive-section">
-    <div class="archive-header" style="background:#2c3e50; color:white; padding:10px; border-radius:10px 10px 0 0;">🗄️ سجل العملاء والأرشيف</div>
+    <div class="archive-header" style="background:#072d48; color:white; padding:10px; border-radius:10px 10px 0 0; font-size:14px;">🗄️ سجل الأرشيف والمجاميع</div>
     <div class="archive-table-container">
         <table>
-            <thead><tr><th>الاسم والحالة</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>التقييم</th><th>ملاحظات</th></tr></thead>
+            <thead>
+                <tr>
+                    <th style="width:150px">الاسم</th>
+                    <th>تاريخ الاستلام</th>
+                    <th>الإجمالي</th>
+                    <th>المدفوع</th>
+                    <th>المتبقي</th>
+                    <th>الحالة</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
             <tbody id="archiveBody"></tbody>
-            <tfoot id="archiveFoot"></tfoot>
+            <tfoot id="archiveFoot">
+                <tr>
+                    <td colspan="2">إجمالي المجاميع العامة:</td>
+                    <td id="total-all-sum">٠</td>
+                    <td id="total-paid-sum">٠</td>
+                    <td id="total-rem-sum" style="color:red">٠</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
         </table>
     </div>
 </div>
@@ -243,20 +266,36 @@
 
     function deleteCard(id) {
         if (confirm('⚠️ هل أنت متأكد من حذف هذا الكارت نهائياً من السيرفر والجهاز؟')) {
-            // 1. حذف من القائمة المرئية
-            visibleCards = visibleCards.filter(c => c !== id);
-            localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
-
-            // 2. حذف من الذاكرة المحلية
-            localStorage.removeItem(`azemaa_pro_v5_${id}`);
-
-            // 3. حذف من Firebase (الأهم)
             db.ref('azemaa_v5/clients/' + id).remove().then(() => {
-                // 4. إخفاء الكارت من الشاشة فوراً أو إعادة تحميل
-                document.getElementById(`card-${id}`).classList.remove('visible');
-                location.reload(); 
+                visibleCards = visibleCards.filter(c => c !== id);
+                localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
+                localStorage.removeItem(`azemaa_pro_v5_${id}`);
+                const card = document.getElementById(`card-${id}`);
+                card.classList.remove('visible');
+                card.querySelectorAll('input, textarea').forEach(i => i.value = '');
+                refreshStats();
+                refreshArchive();
+                alert("تم الحذف بنجاح ✅");
             });
         }
+    }
+
+    function sendWA(id) {
+        const card = document.getElementById(`card-${id}`);
+        const name = card.querySelector('.c-name').value;
+        const phone = card.querySelector('.c-phone').value;
+        const total = card.querySelector('.c-total').value;
+        const remText = document.getElementById(`rem-n-${id}`).innerText;
+        const company = document.getElementById('companyNameInput').value || "منظومة الإدارة";
+        if (!phone) { alert("يرجى إدخال رقم الهاتف"); return; }
+        let paymentsDetail = "";
+        card.querySelectorAll('.pay-row').forEach((row, idx) => {
+            const val = row.querySelector('.p-val').value;
+            const date = row.querySelector('.p-date').value;
+            if (val) paymentsDetail += `✅ دفع مبلغ (${val}) بتاريخ [${date || '---'}]\n`;
+        });
+        const msg = `السلام عليكم أ/ ${name} 🌹\nمعك ${company} بخصوص طلبكم:\n\n💰 الإجمالي: ${total} ج.م\n--- دفعات السداد ---\n${paymentsDetail}\n⚠️ الحالة: ${remText}\n\nشكراً لتعاملكم معنا ✨`;
+        window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function refreshStats() {
@@ -279,23 +318,39 @@
     function refreshArchive() {
         const tbody = document.getElementById('archiveBody');
         tbody.innerHTML = "";
+        let sumAll = 0, sumPaid = 0, sumRem = 0;
+
         visibleCards.forEach(i => {
             const d = JSON.parse(localStorage.getItem(`azemaa_pro_v5_${i}`));
             if (d && d.n) {
-                let pT = 0; d.pays.forEach(p => pT += cleanNum(toEnglishNums(p.vl)));
-                let rem = cleanNum(toEnglishNums(d.t)) - pT;
-                let color = d.st==="finished"?"#ffcccc":d.st==="received"?"#c2f0c2":"#ffe0b3";
+                const totalVal = cleanNum(toEnglishNums(d.t));
+                let paidT = 0; d.pays.forEach(p => paidT += cleanNum(toEnglishNums(p.vl)));
+                const remVal = totalVal - paidT;
+
+                sumAll += totalVal;
+                sumPaid += paidT;
+                sumRem += remVal;
+
+                let color = d.st==="finished"?"#d1fae5":d.st==="received"?"#dbeafe":"#fef3c7";
+                // تنسيق التاريخ يوم / شهر / سنة بالأرقام العربية
+                let dateStr = (d.dd && d.dm && d.dy) ? `${d.dd} / ${d.dm} / ${d.dy}` : "---";
+
                 tbody.innerHTML += `<tr style="background:${color}">
-                    <td>${d.n}<br><small>${d.st}</small></td>
-                    <td>${d.dd}/${d.dm}</td>
-                    <td>${d.t}</td>
-                    <td>${pT}</td>
-                    <td style="color:${rem>0?'red':'green'}">${rem}</td>
-                    <td>${"★".repeat(d.r)}</td>
-                    <td>${d.notes}</td>
+                    <td style="font-weight:900; text-align:right;">${d.n}</td>
+                    <td dir="ltr">${toArabicNums(dateStr)}</td>
+                    <td>${toArabicNums(totalVal.toLocaleString())}</td>
+                    <td>${toArabicNums(paidT.toLocaleString())}</td>
+                    <td style="color:${remVal>0?'red':'green'}">${toArabicNums(remVal.toLocaleString())}</td>
+                    <td style="font-size:10px">${d.st === 'finished' ? 'خالص' : 'مستمر'}<br>${"★".repeat(d.r)}</td>
+                    <td style="font-size:9px">${d.notes || '-'}</td>
                 </tr>`;
             }
         });
+
+        // تحديث الفوتر (المجاميع)
+        document.getElementById('total-all-sum').innerText = toArabicNums(sumAll.toLocaleString()) + " ج.م";
+        document.getElementById('total-paid-sum').innerText = toArabicNums(sumPaid.toLocaleString()) + " ج.م";
+        document.getElementById('total-rem-sum').innerText = toArabicNums(sumRem.toLocaleString()) + " ج.م";
     }
 
     function addNewCard() {
@@ -326,10 +381,8 @@
         document.getElementById('companyNameInput').value = localStorage.getItem('azemaa_company_name') || "";
         db.ref('azemaa_v5/clients').once('value', (snap) => {
             const data = snap.val() || {};
-            // تحديث القائمة المرئية بناءً على الموجود في السيرفر فقط
             visibleCards = Object.keys(data).map(Number);
             localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
-
             visibleCards.forEach(i => {
                 const d = data[i];
                 const card = document.getElementById(`card-${i}`);
@@ -344,10 +397,12 @@
                     card.querySelector('.c-total').value = d.t || '';
                     card.querySelector('.c-notes').value = d.notes || '';
                     if(d.r) { const rb = document.getElementById(`star${d.r}-${i}`); if(rb) rb.checked = true; }
-                    d.pays.forEach((p, idx) => {
-                        if(card.querySelectorAll('.p-val')[idx]) card.querySelectorAll('.p-val')[idx].value = p.vl;
-                        if(card.querySelectorAll('.p-date')[idx]) card.querySelectorAll('.p-date')[idx].value = p.dt;
-                    });
+                    if(d.pays) {
+                        d.pays.forEach((p, idx) => {
+                            if(card.querySelectorAll('.p-val')[idx]) card.querySelectorAll('.p-val')[idx].value = p.vl;
+                            if(card.querySelectorAll('.p-date')[idx]) card.querySelectorAll('.p-date')[idx].value = p.dt;
+                        });
+                    }
                     localStorage.setItem(`azemaa_pro_v5_${i}`, JSON.stringify(d));
                     updateLogic(i);
                 }
