@@ -3,131 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Azemaa Pro | الأرشيف</title>
+    <title>Azemaa Pro</title>
     <style>
-        :root { --wa-dark: #075E54; --accent: #128C7E; --edit: #2196F3; }
-        body, html { height: 100%; margin: 0; padding: 0; font-family: sans-serif; background: #e5ddd5; overflow: hidden; }
-
-        .chat-container { width: 100%; height: 100vh; display: flex; flex-direction: column; background: white; }
-        .header { padding: 12px; background: var(--wa-dark); color: white; text-align: center; font-weight: bold; }
+        body { margin: 0; font-family: sans-serif; background: #e5ddd5; overflow: hidden; }
+        .app { max-width: 400px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: white; }
+        .list { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 150px; }
         
-        .chat-box { flex: 1; padding: 10px; overflow-y: auto; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); padding-bottom: 150px; }
+        .item { background: white; padding: 12px; border-radius: 12px; margin-bottom: 10px; border-right: 6px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .item img { width: 100%; border-radius: 8px; margin-top: 8px; }
         
-        .card { background: white; padding: 12px; border-radius: 10px; border-right: 5px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); width: 95%; margin: 0 auto 10px auto; }
-        .note-img { width: 100%; border-radius: 8px; margin-top: 8px; max-height: 250px; object-fit: cover; }
+        /* تصميم الأزرار الجديد */
+        .btn-act { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; padding: 5px 10px; }
         
-        /* الفوتر كما كان */
-        .footer { position: fixed; bottom: 0; width: 100%; background: #f0f0f0; border-top: 1px solid #ddd; z-index: 100; }
-        #measurePanel { display: none; background: #fff; padding: 10px; border-top: 2px solid var(--accent); }
-        .bottom-bar { display: flex; align-items: center; gap: 8px; padding: 10px; }
+        .footer { position: fixed; bottom: 0; width: 100%; max-width: 400px; background: #f8f8f8; padding: 10px; box-sizing: border-box; border-top: 1px solid #ddd; z-index: 100; }
+        .row { display: flex; align-items: center; gap: 8px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .main-btn { background: #128C7E; color: white; border: none; padding: 10px 15px; border-radius: 8px; }
         
-        .write-wrap { flex: 1; background: white; border-radius: 20px; padding: 5px 12px; border: 1px solid #ccc; display: flex; align-items: center; }
-        .write-input { flex: 1; border: none; outline: none; font-size: 0.95rem; padding: 5px; }
-        
-        .btn-icon { cursor:pointer; font-size: 1.5rem; }
-        .btn-send { color: var(--accent); font-size: 2rem; cursor: pointer; }
-        
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 999; flex-direction: column; }
+        #imgPrev { width: 40px; height: 40px; border-radius: 6px; display: none; object-fit: cover; border: 2px solid #128C7E; }
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:black; display:none; z-index:999; flex-direction:column; }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div class="header">Azemaa Pro | الأرشيف</div>
-    <div id="chatBox" class="chat-box"></div>
-
+<div class="app">
+    <div id="list" class="list"></div>
     <div class="footer">
-        <div id="measurePanel">
-            <div style="display:flex; gap:5px; justify-content:center;">
-                <input type="number" id="cWidth" style="width:25%; padding:8px; border:1px solid #ccc; border-radius:5px;" placeholder="عرض">
-                <input type="number" id="cHeight" style="width:25%; padding:8px; border:1px solid #ccc; border-radius:5px;" placeholder="طول">
-                <input type="number" id="cDepth" style="width:25%; padding:8px; border:1px solid #ccc; border-radius:5px;" placeholder="عمق">
-            </div>
-            <textarea id="pNotes" style="width:100%; height:60px; margin-top:8px; padding:8px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;" placeholder="الملاحظات الفنية..."></textarea>
+        <div id="measure" style="display:none; gap:5px; margin-bottom:8px;">
+            <input type="number" id="w" placeholder="ع" style="width:20%">
+            <input type="number" id="h" placeholder="ط" style="width:20%">
+            <input type="number" id="d" placeholder="ع" style="width:20%">
         </div>
-        <div class="bottom-bar">
-            <span class="btn-icon" onclick="openCamera()">📸</span>
-            <span class="btn-icon" onclick="toggleMeasure()">📏</span>
-            <div class="write-wrap">
-                <input type="text" id="cName" class="write-input" placeholder="الاسم والملاحظات...">
-            </div>
-            <span class="btn-send" onclick="saveData()">➤</span>
+        <div class="row">
+            <button class="main-btn" onclick="openCam()">📸</button>
+            <button class="main-btn" onclick="document.getElementById('measure').style.display='flex'">📏</button>
+            <img id="imgPrev">
+            <input type="text" id="txt" placeholder="اسم العميل...">
+            <button class="main-btn" onclick="save()">➤</button>
         </div>
     </div>
 </div>
 
 <div id="camOverlay" class="overlay">
-    <video id="camPreview" style="width:100%; height:75%; object-fit:cover;" autoplay playsinline></video>
-    <div style="display:flex; gap:20px; padding:20px;">
-        <button style="flex:2; padding:15px; background:var(--accent); color:white; border:none; border-radius:10px; font-weight:bold;" onclick="takeSnapshot()">تصوير</button>
-        <button style="flex:1; padding:15px; background:#444; color:white; border:none; border-radius:10px;" onclick="closeCamera()">إلغاء</button>
+    <video id="vid" style="width:100%; height:75%; object-fit:cover;" autoplay playsinline></video>
+    <div style="display:flex; gap:10px; padding:20px;">
+        <button style="flex:2; padding:15px; border-radius:10px;" onclick="snap()">📸 تصوير</button>
+        <button style="flex:1; background:#444; border-radius:10px;" onclick="closeCam()">إلغاء</button>
     </div>
 </div>
 
 <script>
-    let db, tempImg = null, stream = null;
-    const req = indexedDB.open("AzemaaProMobileVFinal", 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore("records", { keyPath: "id", autoIncrement: true });
-    req.onsuccess = e => { db = e.target.result; loadData(); };
+    let db, imgData = null, stream = null, editId = null;
+    indexedDB.open("AzemaaFinal", 1).onupgradeneeded = e => e.target.result.createObjectStore("data", { keyPath: "id", autoIncrement: true });
+    indexedDB.open("AzemaaFinal", 1).onsuccess = e => { db = e.target.result; render(); };
 
-    function toggleMeasure() {
-        const p = document.getElementById('measurePanel');
-        p.style.display = (p.style.display === 'block') ? 'none' : 'block';
-    }
-
-    async function openCamera() {
+    async function openCam() {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('camPreview').srcObject = stream;
+        document.getElementById('vid').srcObject = stream;
         document.getElementById('camOverlay').style.display = 'flex';
     }
 
-    function takeSnapshot() {
-        const video = document.getElementById('camPreview');
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        tempImg = canvas.toDataURL('image/jpeg', 0.5);
-        closeCamera();
-        alert("تم التقاط الصورة، اضغط زر الإرسال للحفظ");
+    function snap() {
+        let v = document.getElementById('vid'), c = document.createElement('canvas');
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0, 0);
+        imgData = c.toDataURL('image/jpeg', 0.5);
+        document.getElementById('imgPrev').src = imgData;
+        document.getElementById('imgPrev').style.display = 'block';
+        closeCam();
     }
 
-    function closeCamera() {
-        if (stream) stream.getTracks().forEach(t => t.stop());
-        document.getElementById('camOverlay').style.display = 'none';
+    function closeCam() { stream.getTracks().forEach(t => t.stop()); document.getElementById('camOverlay').style.display = 'none'; }
+
+    function save() {
+        let obj = { txt: document.getElementById('txt').value, img: imgData, w: document.getElementById('w').value, h: document.getElementById('h').value, d: document.getElementById('d').value };
+        let tx = db.transaction("data", "readwrite").objectStore("data");
+        if(editId) { obj.id = editId; tx.put(obj); editId = null; } else { tx.add(obj); }
+        document.querySelectorAll('input').forEach(i => i.value = "");
+        imgData = null; document.getElementById('imgPrev').style.display = 'none'; render();
     }
 
-    function saveData() {
-        const data = {
-            name: document.getElementById('cName').value || "بدون اسم",
-            w: document.getElementById('cWidth').value,
-            h: document.getElementById('cHeight').value,
-            d: document.getElementById('cDepth').value,
-            notes: document.getElementById('pNotes').value,
-            img: tempImg,
-            date: new Date().toLocaleString()
-        };
-        db.transaction("records", "readwrite").objectStore("records").add(data).onsuccess = () => {
-            document.querySelectorAll('input, textarea').forEach(i => i.value = "");
-            document.getElementById('measurePanel').style.display = 'none';
-            tempImg = null;
-            loadData();
-        };
-    }
-
-    function loadData() {
-        const box = document.getElementById('chatBox'); box.innerHTML = '';
-        db.transaction("records", "readonly").objectStore("records").openCursor(null, 'prev').onsuccess = e => {
-            const c = e.target.result;
-            if (c) {
-                const v = c.value;
-                box.innerHTML += `<div class="card">
-                    <b>👤 ${v.name}</b><br>
-                    <small>📏 ${v.w||0}x${v.h||0}x${v.d||0}</small>
-                    <div style="margin:5px 0;">${v.notes||""}</div>
-                    ${v.img ? `<img src="${v.img}" class="note-img">` : ''}
+    function render() {
+        let list = document.getElementById('list'), colors = ["#FF5733", "#33FF57", "#3357FF", "#FF33A1"];
+        list.innerHTML = "";
+        db.transaction("data").objectStore("data").openCursor(null, 'prev').onsuccess = e => {
+            let c = e.target.result;
+            if(c) {
+                list.innerHTML += `<div class="item" style="border-right-color:${colors[c.value.id % 4]}">
+                    <div style="font-size:1.1rem; font-weight:bold">${c.value.txt}</div>
+                    <small style="color:#777">المقاس: ${c.value.w}x${c.value.h}x${c.value.d}</small>
+                    ${c.value.img ? `<img src="${c.value.img}">` : ''}
+                    <div style="margin-top:10px; text-align:left">
+                        <button class="btn-act" onclick="edit(${c.value.id})">🖊️</button>
+                        <button class="btn-act" onclick="del(${c.value.id})">🗑️</button>
+                    </div>
                 </div>`;
                 c.continue();
             }
+        };
+    }
+    function del(id) { if(confirm("هل أنت متأكد من الحذف؟")) db.transaction("data", "readwrite").objectStore("data").delete(id).onsuccess = render; }
+    function edit(id) {
+        db.transaction("data").objectStore("data").get(id).onsuccess = e => {
+            let v = e.target.result; editId = v.id; document.getElementById('txt').value = v.txt;
+            document.getElementById('w').value = v.w; document.getElementById('h').value = v.h; document.getElementById('d').value = v.d;
         };
     }
 </script>
