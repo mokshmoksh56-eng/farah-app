@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azemaa Ultra Storage & Voice</title>
+    <style>
+        :root {
+            --wa-dark: #075E54;
+            --wa-bg: #e5ddd5;
+            --accent: #128C7E;
+            --card-bg: #ffffff;
+        }
+
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background-color: #cfd8dc; margin: 0; 
+            display: flex; justify-content: center; height: 100vh; overflow: hidden;
+        }
+
+        .chat-container { 
+            width: 100%; max-width: 500px; background: white; 
+            display: flex; flex-direction: column; margin: 10px;
+            border-radius: 15px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .header { 
+            padding: 15px; background: var(--wa-dark); color: white;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* منطقة البحث */
+        .search-area { background: #fff; padding: 10px; border-bottom: 1px solid #ddd; }
+        .search-input { width: 100%; padding: 10px 15px; border-radius: 25px; border: 1px solid #ccc; outline: none; font-size: 0.9rem; box-sizing: border-box; }
+
+        .chat-box { 
+            flex: 1; padding: 15px; overflow-y: auto; 
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-color: var(--wa-bg); display: flex; flex-direction: column; gap: 12px;
+        }
+
+        /* كارت المعلومة */
+        .card { 
+            background: var(--card-bg); padding: 12px; border-radius: 10px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease;
+            position: relative; cursor: pointer;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; } }
+
+        .note-text { font-size: 1rem; color: #262626; line-height: 1.5; word-wrap: break-word; }
+        .note-img { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #eee; }
+
+        .meta { 
+            display: flex; justify-content: space-between; align-items: center; 
+            font-size: 0.7rem; color: #888; margin-top: 8px; border-top: 1px solid #f9f9f9; padding-top: 5px;
+        }
+
+        .btn-speak { color: var(--accent); font-weight: bold; cursor: pointer; background: #e8f5e9; border: none; padding: 2px 8px; border-radius: 5px; }
+        .del-btn { color: #e74c3c; cursor: pointer; font-weight: bold; background: none; border: none; }
+
+        .footer { padding: 12px; background: #f0f0f0; border-top: 1px solid #ddd; }
+        .tools { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
+        .t-btn { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .recording { background: #ff5252 !important; color: white; animation: pulse 1s infinite; }
+
+        .input-wrap { display: flex; background: #fff; border-radius: 30px; padding: 3px 15px; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        input[type="text"] { flex: 1; border: none; padding: 10px; outline: none; font-size: 1rem; }
+        .save-btn { background: none; border: none; color: var(--wa-dark); font-weight: bold; cursor: pointer; font-size: 1.2rem; }
+        
+        #camPreview { width: 100%; display: none; border-radius: 10px; margin-bottom: 10px; border: 2px solid var(--wa-dark); }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">
+        <b>المخزن الفائق Pro</b>
+        <div id="dbCount" style="font-size: 11px;">0 معلومة</div>
+    </div>
+
+    <div class="search-area">
+        <input type="text" id="mainSearch" class="search-input" placeholder="🔍 ابحث في ذاكرتك الفائقة..." oninput="searchData()">
+    </div>
+    
+    <div id="chatBox" class="chat-box">
+        <video id="camPreview" autoplay playsinline></video>
+    </div>
+
+    <div class="footer">
+        <div class="tools">
+            <button class="t-btn" onclick="startCam()">📸</button>
+            <button class="t-btn" id="micBtn" onclick="toggleMic()" title="تحدث للكتابة">🎙️</button>
+            <button class="t-btn" onclick="document.getElementById('fileIn').click()">🖼️</button>
+            <button class="t-btn" onclick="clearAll()" style="color:red">🗑️</button>
+            <input type="file" id="fileIn" hidden accept="image/*" onchange="previewFile(this)">
+        </div>
+        <div class="input-wrap">
+            <input type="text" id="noteInput" placeholder="أدخل معلومة للتخزين...">
+            <button class="save-btn" onclick="saveNote()">➤</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db;
+    let rec;
+    let isRec = false;
+    let tempImg = null;
+
+    // 1. إعداد التخزين الفائق (IndexedDB)
+    const request = indexedDB.open("UltraMemoryDB", 1);
+    request.onupgradeneeded = e => {
+        db = e.target.result;
+        db.createObjectStore("vault", { keyPath: "id", autoIncrement: true });
+    };
+    request.onsuccess = e => { db = e.target.result; loadData(); };
+
+    // 2. تحويل النص إلى كلام (نطق الملاحظة)
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // إلغاء أي قراءة سابقة
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'ar-SA';
+            msg.rate = 0.9; // سرعة القراءة
+            window.speechSynthesis.speak(msg);
+        }
+    }
+
+    // 3. الكتابة بالصوت (Microphone)
+    function toggleMic() {
+        if (!('webkitSpeechRecognition' in window)) return alert("المتصفح لا يدعم التعرف على الصوت");
+        if (!rec) {
+            rec = new webkitSpeechRecognition(); rec.lang = 'ar-SA';
+            rec.onresult = e => { document.getElementById('noteInput').value = e.results[0][0].transcript; toggleMic(); };
+        }
+        if (!isRec) { rec.start(); document.getElementById('micBtn').classList.add('recording'); isRec=true; }
+        else { rec.stop(); document.getElementById('micBtn').classList.remove('recording'); isRec=false; }
+    }
+
+    // 4. الكاميرا والملفات
+    async function startCam() {
+        const v = document.getElementById('camPreview');
+        if (v.style.display === 'block') {
+            const c = document.createElement('canvas');
+            c.width = v.videoWidth; c.height = v.videoHeight;
+            c.getContext('2d').drawImage(v, 0, 0);
+            tempImg = c.toDataURL('image/jpeg');
+            v.srcObject.getTracks().forEach(t => t.stop());
+            v.style.display = 'none';
+            saveNote();
+            return;
+        }
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        v.srcObject = s; v.style.display = 'block';
+    }
+
+    function previewFile(input) {
+        const r = new FileReader();
+        r.onload = e => { tempImg = e.target.result; saveNote(); };
+        r.readAsDataURL(input.files[0]);
+    }
+
+    // 5. العمليات الأساسية
+    function saveNote() {
+        const input = document.getElementById('noteInput');
+        if (!input.value.trim() && !tempImg) return;
+        const tx = db.transaction("vault", "readwrite");
+        tx.objectStore("vault").add({
+            text: input.value.trim(),
+            img: tempImg,
+            date: new Date().toLocaleString('ar-EG', { hour:'2-digit', minute:'2-digit', day:'numeric', month:'short' })
+        }).onsuccess = () => { input.value = ""; tempImg = null; loadData(); };
+    }
+
+    function loadData() {
+        const b = document.getElementById('chatBox');
+        b.innerHTML = '<video id="camPreview" autoplay playsinline></video>';
+        db.transaction("vault", "readonly").objectStore("vault").openCursor(null, 'prev').onsuccess = e => {
+            const c = e.target.result;
+            if (c) { render(c.value); c.continue(); }
+            updateCount();
+        };
+    }
+
+    function render(d) {
+        const b = document.getElementById('chatBox');
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            ${d.text ? `<div class="note-text">${d.text}</div>` : ''}
+            ${d.img ? `<img src="${d.img}" class="note-img">` : ''}
+            <div class="meta">
+                <span>🕒 ${d.date}</span>
+                <div>
+                    ${d.text ? `<button class="btn-speak" onclick="speak('${d.text.replace(/'/g, "\\'")}')">🔊 اسمع</button>` : ''}
+                    <button class="del-btn" onclick="del(${d.id})">حذف</button>
+                </div>
+            </div>
+        `;
+        b.appendChild(card);
+    }
+
+    function searchData() {
+        const q = document.getElementById('mainSearch').value.toLowerCase();
+        const b = document.getElementById('chatBox');
+        b.innerHTML = '<video id="camPreview" autoplay playsinline></video>';
+        db.transaction("vault", "readonly").objectStore("vault").openCursor(null, 'prev').onsuccess = e => {
+            const c = e.target.result;
+            if (c) { if (c.value.text.toLowerCase().includes(q)) render(c.value); c.continue(); }
+        };
+    }
+
+    function del(id) { db.transaction("vault", "readwrite").objectStore("vault").delete(id).onsuccess = () => loadData(); }
+    function clearAll() { if(confirm("مسح كل المخزن؟")) db.transaction("vault", "readwrite").objectStore("vault").clear().onsuccess = () => loadData(); }
+    function updateCount() { db.transaction("vault", "readonly").objectStore("vault").count().onsuccess = e => document.getElementById('dbCount').innerText = e.target.result + " معلومة"; }
+</script>
+
+</body>
+</html>
