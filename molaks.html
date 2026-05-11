@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أرشيف عزيمة برو - إغلاق تلقائي للكاميرا</title>
+    <title>أرشيف عزيمة برو - خانة البحث الذكي</title>
     <style>
         :root {
             --wa-dark: #075E54;
@@ -29,6 +29,15 @@
             display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
         }
 
+        /* تصميم خانة البحث */
+        .search-wrapper {
+            background: #fff; padding: 10px; border-bottom: 1px solid #ddd; flex-shrink: 0;
+        }
+        .search-input {
+            width: 100%; padding: 10px 15px; border-radius: 25px; border: 1px solid #ccc;
+            outline: none; font-size: 0.9rem; box-sizing: border-box;
+        }
+
         .chat-box { 
             flex: 1; padding: 15px; overflow-y: auto; 
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
@@ -38,7 +47,10 @@
         .card { 
             background: white; padding: 12px; border-radius: 10px; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex-shrink: 0;
+            animation: fadeIn 0.3s ease;
         }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; } }
 
         .note-text { font-size: 1rem; color: #262626; line-height: 1.5; }
         .note-img { width: 100%; border-radius: 8px; margin-top: 10px; }
@@ -82,7 +94,11 @@
         <div id="dbCount" style="font-size: 11px;">0 معلومة</div>
     </div>
 
-    <!-- نافذة الكاميرا -->
+    <!-- خانة البحث الجديدة -->
+    <div class="search-wrapper">
+        <input type="text" id="mainSearch" class="search-input" placeholder="🔍 ابحث في الملاحظات أو التاريخ..." oninput="searchData()">
+    </div>
+
     <div id="camOverlay">
         <div id="cameraContainer">
             <video id="camPreview" autoplay playsinline></video>
@@ -98,7 +114,7 @@
     <div class="footer">
         <div id="previewArea">
             <img id="previewImg" src="">
-            <button onclick="cancelAttachment()" style="width:100%; margin-top:5px; background:var(--danger); color:white; border:none; border-radius:5px; padding:5px; cursor:pointer;">إلغاء الصورة المرفقة</button>
+            <button onclick="cancelAttachment()" style="width:100%; margin-top:5px; background:var(--danger); color:white; border:none; border-radius:5px; padding:5px; cursor:pointer;">إلغاء الصورة</button>
         </div>
 
         <div class="tools">
@@ -119,12 +135,31 @@
     let tempImg = null;
     let stream = null;
 
-    const request = indexedDB.open("UltraProArchiveDB_V3", 1);
+    const request = indexedDB.open("UltraProArchiveDB_V4", 1);
     request.onupgradeneeded = e => {
         db = e.target.result;
         db.createObjectStore("vault", { keyPath: "id", autoIncrement: true });
     };
     request.onsuccess = e => { db = e.target.result; loadData(); };
+
+    // --- محرك البحث ---
+    function searchData() {
+        const query = document.getElementById('mainSearch').value.toLowerCase();
+        const chatBox = document.getElementById('chatBox');
+        chatBox.innerHTML = ''; 
+        
+        db.transaction("vault", "readonly").objectStore("vault").openCursor().onsuccess = e => {
+            const cursor = e.target.result;
+            if (cursor) {
+                const data = cursor.value;
+                // البحث في النص أو التاريخ
+                if (data.text.toLowerCase().includes(query) || data.date.toLowerCase().includes(query)) {
+                    render(data);
+                }
+                cursor.continue();
+            }
+        };
+    }
 
     async function openCamera() {
         const overlay = document.getElementById('camOverlay');
@@ -136,25 +171,20 @@
         } catch (err) { alert("الكاميرا لا تعمل"); }
     }
 
-    // تعديل وظيفة الالتقاط لتغلق الكاميرا فوراً
     function takeSnapshot() {
         const video = document.getElementById('camPreview');
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
         tempImg = canvas.toDataURL('image/jpeg');
-        
         document.getElementById('previewArea').style.display = 'block';
         document.getElementById('previewImg').src = tempImg;
-        
-        closeCamera(); // إغلاق الكاميرا آلياً بعد الالتقاط
+        closeCamera();
     }
 
     function closeCamera() {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop()); // إيقاف العدسة
-        }
-        document.getElementById('camOverlay').style.display = 'none'; // إخفاء النافذة
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        document.getElementById('camOverlay').style.display = 'none';
     }
 
     function cancelAttachment() {
