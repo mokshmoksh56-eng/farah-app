@@ -349,12 +349,42 @@
 
     function sendWA(id) {
         const card = document.getElementById(`card-${id}`);
-        const phone = card.querySelector('.c-phone').value;
-        if (!phone) { alert("رقم الموبايل؟"); return; }
         const name = card.querySelector('.c-name').value;
-        const rem = document.getElementById(`rem-n-${id}`).innerText;
-        const msg = `مرحباً أ/ ${name}, تفاصيل حسابكم: ${rem}`;
-        window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        const phone = card.querySelector('.c-phone').value;
+        const companyName = document.getElementById('companyNameInput').value || "شركتنا";
+        
+        if (!phone) { alert("⚠️ يرجى إدخال رقم الموبايل"); return; }
+
+        const total = card.querySelector('.c-total').value || "0";
+        const remText = document.getElementById(`rem-n-${id}`).innerText;
+        
+        let paymentDetails = "";
+        let count = 0;
+        const pays = card.querySelectorAll('.p-val');
+        const dates = card.querySelectorAll('.p-date');
+
+        pays.forEach((p, idx) => {
+            if (p.value && parseFloat(p.value) > 0) {
+                count++;
+                const dateVal = dates[idx].value ? dates[idx].value : "غير محدد";
+                paymentDetails += `\n🔹 دفعة (${count}): ${p.value} ج.م بتاريخ [ ${dateVal} ]`;
+            }
+        });
+
+        const msg = `السلام عليكم أ/ ${name || 'عميلنا العزيز'}،
+تحية طيبة من *${companyName}* 🌹
+
+كشف حسابكم الحالي:
+----------------------------------
+💰 الإجمالي المطلوب: ${total} ج.م
+
+📑 سجل الدفعات المستلمة: ${paymentDetails || "\nلا توجد دفعات مسجلة حالياً"}
+----------------------------------
+⚖️ ${remText}
+
+نشكركم لثقتكم بنا!`;
+
+        window.open(`https://wa.me/2${phone.trim()}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function saveSettings() { localStorage.setItem('azemaa_company_name', document.getElementById('companyNameInput').value); }
