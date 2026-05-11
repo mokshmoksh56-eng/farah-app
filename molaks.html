@@ -2,185 +2,274 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Azemaa Pro - Fixed Image</title>
+    <title>روبوت الأرشيف الذكي - النسخة المصورة</title>
     <style>
-        body { margin: 0; font-family: sans-serif; background-color: #d1d1d1; background-image: radial-gradient(#a1a1a1 0.8px, transparent 0.8px); background-size: 15px 15px; overflow: hidden; }
-        .app { max-width: 400px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.95); }
-        .search-box { padding: 8px; background: #2c3e50; }
-        .search-box input { width: 100%; padding: 6px; border-radius: 15px; border: none; font-size: 0.8rem; box-sizing: border-box; }
-        .list { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 180px; }
-        .item { background: white; padding: 10px; border-radius: 10px; margin-bottom: 8px; border-right: 6px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .item b { font-size: 0.95rem; }
-        .item img { width: 100%; border-radius: 6px; margin-top: 8px; display: block; background: #eee; min-height: 50px; }
+        :root {
+            --insta-grad: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            --accent: #0095f6;
+            --bg-grey: #e1e4e8; 
+        }
+
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background-color: var(--bg-grey); 
+            margin: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden;
+        }
+
+        .chat-container { 
+            width: 100%; max-width: 450px; background: white; 
+            display: flex; flex-direction: column; margin: 15px;
+            border-radius: 25px; overflow: hidden;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            animation: containerPulse 4s infinite ease-in-out;
+        }
+
+        @keyframes containerPulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+            50% { box-shadow: 0 0 25px rgba(188, 24, 136, 0.2); }
+        }
+
+        .header { 
+            padding: 15px; border-bottom: 1px solid #dbdbdb; 
+            display: flex; justify-content: space-between; align-items: center; background: #fff;
+        }
+
+        .header h1 { 
+            font-size: 1.4rem; margin: 0; 
+            background: var(--insta-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .chat-box { 
+            flex: 1; padding: 20px; overflow-y: auto; 
+            display: flex; flex-direction: column; gap: 15px; background: #fff;
+        }
+
+        .msg-wrapper { 
+            display: flex; flex-direction: column; padding-bottom: 10px; 
+            border-bottom: 1px solid #eeeeee;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .note-text { font-size: 1rem; color: #262626; line-height: 1.5; margin-bottom: 5px; }
+        .note-img { width: 100%; border-radius: 12px; margin-top: 5px; border: 1px solid #eee; }
+        .bot-text { color: var(--accent); font-weight: 500; }
+
+        .note-meta { 
+            display: flex; justify-content: space-between; align-items: center; 
+            font-size: 0.75rem; color: #8e8e8e; margin-top: 5px;
+        }
+
+        .del-btn { 
+            background: none; border: none; color: #ed4956; cursor: pointer; 
+            font-weight: bold; font-size: 11px; padding: 2px 5px;
+        }
+
+        .input-area { padding: 15px; border-top: 1px solid #dbdbdb; background: #fff; }
+
+        .field {
+            display: flex; align-items: center; background: #f1f3f5;
+            border-radius: 25px; padding: 5px 12px; margin-bottom: 8px;
+        }
+
+        input { flex: 1; border: none; background: transparent; padding: 10px; outline: none; font-size: 0.95rem; }
         
-        .footer { position: fixed; bottom: 0; width: 100%; max-width: 400px; background: white; border-top: 1px solid #ccc; padding: 8px; box-sizing: border-box; }
-        #measure { display: flex; height: 0; overflow: hidden; transition: 0.3s; gap: 4px; }
-        #measure.show { height: 35px; margin-bottom: 8px; }
-        #measure input { width: 33%; padding: 4px; font-size: 0.75rem; text-align: center; border: 1px solid #ddd; }
-        
-        /* معاينة الصورة قبل الحفظ */
-        #previewContainer { display: none; margin-bottom: 5px; position: relative; }
-        #imgPrev { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; border: 2px solid #128C7E; }
-        
-        .input-row { display: flex; gap: 5px; align-items: center; }
-        .input-row input { flex: 1; padding: 8px; font-size: 0.8rem; border: 1px solid #ddd; border-radius: 5px; }
-        button { cursor: pointer; border: none; border-radius: 5px; }
-        .btn-send { background: #128C7E; color: white; padding: 8px 15px; font-size: 0.8rem; }
-        .btn-tool { background: #eee; padding: 8px; font-size: 1rem; flex: 1; }
+        .btn-action { background: none; border: none; color: var(--accent); font-weight: bold; cursor: pointer; padding: 5px; }
+        .icon-btn { font-size: 1.2rem; margin-left: 5px; cursor: pointer; }
+        .clear-chat-btn { font-size: 10px; color: #8e8e8e; background: none; border: none; cursor: pointer; text-align: center; width: 100%; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="app">
-    <div class="search-box">
-        <input type="text" id="search" placeholder="🔍 بحث..." onkeyup="render()">
+<div class="chat-container">
+    <div class="header">
+        <h1>Smart Archive</h1>
+        <div id="dbCount" style="font-size: 12px; color: #8e8e8e;">0 كارت</div>
     </div>
-    <div id="list" class="list"></div>
     
-    <div class="footer">
-        <!-- معاينة الصورة قبل الضغط على حفظ -->
-        <div id="previewContainer">
-            <img id="imgPrev" src="">
-            <span style="font-size: 0.6rem; color: #128C7E;">✅ صورة جاهزة</span>
-            <button onclick="clearImg()" style="color:red; background:none; font-size:0.7rem; position:absolute; left:0;">حذف ✖</button>
+    <div id="chatBox" class="chat-box"></div>
+
+    <div class="input-area">
+        <div class="field">
+            <!-- زر الكاميرا المخفي والظاهر كأيقونة -->
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="capturePhoto(event)">
+            <span class="icon-btn" onclick="document.getElementById('cameraInput').click()">📸</span>
+            <span class="icon-btn" onclick="startVoice()">🎙️</span>
+            
+            <input type="text" id="chatInput" placeholder="اكتب ملاحظة أو التقط صورة...">
+            <button class="btn-action" onclick="handleChat()">إرسال</button>
         </div>
 
-        <div style="display:flex; gap:5px; margin-bottom:8px;">
-            <button class="btn-tool" onclick="document.getElementById('nativeCam').click()">📸 كاميرا</button>
-            <button class="btn-tool" onclick="document.getElementById('measure').classList.toggle('show')">📏 مسطرة</button>
-            <input type="file" id="nativeCam" accept="image/*" capture="environment" style="display:none" onchange="handleImg(this)">
+        <div class="field">
+            <input type="text" id="searchInput" placeholder="🔍 بحث في الأرشيف..." oninput="searchData()">
         </div>
-
-        <div id="measure">
-            <input type="number" id="w" placeholder="عرض">
-            <input type="number" id="h" placeholder="طول">
-            <input type="number" id="d" placeholder="عمق">
-        </div>
-
-        <div class="input-row">
-            <input type="text" id="txt" placeholder="اسم العميل...">
-            <button class="btn-send" onclick="save()">حفظ</button>
-        </div>
+        
+        <button class="clear-chat-btn" onclick="clearVisualChat()">🧹 مسح الشاشة (الأرشيف آمن)</button>
+        <button class="clear-chat-btn" style="color:red;" onclick="deleteEverything()">🗑️ حذف الأرشيف نهائياً</button>
     </div>
 </div>
 
 <script>
-    let db, currentImg = null, editId = null;
+    let db;
+    const request = indexedDB.open("ProArchiveBotV2", 2);
 
-    // فتح قاعدة البيانات
-    const req = indexedDB.open("AzemaaFinalDB", 2);
-    req.onupgradeneeded = e => e.target.result.createObjectStore("items", { keyPath: "id", autoIncrement: true });
-    req.onsuccess = e => { db = e.target.result; render(); };
-
-    // معالجة الصورة واظهار معاينة
-    function handleImg(input) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = e => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const maxW = 500; 
-                    canvas.width = maxW;
-                    canvas.height = (img.height / img.width) * maxW;
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                    
-                    currentImg = canvas.toDataURL("image/jpeg", 0.4); // تخزين الصورة في متغير عالمي
-                    document.getElementById('imgPrev').src = currentImg;
-                    document.getElementById('previewContainer').style.display = 'block';
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(input.files[0]);
+    request.onupgradeneeded = e => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("vault")) {
+            db.createObjectStore("vault", { keyPath: "id", autoIncrement: true });
         }
-    }
+    };
 
-    function clearImg() {
-        currentImg = null;
-        document.getElementById('previewContainer').style.display = 'none';
-    }
+    request.onsuccess = e => {
+        db = e.target.result;
+        loadFromArchive();
+    };
 
-    function save() {
-        const txt = document.getElementById('txt').value;
-        if (!txt && !currentImg) return;
-
-        const tx = db.transaction("items", "readwrite");
-        const store = tx.objectStore("items");
-        const data = {
-            txt, img: currentImg,
-            w: document.getElementById('w').value,
-            h: document.getElementById('h').value,
-            d: document.getElementById('d').value
-        };
-
-        if (editId) {
-            store.get(editId).onsuccess = e => {
-                const rec = e.target.result;
-                rec.txt = data.txt; rec.w = data.w; rec.h = data.h; rec.d = data.d;
-                if(currentImg) rec.img = currentImg;
-                store.put(rec);
-            };
-        } else {
-            store.add(data);
-        }
-
-        tx.oncomplete = () => { reset(); };
-    }
-
-    function reset() {
-        document.getElementById('txt').value = "";
-        document.getElementById('w').value = "";
-        document.getElementById('h').value = "";
-        document.getElementById('d').value = "";
-        clearImg();
-        editId = null;
-        document.getElementById('measure').classList.remove('show');
-        render();
-    }
-
-    function render() {
-        const list = document.getElementById('list');
-        const q = document.getElementById('search').value.toLowerCase();
-        list.innerHTML = "";
-
-        db.transaction("items").objectStore("items").openCursor(null, "prev").onsuccess = e => {
+    function loadFromArchive() {
+        const tx = db.transaction("vault", "readonly");
+        const store = tx.objectStore("vault");
+        document.getElementById('chatBox').innerHTML = "";
+        
+        store.openCursor().onsuccess = e => {
             const cursor = e.target.result;
             if (cursor) {
-                const v = cursor.value;
-                if (v.txt.toLowerCase().includes(q)) {
-                    list.innerHTML += `
-                        <div class="item">
-                            <b>${v.txt}</b><br>
-                            <span style="font-size:0.7rem; color:#666;">${(v.w || v.h || v.d) ? 'ع:'+v.w+' ط:'+v.h+' ع:'+v.d : ''}</span>
-                            ${v.img ? `<img src="${v.img}">` : ''}
-                            <div style="margin-top:5px;">
-                                <button onclick="edit(${v.id})" style="color:blue; font-size:0.7rem;">🖊 تعديل</button>
-                                <button onclick="del(${v.id})" style="color:red; font-size:0.7rem; margin-right:10px;">🗑 حذف</button>
-                            </div>
-                        </div>`;
+                addMsg(cursor.value.text, cursor.value.date, cursor.value.isBot, cursor.value.id, cursor.value.image);
+                cursor.continue();
+            }
+            updateStats();
+        };
+    }
+
+    // دالة التقاط الصورة ومعالجتها
+    function capturePhoto(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const imgBase64 = e.target.result;
+            saveToDB("صورة ملتقطة", getNow(), false, imgBase64);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function addMsg(text, date, isBot = false, id = null, imageData = null) {
+        const chatBox = document.getElementById('chatBox');
+        const wrapper = document.createElement('div');
+        wrapper.className = `msg-wrapper`;
+
+        let content = "";
+        if (imageData) {
+            content = `<img src="${imageData}" class="note-img">`;
+        } else {
+            content = `<div class="note-text ${isBot ? 'bot-text' : ''}">${isBot ? '🤖 ' : ''}${text}</div>`;
+        }
+
+        wrapper.innerHTML = `
+            ${content}
+            <div class="note-meta">
+                <span>📅 ${date}</span>
+                ${id ? `<button class="del-btn" onclick="deleteSingleNote(${id}, this.parentElement.parentElement)">إزالة</button>` : ''}
+            </div>
+        `;
+
+        chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function handleChat() {
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text) return;
+
+        saveToDB(text, getNow(), false);
+        
+        setTimeout(() => {
+            let reply = "تم الحفظ بنجاح ✅";
+            if(text.includes("أهلا")) reply = "أهلاً بك في أرشيفك الذكي!";
+            saveToDB(reply, getNow(), true);
+        }, 500);
+
+        input.value = "";
+    }
+
+    function saveToDB(text, date, isBot, image = null) {
+        const tx = db.transaction("vault", "readwrite");
+        const store = tx.objectStore("vault");
+        const req = store.add({ text, date, isBot, image });
+        req.onsuccess = (e) => {
+            addMsg(text, date, isBot, e.target.result, image);
+            updateStats();
+        };
+    }
+
+    function deleteSingleNote(id, element) {
+        if(confirm("حذف هذا الكارت؟")) {
+            const tx = db.transaction("vault", "readwrite");
+            tx.objectStore("vault").delete(id);
+            tx.oncomplete = () => {
+                element.remove();
+                updateStats();
+            };
+        }
+    }
+
+    function searchData() {
+        const query = document.getElementById('searchInput').value.trim().toLowerCase();
+        const chatBox = document.getElementById('chatBox');
+        if (!query) { loadFromArchive(); return; }
+
+        const tx = db.transaction("vault", "readonly");
+        chatBox.innerHTML = `<div style="text-align:center; color:var(--accent); font-size:12px;">🔍 نتائج البحث...</div>`;
+        
+        tx.objectStore("vault").openCursor().onsuccess = e => {
+            const cursor = e.target.result;
+            if (cursor) {
+                if (cursor.value.text.toLowerCase().includes(query)) {
+                    addMsg(cursor.value.text, cursor.value.date, cursor.value.isBot, cursor.value.id, cursor.value.image);
                 }
                 cursor.continue();
             }
         };
     }
 
-    function del(id) { if(confirm("حذف؟")) db.transaction("items", "readwrite").objectStore("items").delete(id).onsuccess = render; }
+    function clearVisualChat() {
+        document.getElementById('chatBox').innerHTML = `<div style="text-align:center; padding:20px; color:#8e8e8e; font-size:12px;">تم إخفاء الكروت. ابحث أو أعد التحميل لإظهارها.</div>`;
+    }
 
-    function edit(id) {
-        db.transaction("items").objectStore("items").get(id).onsuccess = e => {
-            const v = e.target.result;
-            editId = v.id;
-            document.getElementById('txt').value = v.txt;
-            document.getElementById('w').value = v.w; document.getElementById('h').value = v.h; document.getElementById('d').value = v.d;
-            if(v.img) {
-                currentImg = v.img;
-                document.getElementById('imgPrev').src = currentImg;
-                document.getElementById('previewContainer').style.display = 'block';
-            }
-            document.getElementById('measure').classList.add('show');
+    function deleteEverything() {
+        if(confirm("سيتم تدمير الأرشيف بالكامل! هل أنت متأكد؟")) {
+            const tx = db.transaction("vault", "readwrite");
+            tx.objectStore("vault").clear();
+            tx.oncomplete = () => {
+                document.getElementById('chatBox').innerHTML = "";
+                updateStats();
+            };
+        }
+    }
+
+    function getNow() {
+        const now = new Date();
+        return now.toLocaleDateString('ar-EG') + " | " + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+    }
+
+    function updateStats() {
+        const tx = db.transaction("vault", "readonly");
+        const countReq = tx.objectStore("vault").count();
+        countReq.onsuccess = () => document.getElementById('dbCount').innerText = `${countReq.result} كارت في الأرشيف`;
+    }
+
+    function startVoice() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'ar-SA';
+        recognition.onresult = (e) => {
+            document.getElementById('chatInput').value = e.results[0][0].transcript;
+            handleChat();
         };
+        recognition.start();
     }
 </script>
+
 </body>
 </html>
