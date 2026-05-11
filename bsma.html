@@ -36,12 +36,13 @@
         .del-btn { color: #ff5252; background: none; border: none; font-size: 18px; cursor: pointer; }
         #modalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .modal-box { background: white; width: 90%; max-width: 380px; border-radius: 25px; padding: 25px; text-align: center; }
+        #sync-loader { font-size: 10px; color: var(--turquoise); display: none; }
     </style>
 </head>
 <body onload="init()">
 
 <div class="container">
-    <div class="station-header">محطة كهرباء طلخا المركبة ⚡</div>
+    <div class="station-header">محطة كهرباء طلخا المركبة ⚡ <span id="sync-loader">مزامنة...</span></div>
     <div class="header">
         <span id="digital-clock">00:00:00</span>
         <div class="date-display" id="date-text">-- / -- / ----</div>
@@ -58,8 +59,8 @@
 
     <div class="user-info-section">
         <div class="info-row">
-            <input type="text" id="u-name" class="info-input" placeholder="الاسم" oninput="saveUserInfo()">
-            <input type="text" id="u-id" class="info-input" placeholder="الكود" oninput="saveUserInfo()">
+            <input type="text" id="u-name" class="info-input" placeholder="الاسم" onchange="saveUserInfo()">
+            <input type="text" id="u-id" class="info-input" placeholder="الكود" onchange="saveUserInfo(); loadFromCloud();">
             <select id="u-grade" class="info-input" onchange="saveUserInfo()">
                 <option value="">الدرجة</option>
                 <option value="الأولى">الأولى</option>
@@ -67,6 +68,7 @@
                 <option value="الثالثة">الثالثة</option>
             </select>
         </div>
+        <p style="font-size: 10px; text-align: center; margin-top: 5px; color: #888;">* اكتب الكود لسحب بياناتك من السحابة تلقائياً</p>
     </div>
 
     <div class="actions">
@@ -98,9 +100,10 @@
     </div>
 </div>
 
+<!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyD1MQAAZi8iucZzOrgLG9Fm8_U3_Z6V8m8",
@@ -114,18 +117,45 @@
     const app = initializeApp(firebaseConfig);
     const fs = getFirestore(app);
 
+    // رفع البيانات للسحابة
     window.syncToCloud = async function() {
         const id = localStorage.getItem('u_i');
         if (!id) return;
+        document.getElementById('sync-loader').style.display = 'inline';
         try {
             await setDoc(doc(fs, "employees", id), {
                 name: localStorage.getItem('u_n'),
                 grade: localStorage.getItem('u_g'),
                 logs: JSON.parse(localStorage.getItem('t_db')) || [],
                 vacations: JSON.parse(localStorage.getItem('t_vacs')) || [],
+                baseReg: localStorage.getItem('base_reg') || 30,
+                baseEmg: localStorage.getItem('base_emg') || 7,
                 lastUpdate: new Date().toISOString()
             }, { merge: true });
         } catch (e) { console.error("Cloud Error", e); }
+        document.getElementById('sync-loader').style.display = 'none';
+    };
+
+    // جلب البيانات من السحابة
+    window.loadFromCloud = async function() {
+        const id = localStorage.getItem('u_i');
+        if (!id || id.length < 3) return;
+        
+        try {
+            const docSnap = await getDoc(doc(fs, "employees", id));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if(confirm("تم العثور على بيانات سحابية لهذا الكود. هل تريد استعادتها؟")) {
+                    if(data.name) localStorage.setItem('u_n', data.name);
+                    if(data.grade) localStorage.setItem('u_g', data.grade);
+                    if(data.logs) localStorage.setItem('t_db', JSON.stringify(data.logs));
+                    if(data.vacations) localStorage.setItem('t_vacs', JSON.stringify(data.vacations));
+                    if(data.baseReg) localStorage.setItem('base_reg', data.baseReg);
+                    if(data.baseEmg) localStorage.setItem('base_emg', data.baseEmg);
+                    location.reload();
+                }
+            }
+        } catch (e) { console.error("Load Error", e); }
     };
 </script>
 
@@ -210,18 +240,11 @@
         document.getElementById('emg-left').innerText = baseEmg - eUsed;
     }
 
-    function sendWhatsAppReport() {
-        const name = localStorage.getItem('u_n') || "---";
-        const code = arToEn(localStorage.getItem('u_i')) || "---";
-        const late = document.getElementById('sum-late').innerText;
-        const message = `*📊 تقرير حضور محطة طلخا المركبة*\n*👤 الاسم:* ${name}\n*🆔 الكود:* ${code}\n*🕒 إجمالي التأخير:* ${late} دقيقة`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-    }
-
     function saveUserInfo() {
         localStorage.setItem('u_n', document.getElementById('u-name').value);
         localStorage.setItem('u_i', arToEn(document.getElementById('u-id').value));
         localStorage.setItem('u_g', document.getElementById('u-grade').value);
+        if(window.syncToCloud) window.syncToCloud();
     }
 
     function fillTimeWheels() {
@@ -239,7 +262,7 @@
         const d = document.getElementById('manual-date-picker').value, h = parseInt(document.getElementById('wheel-hr').value), m = parseInt(document.getElementById('wheel-mn').value);
         if(!d) return alert("اختر التاريخ"); handlePunch(h, m, d); closeModal();
     }
-    function deleteRow(id) { if(confirm("حذف؟")) { db = db.filter(i => i.id !== id); vacs = vacs.filter(i => i.id !== id); localStorage.setItem('t_db', JSON.stringify(db)); localStorage.setItem('t_vacs', JSON.stringify(vacs)); render(); window.syncToCloud(); } }
+    function deleteRow(id) { if(confirm("حذف؟")) { db = db.filter(i => i.id !== id); vacs = vacs.filter(i => i.id !== id); localStorage.setItem('t_db', JSON.stringify(db)); localStorage.setItem('t_vacs', JSON.stringify(vacs)); render(); if(window.syncToCloud) window.syncToCloud(); } }
     function resetSystem() { if(confirm("مسح الكل؟")) { localStorage.clear(); location.reload(); } }
     function editBaseBalance(type) {
         let val = prompt("تعديل الرصيد:", type === 'reg' ? baseReg : baseEmg);
@@ -249,8 +272,16 @@
                 if (type === 'reg') { baseReg = val; localStorage.setItem('base_reg', val); }
                 else { baseEmg = val; localStorage.setItem('base_emg', val); }
                 render();
+                if(window.syncToCloud) window.syncToCloud();
             }
         }
+    }
+    function sendWhatsAppReport() {
+        const name = localStorage.getItem('u_n') || "---";
+        const code = arToEn(localStorage.getItem('u_i')) || "---";
+        const late = document.getElementById('sum-late').innerText;
+        const message = `*📊 تقرير حضور محطة طلخا المركبة*\n*👤 الاسم:* ${name}\n*🆔 الكود:* ${code}\n*🕒 إجمالي التأخير:* ${late} دقيقة`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     }
 </script>
 </body>
