@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أرشيف عزيمة برو - نظام تأكيد الحذف</title>
+    <title>أرشيف عزيمة برو - إصلاح التمرير</title>
     <style>
         :root {
             --wa-dark: #075E54;
@@ -12,52 +12,65 @@
             --danger: #ed4956;
         }
 
+        /* إصلاح الهيكل العام */
         body { 
             font-family: -apple-system, sans-serif; 
             background-color: #cfd8dc; margin: 0; 
-            display: flex; justify-content: center; height: 100vh; overflow: hidden;
+            display: flex; justify-content: center; 
+            height: 100vh; /* ملء الشاشة */
+            overflow: hidden; /* منع تمرير الصفحة الخارجية */
         }
 
         .chat-container { 
             width: 100%; max-width: 500px; background: white; 
-            display: flex; flex-direction: column; margin: 10px;
-            border-radius: 15px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; 
+            height: 100%; /* تأكيد ملء الطول المتاح */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
 
         .header { 
             padding: 15px; background: var(--wa-dark); color: white;
             display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0; /* منع الهيدر من الانكماش */
         }
 
+        /* الجزء المسؤول عن التمرير */
         .chat-box { 
-            flex: 1; padding: 15px; overflow-y: auto; 
+            flex: 1; /* يأخذ كل المساحة المتبقية */
+            padding: 15px; 
+            overflow-y: auto; /* تفعيل التمرير العمودي هنا */
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-            background-color: var(--wa-bg); display: flex; flex-direction: column; gap: 12px;
+            background-color: var(--wa-bg); 
+            display: flex; flex-direction: column; gap: 12px;
+            scrollbar-width: thin; /* شكل سكرول أنيق للمتصفحات الحديثة */
         }
 
         .card { 
             background: white; padding: 12px; border-radius: 10px; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex-shrink: 0;
+            animation: fadeIn 0.3s ease;
         }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; } }
 
         .note-text { font-size: 1rem; color: #262626; line-height: 1.5; }
-        .note-img { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #eee; }
+        .note-img { width: 100%; border-radius: 8px; margin-top: 10px; }
 
         .meta { 
             display: flex; justify-content: space-between; align-items: center; 
             font-size: 0.75rem; color: #666; margin-top: 8px; border-top: 1px solid #f9f9f9; padding-top: 5px;
         }
 
-        .footer { padding: 12px; background: #f0f0f0; border-top: 1px solid #ddd; }
+        .footer { 
+            padding: 12px; background: #f0f0f0; border-top: 1px solid #ddd;
+            flex-shrink: 0; /* منع الفوتر من الانكماش */
+        }
         
         #previewArea { 
             display: none; background: #fff; padding: 10px; border-radius: 10px; 
             margin-bottom: 10px; border: 2px dashed var(--accent); position: relative;
         }
-        #previewImg { width: 100%; border-radius: 5px; display: none; }
-        .remove-preview { position: absolute; top: 5px; left: 5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; }
+        #previewImg { width: 100%; border-radius: 5px; }
 
         .tools { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
         .btn-tool { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
@@ -68,34 +81,34 @@
         #cameraModal { display: none; width: 100%; border-radius: 10px; margin-bottom: 10px; overflow: hidden; border: 3px solid var(--wa-dark); }
         #camPreview { width: 100%; display: block; }
 
-        .speak-btn { background: #e8f5e9; color: var(--accent); border: none; padding: 2px 8px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; cursor: pointer; margin-left: 10px; }
-        .del-action-btn { color: var(--danger); border: none; background: none; cursor: pointer; font-weight: bold; }
+        .speak-btn { background: #e8f5e9; color: var(--accent); border: none; padding: 2px 8px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="chat-container">
     <div class="header">
-        <b>أرشيف عزيمة برو الذكي</b>
+        <b>أرشيف عزيمة برو</b>
         <div id="dbCount" style="font-size: 11px;">0 معلومة</div>
     </div>
 
     <div id="chatBox" class="chat-box">
         <div id="cameraModal">
             <video id="camPreview" autoplay playsinline></video>
-            <button style="width:100%; padding:10px; background:var(--wa-dark); color:white; border:none; font-weight:bold;" onclick="takeSnapshot()">📸 التقاط وإرفاق الصورة</button>
+            <button style="width:100%; padding:10px; background:var(--wa-dark); color:white; border:none;" onclick="takeSnapshot()">📸 التقاط الصورة</button>
         </div>
+        <!-- الملاحظات ستظهر هنا -->
     </div>
 
     <div class="footer">
         <div id="previewArea">
-            <button class="remove-preview" onclick="cancelAttachment()">✕</button>
             <img id="previewImg" src="">
+            <button onclick="cancelAttachment()" style="width:100%; margin-top:5px; background:#eee; border:none; border-radius:5px; cursor:pointer;">إلغاء الصورة</button>
         </div>
 
         <div class="tools">
-            <button class="btn-tool" onclick="openCamera()" title="فتح الكاميرا">📸</button>
-            <button class="btn-tool" onclick="document.getElementById('fileIn').click()" title="إرفاق صورة">🖼️</button>
+            <button class="btn-tool" onclick="openCamera()">📸</button>
+            <button class="btn-tool" onclick="document.getElementById('fileIn').click()">🖼️</button>
             <button class="btn-tool" onclick="confirmFullDelete()" style="color:var(--danger)">🗑️</button>
             <input type="file" id="fileIn" hidden accept="image/*" onchange="previewFile(this)">
         </div>
@@ -134,7 +147,7 @@
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             video.srcObject = stream;
             modal.style.display = 'block';
-            document.getElementById('chatBox').scrollTop = 0;
+            modal.scrollIntoView(); // النزول للكاميرا
         } catch (err) { alert("الكاميرا معطلة"); }
     }
 
@@ -144,19 +157,9 @@
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
         tempImg = canvas.toDataURL('image/jpeg');
-        showPreview(tempImg);
-        closeCamera();
-    }
-
-    function showPreview(src) {
         document.getElementById('previewArea').style.display = 'block';
-        document.getElementById('previewImg').src = src;
-        document.getElementById('previewImg').style.display = 'block';
-    }
-
-    function cancelAttachment() {
-        tempImg = null;
-        document.getElementById('previewArea').style.display = 'none';
+        document.getElementById('previewImg').src = tempImg;
+        closeCamera();
     }
 
     function closeCamera() {
@@ -164,17 +167,28 @@
         document.getElementById('cameraModal').style.display = 'none';
     }
 
+    function cancelAttachment() {
+        tempImg = null;
+        document.getElementById('previewArea').style.display = 'none';
+    }
+
     function previewFile(input) {
         const r = new FileReader();
-        r.onload = e => { tempImg = e.target.result; showPreview(tempImg); };
+        r.onload = e => { 
+            tempImg = e.target.result; 
+            document.getElementById('previewArea').style.display = 'block';
+            document.getElementById('previewImg').src = tempImg;
+        };
         r.readAsDataURL(input.files[0]);
     }
 
     function sendEverything() {
         const input = document.getElementById('noteInput');
         if (!input.value.trim() && !tempImg) return;
+
         const now = new Date();
         const dateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} | ${now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}`;
+
         const tx = db.transaction("vault", "readwrite");
         tx.objectStore("vault").add({
             text: input.value.trim(),
@@ -190,10 +204,18 @@
     function loadData() {
         const chatBox = document.getElementById('chatBox');
         const camModal = document.getElementById('cameraModal');
-        chatBox.innerHTML = ''; chatBox.appendChild(camModal);
-        db.transaction("vault", "readonly").objectStore("vault").openCursor(null, 'prev').onsuccess = e => {
+        chatBox.innerHTML = ''; 
+        chatBox.appendChild(camModal);
+        
+        db.transaction("vault", "readonly").objectStore("vault").openCursor().onsuccess = e => {
             const cursor = e.target.result;
-            if (cursor) { render(cursor.value); cursor.continue(); }
+            if (cursor) { 
+                render(cursor.value); 
+                cursor.continue(); 
+            } else {
+                // التمرير لآخر رسالة تلقائياً بعد التحميل
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
             updateCount();
         };
     }
@@ -208,42 +230,30 @@
             <div class="meta">
                 <span>🗓️ ${d.date}</span>
                 <div>
-                    ${d.text ? `<button class="speak-btn" onclick="speak('${d.text.replace(/'/g, "\\'")}')">🔊 اسمع</button>` : ''}
-                    <button class="del-action-btn" onclick="confirmSingleDelete(${d.id})">حذف</button>
+                    ${d.text ? `<button class="speak-btn" onclick="speak('${d.text.replace(/'/g, "\\'")}')">🔊</button>` : ''}
+                    <button style="color:red; border:none; background:none; cursor:pointer;" onclick="confirmSingleDelete(${d.id})">حذف</button>
                 </div>
             </div>
         `;
         chatBox.appendChild(card);
     }
 
-    // --- وظائف تأكيد الحذف الجديدة ---
-
-    // 1. حذف ملاحظة واحدة مع تأكيد
     function confirmSingleDelete(id) {
-        if (confirm("هل أنت متأكد من حذف هذه الملاحظة نهائياً؟")) {
-            const tx = db.transaction("vault", "readwrite");
-            tx.objectStore("vault").delete(id).onsuccess = () => {
-                loadData();
-            };
+        if (confirm("حذف هذه المعلومة؟")) {
+            db.transaction("vault", "readwrite").objectStore("vault").delete(id).onsuccess = () => loadData();
         }
     }
 
-    // 2. حذف الأرشيف بالكامل مع تأكيد مزدوج
     function confirmFullDelete() {
-        const check1 = confirm("⚠️ تحذير: سيتم حذف جميع الملاحظات والصور في الأرشيف!");
-        if (check1) {
-            const check2 = confirm("هل أنت متأكد حقاً؟ لا يمكن التراجع عن هذه الخطوة.");
-            if (check2) {
-                const tx = db.transaction("vault", "readwrite");
-                tx.objectStore("vault").clear().onsuccess = () => {
-                    alert("تم تصفير الأرشيف بنجاح.");
-                    loadData();
-                };
-            }
+        if (confirm("هل أنت متأكد من مسح الأرشيف بالكامل؟")) {
+            db.transaction("vault", "readwrite").objectStore("vault").clear().onsuccess = () => loadData();
         }
     }
 
-    function updateCount() { db.transaction("vault", "readonly").objectStore("vault").count().onsuccess = e => document.getElementById('dbCount').innerText = e.target.result + " معلومة"; }
+    function updateCount() { 
+        db.transaction("vault", "readonly").objectStore("vault").count().onsuccess = e => 
+        document.getElementById('dbCount').innerText = e.target.result + " معلومة"; 
+    }
 </script>
 
 </body>
