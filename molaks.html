@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أرشيف عزيمة برو - التاريخ الرقمي</title>
+    <title>أرشيف عزيمة برو - النسخة الكاملة</title>
     <style>
         :root {
             --wa-dark: #075E54;
@@ -28,9 +28,6 @@
             display: flex; justify-content: space-between; align-items: center;
         }
 
-        .search-area { background: #fff; padding: 10px; border-bottom: 1px solid #ddd; }
-        .search-input { width: 100%; padding: 10px 15px; border-radius: 25px; border: 1px solid #ccc; outline: none; font-size: 0.9rem; box-sizing: border-box; }
-
         .chat-box { 
             flex: 1; padding: 15px; overflow-y: auto; 
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
@@ -50,131 +47,151 @@
         .meta { 
             display: flex; justify-content: space-between; align-items: center; 
             font-size: 0.75rem; color: #666; margin-top: 8px; border-top: 1px solid #f9f9f9; padding-top: 5px;
-            font-family: 'Courier New', Courier, monospace; /* لجعل الأرقام واضحة */
         }
 
-        .btn-tool { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         .footer { padding: 12px; background: #f0f0f0; border-top: 1px solid #ddd; }
+        
+        #previewArea { 
+            display: none; background: #fff; padding: 10px; border-radius: 10px; 
+            margin-bottom: 10px; border: 2px dashed var(--accent); position: relative;
+        }
+        #previewImg { width: 100%; border-radius: 5px; display: none; }
+        .remove-preview { position: absolute; top: 5px; left: 5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; }
+
         .tools { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
+        .btn-tool { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         
         .input-wrap { display: flex; background: #fff; border-radius: 30px; padding: 3px 15px; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         input[type="text"] { flex: 1; border: none; padding: 10px; outline: none; font-size: 1rem; }
         
-        #cameraContainer { display: none; width: 100%; border-radius: 10px; margin-bottom: 10px; overflow: hidden; position: relative; border: 3px solid var(--wa-dark); }
+        #cameraModal { display: none; width: 100%; border-radius: 10px; margin-bottom: 10px; overflow: hidden; border: 3px solid var(--wa-dark); }
         #camPreview { width: 100%; display: block; }
-        .cam-btn { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: var(--wa-dark); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+
+        .speak-btn { background: #e8f5e9; color: var(--accent); border: none; padding: 2px 8px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; cursor: pointer; margin-left: 10px; }
     </style>
 </head>
 <body>
 
 <div class="chat-container">
     <div class="header">
-        <b>مخزن المعلومات الرقمي</b>
+        <b>أرشيف عزيمة برو الذكي</b>
         <div id="dbCount" style="font-size: 11px;">0 معلومة</div>
     </div>
 
-    <div class="search-area">
-        <input type="text" id="mainSearch" class="search-input" placeholder="🔍 ابحث بالتاريخ أو النص..." oninput="searchData()">
-    </div>
-    
     <div id="chatBox" class="chat-box">
-        <div id="cameraContainer">
+        <div id="cameraModal">
             <video id="camPreview" autoplay playsinline></video>
-            <button class="cam-btn" onclick="capturePhoto()">📸 التقاط</button>
+            <button style="width:100%; padding:10px; background:var(--wa-dark); color:white; border:none; font-weight:bold;" onclick="takeSnapshot()">📸 التقاط وإرفاق الصورة</button>
         </div>
     </div>
 
     <div class="footer">
+        <div id="previewArea">
+            <button class="remove-preview" onclick="cancelAttachment()">✕</button>
+            <img id="previewImg" src="">
+        </div>
+
         <div class="tools">
-            <button class="btn-tool" onclick="toggleCamera()">📸</button>
-            <button class="btn-tool" id="micBtn" onclick="toggleMic()">🎙️</button>
-            <button class="btn-tool" onclick="document.getElementById('fileIn').click()">🖼️</button>
+            <button class="btn-tool" onclick="openCamera()" title="فتح الكاميرا">📸</button>
+            <button class="btn-tool" onclick="document.getElementById('fileIn').click()" title="إرفاق صورة">🖼️</button>
             <button class="btn-tool" onclick="clearAll()" style="color:red">🗑️</button>
             <input type="file" id="fileIn" hidden accept="image/*" onchange="previewFile(this)">
         </div>
         <div class="input-wrap">
-            <input type="text" id="noteInput" placeholder="أدخل المعلومة هنا...">
-            <button style="background:none; border:none; color:var(--wa-dark); font-weight:bold; cursor:pointer; font-size:1.5rem;" onclick="saveNote()">➤</button>
+            <input type="text" id="noteInput" placeholder="اكتب معلومة هنا...">
+            <button style="background:none; border:none; color:var(--wa-dark); font-weight:bold; cursor:pointer; font-size:1.5rem;" onclick="sendEverything()">➤</button>
         </div>
     </div>
 </div>
 
 <script>
     let db;
-    let rec;
-    let isRec = false;
     let tempImg = null;
     let stream = null;
 
-    const request = indexedDB.open("DigitalMemoryDB", 1);
+    const request = indexedDB.open("UltraProArchiveDB", 1);
     request.onupgradeneeded = e => {
         db = e.target.result;
         db.createObjectStore("vault", { keyPath: "id", autoIncrement: true });
     };
     request.onsuccess = e => { db = e.target.result; loadData(); };
 
-    // الحصول على التاريخ الرقمي الصرف (يوم/شهر/سنة)
-    function getDigitalDate() {
-        const now = new Date();
-        const day = String(now.getDate()).padStart(2, '0');
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const year = now.getFullYear();
-        const time = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-        return `${day}/${month}/${year} | ${time}`;
-    }
-
-    async function toggleCamera() {
-        const container = document.getElementById('cameraContainer');
-        const video = document.getElementById('camPreview');
-        if (container.style.display === 'block') { stopCamera(); } 
-        else {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                video.srcObject = stream;
-                container.style.display = 'block';
-            } catch (err) { alert("الكاميرا معطلة"); }
+    // --- تحويل النص إلى كلام ---
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'ar-SA';
+            window.speechSynthesis.speak(msg);
         }
     }
 
-    function capturePhoto() {
+    async function openCamera() {
+        const modal = document.getElementById('cameraModal');
+        const video = document.getElementById('camPreview');
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+            modal.style.display = 'block';
+            document.getElementById('chatBox').scrollTop = 0;
+        } catch (err) { alert("الكاميرا معطلة"); }
+    }
+
+    function takeSnapshot() {
         const video = document.getElementById('camPreview');
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
         tempImg = canvas.toDataURL('image/jpeg');
-        stopCamera();
-        saveNote();
+        showPreview(tempImg);
+        closeCamera();
     }
 
-    function stopCamera() {
+    function showPreview(src) {
+        document.getElementById('previewArea').style.display = 'block';
+        document.getElementById('previewImg').src = src;
+        document.getElementById('previewImg').style.display = 'block';
+    }
+
+    function cancelAttachment() {
+        tempImg = null;
+        document.getElementById('previewArea').style.display = 'none';
+    }
+
+    function closeCamera() {
         if (stream) stream.getTracks().forEach(t => t.stop());
-        document.getElementById('cameraContainer').style.display = 'none';
+        document.getElementById('cameraModal').style.display = 'none';
     }
 
-    function toggleMic() {
-        if (!('webkitSpeechRecognition' in window)) return;
-        if (!rec) {
-            rec = new webkitSpeechRecognition(); rec.lang = 'ar-SA';
-            rec.onresult = e => { document.getElementById('noteInput').value = e.results[0][0].transcript; saveNote(); };
-        }
-        if (!isRec) { rec.start(); isRec=true; } else { rec.stop(); isRec=false; }
+    function previewFile(input) {
+        const r = new FileReader();
+        r.onload = e => { tempImg = e.target.result; showPreview(tempImg); };
+        r.readAsDataURL(input.files[0]);
     }
 
-    function saveNote() {
+    function sendEverything() {
         const input = document.getElementById('noteInput');
         if (!input.value.trim() && !tempImg) return;
+
+        const now = new Date();
+        const dateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} | ${now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}`;
+
         const tx = db.transaction("vault", "readwrite");
         tx.objectStore("vault").add({
             text: input.value.trim(),
             img: tempImg,
-            date: getDigitalDate() // حفظ التاريخ الرقمي
-        }).onsuccess = () => { input.value = ""; tempImg = null; loadData(); };
+            date: dateStr
+        }).onsuccess = () => {
+            input.value = ""; 
+            cancelAttachment();
+            loadData();
+        };
     }
 
     function loadData() {
         const chatBox = document.getElementById('chatBox');
-        const cameraContainer = document.getElementById('cameraContainer');
-        chatBox.innerHTML = ''; chatBox.appendChild(cameraContainer);
+        const camModal = document.getElementById('cameraModal');
+        chatBox.innerHTML = ''; chatBox.appendChild(camModal);
         db.transaction("vault", "readonly").objectStore("vault").openCursor(null, 'prev').onsuccess = e => {
             const cursor = e.target.result;
             if (cursor) { render(cursor.value); cursor.continue(); }
@@ -192,39 +209,16 @@
             <div class="meta">
                 <span>🗓️ ${d.date}</span>
                 <div>
-                    <button style="color:var(--accent); border:none; background:none; cursor:pointer;" onclick="speak('${d.text}')">🔊</button>
-                    <button style="color:red; border:none; background:none; cursor:pointer; margin-right:8px;" onclick="del(${d.id})">حذف</button>
+                    ${d.text ? `<button class="speak-btn" onclick="speak('${d.text.replace(/'/g, "\\'")}')">🔊 اسمع</button>` : ''}
+                    <button style="color:red; border:none; background:none; cursor:pointer;" onclick="del(${d.id})">حذف</button>
                 </div>
             </div>
         `;
         chatBox.appendChild(card);
     }
 
-    function speak(t) {
-        window.speechSynthesis.cancel();
-        const m = new SpeechSynthesisUtterance(t); m.lang = 'ar-SA';
-        window.speechSynthesis.speak(m);
-    }
-
-    function previewFile(input) {
-        const r = new FileReader();
-        r.onload = e => { tempImg = e.target.result; saveNote(); };
-        r.readAsDataURL(input.files[0]);
-    }
-
-    function searchData() {
-        const q = document.getElementById('mainSearch').value.toLowerCase();
-        const b = document.getElementById('chatBox');
-        const cam = document.getElementById('cameraContainer');
-        b.innerHTML = ''; b.appendChild(cam);
-        db.transaction("vault", "readonly").objectStore("vault").openCursor(null, 'prev').onsuccess = e => {
-            const c = e.target.result;
-            if (c) { if (c.value.text.toLowerCase().includes(q) || c.value.date.includes(q)) render(c.value); c.continue(); }
-        };
-    }
-
     function del(id) { db.transaction("vault", "readwrite").objectStore("vault").delete(id).onsuccess = () => loadData(); }
-    function clearAll() { if(confirm("حذف كل المعلومات؟")) db.transaction("vault", "readwrite").objectStore("vault").clear().onsuccess = () => loadData(); }
+    function clearAll() { if(confirm("مسح كل الأرشيف؟")) db.transaction("vault", "readwrite").objectStore("vault").clear().onsuccess = () => loadData(); }
     function updateCount() { db.transaction("vault", "readonly").objectStore("vault").count().onsuccess = e => document.getElementById('dbCount').innerText = e.target.result + " معلومة"; }
 </script>
 
