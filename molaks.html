@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أرشيف عزيمة برو - تكبير الصور</title>
+    <title>أرشيف عزيمة برو - ذكاء سهم الرجوع</title>
     <style>
         :root {
             --wa-dark: #075E54;
@@ -38,12 +38,9 @@
             background-color: var(--wa-bg); display: flex; flex-direction: column; gap: 12px;
         }
 
-        .card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex-shrink: 0; animation: fadeIn 0.3s ease; }
+        .card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex-shrink: 0; }
         .note-text { font-size: 1rem; color: #262626; line-height: 1.5; }
-        
-        /* تصميم الصورة القابلة للضغط */
-        .note-img { width: 100%; border-radius: 8px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
-        .note-img:hover { opacity: 0.9; }
+        .note-img { width: 100%; border-radius: 8px; margin-top: 10px; cursor: pointer; }
 
         .meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #666; margin-top: 8px; border-top: 1px solid #f9f9f9; padding-top: 5px; }
 
@@ -57,19 +54,17 @@
         .input-wrap { display: flex; background: #fff; border-radius: 30px; padding: 3px 15px; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         input[type="text"] { flex: 1; border: none; padding: 10px; outline: none; font-size: 1rem; }
         
-        /* نافذة الكاميرا والتكبير */
-        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; }
+        /* النوافذ العلوية */
+        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; justify-content: center; align-items: center; }
         #cameraContainer { width: 90%; background: white; border-radius: 15px; overflow: hidden; }
         #camPreview { width: 100%; display: block; background: #000; }
         
-        /* نافذة تكبير الصورة */
-        #zoomOverlay img { max-width: 95%; max-height: 90%; border-radius: 10px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
-        .close-zoom { position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; cursor: pointer; font-weight: bold; }
+        /* التكبير */
+        #zoomOverlay img { max-width: 98%; max-height: 90%; border-radius: 5px; }
+        .close-zoom { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 101; }
 
         .cam-controls { display: flex; background: #000; padding: 10px; gap: 10px; }
         .cam-btn { flex: 1; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-snap { background: var(--accent); color: white; }
-        .btn-close { background: #444; color: white; }
     </style>
 </head>
 <body>
@@ -89,16 +84,16 @@
         <div id="cameraContainer">
             <video id="camPreview" autoplay playsinline></video>
             <div class="cam-controls">
-                <button class="cam-btn btn-snap" onclick="takeSnapshot()">📸 التقاط</button>
-                <button class="cam-btn btn-close" onclick="closeCamera()">إغلاق</button>
+                <button class="cam-btn" style="background:var(--accent); color:white;" onclick="takeSnapshot()">📸 التقاط</button>
+                <button class="cam-btn" style="background:#444; color:white;" onclick="closeCamera()">إغلاق</button>
             </div>
         </div>
     </div>
 
-    <!-- نافذة تكبير الصورة -->
-    <div id="zoomOverlay" class="overlay" onclick="closeZoom()">
-        <span class="close-zoom">&times;</span>
-        <img id="zoomedImg" src="">
+    <!-- نافذة التكبير -->
+    <div id="zoomOverlay" class="overlay">
+        <span class="close-zoom" onclick="closeZoom()">&times;</span>
+        <img id="zoomedImg" src="" onclick="closeZoom()">
     </div>
 
     <div id="chatBox" class="chat-box"></div>
@@ -126,27 +121,47 @@
     let db;
     let tempImg = null;
     let stream = null;
+    let isZoomed = false;
 
-    const request = indexedDB.open("UltraProArchiveDB_V5", 1);
+    const request = indexedDB.open("UltraProArchiveDB_V6", 1);
     request.onupgradeneeded = e => {
         db = e.target.result;
         db.createObjectStore("vault", { keyPath: "id", autoIncrement: true });
     };
     request.onsuccess = e => { db = e.target.result; loadData(); };
 
-    // --- وظائف التكبير ---
+    // --- ميزة التحكم في سهم الرجوع ---
     function openZoom(src) {
         const overlay = document.getElementById('zoomOverlay');
         const img = document.getElementById('zoomedImg');
         img.src = src;
         overlay.style.display = 'flex';
+        isZoomed = true;
+
+        // إضافة حالة للسجل لكي يعمل سهم الرجوع للإغلاق فقط
+        window.history.pushState({ zoomed: true }, "");
     }
 
     function closeZoom() {
         document.getElementById('zoomOverlay').style.display = 'none';
+        if (isZoomed) {
+            isZoomed = false;
+            // إذا أغلقنا الصورة بالضغط، نتأكد من تنظيف السجل
+            if (window.history.state && window.history.state.zoomed) {
+                window.history.back();
+            }
+        }
     }
 
-    // --- وظائف البحث والكاميرا ---
+    // الاستماع لسهم الرجوع في الهاتف
+    window.onpopstate = function(event) {
+        if (isZoomed) {
+            document.getElementById('zoomOverlay').style.display = 'none';
+            isZoomed = false;
+        }
+    };
+
+    // --- باقي الوظائف ---
     function searchData() {
         const query = document.getElementById('mainSearch').value.toLowerCase();
         const chatBox = document.getElementById('chatBox');
@@ -154,7 +169,7 @@
         db.transaction("vault", "readonly").objectStore("vault").openCursor().onsuccess = e => {
             const cursor = e.target.result;
             if (cursor) {
-                if (cursor.value.text.toLowerCase().includes(query) || cursor.value.date.toLowerCase().includes(query)) render(cursor.value);
+                if (cursor.value.text.toLowerCase().includes(query) || cursor.value.date.includes(query)) render(cursor.value);
                 cursor.continue();
             }
         };
