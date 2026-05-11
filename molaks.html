@@ -2,273 +2,297 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>روبوت الأرشيف الذكي - النسخة المصورة</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مفكرة المحمول الذكية</title>
     <style>
         :root {
-            --insta-grad: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-            --accent: #0095f6;
-            --bg-grey: #e1e4e8; 
+            --primary: #007bff;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --bg: #eff3f6;
         }
 
-        body { 
-            font-family: -apple-system, sans-serif; 
-            background-color: var(--bg-grey); 
-            margin: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 15px;
+            padding-bottom: 100px; /* مساحة عشان الزرار العايم */
         }
 
-        .chat-container { 
-            width: 100%; max-width: 450px; background: white; 
-            display: flex; flex-direction: column; margin: 15px;
-            border-radius: 25px; overflow: hidden;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            animation: containerPulse 4s infinite ease-in-out;
+        .app-header {
+            padding: 10px 0;
+            text-align: center;
+            color: #2f3542;
         }
 
-        @keyframes containerPulse {
-            0%, 100% { box-shadow: 0 0 15px rgba(0,0,0,0.1); }
-            50% { box-shadow: 0 0 25px rgba(188, 24, 136, 0.2); }
+        /* كارت إدخال الملاحظة */
+        .input-section {
+            background: white;
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
         }
 
-        .header { 
-            padding: 15px; border-bottom: 1px solid #dbdbdb; 
-            display: flex; justify-content: space-between; align-items: center; background: #fff;
+        textarea {
+            width: 100%;
+            border: none;
+            font-size: 18px;
+            outline: none;
+            resize: none;
+            min-height: 120px;
+            font-family: inherit;
         }
 
-        .header h1 { 
-            font-size: 1.4rem; margin: 0; 
-            background: var(--insta-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        /* زراير التحكم للموبايل */
+        .action-bar {
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
         }
 
-        .chat-box { 
-            flex: 1; padding: 20px; overflow-y: auto; 
-            display: flex; flex-direction: column; gap: 15px; background: #fff;
+        .icon-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: 0.2s;
         }
 
-        .msg-wrapper { 
-            display: flex; flex-direction: column; padding-bottom: 10px; 
-            border-bottom: 1px solid #eeeeee;
-            animation: fadeIn 0.4s ease;
+        .icon-btn:active { background: #f0f0f0; transform: scale(0.9); }
+
+        /* منطقة الكاميرا */
+        #camera-preview {
+            display: none;
+            position: relative;
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
         }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        video { width: 100%; border-radius: 15px; transform: scaleX(-1); }
 
-        .note-text { font-size: 1rem; color: #262626; line-height: 1.5; margin-bottom: 5px; }
-        .note-img { width: 100%; border-radius: 12px; margin-top: 5px; border: 1px solid #eee; }
-        .bot-text { color: var(--accent); font-weight: 500; }
-
-        .note-meta { 
-            display: flex; justify-content: space-between; align-items: center; 
-            font-size: 0.75rem; color: #8e8e8e; margin-top: 5px;
+        /* قائمة الملاحظات */
+        .search-container { margin-bottom: 15px; }
+        .search-input {
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: 25px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 16px;
         }
 
-        .del-btn { 
-            background: none; border: none; color: #ed4956; cursor: pointer; 
-            font-weight: bold; font-size: 11px; padding: 2px 5px;
+        .note-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            position: relative;
+            animation: fadeIn 0.3s ease;
         }
 
-        .input-area { padding: 15px; border-top: 1px solid #dbdbdb; background: #fff; }
-
-        .field {
-            display: flex; align-items: center; background: #f1f3f5;
-            border-radius: 25px; padding: 5px 12px; margin-bottom: 8px;
+        .note-time {
+            font-size: 11px;
+            color: #a4b0be;
+            margin-bottom: 5px;
+            display: block;
         }
 
-        input { flex: 1; border: none; background: transparent; padding: 10px; outline: none; font-size: 0.95rem; }
-        
-        .btn-action { background: none; border: none; color: var(--accent); font-weight: bold; cursor: pointer; padding: 5px; }
-        .icon-btn { font-size: 1.2rem; margin-left: 5px; cursor: pointer; }
-        .clear-chat-btn { font-size: 10px; color: #8e8e8e; background: none; border: none; cursor: pointer; text-align: center; width: 100%; margin-top: 5px; }
+        .note-text { font-size: 16px; line-height: 1.5; color: #2f3542; }
+
+        .note-img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        /* زر الحفظ العايم */
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: var(--primary);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 10px 20px rgba(0,123,255,0.3);
+            border: none;
+            z-index: 1000;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div class="header">
-        <h1>Smart Archive</h1>
-        <div id="dbCount" style="font-size: 12px; color: #8e8e8e;">0 كارت</div>
+<div class="app-header">
+    <h2>مفكرتي الذكية 📱</h2>
+</div>
+
+<div class="search-container">
+    <input type="text" class="search-input" id="searchInp" placeholder="ابحث في ملاحظاتك..." oninput="renderNotes()">
+</div>
+
+<!-- منطقة الإدخال -->
+<div class="input-section">
+    <div id="camera-preview">
+        <video id="video" autoplay playsinline></video>
+        <button onclick="snap()" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); background:white; border-radius:50%; width:50px; height:50px; border:4px solid var(--primary);"></button>
     </div>
     
-    <div id="chatBox" class="chat-box"></div>
-
-    <div class="input-area">
-        <div class="field">
-            <!-- زر الكاميرا المخفي والظاهر كأيقونة -->
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="capturePhoto(event)">
-            <span class="icon-btn" onclick="document.getElementById('cameraInput').click()">📸</span>
-            <span class="icon-btn" onclick="startVoice()">🎙️</span>
-            
-            <input type="text" id="chatInput" placeholder="اكتب ملاحظة أو التقط صورة...">
-            <button class="btn-action" onclick="handleChat()">إرسال</button>
-        </div>
-
-        <div class="field">
-            <input type="text" id="searchInput" placeholder="🔍 بحث في الأرشيف..." oninput="searchData()">
-        </div>
-        
-        <button class="clear-chat-btn" onclick="clearVisualChat()">🧹 مسح الشاشة (الأرشيف آمن)</button>
-        <button class="clear-chat-btn" style="color:red;" onclick="deleteEverything()">🗑️ حذف الأرشيف نهائياً</button>
+    <textarea id="noteInp" placeholder="ايه اللي في بالك يا بطل؟"></textarea>
+    
+    <div class="action-bar">
+        <button class="icon-btn" onclick="openCam()" title="كاميرا">📷</button>
+        <button class="icon-btn" onclick="speak()" title="اسمع">🔊</button>
+        <button class="icon-btn" onclick="clearAll()" title="مسح الكل" style="font-size: 18px;">🗑️</button>
     </div>
 </div>
 
+<div id="notesContainer"></div>
+
+<!-- زر الحفظ العايم -->
+<button class="fab" onclick="saveNote()">💾</button>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
 <script>
-    let db;
-    const request = indexedDB.open("ProArchiveBotV2", 2);
+    let tempImg = null;
 
-    request.onupgradeneeded = e => {
-        db = e.target.result;
-        if (!db.objectStoreNames.contains("vault")) {
-            db.createObjectStore("vault", { keyPath: "id", autoIncrement: true });
-        }
-    };
-
-    request.onsuccess = e => {
-        db = e.target.result;
-        loadFromArchive();
-    };
-
-    function loadFromArchive() {
-        const tx = db.transaction("vault", "readonly");
-        const store = tx.objectStore("vault");
-        document.getElementById('chatBox').innerHTML = "";
+    // --- الكاميرا للموبايل ---
+    async function openCam() {
+        const preview = document.getElementById('camera-preview');
+        const video = document.getElementById('video');
         
-        store.openCursor().onsuccess = e => {
-            const cursor = e.target.result;
-            if (cursor) {
-                addMsg(cursor.value.text, cursor.value.date, cursor.value.isBot, cursor.value.id, cursor.value.image);
-                cursor.continue();
+        if (preview.style.display === 'none' || !preview.style.display) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" }, // تشغيل الكاميرا الخلفية تلقائياً
+                    audio: false 
+                });
+                video.srcObject = stream;
+                preview.style.display = 'block';
+            } catch (err) {
+                alert("مش قادر أفتح الكاميرا، اتأكد من الأذونات");
             }
-            updateStats();
-        };
-    }
-
-    // دالة التقاط الصورة ومعالجتها
-    function capturePhoto(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const imgBase64 = e.target.result;
-            saveToDB("صورة ملتقطة", getNow(), false, imgBase64);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function addMsg(text, date, isBot = false, id = null, imageData = null) {
-        const chatBox = document.getElementById('chatBox');
-        const wrapper = document.createElement('div');
-        wrapper.className = `msg-wrapper`;
-
-        let content = "";
-        if (imageData) {
-            content = `<img src="${imageData}" class="note-img">`;
         } else {
-            content = `<div class="note-text ${isBot ? 'bot-text' : ''}">${isBot ? '🤖 ' : ''}${text}</div>`;
-        }
-
-        wrapper.innerHTML = `
-            ${content}
-            <div class="note-meta">
-                <span>📅 ${date}</span>
-                ${id ? `<button class="del-btn" onclick="deleteSingleNote(${id}, this.parentElement.parentElement)">إزالة</button>` : ''}
-            </div>
-        `;
-
-        chatBox.appendChild(wrapper);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function handleChat() {
-        const input = document.getElementById('chatInput');
-        const text = input.value.trim();
-        if (!text) return;
-
-        saveToDB(text, getNow(), false);
-        
-        setTimeout(() => {
-            let reply = "تم الحفظ بنجاح ✅";
-            if(text.includes("أهلا")) reply = "أهلاً بك في أرشيفك الذكي!";
-            saveToDB(reply, getNow(), true);
-        }, 500);
-
-        input.value = "";
-    }
-
-    function saveToDB(text, date, isBot, image = null) {
-        const tx = db.transaction("vault", "readwrite");
-        const store = tx.objectStore("vault");
-        const req = store.add({ text, date, isBot, image });
-        req.onsuccess = (e) => {
-            addMsg(text, date, isBot, e.target.result, image);
-            updateStats();
-        };
-    }
-
-    function deleteSingleNote(id, element) {
-        if(confirm("حذف هذا الكارت؟")) {
-            const tx = db.transaction("vault", "readwrite");
-            tx.objectStore("vault").delete(id);
-            tx.oncomplete = () => {
-                element.remove();
-                updateStats();
-            };
+            closeCam();
         }
     }
 
-    function searchData() {
-        const query = document.getElementById('searchInput').value.trim().toLowerCase();
-        const chatBox = document.getElementById('chatBox');
-        if (!query) { loadFromArchive(); return; }
-
-        const tx = db.transaction("vault", "readonly");
-        chatBox.innerHTML = `<div style="text-align:center; color:var(--accent); font-size:12px;">🔍 نتائج البحث...</div>`;
-        
-        tx.objectStore("vault").openCursor().onsuccess = e => {
-            const cursor = e.target.result;
-            if (cursor) {
-                if (cursor.value.text.toLowerCase().includes(query)) {
-                    addMsg(cursor.value.text, cursor.value.date, cursor.value.isBot, cursor.value.id, cursor.value.image);
-                }
-                cursor.continue();
-            }
-        };
-    }
-
-    function clearVisualChat() {
-        document.getElementById('chatBox').innerHTML = `<div style="text-align:center; padding:20px; color:#8e8e8e; font-size:12px;">تم إخفاء الكروت. ابحث أو أعد التحميل لإظهارها.</div>`;
-    }
-
-    function deleteEverything() {
-        if(confirm("سيتم تدمير الأرشيف بالكامل! هل أنت متأكد؟")) {
-            const tx = db.transaction("vault", "readwrite");
-            tx.objectStore("vault").clear();
-            tx.oncomplete = () => {
-                document.getElementById('chatBox').innerHTML = "";
-                updateStats();
-            };
+    function closeCam() {
+        const video = document.getElementById('video');
+        if (video.srcObject) {
+            video.srcObject.getTracks().forEach(t => t.stop());
         }
+        document.getElementById('camera-preview').style.display = 'none';
     }
 
-    function getNow() {
+    function snap() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        tempImg = canvas.toDataURL('image/jpeg', 0.7); // تقليل الحجم عشان الموبايل
+        alert("الصورة اتلقطت!");
+        closeCam();
+    }
+
+    // --- نص إلى كلام (مصري) ---
+    function speak() {
+        const text = document.getElementById('noteInp').value;
+        if(!text) return;
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ar-EG';
+        window.speechSynthesis.speak(msg);
+    }
+
+    // --- الحفظ والعرض ---
+    function saveNote() {
+        const text = document.getElementById('noteInp').value;
+        if (!text && !tempImg) return;
+
         const now = new Date();
-        return now.toLocaleDateString('ar-EG') + " | " + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-    }
+        const timeStr = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+        const dateStr = now.toLocaleDateString('ar-EG', {weekday: 'long', day: 'numeric', month: 'short'});
 
-    function updateStats() {
-        const tx = db.transaction("vault", "readonly");
-        const countReq = tx.objectStore("vault").count();
-        countReq.onsuccess = () => document.getElementById('dbCount').innerText = `${countReq.result} كارت في الأرشيف`;
-    }
-
-    function startVoice() {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'ar-SA';
-        recognition.onresult = (e) => {
-            document.getElementById('chatInput').value = e.results[0][0].transcript;
-            handleChat();
+        const note = {
+            id: Date.now(),
+            content: text,
+            img: tempImg,
+            time: `${dateStr} | ${timeStr}`
         };
-        recognition.start();
+
+        let notes = JSON.parse(localStorage.getItem('mob_notes') || '[]');
+        notes.unshift(note);
+        localStorage.setItem('mob_notes', JSON.stringify(notes));
+
+        // إعادة ضبط
+        document.getElementById('noteInp').value = '';
+        tempImg = null;
+        renderNotes();
     }
+
+    function renderNotes() {
+        const container = document.getElementById('notesContainer');
+        const search = document.getElementById('searchInp').value.toLowerCase();
+        let notes = JSON.parse(localStorage.getItem('mob_notes') || '[]');
+        
+        container.innerHTML = '';
+
+        notes.filter(n => n.content.toLowerCase().includes(search)).forEach(n => {
+            const el = document.createElement('div');
+            el.className = 'note-card';
+            el.innerHTML = `
+                <span class="note-time">${n.time}</span>
+                <div class="note-text">${n.content}</div>
+                ${n.img ? `<img src="${n.img}" class="note-img">` : ''}
+                <div style="margin-top:10px; display:flex; gap:15px;">
+                    <span onclick="readNote('${n.content.replace(/'/g, "")}')">🔊 اسمع</span>
+                    <span onclick="deleteNote(${n.id})" style="color:red">🗑️ حذف</span>
+                </div>
+            `;
+            container.appendChild(el);
+        });
+    }
+
+    function readNote(t) {
+        const msg = new SpeechSynthesisUtterance(t);
+        msg.lang = 'ar-EG';
+        window.speechSynthesis.speak(msg);
+    }
+
+    function deleteNote(id) {
+        let notes = JSON.parse(localStorage.getItem('mob_notes') || '[]');
+        notes = notes.filter(n => n.id !== id);
+        localStorage.setItem('mob_notes', JSON.stringify(notes));
+        renderNotes();
+    }
+
+    function clearAll() {
+        if(confirm("عاوز تمسح كل الملاحظات فعلاً؟")) {
+            localStorage.removeItem('mob_notes');
+            renderNotes();
+        }
+    }
+
+    renderNotes();
 </script>
 
 </body>
