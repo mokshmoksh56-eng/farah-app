@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa pro</title>
+    <title>Azemaa Pro - Secure</title>
     <style>
         :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --e: #3498db; --bg: #ecf0f1; --deep-red: #8b0000; }
-        body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg); display: flex; flex-direction: column; }
+        /* نخفي الجسم افتراضياً لحين التأكد من الهوية */
+        body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg); display: none; flex-direction: column; }
         header { background: var(--p); color: #fff; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 1.2rem; }
         
         .sync-box { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
@@ -28,12 +29,13 @@
 </head>
 <body>
 
-<header>🚀 azemaa pro</header>
+<header>🚀 Azemaa Pro - لوحة المدير</header>
 
 <div class="sync-box">
     <button onclick="saveToWhatsApp()" class="btn btn-s">📤 واتساب</button>
     <button onclick="saveToEmail()" class="btn btn-e">📧 إيميل</button>
-    <button onclick="loadData()" class="btn btn-r">📥 استرجاع (من واتساب أو إيميل)</button>
+    <button onclick="loadData()" class="btn btn-r">📥 استرجاع البيانات</button>
+    <button onclick="logout()" class="btn" style="background:#c0392b; grid-column: span 2; margin-top:5px;">تسجيل خروج 🔒</button>
 </div>
 
 <div class="main-container">
@@ -63,7 +65,48 @@
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+
 <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFLHpOc1M",
+        authDomain: "farah-kitchen.firebaseapp.com",
+        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
+        projectId: "farah-kitchen",
+        storageBucket: "farah-kitchen.firebasestorage.app",
+        messagingSenderId: "702572851072",
+        appId: "1:702572851072:web:320a92c9430abba6b71b65",
+        measurementId: "G-KXQ64CGXL8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const auth = firebase.auth();
+
+    // نظام الحماية بالإيميل
+    auth.onAuthStateChanged((user) => {
+        if (user && user.email === "Mokshmoksh56@gmail.com") {
+            document.body.style.display = "flex";
+        } else {
+            document.body.style.display = "none";
+            let email = prompt("أدخل إيميل المدير:");
+            let pass = prompt("أدخل كلمة المرور:");
+            if(email && pass) {
+                auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                    alert("بيانات غير مصرح بها!");
+                    location.reload();
+                });
+            }
+        }
+    });
+
+    function logout() {
+        auth.signOut().then(() => location.reload());
+    }
+
+    // وظائف الضغط والنسخ الاحتياطي
     const keysMap = { '"name":': '"n":', '"price":': '"p":', '"date":': '"d":', '"amount":': '"a":' };
 
     function generateBackupCode() {
@@ -86,44 +129,24 @@
 
     function saveToEmail() {
         let code = generateBackupCode();
-        let subject = encodeURIComponent("نسخة احتياطية Azemaa Pro");
-        // وضع الكود بين علامات واضحة لسهولة النسخ
-        let body = encodeURIComponent("كود الاسترجاع الخاص بك:\n\n" + code + "\n\n--- انسخ الكود أعلاه فقط ---");
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        window.location.href = `mailto:?subject=Backup&body=${code}`;
     }
 
     function loadData() {
-        let input = prompt("الصق الكود المستلم هنا:");
+        let input = prompt("الصق الكود هنا:");
         if (!input) return;
-        
         try {
-            // معالجة ذكية للكود: حذف النصوص الزائدة، المسافات، والسطور
-            let cleanCode = input.trim();
-            if (cleanCode.includes('\n')) {
-                // إذا كان النص يحتوي على أسطر، نبحث عن أطول سطر (غالباً هو الكود)
-                let lines = cleanCode.split('\n');
-                cleanCode = lines.reduce((a, b) => a.trim().length > b.trim().length ? a : b).trim();
-            }
-            // إزالة أي فراغات قد تكون داخل الكود بسبب التنسيق
-            cleanCode = cleanCode.replace(/\s+/g, '');
-
-            let decoded = decodeURIComponent(escape(atob(cleanCode)));
+            let decoded = decodeURIComponent(escape(atob(input.trim())));
             for (let [full, short] of Object.entries(keysMap)) {
                 decoded = decoded.split(short).join(full);
             }
             let obj = JSON.parse(decoded);
-            if (confirm("سيتم استبدال البيانات الحالية بالنسخة الاحتياطية، هل أنت متأكد؟")) {
-                localStorage.clear();
-                for (let k in obj) localStorage.setItem(k, obj[k]);
-                alert("✅ تم الاسترجاع بنجاح");
-                location.reload();
-            }
-        } catch (e) {
-            alert("❌ فشل الاسترجاع: الكود الذي قمت بلصقه غير مكتمل أو تالف.");
-        }
+            localStorage.clear();
+            for (let k in obj) localStorage.setItem(k, obj[k]);
+            location.reload();
+        } catch (e) { alert("❌ كود خطأ."); }
     }
 
-    // وظائف الواجهة
     function openPage(headerElement) {
         let iframe = headerElement.parentElement.querySelector('iframe');
         if (iframe) window.open(iframe.src, '_blank');
@@ -132,25 +155,13 @@
     function toggleZoom(btn) {
         let card = btn.closest('.card');
         if (card.classList.contains('fullscreen')) {
-            closeFullscreen();
+            card.classList.remove('fullscreen');
+            btn.innerText = "تكبير ⛶";
         } else {
             card.classList.add('fullscreen');
             btn.innerText = "إغلاق X";
-            history.pushState({view: 'fullscreen'}, "");
         }
     }
-
-    function closeFullscreen() {
-        let fullCard = document.querySelector('.card.fullscreen');
-        if (fullCard) {
-            fullCard.classList.remove('fullscreen');
-            let btn = fullCard.querySelector('.zoom-btn');
-            if(btn) btn.innerText = "تكبير ⛶";
-        }
-    }
-
-    window.onpopstate = function() { closeFullscreen(); };
 </script>
-
 </body>
 </html>
