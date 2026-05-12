@@ -6,7 +6,7 @@
     <title>Azemaa Pro - Secure</title>
     <style>
         :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --e: #3498db; --bg: #ecf0f1; --deep-red: #8b0000; }
-        /* نخفي الجسم افتراضياً لحين التأكد من الهوية */
+        /* الجسم مخفي افتراضياً للأمان */
         body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg); display: none; flex-direction: column; }
         header { background: var(--p); color: #fff; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 1.2rem; }
         
@@ -82,20 +82,32 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
     const auth = firebase.auth();
 
-    // نظام الحماية بالإيميل
+    // نظام الحماية بالإيميل المطور
     auth.onAuthStateChanged((user) => {
-        if (user && user.email === "Mokshmoksh56@gmail.com") {
+        const adminEmail = "mokshmoksh56@gmail.com"; // الإيميل بحروف صغيرة
+        
+        if (user && user.email.toLowerCase() === adminEmail) {
             document.body.style.display = "flex";
+            console.log("Welcome Admin");
         } else {
             document.body.style.display = "none";
-            let email = prompt("أدخل إيميل المدير:");
-            let pass = prompt("أدخل كلمة المرور:");
-            if(email && pass) {
-                auth.signInWithEmailAndPassword(email, pass).catch(err => {
-                    alert("بيانات غير مصرح بها!");
+            let emailInput = prompt("أدخل إيميل المدير:");
+            let passInput = prompt("أدخل كلمة المرور:");
+            
+            if(emailInput && passInput) {
+                // تنظيف المدخلات من المسافات وتحويل الإيميل لحروف صغيرة
+                const cleanEmail = emailInput.trim().toLowerCase();
+                const cleanPass = passInput.trim();
+
+                auth.signInWithEmailAndPassword(cleanEmail, cleanPass)
+                .then(() => {
+                    location.reload(); 
+                })
+                .catch(err => {
+                    // رسالة توضح نوع الخطأ بالضبط (مثل خطأ في كلمة السر)
+                    alert("فشل الدخول: " + err.message);
                     location.reload();
                 });
             }
@@ -106,7 +118,7 @@
         auth.signOut().then(() => location.reload());
     }
 
-    // وظائف الضغط والنسخ الاحتياطي
+    // وظائف النسخ الاحتياطي (تحسين استجابة الأزرار)
     const keysMap = { '"name":': '"n":', '"price":': '"p":', '"date":': '"d":', '"amount":': '"a":' };
 
     function generateBackupCode() {
@@ -143,8 +155,9 @@
             let obj = JSON.parse(decoded);
             localStorage.clear();
             for (let k in obj) localStorage.setItem(k, obj[k]);
+            alert("✅ تم استرجاع البيانات بنجاح!");
             location.reload();
-        } catch (e) { alert("❌ كود خطأ."); }
+        } catch (e) { alert("❌ كود غير صحيح أو تالف."); }
     }
 
     function openPage(headerElement) {
