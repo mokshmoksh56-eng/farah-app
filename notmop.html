@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AZEMAA PRO 3D - Split Card</title>
+    <title>AZEMAA PRO 3D - Online Notes</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-      <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     
     <style>
-    
         :root { --primary: #2563eb; --bg: #f0f2f5; }
         
         body { 
@@ -39,7 +38,6 @@
 
         .notes-grid { display: flex; flex-direction: column; width: 100%; gap: 15px; }
 
-        /* --- تصميم الكارت المقسم --- */
         .card { 
             width: 100%; background: #fff;
             display: flex; flex-direction: column;
@@ -50,7 +48,6 @@
 
         .note-img { width: 100%; height: auto; display: block; }
 
-        /* الجزء العلوي من التقسيم (العنوان أو التمييز) */
         .card-header-split {
             padding: 15px 20px;
             background: rgba(255,255,255,0.3);
@@ -58,7 +55,6 @@
             font-size: 14px;
         }
 
-        /* الجزء السفلي من التقسيم (المحتوى الأساسي) */
         .card-body-split { 
             padding: 20px;
             word-wrap: break-word;
@@ -85,7 +81,7 @@
         
         .edit-btn, .del-btn { 
             background: #f8f9fa; padding: 8px 15px; border-radius: 8px; 
-            box-shadow: 0 3px 0 #ccc; font-size: 13px; border: 1px solid #eee;
+            box-shadow: 0 3px 0 #ccc; font-size: 13px; border: 1px solid #eee; cursor: pointer;
         }
 
         .search-box { 
@@ -98,13 +94,13 @@
 
 <div class="container">
     <div class="input-section">
-        <h2 style="text-align: center; color: var(--primary);">🚀 AZEMAA SPLIT-CARD</h2>
+        <h2 style="text-align: center; color: var(--primary);">🚀 AZEMAA ONLINE-NOTES</h2>
         <textarea id="noteInput" placeholder="اكتب ملاحظتك هنا.."></textarea>
         <label style="display:block; margin-top:10px; text-align:center; background:#eee; padding:10px; border-radius:10px; cursor:pointer;">
             🖼️ اختيار صورة <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="processFile(event)">
         </label>
         <input type="hidden" id="editId" value="">
-        <button class="btn-main" onclick="handleSave()">حفظ الملحوظة المقسمة ✅</button>
+        <button class="btn-main" onclick="handleSave()">حفظ الملحوظة أونلاين ✅</button>
     </div>
 
     <input type="text" id="searchBox" class="search-box" placeholder="🔍 ابحث في الملاحظات..." onkeyup="loadNotes()">
@@ -113,17 +109,24 @@
 </div>
 
 <script>
-    let db;
+    // إعدادات Firebase من ملف zbon.html
+    const firebaseConfig = {
+        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFLHpOc1M",
+        authDomain: "farah-kitchen.firebaseapp.com",
+        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
+        projectId: "farah-kitchen",
+        storageBucket: "farah-kitchen.firebasestorage.app",
+        messagingSenderId: "702572851072",
+        appId: "1:702572851072:web:320a92c9430abba6b71b65"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
     let currentImageData = "";
     const colors = ["#bae6fd", "#fef08a", "#bbf7d0", "#fecaca", "#ddd6fe", "#ffedd5", "#a5f3fc", "#e9d5ff"];
 
-    const request = indexedDB.open("AzemaaSplitDB", 1);
-    request.onupgradeneeded = (e) => {
-        db = e.target.result;
-        db.createObjectStore("notes", { keyPath: "id", autoIncrement: true });
-    };
-    request.onsuccess = (e) => { db = e.target.result; loadNotes(); };
-
+    // معالجة الصور وضغطها للرفع أونلاين
     function processFile(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -134,21 +137,20 @@
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                canvas.width = 800;
-                canvas.height = img.height * (800 / img.width);
+                canvas.width = 600; 
+                canvas.height = img.height * (600 / img.width);
                 canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                currentImageData = canvas.toDataURL('image/jpeg', 0.8);
+                currentImageData = canvas.toDataURL('image/jpeg', 0.6); 
             };
         };
     }
 
+    // حفظ الملحوظة في Firebase Realtime Database
     function handleSave() {
         const text = document.getElementById('noteInput').value;
         const editId = document.getElementById('editId').value;
         if (!text.trim() && !currentImageData) return;
 
-        const transaction = db.transaction(["notes"], "readwrite");
-        const store = transaction.objectStore("notes");
         const now = new Date();
         const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} | ${now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute: '2-digit'})}`;
 
@@ -160,30 +162,37 @@
         };
 
         if (editId) {
-            noteData.id = parseInt(editId);
-            store.put(noteData);
-            document.getElementById('editId').value = "";
+            // تحديث ملحوظة موجودة
+            db.ref('azemaa_notes/' + editId).update(noteData).then(() => resetForm());
         } else {
-            store.add(noteData);
+            // إضافة ملحوظة جديدة
+            const newRef = db.ref('azemaa_notes').push();
+            noteData.id = newRef.key;
+            newRef.set(noteData).then(() => resetForm());
         }
-
-        transaction.oncomplete = () => {
-            document.getElementById('noteInput').value = "";
-            currentImageData = "";
-            loadNotes();
-        };
     }
 
+    function resetForm() {
+        document.getElementById('noteInput').value = "";
+        document.getElementById('editId').value = "";
+        currentImageData = "";
+        alert("تم الحفظ والمزامنة بنجاح ✅");
+    }
+
+    // جلب البيانات من السيرفر وعرضها (Real-time)
     function loadNotes() {
         const term = document.getElementById('searchBox').value.toLowerCase();
         const list = document.getElementById('notesList');
-        list.innerHTML = "";
 
-        const store = db.transaction("notes").objectStore("notes");
-        store.openCursor(null, "prev").onsuccess = (e) => {
-            const cursor = e.target.result;
-            if (cursor) {
-                const note = cursor.value;
+        db.ref('azemaa_notes').on('value', (snapshot) => {
+            list.innerHTML = "";
+            const data = snapshot.val();
+            if (!data) return;
+
+            // ترتيب الملاحظات من الأحدث للأقدم
+            const notesArray = Object.keys(data).map(key => ({...data[key], fbId: key})).reverse();
+
+            notesArray.forEach(note => {
                 if (note.text.toLowerCase().includes(term)) {
                     list.innerHTML += `
                         <div class="card" style="background: ${note.bgColor}">
@@ -195,32 +204,32 @@
                                 <div class="note-content">${note.text}</div>
                             </div>
                             <div class="actions">
-                                <span class="edit-btn" onclick="editNote(${note.id})">✏️ تعديل</span>
-                                <span class="del-btn" onclick="deleteNote(${note.id})">🗑️ حذف</span>
+                                <span class="edit-btn" onclick="editNote('${note.fbId}')">✏️ تعديل</span>
+                                <span class="del-btn" onclick="deleteNote('${note.fbId}')">🗑️ حذف</span>
                             </div>
                         </div>`;
                 }
-                cursor.continue();
-            }
-        };
+            });
+        });
     }
 
     function editNote(id) {
-        const store = db.transaction("notes").objectStore("notes");
-        store.get(id).onsuccess = (e) => {
-            const note = e.target.result;
+        db.ref('azemaa_notes/' + id).once('value', (snap) => {
+            const note = snap.val();
             document.getElementById('noteInput').value = note.text;
-            document.getElementById('editId').value = note.id;
-            currentImageData = note.image;
+            document.getElementById('editId').value = id;
+            currentImageData = note.image || "";
             window.scrollTo({top: 0, behavior: 'smooth'});
-        };
+        });
     }
 
     function deleteNote(id) {
-        if (confirm("حذف؟")) {
-            db.transaction(["notes"], "readwrite").objectStore("notes").delete(id).onsuccess = () => loadNotes();
+        if (confirm("هل تريد حذف هذه الملحوظة نهائياً من السيرفر؟")) {
+            db.ref('azemaa_notes/' + id).remove();
         }
     }
+
+    window.onload = loadNotes;
 </script>
 </body>
 </html>
