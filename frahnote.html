@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>سجل Azemaa Pro السحابي</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { 
             --in-bg: #27ae60; --out-bg: #e74c3c; --dark: #2c3e50; 
@@ -56,8 +55,6 @@
         .row-in { background-color: #c8e6c9; } 
         .row-out { background-color: #ffcdd2; }
         .mini-report { display: flex; justify-content: space-around; background: var(--dark); color: #fff; padding: 10px; border-radius: 10px; margin-top: 10px; }
-        
-        .btn-excel { background: #1f7244; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; margin-top: 10px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
 <body>
@@ -111,8 +108,7 @@
             <div>الصافي: <span id="repNet">0</span></div>
         </div>
 
-        <button class="btn-excel" onclick="exportToExcel()">📥 تحميل تقرير إكسيل (Excel)</button>
-        <button onclick="logout()" style="width:100%; margin-top:10px; padding:10px; background:#666; color:white; border:none; border-radius:8px; font-weight: bold;">تسجيل الخروج ⬅️</button>
+        <button onclick="logout()" style="width:100%; margin-top:10px; padding:15px; background:#666; color:white; border:none; border-radius:8px; font-weight: bold; cursor: pointer;">تسجيل الخروج ⬅️</button>
     </div>
 
     <script type="module">
@@ -181,7 +177,7 @@
             if (!name || amount === 0) return alert("أكمل البيانات");
 
             const item = {
-                userId: user.uid, // ربط البيانات بالـ ID الخاص بالمستخدم
+                userId: user.uid,
                 timestamp: new Date(document.getElementById('dt').value).getTime(),
                 fullDate: document.getElementById('dt').value,
                 name: name,
@@ -197,11 +193,12 @@
             } else {
                 await addDoc(financeRef, item);
             }
-            document.getElementById('n').value = ""; document.getElementById('amt').value = ""; document.getElementById('b').value = "";
+            document.getElementById('n').value = ""; 
+            document.getElementById('amt').value = ""; 
+            document.getElementById('b').value = "";
         };
 
         function loadCloudData(uid) {
-            // جلب البيانات الخاصة بهذا المستخدم فقط
             const q = query(financeRef, where("userId", "==", uid), orderBy("timestamp", "desc"));
             onSnapshot(q, (snap) => {
                 allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -233,20 +230,6 @@
         };
 
         window.deleteItem = (id) => confirm("هل تريد حذف هذه المعاملة؟") && deleteDoc(doc(db, "transactions", id));
-
-        window.exportToExcel = () => {
-            const dataToExport = allData.map(i => ({
-                "التاريخ": i.fullDate,
-                "الاسم": i.name,
-                "دخول": i.in,
-                "خروج": i.out,
-                "البيان": i.note
-            }));
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Financial_Report");
-            XLSX.writeFile(wb, `Report_${new Date().toLocaleDateString()}.xlsx`);
-        };
     </script>
 </body>
 </html>
