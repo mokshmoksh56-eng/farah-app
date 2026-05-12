@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سجل الورشة الذكي - ملاحظات</title>
+    <title>سجل الورشة الذكي - سحابي متكامل</title>
     <style>
         :root {
             --bg-page: #eef2f3;
@@ -19,6 +19,39 @@
             background-color: var(--bg-page);
             color: var(--text-main);
             margin: 0; padding: 10px;
+        }
+
+        /* --- شاشة الدخول --- */
+        #loginScreen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #fff;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        .login-input {
+            padding: 12px;
+            width: 280px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            outline: none;
+            font-size: 1em;
+        }
+        .login-input:focus { border-color: var(--deep-red); }
+        .btn-login {
+            padding: 12px 50px;
+            background: var(--deep-red);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1em;
         }
 
         .header-main {
@@ -79,14 +112,26 @@
         .btn-save { background: var(--success-green); color: white; border: none; padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 2; font-size: 0.9em; }
         .btn-add-extra { background: #fff; color: var(--deep-red); border: 1.5px dashed var(--deep-red); padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; font-size: 0.75em; }
         
-        /* الزر المحدث */
         .btn-new-cust { background: var(--deep-red); color: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 1.2em; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 15px; }
         
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 1001; display: none; }
         .remove-note { color: red; font-size: 0.7em; cursor: pointer; float: left; font-weight: bold; }
+
+        @media (max-width: 768px) {
+            .layout { grid-template-columns: 1fr; }
+            .calendar-aside { height: auto; max-height: 300px; margin-bottom: 20px; }
+        }
     </style>
 </head>
 <body onclick="closeCalc()">
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginScreen">
+        <h2 style="color:var(--deep-red)">سجل الورشة - تسجيل الدخول</h2>
+        <input type="email" id="userEmail" class="login-input" placeholder="البريد الإلكتروني">
+        <input type="password" id="userPass" class="login-input" placeholder="كلمة المرور">
+        <button id="loginBtn" class="btn-login">دخول</button>
+    </div>
 
     <div class="overlay" id="overlay"></div>
     <div class="calc-bar" onclick="toggleCalc(event)">🖩 حـاسـبـة</div>
@@ -115,159 +160,222 @@
         </div>
     </div>
 
-    <header class="header-main"><h1 id="mainTitle">سجل الورشة</h1></header>
+    <header class="header-main"><h1 id="mainTitle">سجل الورشة الذكي</h1></header>
 
     <div class="layout">
         <aside class="calendar-aside" id="calView"></aside>
         <main class="main-content">
-            <button class="btn-new-cust" onclick="addCust()">+ إضافة ملاحظات</button>
+            <button class="btn-new-cust" onclick="addCustUI()">+ إضافة ملاحظة جديدة</button>
             <div id="list"></div>
         </main>
     </div>
 
-    <script>
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-        const currentDay = now.getDate();
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        document.getElementById('mainTitle').innerText = `سجل الورشة لعام ${currentYear}`;
-        let chosenDate = `${currentYear}/${currentMonth + 1}/${currentDay}`;
+        const firebaseConfig = {
+          apiKey: "AIzaSyD1MQAAZi8iucZzOrglGoWVl1HHuVrD9aY",
+          authDomain: "farah-8e557.firebaseapp.com",
+          databaseURL: "https://farah-8e557-default-rtdb.firebaseio.com",
+          projectId: "farah-8e557",
+          storageBucket: "farah-8e557.firebasestorage.app",
+          messagingSenderId: "927493982518",
+          appId: "1:927493982518:web:9b85e0f22bfb13bc2f8b97",
+          measurementId: "G-HNGFRW34K5"
+        };
 
-        const strongColors = ['#e67e22', '#2980b9', '#27ae60', '#8e44ad', '#f1c40f', '#c0392b', '#16a085'];
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const colRef = collection(db, "notes");
 
-        function toggleCalc(e) {
+        // --- نظام تسجيل الدخول ---
+        window.login = () => {
+            const email = document.getElementById('userEmail').value;
+            const pass = document.getElementById('userPass').value;
+            const btn = document.getElementById('loginBtn');
+            
+            if(!email || !pass) return alert("يرجى إدخال الإيميل والباسورد");
+            
+            btn.innerText = "جاري الدخول...";
+            signInWithEmailAndPassword(auth, email, pass)
+            .then(() => {
+                document.getElementById('loginScreen').style.display = 'none';
+                loadData();
+            })
+            .catch((error) => {
+                alert("خطأ في الدخول: " + error.message);
+                btn.innerText = "دخول";
+            });
+        };
+
+        document.getElementById('loginBtn').addEventListener('click', window.login);
+
+        // مراقبة حالة المستخدم (إذا كان مسجلاً مسبقاً)
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('loginScreen').style.display = 'none';
+                loadData();
+            }
+        });
+
+        // --- باقي وظائف السجل ---
+        window.toggleCalc = (e) => {
             e.stopPropagation();
             const box = document.getElementById('calcBox');
             box.classList.toggle('active');
             document.getElementById('overlay').style.display = box.classList.contains('active') ? 'block' : 'none';
-        }
+        };
 
-        function closeCalc() {
+        window.closeCalc = () => {
             document.getElementById('calcBox').classList.remove('active');
             document.getElementById('overlay').style.display = 'none';
-        }
+        };
 
         let dInput = document.getElementById('display');
-        function press(v) { dInput.value += v; }
-        function clearDisplay() { dInput.value = ''; }
-        function backspace() { dInput.value = dInput.value.slice(0, -1); }
-        function calculate() { 
+        window.press = (v) => { dInput.value += v; };
+        window.clearDisplay = () => { dInput.value = ''; };
+        window.backspace = () => { dInput.value = dInput.value.slice(0, -1); };
+        window.calculate = () => { 
             try { 
                 let res = eval(dInput.value);
                 dInput.value = Number.isInteger(res) ? res : res.toFixed(2);
-            } catch { dInput.value = 'Error'; setTimeout(clearDisplay, 1000); }
-        }
+            } catch { dInput.value = 'Error'; setTimeout(window.clearDisplay, 1000); }
+        };
 
-        function generateCal() {
-            const view = document.getElementById('calView');
-            const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-            const daysArr = ["ح", "ن", "ث", "ر", "خ", "ج", "س"];
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        let chosenDate = `${currentYear}/${now.getMonth() + 1}/${now.getDate()}`;
+        const strongColors = ['#e67e22', '#2980b9', '#27ae60', '#8e44ad', '#f1c40f', '#c0392b', '#16a085'];
 
-            months.forEach((m, i) => {
-                let table = `<div class="month-title">${m} ${currentYear}</div><table class="month-table"><thead><tr>`;
-                daysArr.forEach(d => table += `<th>${d}</th>`);
-                table += `</tr></thead><tbody><tr>`;
-                let firstDay = new Date(currentYear, i, 1).getDay();
-                let dCount = new Date(currentYear, i + 1, 0).getDate();
-                for(let x=0; x<firstDay; x++) table += `<td></td>`;
-                for(let d=1; d<=dCount; d++) {
-                    if((firstDay + d - 1) % 7 === 0 && d !== 1) table += `</tr><tr>`;
-                    const isToday = (d === currentDay && i === currentMonth);
-                    table += `<td class="${isToday ? 'is-today' : ''}" onclick="setDate(this, '${currentYear}/${i + 1}/${d}')">${d}</td>`;
-                }
-                table += `</tr></tbody></table>`;
-                view.innerHTML += table;
-            });
-            setTimeout(() => {
-                const todayCell = document.querySelector('.is-today');
-                if(todayCell) todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 500);
-        }
-
-        function setDate(el, dateStr) {
-            document.querySelectorAll('.month-table td').forEach(td => td.classList.remove('selected-day'));
-            el.classList.add('selected-day');
-            chosenDate = dateStr;
-        }
-
-        function addCust() {
-            const randomColor = strongColors[Math.floor(Math.random() * strongColors.length)];
+        window.addCustUI = (data = null) => {
+            const randomColor = data ? data.color : strongColors[Math.floor(Math.random() * strongColors.length)];
             const card = document.createElement('div');
             card.className = 'customer-card';
             card.style.borderTopColor = randomColor;
+            if(data?.id) card.setAttribute('data-id', data.id);
             
             card.innerHTML = `
                 <div class="card-header">
                     <div style="width: 70%;">
                         <span class="label-guide">👤 الاسم:</span>
-                        <input type="text" class="input-field" placeholder="اسم الزبون...">
+                        <input type="text" class="input-field name" value="${data ? data.name : ''}" placeholder="اسم الزبون...">
                         <span class="label-guide">📞 رقم الهاتف:</span>
-                        <input type="tel" class="input-field" style="font-size:1em;" placeholder="01xxxxxxxxx">
+                        <input type="tel" class="input-field phone" value="${data ? data.phone : ''}" style="font-size:1em;" placeholder="01xxxxxxxxx">
                     </div>
                     <div style="text-align:left;">
                         <span class="label-guide">📅 التاريخ:</span>
-                        <div style="font-weight:900; font-size:0.9em; color:#333; direction:ltr; margin-bottom:10px;">${chosenDate}</div>
-                        <span style="color:red; cursor:pointer; font-weight:bold; font-size:0.75em;" onclick="if(confirm('حذف الكارت؟')) this.closest('.customer-card').remove()">❌ حذف</span>
+                        <div style="font-weight:900; font-size:0.9em; color:#333; direction:ltr; margin-bottom:10px;">${data ? data.date : chosenDate}</div>
+                        <span style="color:red; cursor:pointer; font-weight:bold; font-size:0.75em;" onclick="deleteCard(this)">❌ حذف</span>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="notes-container">
-                        <div class="note-block">
-                            <label style="font-size:1em; font-weight:900; cursor:pointer; display:block; margin-bottom:8px; color: var(--deep-red);">
-                                <input type="checkbox" style="transform:scale(1.3); margin-left:8px;" onchange="toggleDims(this)"> 📏 مقاسات؟
-                            </label>
-                            <div class="dims-area">
-                                <div class="dim-box"><label>العرض</label><input type="text" placeholder="0"></div>
-                                <div class="dim-box"><label>الارتفاع</label><input type="text" placeholder="0"></div>
-                                <div class="dim-box"><label>العمق</label><input type="text" placeholder="0"></div>
-                            </div>
-                            <span class="label-guide">📝 الملاحظات:</span>
-                            <div class="text-writer" contenteditable="true" data-placeholder="التفاصيل..."></div>
-                        </div>
+                        ${data ? data.notes.map(n => createNoteHTML(n)).join('') : createNoteHTML()}
                     </div>
                     <div class="card-controls">
-                        <button class="btn-save" onclick="saveCard(this)">حفظ ✅</button>
-                        <button class="btn-add-extra" onclick="addExtraNote(this)">+ ملحوظة</button>
+                        <button class="btn-save" onclick="saveCard(this)">${data ? 'تحديث 💾' : 'حفظ ✅'}</button>
+                        <button class="btn-add-extra" onclick="addExtraNoteUI(this)">+ ملحوظة</button>
                     </div>
                 </div>`;
             document.getElementById('list').prepend(card);
+        };
+
+        function createNoteHTML(note = null) {
+            const hasDims = note && note.dims;
+            return `
+                <div class="note-block">
+                    ${note ? '<span class="remove-note" onclick="this.parentElement.remove()">حذف ✖</span>' : ''}
+                    <label style="font-size:1em; font-weight:900; cursor:pointer; display:block; margin-bottom:8px; color: var(--deep-red); clear:both;">
+                        <input type="checkbox" class="has-dims" onchange="toggleDimsUI(this)" ${hasDims ? 'checked' : ''}> 📏 مقاسات؟
+                    </label>
+                    <div class="dims-area" style="display: ${hasDims ? 'grid' : 'none'}">
+                        <div class="dim-box"><label>العرض</label><input type="text" class="w" value="${hasDims ? note.dims.w : '0'}"></div>
+                        <div class="dim-box"><label>الارتفاع</label><input type="text" class="h" value="${hasDims ? note.dims.h : '0'}"></div>
+                        <div class="dim-box"><label>العمق</label><input type="text" class="d" value="${hasDims ? note.dims.d : '0'}"></div>
+                    </div>
+                    <span class="label-guide">📝 الملاحظات:</span>
+                    <div class="text-writer" contenteditable="true">${note ? note.text : ''}</div>
+                </div>`;
         }
 
-        function addExtraNote(btn) {
-            const container = btn.parentElement.previousElementSibling;
-            const newNote = document.createElement('div');
-            newNote.className = 'note-block';
-            newNote.innerHTML = `
-                <span class="remove-note" onclick="this.parentElement.remove()">حذف ✖</span>
-                <label style="font-size:1em; font-weight:900; cursor:pointer; display:block; margin-bottom:8px; color: var(--deep-red); clear:both; padding-top:5px;">
-                    <input type="checkbox" style="transform:scale(1.3); margin-left:8px;" onchange="toggleDims(this)"> 📏 مقاسات؟
-                </label>
-                <div class="dims-area">
-                    <div class="dim-box"><label>العرض</label><input type="text" placeholder="0"></div>
-                    <div class="dim-box"><label>الارتفاع</label><input type="text" placeholder="0"></div>
-                    <div class="dim-box"><label>العمق</label><input type="text" placeholder="0"></div>
-                </div>
-                <span class="label-guide">📝 ملاحظة أخرى:</span>
-                <div class="text-writer" contenteditable="true" data-placeholder="التفاصيل..."></div>
-            `;
-            container.appendChild(newNote);
-        }
+        window.toggleDimsUI = (el) => { el.parentElement.nextElementSibling.style.display = el.checked ? 'grid' : 'none'; };
+        window.addExtraNoteUI = (btn) => { btn.parentElement.previousElementSibling.insertAdjacentHTML('beforeend', createNoteHTML()); };
 
-        function toggleDims(checkbox) {
-            const area = checkbox.parentElement.nextElementSibling;
-            area.style.display = checkbox.checked ? 'grid' : 'none';
-        }
-
-        function saveCard(btn) {
+        window.saveCard = async (btn) => {
             const card = btn.closest('.customer-card');
-            const name = card.querySelector('input[type="text"]').value;
-            if(!name) { alert("اكتب الاسم أولاً!"); return; }
-            btn.innerText = "تم الحفظ 💾";
-            setTimeout(() => { btn.innerText = "حفظ ✅"; }, 2000);
+            const name = card.querySelector('.name').value;
+            if(!name) return alert("اكتب الاسم!");
+
+            btn.innerText = "جاري الحفظ...";
+            const notes = [];
+            card.querySelectorAll('.note-block').forEach(nb => {
+                const checked = nb.querySelector('.has-dims').checked;
+                notes.push({
+                    text: nb.querySelector('.text-writer').innerText,
+                    dims: checked ? { w: nb.querySelector('.w').value, h: nb.querySelector('.h').value, d: nb.querySelector('.d').value } : null
+                });
+            });
+
+            const data = {
+                name,
+                phone: card.querySelector('.phone').value,
+                date: card.querySelector('.card-header div div').innerText,
+                color: card.style.borderTopColor,
+                notes,
+                timestamp: serverTimestamp()
+            };
+
+            try {
+                await addDoc(colRef, data);
+                btn.innerText = "تم الحفظ سحابياً 💾";
+                setTimeout(() => btn.innerText = "حفظ ✅", 2000);
+            } catch (e) { alert("خطأ في الحفظ!"); btn.innerText = "حفظ ✅"; }
+        };
+
+        window.deleteCard = async (el) => {
+            if(!confirm("حذف نهائي من السحابة؟")) return;
+            const card = el.closest('.customer-card');
+            const id = card.getAttribute('data-id');
+            if(id) await deleteDoc(doc(db, "notes", id));
+            card.remove();
+        };
+
+        async function loadData() {
+            try {
+                const q = query(colRef, orderBy("timestamp", "asc"));
+                const snapshot = await getDocs(q);
+                document.getElementById('list').innerHTML = ""; 
+                snapshot.forEach(doc => window.addCustUI({ id: doc.id, ...doc.data() }));
+            } catch (e) { console.error("Error loading data:", e); }
         }
 
-        window.onload = generateCal;
+        (function generateCal() {
+            const view = document.getElementById('calView');
+            const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+            view.innerHTML = "";
+            months.forEach((m, i) => {
+                let table = `<div class="month-title">${m} ${currentYear}</div><table class="month-table"><thead><tr><th>ح</th><th>ن</th><th>ث</th><th>ر</th><th>خ</th><th>ج</th><th>س</th></tr></thead><tbody><tr>`;
+                let firstDay = new Date(currentYear, i, 1).getDay();
+                let dCount = new Date(currentYear, i + 1, 0).getDate();
+                for(let x=0; x<firstDay; x++) table += `<td></td>`;
+                for(let d=1; d<=dCount; d++) {
+                    if((firstDay + d - 1) % 7 === 0 && d !== 1) table += `</tr><tr>`;
+                    const isToday = (d === now.getDate() && i === now.getMonth());
+                    table += `<td class="${isToday ? 'is-today' : ''}" onclick="window.setDate(this, '${currentYear}/${i + 1}/${d}')">${d}</td>`;
+                }
+                table += `</tr></tbody></table>`;
+                view.innerHTML += table;
+            });
+        })();
+
+        window.setDate = (el, dateStr) => {
+            document.querySelectorAll('.month-table td').forEach(td => td.classList.remove('selected-day'));
+            el.classList.add('selected-day');
+            chosenDate = dateStr;
+        };
     </script>
 </body>
 </html>
