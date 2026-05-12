@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>سجل مالي احترافي مع بحث</title>
+    <title>سجل مالي سحابي ذكي</title>
     <style>
         :root { 
             --in-bg: #27ae60; --out-bg: #e74c3c; --dark: #2c3e50; 
@@ -38,12 +38,16 @@
 
         #n { border: 3px solid var(--border-red) !important; color: #000 !important; }
         
-        /* تصميم خانة البحث */
         #searchInput { 
             border: 3px solid var(--search-blue); 
             background-color: #f0f8ff;
             margin-bottom: 12px;
             padding: 12px;
+            width: 95%;
+            border-radius: 10px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .type-box { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
@@ -62,7 +66,7 @@
             font-weight: 900; font-size: 1.2rem;
         }
 
-        .table-section { background: var(--white); border-radius: 12px; overflow: hidden; }
+        .table-section { background: var(--white); border-radius: 12px; overflow: hidden; margin-top: 10px; }
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 480px; }
         th { background: var(--dark); color: #fff; padding: 6px; font-size: 0.7rem; border: 1px solid #fff; }
@@ -99,7 +103,7 @@
 </head>
 <body>
 
-    <div id="currentDateHeader"></div>
+    <div id="currentDateHeader">جاري التحميل...</div>
 
     <div class="input-container">
         <input type="datetime-local" id="dt">
@@ -110,12 +114,10 @@
         </div>
         <input type="number" id="amt" placeholder="المبلغ" inputmode="decimal">
         <input type="text" id="b" placeholder="البيان">
-        <button class="btn-save" onclick="addOrUpdate()">حفظ المعاملة ✅</button>
+        <button class="btn-save" id="mainBtn" onclick="addOrUpdate()">حفظ المعاملة السحابية ☁️</button>
     </div>
 
-    <div style="padding: 0 10px;">
-        <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو البيان..." onkeyup="renderTable()">
-    </div>
+    <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو البيان..." onkeyup="renderTable()">
 
     <div class="table-section">
         <div class="table-wrap">
@@ -143,160 +145,149 @@
 
     <button class="btn-whatsapp" onclick="sendDetailedWhatsApp()">إرسال التقرير للواتساب 📱</button>
 
-    <script>
-        let editIndex = null; 
-        let currentType = 'in'; 
-        let dataList = JSON.parse(localStorage.getItem('myFinancialData')) || []; 
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        function setType(type) {
-            currentType = type;
-            document.getElementById('btnIn').classList.toggle('active-in', type === 'in');
-            document.getElementById('btnOut').classList.toggle('active-out', type === 'out');
-        }
+        const firebaseConfig = {
+            apiKey: "AIzaSyA7IZYNu4K9Lnx1MlU90PI6tOmskoJT18k",
+            authDomain: "farah-4fe14.firebaseapp.com",
+            projectId: "farah-4fe14",
+            storageBucket: "farah-4fe14.firebasestorage.app",
+            messagingSenderId: "527501007504",
+            appId: "1:527501007504:web:5ed89090f520102e7d9615"
+        };
 
-        function setupPage() {
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const financeRef = collection(db, "transactions");
+
+        let editId = null;
+        let currentType = 'in';
+        let allData = [];
+
+        // تحديث التاريخ الافتراضي
+        window.setupPage = () => {
             const now = new Date();
             const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             document.getElementById('currentDateHeader').innerText = dateStr;
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('dt').value = now.toISOString().slice(0, 16);
-            renderTable();
-        }
+        };
 
-        function saveData() {
-            localStorage.setItem('myFinancialData', JSON.stringify(dataList));
-        }
+        window.setType = (type) => {
+            currentType = type;
+            document.getElementById('btnIn').classList.toggle('active-in', type === 'in');
+            document.getElementById('btnOut').classList.toggle('active-out', type === 'out');
+        };
 
-        function addOrUpdate() {
+        // حفظ أو تحديث في Firebase
+        window.addOrUpdate = async () => {
             const name = document.getElementById('n').value;
             const amount = parseFloat(document.getElementById('amt').value) || 0;
             const fullDt = document.getElementById('dt').value;
             const note = document.getElementById('b').value || "-";
 
             if (!name || amount === 0) { alert("أدخل الاسم والمبلغ"); return; }
-            const dtObj = new Date(fullDt);
-            const dayName = dtObj.toLocaleDateString('ar-EG', { weekday: 'long' });
-            const dateStr = dtObj.toLocaleDateString('ar-EG', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const timeStr = dtObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
-            const item = { 
-                fullDate: fullDt, dayDisplay: dayName, dateDisplay: dateStr, 
-                timeDisplay: timeStr, name, in: currentType === 'in' ? amount : 0, 
-                out: currentType === 'out' ? amount : 0, note 
+            const dtObj = new Date(fullDt);
+            const item = {
+                timestamp: dtObj.getTime(),
+                fullDate: fullDt,
+                dayDisplay: dtObj.toLocaleDateString('ar-EG', { weekday: 'long' }),
+                dateDisplay: dtObj.toLocaleDateString('ar-EG', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                timeDisplay: dtObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+                name,
+                in: currentType === 'in' ? amount : 0,
+                out: currentType === 'out' ? amount : 0,
+                note
             };
 
-            if (editIndex !== null) {
-                dataList[editIndex] = item;
-                editIndex = null;
-                document.querySelector('.btn-save').innerText = "حفظ المعاملة ✅";
-            } else {
-                dataList.push(item);
+            try {
+                if (editId) {
+                    await updateDoc(doc(db, "transactions", editId), item);
+                    editId = null;
+                    document.getElementById('mainBtn').innerText = "حفظ المعاملة السحابية ☁️";
+                } else {
+                    await addDoc(financeRef, item);
+                }
+                document.getElementById('n').value = ""; document.getElementById('amt').value = ""; document.getElementById('b').value = "";
+                setupPage();
+            } catch (e) {
+                alert("خطأ في الاتصال: " + e.message);
             }
-            
-            saveData();
+        };
+
+        // جلب البيانات لحظياً
+        const q = query(financeRef, orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
+            allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderTable();
-            document.getElementById('n').value = ""; document.getElementById('amt').value = ""; document.getElementById('b').value = "";
-            setupPage();
-        }
+        });
 
-        function renderTable() {
+        window.renderTable = () => {
             const tbody = document.getElementById('tb');
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const search = document.getElementById('searchInput').value.toLowerCase();
             tbody.innerHTML = "";
-            
-            let tIn = 0; let tOut = 0;
+            let tIn = 0, tOut = 0;
 
-            // تصفية البيانات بناءً على البحث
-            const filteredData = dataList.filter(item => 
-                item.name.toLowerCase().includes(searchTerm) || 
-                item.note.toLowerCase().includes(searchTerm)
-            );
-
-            // عرض البيانات المصفاة (من الأحدث للأقدم)
-            filteredData.slice().reverse().forEach((item) => {
-                const realIndex = dataList.indexOf(item);
+            allData.filter(item => 
+                item.name.toLowerCase().includes(search) || item.note.toLowerCase().includes(search)
+            ).forEach(item => {
                 const row = tbody.insertRow();
                 row.className = item.in > 0 ? "row-in" : "row-out";
-
                 row.innerHTML = `
                     <td><span class="day-label">${item.dayDisplay}</span>${item.dateDisplay}<span class="time-label">${item.timeDisplay}</span></td>
                     <td class="name-cell">${item.name}</td>
                     <td>${item.in > 0 ? item.in : '-'}</td>
                     <td>${item.out > 0 ? item.out : '-'}</td>
-                    <td style="font-size:0.7rem; max-width:80px; overflow:hidden;">${item.note}</td>
+                    <td style="font-size:0.7rem;">${item.note}</td>
                     <td class="action-btns">
-                        <button class="btn-edit" onclick="editItem(${realIndex})">✏️</button>
-                        <button class="btn-delete" onclick="deleteItem(${realIndex})">🗑️</button>
+                        <button class="btn-edit" onclick="editItem('${item.id}')">✏️</button>
+                        <button class="btn-delete" onclick="deleteItem('${item.id}')">🗑️</button>
                     </td>
                 `;
             });
 
-            // حساب الإجماليات لكل البيانات (حتى تظل دقيقة بغض النظر عن البحث)
-            dataList.forEach(item => {
-                tIn += item.in;
-                tOut += item.out;
-            });
-
+            // حساب الإجمالي العام
+            allData.forEach(item => { tIn += item.in; tOut += item.out; });
             document.getElementById('repIn').innerText = "+" + tIn;
             document.getElementById('repOut').innerText = "-" + tOut;
             document.getElementById('repNet').innerText = (tIn - tOut);
-        }
+        };
 
-        function editItem(index) {
-            editIndex = index;
-            const item = dataList[index];
+        window.deleteItem = async (id) => {
+            if (confirm("هل أنت متأكد من الحذف من السحابة؟")) {
+                await deleteDoc(doc(db, "transactions", id));
+            }
+        };
+
+        window.editItem = (id) => {
+            const item = allData.find(d => d.id === id);
+            editId = id;
             document.getElementById('dt').value = item.fullDate;
             document.getElementById('n').value = item.name;
             document.getElementById('amt').value = item.in > 0 ? item.in : item.out;
             document.getElementById('b').value = item.note;
             setType(item.in > 0 ? 'in' : 'out');
-            document.querySelector('.btn-save').innerText = "تحديث 🔄";
-            window.scrollTo(0,0);
-        }
+            document.getElementById('mainBtn').innerText = "تحديث البيانات 🔄";
+            window.scrollTo(0, 0);
+        };
 
-        function deleteItem(index) {
-            if (confirm("حذف هذه المعاملة؟")) {
-                dataList.splice(index, 1);
-                saveData();
-                renderTable();
-            }
-        }
-
-        function sendDetailedWhatsApp() {
-            if (dataList.length === 0) return;
-            let message = `*📊 تقرير مالي شامل*%0A%0A`;
-            dataList.forEach((item, i) => {
+        window.sendDetailedWhatsApp = () => {
+            if (allData.length === 0) return;
+            let message = `*📊 تقرير مالي سحابي*%0A%0A`;
+            allData.slice(0, 15).forEach((item, i) => {
                 let typeStr = item.in > 0 ? "🟢 دخول" : "🔴 خروج";
-                message += `${i+1}- *${item.name}*%0A ← التاريخ: ${item.dateDisplay}%0A ← النوع: ${typeStr}%0A ← المبلغ: ${item.in || item.out}%0A------------------%0A`;
+                message += `${i+1}- *${item.name}*%0A المبلغ: ${item.in || item.out} | ${typeStr}%0A`;
             });
-            message += `%0A*💰 الصافي: ${document.getElementById('repNet').innerText}*`;
+            message += `%0A*💰 الصافي الإجمالي: ${document.getElementById('repNet').innerText}*`;
             window.open(`https://wa.me/?text=${message}`, '_blank');
-        }
+        };
 
         setupPage();
     </script>
-    <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyA7IZYNu4K9Lnx1MlU90PI6tOmskoJT18k",
-    authDomain: "farah-4fe14.firebaseapp.com",
-    projectId: "farah-4fe14",
-    storageBucket: "farah-4fe14.firebasestorage.app",
-    messagingSenderId: "527501007504",
-    appId: "1:527501007504:web:5ed89090f520102e7d9615",
-    measurementId: "G-HB5WFFW20T"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 </body>
 </html>
