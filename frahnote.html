@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>سجل فرح السحابي - Azemaa Pro</title>
+    <title>سجل فرح السحابي Pro - Azemaa</title>
     <style>
         :root { 
             --in-bg: #27ae60; --out-bg: #e74c3c; --dark: #2c3e50; 
@@ -15,7 +15,7 @@
             background-color: #dcdde1; margin: 0; padding: 5px; font-weight: 900;
         }
         
-        /* تنسيق قسم تسجيل الدخول */
+        /* شاشة تسجيل الدخول */
         #loginSection {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--dark); color: white; display: flex;
@@ -23,7 +23,12 @@
             z-index: 10000; padding: 20px; box-sizing: border-box;
         }
 
-        #mainApp { display: none; } /* إخفاء التطبيق حتى تسجيل الدخول */
+        #mainApp { display: none; }
+
+        .login-box {
+            background: white; padding: 25px; border-radius: 15px;
+            width: 90%; max-width: 400px; text-align: center; color: var(--dark);
+        }
 
         #currentDateHeader { 
             text-align: center; color: var(--dark); font-size: 1rem; 
@@ -50,41 +55,30 @@
             font-weight: 900; font-size: 1.2rem; cursor: pointer;
         }
 
-        /* تنسيق الجدول - خط وسط */
         table { width: 100%; border-collapse: collapse; }
         th { background: var(--dark); color: #fff; padding: 8px; font-size: 0.8rem; }
-        td { 
-            padding: 8px 4px; border-bottom: 1.5px solid #000; 
-            text-align: center; font-size: 0.9rem; font-weight: 900; 
-        }
+        td { padding: 8px 4px; border-bottom: 1.5px solid #000; text-align: center; font-size: 0.9rem; font-weight: 900; }
 
         .row-in { background-color: #c8e6c9; } 
         .row-out { background-color: #ffcdd2; }
-        .mini-report { 
-            display: flex; justify-content: space-around; 
-            background: var(--dark); color: #fff; padding: 10px; 
-            border-radius: 10px; margin-top: 10px;
-        }
+        .mini-report { display: flex; justify-content: space-around; background: var(--dark); color: #fff; padding: 10px; border-radius: 10px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <div id="loginSection">
-        <h2 style="margin-bottom:20px;">Azemaa Pro Software ☁️</h2>
-        <p>برجاء إدخال رقم الهاتف للدخول</p>
-        <input type="text" id="phoneNum" placeholder="2010xxxxxxxx+" style="width:80%; text-align:center;">
-        <div id="recaptcha-container" style="margin: 10px 0;"></div>
-        <button class="btn-save" style="background:#3498db; width:80%;" onclick="sendOTP()">إرسال كود التحقق</button>
-        
-        <div id="otpSection" style="display:none; width:80%; margin-top:20px;">
-            <input type="text" id="otpCode" placeholder="أدخل الكود المرسل" style="text-align:center;">
-            <button class="btn-save" style="background:#27ae60;" onclick="verifyOTP()">دخول النظام</button>
+        <div class="login-box">
+            <h2 style="margin-bottom:10px;">Azemaa Pro 🔐</h2>
+            <p style="margin-bottom:20px;">سجل دخولك لمتابعة الحسابات</p>
+            <input type="email" id="email" placeholder="البريد الإلكتروني" style="text-align:center;">
+            <input type="password" id="password" placeholder="كلمة المرور" style="text-align:center;">
+            <button class="btn-save" style="background:#3498db; margin-top:10px;" onclick="handleLogin()">دخول النظام</button>
+            <p id="authError" style="color:red; display:none; margin-top:10px; font-size:0.8rem;">خطأ في البيانات!</p>
         </div>
     </div>
 
     <div id="mainApp">
         <div id="currentDateHeader">جاري التحميل...</div>
-
         <div class="input-container">
             <input type="datetime-local" id="dt">
             <input type="text" id="n" placeholder="الاسم (جهة المعاملة)">
@@ -100,14 +94,14 @@
         <input type="text" id="searchInput" placeholder="🔍 ابحث هنا..." onkeyup="renderTable()" style="width:95%; display:block; margin:0 auto 10px auto;">
 
         <div style="background:#fff; border-radius:10px; overflow:hidden;">
-            <table id="t">
+            <table>
                 <thead>
                     <tr>
                         <th>التاريخ</th>
                         <th>الاسم</th>
                         <th>دخول</th>
                         <th>خروج</th>
-                        <th>إجراء</th>
+                        <th>حذف</th>
                     </tr>
                 </thead>
                 <tbody id="tb"></tbody>
@@ -119,15 +113,14 @@
             <div>خروج: <span id="repOut">-0</span></div>
             <div>الصافي: <span id="repNet">0</span></div>
         </div>
-        <button onclick="auth.signOut(); location.reload();" style="width:100%; margin-top:10px; padding:10px; background:#666; color:white; border:none; border-radius:8px;">تسجيل الخروج ⬅️</button>
+        <button onclick="logout()" style="width:100%; margin-top:10px; padding:10px; background:#666; color:white; border:none; border-radius:8px;">تسجيل الخروج ⬅️</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // بيانات الربط الخاصة بك يا أحمد
         const firebaseConfig = {
             apiKey: "AIzaSyA7IZYNu4K9Lnx1MlU90PI6tOmskoJT18k",
             authDomain: "farah-4fe14.firebaseapp.com",
@@ -146,29 +139,30 @@
         let currentType = 'in';
         let allData = [];
 
-        // --- نظام تسجيل الدخول ---
-        window.sendOTP = () => {
-            const phoneNumber = document.getElementById('phoneNum').value;
-            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'normal' });
-            
-            signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier)
-                .then((result) => {
-                    window.confirmationResult = result;
-                    document.getElementById('otpSection').style.display = 'block';
-                    alert("تم إرسال الكود");
-                }).catch((err) => alert("خطأ: " + err.message));
+        // --- إدارة الدخول ---
+        window.handleLogin = () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            signInWithEmailAndPassword(auth, email, pass).catch(err => {
+                document.getElementById('authError').style.display = 'block';
+            });
         };
 
-        window.verifyOTP = () => {
-            const code = document.getElementById('otpCode').value;
-            window.confirmationResult.confirm(code).then(() => {
+        window.logout = () => signOut(auth).then(() => location.reload());
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
                 document.getElementById('loginSection').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'block';
                 setupPage();
-            }).catch(() => alert("الكود غير صحيح"));
-        };
+                loadCloudData();
+            } else {
+                document.getElementById('loginSection').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+            }
+        });
 
-        // --- نظام السجل المالي ---
+        // --- وظائف السجل ---
         window.setupPage = () => {
             const now = new Date();
             document.getElementById('currentDateHeader').innerText = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -207,16 +201,20 @@
             document.getElementById('n').value = ""; document.getElementById('amt').value = "";
         };
 
-        onSnapshot(query(financeRef, orderBy("timestamp", "desc")), (snap) => {
-            allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderTable();
-        });
+        function loadCloudData() {
+            onSnapshot(query(financeRef, orderBy("timestamp", "desc")), (snap) => {
+                allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderTable();
+            });
+        }
 
         window.renderTable = () => {
             const tb = document.getElementById('tb');
+            const search = document.getElementById('searchInput').value.toLowerCase();
             tb.innerHTML = "";
             let tIn = 0, tOut = 0;
-            allData.forEach(item => {
+            
+            allData.filter(i => i.name.toLowerCase().includes(search) || i.note.toLowerCase().includes(search)).forEach(item => {
                 tIn += item.in; tOut += item.out;
                 const row = tb.insertRow();
                 row.className = item.in > 0 ? "row-in" : "row-out";
@@ -234,15 +232,6 @@
         };
 
         window.deleteItem = (id) => confirm("حذف؟") && deleteDoc(doc(db, "transactions", id));
-
-        // التحقق إذا كان مسجل دخول مسبقاً
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'block';
-                setupPage();
-            }
-        });
     </script>
 </body>
 </html>
