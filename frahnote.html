@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>سجل فرح السحابي Pro - Azemaa</title>
+    <title>سجل Azemaa Pro السحابي</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { 
             --in-bg: #27ae60; --out-bg: #e74c3c; --dark: #2c3e50; 
@@ -15,7 +16,6 @@
             background-color: #dcdde1; margin: 0; padding: 5px; font-weight: 900;
         }
         
-        /* شاشة تسجيل الدخول */
         #loginSection {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--dark); color: white; display: flex;
@@ -28,12 +28,6 @@
         .login-box {
             background: white; padding: 25px; border-radius: 15px;
             width: 90%; max-width: 400px; text-align: center; color: var(--dark);
-        }
-
-        #currentDateHeader { 
-            text-align: center; color: var(--dark); font-size: 1rem; 
-            background: #fff; padding: 6px; border-radius: 10px; 
-            margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
         .input-container { 
@@ -55,13 +49,15 @@
             font-weight: 900; font-size: 1.2rem; cursor: pointer;
         }
 
-        table { width: 100%; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px;}
         th { background: var(--dark); color: #fff; padding: 8px; font-size: 0.8rem; }
         td { padding: 8px 4px; border-bottom: 1.5px solid #000; text-align: center; font-size: 0.9rem; font-weight: 900; }
 
         .row-in { background-color: #c8e6c9; } 
         .row-out { background-color: #ffcdd2; }
         .mini-report { display: flex; justify-content: space-around; background: var(--dark); color: #fff; padding: 10px; border-radius: 10px; margin-top: 10px; }
+        
+        .btn-excel { background: #1f7244; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; margin-top: 10px; font-weight: bold; cursor: pointer;}
     </style>
 </head>
 <body>
@@ -69,7 +65,7 @@
     <div id="loginSection">
         <div class="login-box">
             <h2 style="margin-bottom:10px;">Azemaa Pro 🔐</h2>
-            <p style="margin-bottom:20px;">سجل دخولك لمتابعة الحسابات</p>
+            <p style="margin-bottom:20px;">نظام الحسابات السحابي المشفر</p>
             <input type="email" id="email" placeholder="البريد الإلكتروني" style="text-align:center;">
             <input type="password" id="password" placeholder="كلمة المرور" style="text-align:center;">
             <button class="btn-save" style="background:#3498db; margin-top:10px;" onclick="handleLogin()">دخول النظام</button>
@@ -78,7 +74,8 @@
     </div>
 
     <div id="mainApp">
-        <div id="currentDateHeader">جاري التحميل...</div>
+        <div id="currentDateHeader" style="text-align: center; background: white; padding: 10px; border-radius: 10px; margin-bottom: 10px;">جاري التحميل...</div>
+        
         <div class="input-container">
             <input type="datetime-local" id="dt">
             <input type="text" id="n" placeholder="الاسم (جهة المعاملة)">
@@ -88,10 +85,10 @@
             </div>
             <input type="number" id="amt" placeholder="المبلغ" inputmode="decimal">
             <input type="text" id="b" placeholder="البيان">
-            <button class="btn-save" id="mainBtn" onclick="addOrUpdate()">حفظ في السحابة ☁️</button>
+            <button class="btn-save" id="mainBtn" onclick="addOrUpdate()">حفظ في حسابك الشخصي ☁️</button>
         </div>
 
-        <input type="text" id="searchInput" placeholder="🔍 ابحث هنا..." onkeyup="renderTable()" style="width:95%; display:block; margin:0 auto 10px auto;">
+        <input type="text" id="searchInput" placeholder="🔍 ابحث في حساباتك..." onkeyup="renderTable()" style="width:95%; display:block; margin:0 auto 10px auto;">
 
         <div style="background:#fff; border-radius:10px; overflow:hidden;">
             <table>
@@ -109,16 +106,18 @@
         </div>
 
         <div class="mini-report">
-            <div>دخول: <span id="repIn">+0</span></div>
-            <div>خروج: <span id="repOut">-0</span></div>
+            <div>دخول: <span id="repIn">0</span></div>
+            <div>خروج: <span id="repOut">0</span></div>
             <div>الصافي: <span id="repNet">0</span></div>
         </div>
-        <button onclick="logout()" style="width:100%; margin-top:10px; padding:10px; background:#666; color:white; border:none; border-radius:8px;">تسجيل الخروج ⬅️</button>
+
+        <button class="btn-excel" onclick="exportToExcel()">📥 تحميل تقرير إكسيل (Excel)</button>
+        <button onclick="logout()" style="width:100%; margin-top:10px; padding:10px; background:#666; color:white; border:none; border-radius:8px; font-weight: bold;">تسجيل الخروج ⬅️</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -139,11 +138,10 @@
         let currentType = 'in';
         let allData = [];
 
-        // --- إدارة الدخول ---
         window.handleLogin = () => {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
-            signInWithEmailAndPassword(auth, email, pass).catch(err => {
+            signInWithEmailAndPassword(auth, email, pass).catch(() => {
                 document.getElementById('authError').style.display = 'block';
             });
         };
@@ -155,14 +153,13 @@
                 document.getElementById('loginSection').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'block';
                 setupPage();
-                loadCloudData();
+                loadCloudData(user.uid);
             } else {
                 document.getElementById('loginSection').style.display = 'flex';
                 document.getElementById('mainApp').style.display = 'none';
             }
         });
 
-        // --- وظائف السجل ---
         window.setupPage = () => {
             const now = new Date();
             document.getElementById('currentDateHeader').innerText = now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -178,11 +175,13 @@
         };
 
         window.addOrUpdate = async () => {
+            const user = auth.currentUser;
             const name = document.getElementById('n').value;
             const amount = parseFloat(document.getElementById('amt').value) || 0;
             if (!name || amount === 0) return alert("أكمل البيانات");
 
             const item = {
+                userId: user.uid, // ربط البيانات بالـ ID الخاص بالمستخدم
                 timestamp: new Date(document.getElementById('dt').value).getTime(),
                 fullDate: document.getElementById('dt').value,
                 name: name,
@@ -198,11 +197,13 @@
             } else {
                 await addDoc(financeRef, item);
             }
-            document.getElementById('n').value = ""; document.getElementById('amt').value = "";
+            document.getElementById('n').value = ""; document.getElementById('amt').value = ""; document.getElementById('b').value = "";
         };
 
-        function loadCloudData() {
-            onSnapshot(query(financeRef, orderBy("timestamp", "desc")), (snap) => {
+        function loadCloudData(uid) {
+            // جلب البيانات الخاصة بهذا المستخدم فقط
+            const q = query(financeRef, where("userId", "==", uid), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snap) => {
                 allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderTable();
             });
@@ -223,7 +224,7 @@
                     <td>${item.name}</td>
                     <td>${item.in || '-'}</td>
                     <td>${item.out || '-'}</td>
-                    <td><button onclick="deleteItem('${item.id}')">🗑️</button></td>
+                    <td><button onclick="deleteItem('${item.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button></td>
                 `;
             });
             document.getElementById('repIn').innerText = tIn;
@@ -231,7 +232,21 @@
             document.getElementById('repNet').innerText = tIn - tOut;
         };
 
-        window.deleteItem = (id) => confirm("حذف؟") && deleteDoc(doc(db, "transactions", id));
+        window.deleteItem = (id) => confirm("هل تريد حذف هذه المعاملة؟") && deleteDoc(doc(db, "transactions", id));
+
+        window.exportToExcel = () => {
+            const dataToExport = allData.map(i => ({
+                "التاريخ": i.fullDate,
+                "الاسم": i.name,
+                "دخول": i.in,
+                "خروج": i.out,
+                "البيان": i.note
+            }));
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Financial_Report");
+            XLSX.writeFile(wb, `Report_${new Date().toLocaleDateString()}.xlsx`);
+        };
     </script>
 </body>
 </html>
