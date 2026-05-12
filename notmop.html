@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AZEMAA PRO - سجل الورشة المطور</title>
-    
+    <title>AZEMAA PRO 3D - Split Card</title>
+    <style>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-
-    <style>
-        :root { --primary: #600000; --bg: #f0f2f5; --accent: #ffd700; }
+        :root { --primary: #2563eb; --bg: #f0f2f5; }
         
         body { 
             font-family: system-ui, sans-serif; 
@@ -17,185 +15,209 @@
             overflow-x: hidden; color: #111827;
         }
 
-        .container { width: 100%; max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
+        .container { width: 100%; max-width: 100%; margin: 0; padding-bottom: 60px; }
         
-        /* الهيدر على طريقة molaks */
         .input-section { 
-            background: #fff; padding: 20px; border-bottom: 6px solid var(--primary);
+            background: #fff; padding: 20px; border-bottom: 6px solid #d1d5db;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 10px;
+        }
+        
+        textarea { 
+            width: 100%; min-height: 100px; padding: 15px; border: 2px solid #e5e7eb; 
+            border-radius: 12px; font-size: 18px; font-weight: bold; box-sizing: border-box;
+            background: #f9fafb; outline: none;
         }
 
         .btn-main { 
             width: 100%; padding: 16px; background: var(--primary); color: white; 
-            border: none; border-radius: 12px; font-weight: 900; margin-top: 10px; 
-            font-size: 18px; border-bottom: 6px solid #400000; cursor: pointer;
+            border: none; border-radius: 12px; font-weight: 900; margin-top: 15px; 
+            font-size: 18px; border-bottom: 6px solid #1e40af; cursor: pointer;
+        }
+
+        .notes-grid { display: flex; flex-direction: column; width: 100%; gap: 15px; }
+
+        /* --- تصميم الكارت المقسم --- */
+        .card { 
+            width: 100%; background: #fff;
+            display: flex; flex-direction: column;
+            border-bottom: 8px solid rgba(0,0,0,0.15);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            height: auto; overflow: hidden;
+        }
+
+        .note-img { width: 100%; height: auto; display: block; }
+
+        /* الجزء العلوي من التقسيم (العنوان أو التمييز) */
+        .card-header-split {
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.3);
+            border-bottom: 2px dashed rgba(0,0,0,0.1);
+            font-size: 14px;
+        }
+
+        /* الجزء السفلي من التقسيم (المحتوى الأساسي) */
+        .card-body-split { 
+            padding: 20px;
+            word-wrap: break-word;
+            overflow-wrap: anywhere; 
+            word-break: break-word;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .date-badge {
+            display: inline-block; font-size: 12px; 
+            color: #4b5563; background: #fff; padding: 3px 10px;
+            border-radius: 5px; direction: ltr; box-shadow: 0 2px 0 rgba(0,0,0,0.1);
+        }
+        
+        .note-content { 
+            font-size: 20px; line-height: 1.6; color: #000; 
+            white-space: pre-wrap; text-align: right; display: block;
+        }
+        
+        .actions { 
+            display: flex; justify-content: space-between; padding: 12px 20px; 
+            background: #fff; border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .edit-btn, .del-btn { 
+            background: #f8f9fa; padding: 8px 15px; border-radius: 8px; 
+            box-shadow: 0 3px 0 #ccc; font-size: 13px; border: 1px solid #eee;
         }
 
         .search-box { 
             width: 100%; padding: 18px; border: none; background: #fff; 
             text-align: center; box-sizing: border-box; border-bottom: 4px solid var(--primary);
-            font-weight: bold;
         }
-
-        /* تصميم الكارت المقسم */
-        .card { 
-            width: 100%; background: #fff; display: flex; flex-direction: column;
-            border-bottom: 8px solid rgba(0,0,0,0.15); box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            margin-bottom: 15px; overflow: hidden;
-        }
-
-        .card-header-split {
-            padding: 12px 20px; background: rgba(255,255,255,0.5);
-            border-bottom: 2px dashed rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;
-        }
-
-        .card-body-split { padding: 15px 20px; background: rgba(255,255,255,0.2); }
-
-        .customer-name { font-size: 22px; color: var(--primary); display: block; margin-bottom: 5px; }
-        
-        .note-item {
-            background: #fff; border-radius: 8px; padding: 10px; margin-top: 10px;
-            border-right: 5px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .dims-badge {
-            background: #eee; padding: 4px 8px; border-radius: 6px; font-size: 14px;
-            display: inline-block; margin-top: 5px; color: #444; direction: ltr;
-        }
-
-        .actions { 
-            display: flex; justify-content: space-around; padding: 10px; 
-            background: #fff; border-top: 1px solid rgba(0,0,0,0.05);
-        }
-
-        .del-btn { color: #dc2626; cursor: pointer; font-size: 14px; }
-        .edit-btn { color: #2563eb; cursor: pointer; font-size: 14px; }
-
-        /* الآلة الحاسبة من molaks/notmop */
-        .calc-bar { 
-            position: fixed; left: 20px; bottom: 20px; background: var(--accent); 
-            color: var(--primary); width: 60px; height: 60px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 25px;
-        }
-        
-        #saveStatus { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #22c55e; color: white; padding: 8px 20px; border-radius: 20px; font-size: 14px; display: none; z-index: 2000; }
     </style>
 </head>
 <body>
 
-<div id="saveStatus">✅ تم الحفظ سحابياً</div>
-
 <div class="container">
     <div class="input-section">
-        <h2 style="text-align: center; color: var(--primary);">🛠️ سجل الورشة - AZEMAA PRO</h2>
-        <button class="btn-main" onclick="addNewCustomerCloud()">+ إضافة زبون جديد</button>
+        <h2 style="text-align: center; color: var(--primary);">🚀 AZEMAA SPLIT-CARD</h2>
+        <textarea id="noteInput" placeholder="اكتب ملاحظتك هنا.."></textarea>
+        <label style="display:block; margin-top:10px; text-align:center; background:#eee; padding:10px; border-radius:10px; cursor:pointer;">
+            🖼️ اختيار صورة <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="processFile(event)">
+        </label>
+        <input type="hidden" id="editId" value="">
+        <button class="btn-main" onclick="handleSave()">حفظ الملحوظة المقسمة ✅</button>
     </div>
 
-    <input type="text" id="searchBox" class="search-box" placeholder="🔍 ابحث عن اسم الزبون..." onkeyup="filterNotes()">
+    <input type="text" id="searchBox" class="search-box" placeholder="🔍 ابحث في الملاحظات..." onkeyup="loadNotes()">
     
-    <div id="main-list" class="notes-grid">
-        </div>
+    <div id="notesList" class="notes-grid"></div>
 </div>
 
-<div class="calc-bar" onclick="alert('تفعيل الآلة الحاسبة كما في الكود الأصلي')">🖩</div>
-
 <script>
-    // إعدادات Firebase الخاصة بك
-    const firebaseConfig = {
-        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFLHpOc1M",
-        authDomain: "farah-kitchen.firebaseapp.com",
-        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
-        projectId: "farah-kitchen",
-        storageBucket: "farah-kitchen.firebasestorage.app",
-        messagingSenderId: "702572851072",
-        appId: "1:702572851072:web:320a92c9430abba6b71b65"
+    let db;
+    let currentImageData = "";
+    const colors = ["#bae6fd", "#fef08a", "#bbf7d0", "#fecaca", "#ddd6fe", "#ffedd5", "#a5f3fc", "#e9d5ff"];
+
+    const request = indexedDB.open("AzemaaSplitDB", 1);
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        db.createObjectStore("notes", { keyPath: "id", autoIncrement: true });
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    request.onsuccess = (e) => { db = e.target.result; loadNotes(); };
 
-    const colors = ["#bae6fd", "#fef08a", "#bbf7d0", "#fecaca", "#ddd6fe", "#ffedd5", "#e9d5ff"];
-
-    // جلب البيانات من السحابة
-    db.ref('azemaa_v5/notmop').on('value', (snap) => {
-        const list = document.getElementById('main-list');
-        list.innerHTML = "";
-        const data = snap.val();
-        if(!data) return;
-
-        Object.keys(data).sort().reverse().forEach(id => {
-            const item = data[id];
-            renderCard(id, item);
-        });
-    });
-
-    function renderCard(id, item) {
-        const list = document.getElementById('main-list');
-        let notesHTML = "";
-        if(item.notes) {
-            item.notes.forEach(n => {
-                notesHTML += `
-                    <div class="note-item">
-                        <div>${n.text}</div>
-                        ${n.hasDims ? `<div class="dims-badge">📏 ${n.w} × ${n.l} × ${n.d}</div>` : ""}
-                    </div>`;
-            });
-        }
-
-        const cardHTML = `
-            <div class="card" style="background: ${item.color || '#fff'}">
-                <div class="card-header-split">
-                    <span style="font-size:12px; color:#666;">📅 ${item.date}</span>
-                    <span class="del-btn" onclick="deleteRecord('${id}')">🗑️ حذف</span>
-                </div>
-                <div class="card-body-split">
-                    <b class="customer-name">👤 ${item.name || 'بدون اسم'}</b>
-                    <div class="notes-container">${notesHTML}</div>
-                </div>
-                <div class="actions">
-                    <span class="edit-btn" onclick="window.location.href='notmop.html'">✏️ تعديل البيانات</span>
-                </div>
-            </div>`;
-        list.insertAdjacentHTML('beforeend', cardHTML);
+    function processFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = img.height * (800 / img.width);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                currentImageData = canvas.toDataURL('image/jpeg', 0.8);
+            };
+        };
     }
 
-    function addNewCustomerCloud() {
-        const id = "n" + Date.now();
-        const dateStr = new Date().toLocaleDateString('ar-EG');
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        
-        const name = prompt("أدخل اسم الزبون الجديد:");
-        if(!name) return;
+    function handleSave() {
+        const text = document.getElementById('noteInput').value;
+        const editId = document.getElementById('editId').value;
+        if (!text.trim() && !currentImageData) return;
 
-        db.ref('azemaa_v5/notmop/' + id).set({
-            name: name,
+        const transaction = db.transaction(["notes"], "readwrite");
+        const store = transaction.objectStore("notes");
+        const now = new Date();
+        const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} | ${now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute: '2-digit'})}`;
+
+        const noteData = {
+            text: text,
+            image: currentImageData,
             date: dateStr,
-            color: color,
-            notes: [{ text: "ملحوظة افتتاحية", w: "", l: "", d: "", hasDims: false }]
-        }).then(() => showStatus());
-    }
+            bgColor: colors[Math.floor(Math.random() * colors.length)]
+        };
 
-    function deleteRecord(id) {
-        if(confirm("حذف هذا الزبون نهائياً؟")) {
-            db.ref('azemaa_v5/notmop/' + id).remove();
+        if (editId) {
+            noteData.id = parseInt(editId);
+            store.put(noteData);
+            document.getElementById('editId').value = "";
+        } else {
+            store.add(noteData);
         }
+
+        transaction.oncomplete = () => {
+            document.getElementById('noteInput').value = "";
+            currentImageData = "";
+            loadNotes();
+        };
     }
 
-    function filterNotes() {
+    function loadNotes() {
         const term = document.getElementById('searchBox').value.toLowerCase();
-        const cards = document.querySelectorAll('.card');
-        cards.forEach(card => {
-            const name = card.querySelector('.customer-name').innerText.toLowerCase();
-            card.style.display = name.includes(term) ? "flex" : "none";
-        });
+        const list = document.getElementById('notesList');
+        list.innerHTML = "";
+
+        const store = db.transaction("notes").objectStore("notes");
+        store.openCursor(null, "prev").onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor) {
+                const note = cursor.value;
+                if (note.text.toLowerCase().includes(term)) {
+                    list.innerHTML += `
+                        <div class="card" style="background: ${note.bgColor}">
+                            <div class="card-header-split">
+                                <span class="date-badge">🕒 ${note.date}</span>
+                            </div>
+                            ${note.image ? `<img src="${note.image}" class="note-img">` : ""}
+                            <div class="card-body-split">
+                                <div class="note-content">${note.text}</div>
+                            </div>
+                            <div class="actions">
+                                <span class="edit-btn" onclick="editNote(${note.id})">✏️ تعديل</span>
+                                <span class="del-btn" onclick="deleteNote(${note.id})">🗑️ حذف</span>
+                            </div>
+                        </div>`;
+                }
+                cursor.continue();
+            }
+        };
     }
 
-    function showStatus() {
-        const status = document.getElementById('saveStatus');
-        status.style.display = 'block';
-        setTimeout(() => status.style.display = 'none', 2000);
+    function editNote(id) {
+        const store = db.transaction("notes").objectStore("notes");
+        store.get(id).onsuccess = (e) => {
+            const note = e.target.result;
+            document.getElementById('noteInput').value = note.text;
+            document.getElementById('editId').value = note.id;
+            currentImageData = note.image;
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        };
+    }
+
+    function deleteNote(id) {
+        if (confirm("حذف؟")) {
+            db.transaction(["notes"], "readwrite").objectStore("notes").delete(id).onsuccess = () => loadNotes();
+        }
     }
 </script>
-
 </body>
 </html>
