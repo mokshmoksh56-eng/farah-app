@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa pro</title>
+    <title>azemaa pro - Firebase Edition</title>
     <style>
-        :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --e: #3498db; --bg: #ecf0f1; --deep-red: #8b0000; }
+        :root { --p: #2c3e50; --w: #25D366; --r: #e67e22; --e: #3498db; --fb: #673ab7; --cloud-down: #3f51b5; --bg: #ecf0f1; --deep-red: #8b0000; }
         body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg); display: flex; flex-direction: column; }
         header { background: var(--p); color: #fff; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 1.2rem; }
         
-        /* تحديث صندوق الأزرار ليكون متناسقاً */
         .sync-box { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .btn { border: none; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        .btn { border: none; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn:active { transform: scale(0.95); }
         .btn-s { background: var(--w); }
         .btn-e { background: var(--e); }
-        .btn-r { background: var(--r); grid-column: span 2; } /* زر الاسترجاع بعرض كامل */
+        .btn-fb { background: var(--fb); }
+        .btn-cloud { background: var(--cloud-down); }
+        .btn-r { background: var(--r); grid-column: span 2; }
 
         .main-container { display: flex; flex-direction: column; gap: 15px; }
         .card { background: #fff; border-radius: 10px; height: 400px; border: 1px solid #ccc; display: flex; flex-direction: column; overflow: hidden; position: relative; }
@@ -28,16 +30,20 @@
 </head>
 <body>
 
-<header>🚀 azemaa pro</header>
+<header>🚀 AZEMAA PRO - FARAH KITCHENS</header>
 
 <div class="sync-box">
+    <!-- أزرار Firebase الجديدة -->
+    <button onclick="saveToCloud()" class="btn btn-fb">☁️ حفظ سحابي</button>
+    <button onclick="loadFromCloud()" class="btn btn-cloud">🔄 استرجاع سحابي</button>
+    
+    <!-- الأزرار القديمة -->
     <button onclick="saveToWhatsApp()" class="btn btn-s">📤 واتساب</button>
     <button onclick="saveToEmail()" class="btn btn-e">📧 إيميل</button>
-    <button onclick="loadFromWhatsApp()" class="btn btn-r">📥 استرجاع الكود الاحتياطي</button>
+    <button onclick="loadFromWhatsApp()" class="btn btn-r">📥 استرجاع الكود اليدوي</button>
 </div>
 
 <div class="main-container">
-    <!-- الأقسام كما هي في كودك الأصلي -->
     <div class="card">
         <div class="h" ondblclick="openPage(this)"><span>👤 القسم الرئيسي</span> <button class="zoom-btn" onclick="toggleZoom(this)">تكبير ⛶</button></div>
         <iframe src="zbon.html"></iframe>
@@ -64,10 +70,65 @@
     </div>
 </div>
 
+<!-- إعدادات Firebase -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M",
+        authDomain: "farah-kitchen.firebaseapp.com",
+        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
+        projectId: "farah-kitchen",
+        storageBucket: "farah-kitchen.firebasestorage.app",
+        messagingSenderId: "702572851072",
+        appId: "1:702572851072:web:320a92c9430abba6b71b65",
+        measurementId: "G-KXQ64CGXL8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // دالة الحفظ للسحاب
+    window.saveToCloud = async function() {
+        try {
+            let data = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                data[key] = localStorage.getItem(key);
+            }
+            if (Object.keys(data).length === 0) return alert("لا توجد بيانات لحفظها!");
+            
+            await set(ref(db, 'backups/azemaa_main'), data);
+            alert("✅ تم الحفظ في Firebase بنجاح");
+        } catch (e) {
+            alert("❌ خطأ في الاتصال: " + e.message);
+        }
+    };
+
+    // دالة الاسترجاع من السحاب
+    window.loadFromCloud = async function() {
+        try {
+            const snapshot = await get(child(ref(db), 'backups/azemaa_main'));
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                localStorage.clear();
+                for (let k in data) localStorage.setItem(k, data[k]);
+                alert("✅ تم استرجاع البيانات بنجاح");
+                location.reload();
+            } else {
+                alert("❌ لا توجد نسخة سحابية");
+            }
+        } catch (e) {
+            alert("❌ فشل الاسترجاع: " + e.message);
+        }
+    };
+</script>
+
 <script>
+    // الدوال المساعدة للواتساب والزوم (باقي كودك الأصلي)
     const keysMap = { '"name":': '"n":', '"price":': '"p":', '"date":': '"d":', '"amount":': '"a":' };
 
-    // دالة إنشاء الكود الموحدة
     function generateBackupCode() {
         let data = {};
         for (let i = 0; i < localStorage.length; i++) {
@@ -75,9 +136,7 @@
             data[key] = localStorage.getItem(key);
         }
         let compressed = JSON.stringify(data);
-        for (let [full, short] of Object.entries(keysMap)) {
-            compressed = compressed.split(full).join(short);
-        }
+        for (let [full, short] of Object.entries(keysMap)) { compressed = compressed.split(full).join(short); }
         return btoa(unescape(encodeURIComponent(compressed)));
     }
 
@@ -88,57 +147,38 @@
 
     function saveToEmail() {
         let code = generateBackupCode();
-        let subject = encodeURIComponent("نسخة احتياطية Azemaa Pro");
-        let body = encodeURIComponent("كود الاسترجاع الخاص بك:\n\n" + code);
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        window.location.href = `mailto:?subject=Backup&body=${code}`;
     }
 
     function loadFromWhatsApp() {
-        let input = prompt("الصق الكود (من واتساب أو إيميل):");
+        let input = prompt("الصق الكود هنا:");
         if (!input) return;
         try {
-            let cleanCode = input.includes('\n') ? input.split('\n').pop().trim() : input.trim();
-            let decoded = decodeURIComponent(escape(atob(cleanCode)));
-            for (let [full, short] of Object.entries(keysMap)) {
-                decoded = decoded.split(short).join(full);
-            }
+            let decoded = decodeURIComponent(escape(atob(input.trim())));
+            for (let [full, short] of Object.entries(keysMap)) { decoded = decoded.split(short).join(full); }
             let obj = JSON.parse(decoded);
             localStorage.clear();
             for (let k in obj) localStorage.setItem(k, obj[k]);
-            alert("✅ تم الاسترجاع بنجاح");
             location.reload();
-        } catch (e) {
-            alert("❌ الكود غير صحيح");
-        }
+        } catch (e) { alert("❌ كود خاطئ"); }
     }
 
-    // وظائف التكبير والفتح (كما هي)
-    function openPage(headerElement) {
-        let iframe = headerElement.parentElement.querySelector('iframe');
-        if (iframe) window.open(iframe.src, '_blank');
-    }
-
-    function toggleZoom(btn) {
-        let card = btn.closest('.card');
-        if (card.classList.contains('fullscreen')) {
-            closeFullscreen();
+    function openPage(h) { let f = h.parentElement.querySelector('iframe'); if (f) window.open(f.src, '_blank'); }
+    function toggleZoom(b) {
+        let c = b.closest('.card');
+        if (c.classList.contains('fullscreen')) {
+            c.classList.remove('fullscreen'); b.innerText = "تكبير ⛶";
         } else {
-            card.classList.add('fullscreen');
-            btn.innerText = "إغلاق X";
-            history.pushState({view: 'fullscreen'}, "");
+            c.classList.add('fullscreen'); b.innerText = "إغلاق X";
+            history.pushState({view: 'full'}, "");
         }
     }
-
-    function closeFullscreen() {
-        let fullCard = document.querySelector('.card.fullscreen');
-        if (fullCard) {
-            fullCard.classList.remove('fullscreen');
-            let btn = fullCard.querySelector('.zoom-btn');
-            if(btn) btn.innerText = "تكبير ⛶";
-        }
-    }
-
-    window.onpopstate = function() { closeFullscreen(); };
+    window.onpopstate = function() { 
+        document.querySelectorAll('.card.fullscreen').forEach(c => {
+            c.classList.remove('fullscreen');
+            c.querySelector('.zoom-btn').innerText = "تكبير ⛶";
+        });
+    };
 </script>
 
 </body>
