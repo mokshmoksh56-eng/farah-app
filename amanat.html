@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>خزنتي الماسية - ملونة</title>
+    <title>خزنتي الماسية - الحفظ الدائم</title>
     <style>
         :root {
             --primary: #6c5ce7; --success: #00b894; --danger: #d63031;
@@ -35,14 +35,14 @@
 
         .names-cloud { 
             display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; 
-            max-height: 100px; overflow-y: auto; padding: 5px;
+            max-height: 120px; overflow-y: auto; padding: 5px;
         }
         .tag { 
             padding: 6px 12px; border-radius: 20px; font-size: 12px; 
             display: flex; align-items: center; gap: 8px; color: white;
             font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1);
         }
-        .tag b { background: rgba(0,0,0,0.2); width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; }
+        .tag b { background: rgba(0,0,0,0.3); width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; }
 
         input, select {
             width: 100%; padding: 12px; margin-bottom: 10px; border: 1.5px solid #eee;
@@ -50,8 +50,7 @@
             transition: all 0.3s ease;
         }
         
-        /* تلوين السلكت المختار */
-        #userSelect { font-weight: bold; }
+        #userSelect { font-weight: bold; cursor: pointer; }
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .btn {
@@ -77,7 +76,7 @@
         .wa-action { 
             display: inline-block; background: #25D366; color: white; 
             padding: 5px 12px; border-radius: 50px; text-decoration: none;
-            font-size: 11px; margin-top: 5px;
+            font-size: 11px; margin-top: 5px; font-weight: bold;
         }
         .del-icon { color: #fab1a0; margin-right: 15px; cursor: pointer; font-size: 18px; }
         
@@ -98,18 +97,17 @@
 
     <div class="main-card">
         <div class="name-input-container">
-            <input type="text" id="newName" placeholder="اسم العميل" style="margin:0">
-            <input type="text" id="newPhone" placeholder="الرقم" style="margin:0; width:60%">
+            <input type="text" id="newName" placeholder="اسم العميل الجديد" style="margin:0">
+            <input type="text" id="newPhone" placeholder="رقم الواتساب" style="margin:0; width:60%">
             <button onclick="addName()" style="background:var(--primary); color:white; border:none; border-radius:12px; padding:0 15px; cursor:pointer">+</button>
         </div>
         
         <div class="names-cloud" id="tagsArea"></div>
 
-        <!-- القائمة المنسدلة الملونة -->
         <select id="userSelect" onchange="applySelectColor(); render();"></select>
         
         <input type="number" id="amount" placeholder="المبلغ">
-        <input type="text" id="note" placeholder="ملاحظات العملية">
+        <input type="text" id="note" placeholder="البيان أو الملاحظة">
         
         <div class="btn-group">
             <button class="btn btn-in" onclick="save('in')">إيداع (+)</button>
@@ -121,64 +119,78 @@
     <div id="logsArea"></div>
 
 <script>
-    let customers = JSON.parse(localStorage.getItem('CUSTOMERS_DATA')) || [
+    // جلب البيانات من الذاكرة المحلية (LocalStorage) لضمان الحفظ الدائم
+    let customers = JSON.parse(localStorage.getItem('PERMANENT_CUSTOMERS')) || [
         {name: "أحمد رمضان", phone: "01000000000", color: "#6c5ce7"}
     ];
-    let db = JSON.parse(localStorage.getItem('DIAMOND_DB_V2')) || [];
+    let db = JSON.parse(localStorage.getItem('PERMANENT_DB')) || [];
 
-    // مجموعة ألوان مميزة وغامقة لتناسب الكتابة البيضاء
+    // توليد ألوان مريحة للعين
     function generateColor() {
-        const colors = ['#6c5ce7', '#00b894', '#d63031', '#e17055', '#0984e3', '#2d3436', '#b83280', '#1e272e', '#ff3f34', '#05c46b'];
+        const colors = ['#6c5ce7', '#00b894', '#d63031', '#e17055', '#0984e3', '#2d3436', '#b83280', '#0abde3', '#ee5253', '#10ac84'];
         return colors[Math.floor(Math.random() * colors.length)];
     }
 
+    // إضافة عميل جديد وحفظه
     function addName() {
         const nameVal = document.getElementById('newName').value.trim();
         const phoneVal = document.getElementById('newPhone').value.trim();
         
         if(nameVal) {
-            if(customers.find(c => c.name === nameVal)) return alert("الاسم موجود مسبقاً");
+            if(customers.find(c => c.name === nameVal)) return alert("الاسم موجود بالفعل!");
+            
             customers.push({
                 name: nameVal, 
                 phone: phoneVal, 
                 color: generateColor()
             });
-            localStorage.setItem('CUSTOMERS_DATA', JSON.stringify(customers));
+            
+            saveToStorage();
             document.getElementById('newName').value = '';
             document.getElementById('newPhone').value = '';
             sync();
         }
     }
 
+    // حذف عميل وحفظ التغييرات
     function deleteName(name) {
-        if(confirm(`حذف العميل "${name}" نهائياً؟`)) {
+        if(confirm(`هل أنت متأكد من حذف العميل "${name}" وكل بياناته؟`)) {
             customers = customers.filter(c => c.name !== name);
-            localStorage.setItem('CUSTOMERS_DATA', JSON.stringify(customers));
+            db = db.filter(d => d.name !== name); // حذف عملياته أيضاً لضمان دقة الحسابات
+            saveToStorage();
             sync();
         }
     }
 
+    // حفظ البيانات في LocalStorage
+    function saveToStorage() {
+        localStorage.setItem('PERMANENT_CUSTOMERS', JSON.stringify(customers));
+        localStorage.setItem('PERMANENT_DB', JSON.stringify(db));
+    }
+
+    // مزامنة القائمة المنسدلة والسحابة
     function sync() {
         const sel = document.getElementById('userSelect');
         const tags = document.getElementById('tagsArea');
-        sel.innerHTML = '<option value="" style="background:white; color:black">-- كشف حساب عام --</option>';
+        const currentSelected = sel.value;
+
+        sel.innerHTML = '<option value="" style="color:black; background:white">-- كشف حساب عام (الكل) --</option>';
         tags.innerHTML = '';
         
         customers.sort((a,b) => a.name.localeCompare(b.name)).forEach(c => {
-            // إضافة اللون داخل القائمة المنسدلة (يدعم بعض المتصفحات خلفية الـ option)
             sel.innerHTML += `<option value="${c.name}" style="background:${c.color}; color:white">${c.name}</option>`;
             tags.innerHTML += `<div class="tag" style="background:${c.color}">${c.name} <b onclick="deleteName('${c.name}')">×</b></div>`;
         });
+
+        sel.value = currentSelected;
         applySelectColor();
         render();
     }
 
-    // وظيفة تلوين الـ Select نفسه بناءً على العميل المختار
+    // تلوين مربع الاختيار عند اختيار اسم
     function applySelectColor() {
         const sel = document.getElementById('userSelect');
-        const selectedName = sel.value;
-        const customer = customers.find(c => c.name === selectedName);
-        
+        const customer = customers.find(c => c.name === sel.value);
         if (customer) {
             sel.style.backgroundColor = customer.color;
             sel.style.color = "white";
@@ -188,12 +200,13 @@
         }
     }
 
+    // حفظ عملية مالية جديدة
     function save(type) {
         const name = document.getElementById('userSelect').value;
         const amt = parseFloat(document.getElementById('amount').value);
         const note = document.getElementById('note').value || (type==='in'?'إيداع':(type==='loan'?'سلف':'سحب'));
 
-        if(!name || isNaN(amt)) return alert("اختر الاسم والمبلغ");
+        if(!name || isNaN(amt)) return alert("يرجى اختيار العميل وإدخال المبلغ");
 
         const customer = customers.find(c => c.name === name);
         
@@ -204,19 +217,20 @@
             amt: (type === 'in' ? amt : -amt),
             type: type,
             note: note,
-            date: new Date().toLocaleDateString('ar-EG', {day:'numeric', month:'numeric', year:'2-digit'}),
-            fullDate: new Date().toLocaleString('ar-EG')
+            date: new Date().toLocaleDateString('ar-EG'),
+            fullTime: new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})
         });
 
-        localStorage.setItem('DIAMOND_DB_V2', JSON.stringify(db));
+        saveToStorage();
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
         render();
     }
 
+    // إرسال رسالة واتساب مفصلة
     function sendWA(id) {
         const item = db.find(i => i.id === id);
-        if(!item.phone) return alert("لا يوجد رقم مسجل");
+        if(!item.phone) return alert("لا يوجد رقم مسجل لهذا العميل!");
 
         const userLogs = db.filter(r => r.name === item.name).reverse();
         let runningBal = 0;
@@ -227,21 +241,23 @@
             runningBal += log.amt;
         });
 
-        const icon = item.amt > 0 ? "✅" : "💸";
-        const msg = `*فاتورة: ${item.name}* 🧾%0A` +
+        const icon = item.amt > 0 ? "➕ إيداع" : "➖ سحب";
+        const msg = `*إيصال مالي رقمي* 🧾%0A` +
+                    `*العميل:* ${item.name}%0A` +
                     `-------------------------%0A` +
-                    `*الرصيد السابق:* ${prevBal}%0A` +
-                    `*العملية الحالية:* ${Math.abs(item.amt)} ${icon}%0A` +
+                    `*الرصيد السابق:* ${prevBal.toFixed(2)}%0A` +
+                    `*العملية:* ${Math.abs(item.amt).toFixed(2)} [ ${icon} ]%0A` +
                     `*البيان:* ${item.note}%0A` +
                     `-------------------------%0A` +
-                    `*الرصيد النهائي:* { *${runningBal}* }%0A` +
+                    `*الرصيد الحالي:* { *${runningBal.toFixed(2)}* }%0A` +
                     `-------------------------%0A` +
-                    `📅 ${item.fullDate}%0A` +
-                    `*شكراً لثقتك بنا!* ✨`;
+                    `📅 ${item.date} | ⏰ ${item.fullTime}%0A` +
+                    `*شكراً لتعاملكم معنا!* ✨`;
 
         window.open(`https://wa.me/${item.phone.startsWith('01') ? '2'+item.phone : item.phone}?text=${msg}`, '_blank');
     }
 
+    // عرض العمليات وحساب الإحصائيات
     function render() {
         const selName = document.getElementById('userSelect').value;
         const area = document.getElementById('logsArea');
@@ -258,13 +274,13 @@
                 area.innerHTML += `
                     <div class="log-card" style="border-right: 6px solid ${customer.color}">
                         <div class="log-info">
-                            <div class="log-date">${item.date}</div>
+                            <div class="log-date">${item.date} - ${item.fullTime}</div>
                             <div class="log-name" style="color:${customer.color}">${item.name}</div>
                             <div class="log-note">${item.note}</div>
                         </div>
                         <div style="text-align:left">
-                            <div class="amt-val" style="color:${color}">${item.amt}</div>
-                            <a href="#" class="wa-action" onclick="sendWA(${item.id})">واتساب 🟢</a>
+                            <div class="amt-val" style="color:${color}">${item.amt > 0 ? '+':''}${item.amt}</div>
+                            <a href="#" class="wa-action" onclick="sendWA(${item.id})">واتساب ✅</a>
                         </div>
                         <span class="del-icon" onclick="del(${item.id})">🗑️</span>
                     </div>
@@ -272,13 +288,21 @@
             }
         });
 
-        document.getElementById('tin').innerText = tin;
-        document.getElementById('tout').innerText = tout;
-        document.getElementById('tnet').innerText = tin - tout;
+        document.getElementById('tin').innerText = tin.toFixed(2);
+        document.getElementById('tout').innerText = tout.toFixed(2);
+        document.getElementById('tnet').innerText = (tin - tout).toFixed(2);
     }
 
-    function del(id) { if(confirm("حذف؟")) { db = db.filter(i => i.id !== id); localStorage.setItem('DIAMOND_DB_V2', JSON.stringify(db)); render(); } }
+    // حذف عملية واحدة
+    function del(id) { 
+        if(confirm("هل تريد حذف هذه العملية من السجل؟")) { 
+            db = db.filter(i => i.id !== id); 
+            saveToStorage(); 
+            render(); 
+        } 
+    }
 
+    // بدء التطبيق
     sync();
 </script>
 </body>
