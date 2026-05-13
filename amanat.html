@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>خزنتي الماسية - النسخة العالمية</title>
+    <title>خزنتي الماسية - تأكيد الحفظ الذكي</title>
     <style>
         :root {
             --primary: #6c5ce7; --success: #00b894; --danger: #d63031;
@@ -14,7 +14,11 @@
         body { 
             font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); 
             margin: 0; padding: 12px; color: var(--text); direction: rtl;
+            transition: background-color 0.4s ease;
         }
+
+        /* تأثير الوميض عند الحفظ */
+        .flash-success { background-color: #d1f7ed !important; }
 
         .header { text-align: center; margin-bottom: 15px; background: white; padding: 10px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .header h1 { margin: 0; font-size: 20px; color: var(--primary); }
@@ -25,230 +29,222 @@
             text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
             border-bottom: 4px solid transparent;
         }
-        .stat-box span { font-size: 10px; color: #636e72; font-weight: bold; }
         .stat-box b { font-size: 16px; display: block; margin-top: 5px; }
 
         .main-card {
             background: var(--card); padding: 15px; border-radius: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin-bottom: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .name-input-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        .input-row { display: flex; gap: 5px; }
-
-        .names-cloud { 
-            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; 
-            max-height: 100px; overflow-y: auto;
-        }
-        .tag { 
-            padding: 6px 12px; border-radius: 20px; font-size: 11px; 
-            display: flex; align-items: center; gap: 6px; color: white; font-weight: bold;
-        }
-        .tag b { background: rgba(0,0,0,0.3); width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; }
+        .label-text { font-size: 12px; color: var(--primary); font-weight: bold; display: block; margin: 10px 5px 5px 0; }
 
         input, select {
-            width: 100%; padding: 12px; margin-bottom: 8px; border: 1.5px solid #eee;
+            width: 100%; padding: 12px; border: 1.5px solid #eee;
             border-radius: 12px; font-size: 15px; box-sizing: border-box; outline: none;
-            transition: all 0.3s ease;
+            transition: 0.3s;
         }
-        
-        #userSelect { font-weight: bold; border: 2px solid transparent; }
 
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 5px; }
-        .btn {
-            border: none; padding: 12px 5px; border-radius: 12px; color: white;
-            font-weight: bold; font-size: 13px; cursor: pointer;
+        .edit-area {
+            background: #f9f9f9; padding: 10px; border-radius: 15px; border: 1px dashed #ccc; margin-top: 10px;
+            transition: all 0.4s ease;
         }
+
+        .btn-save { 
+            background: #0984e3; color: white; border: none; padding: 12px; 
+            border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%;
+            transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .btn-save.saved { background: var(--success); transform: scale(1.02); }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
+        .btn { border: none; padding: 15px 5px; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
         .btn-loan { background: var(--loan); }
 
         .log-card {
             background: var(--card); border-radius: 18px; padding: 15px;
-            margin-bottom: 10px; position: relative;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 10px; border-right: 6px solid #ccc;
             display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
-        .log-info { flex: 1; }
-        .log-date { font-size: 10px; color: #95a5a6; }
-        .log-name { font-weight: bold; font-size: 15px; margin: 2px 0; }
-        .log-note { font-size: 12px; color: #7f8c8d; }
-
-        .amt-val { font-size: 17px; font-weight: 900; }
-        .wa-action { 
-            display: inline-block; background: #25D366; color: white; 
-            padding: 5px 12px; border-radius: 50px; text-decoration: none;
-            font-size: 11px; margin-top: 4px; font-weight: bold;
-        }
-        .del-icon { color: #fab1a0; margin-right: 12px; cursor: pointer; font-size: 18px; }
+        .wa-btn { background: #25D366; color: white; padding: 5px 12px; border-radius: 50px; text-decoration: none; font-size: 11px; font-weight: bold; }
     </style>
 </head>
-<body>
+<body id="mainBody">
 
-    <div class="header">
-        <h1>خزنتي الماسية 💎</h1>
-    </div>
+    <div class="header"><h1>خزنتي الماسية 💎</h1></div>
 
     <div class="stats-grid">
-        <div class="stat-box" style="border-color: var(--success)"><span>وارد</span><b id="tin" style="color:var(--success)">0</b></div>
-        <div class="stat-box" style="border-color: var(--danger)"><span>منصرف</span><b id="tout" style="color:var(--danger)">0</b></div>
-        <div class="stat-box" style="border-color: var(--primary)"><span>الرصيد</span><b id="tnet" style="color:var(--primary)">0</b></div>
+        <div class="stat-box" style="border-color: var(--success)"><span>إيداع</span><b id="tin" style="color:var(--success)">0</b></div>
+        <div class="stat-box" style="border-color: var(--danger)"><span>سحب</span><b id="tout" style="color:var(--danger)">0</b></div>
+        <div class="stat-box" style="border-color: var(--primary)"><span>الصافي</span><b id="tnet" style="color:var(--primary)">0</b></div>
     </div>
 
-    <div class="main-card">
-        <div class="name-input-container">
-            <div class="input-row">
-                <input type="text" id="newName" placeholder="اسم العميل" style="margin:0">
-                <input type="text" id="newPhone" placeholder="01xxx أو +20" style="margin:0; width:60%">
-                <button onclick="addName()" style="background:var(--primary); color:white; border:none; border-radius:12px; padding:0 15px; cursor:pointer">+</button>
-            </div>
-            <div class="names-cloud" id="tagsArea"></div>
+    <div class="main-card" id="mainEntryCard">
+        <span class="label-text">إضافة عميل جديد:</span>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="newName" placeholder="الاسم">
+            <input type="text" id="newPhone" placeholder="الرقم دولي أو مصري" style="width:60%">
+            <button onclick="addCustomer()" id="btnAdd" style="background:var(--primary); color:white; border:none; border-radius:12px; padding:0 15px; cursor:pointer">+</button>
         </div>
 
-        <select id="userSelect" onchange="applySelectColor(); render();"></select>
-        
+        <hr style="margin: 20px 0; border: 0.2px solid #eee;">
+
+        <span class="label-text">اختر العميل:</span>
+        <select id="userSelect" onchange="loadCustomerData()"></select>
+
+        <div id="editArea" class="edit-area" style="display: none;">
+            <span class="label-text" style="color:#555">تعديل بيانات ورقم العميل:</span>
+            <input type="text" id="editName" placeholder="تعديل الاسم">
+            <input type="text" id="editPhone" placeholder="تعديل الرقم" style="margin-top:5px">
+            <button class="btn-save" id="btnUpdate" onclick="updateCustomer()">
+                <span id="saveIcon">💾</span> <span id="saveText">حفظ التعديلات</span>
+            </button>
+            <button onclick="deleteCustomer()" style="background:none; color:var(--danger); border:none; margin-top:10px; width:100%; font-size:12px; cursor:pointer">🗑️ حذف العميل نهائياً</button>
+        </div>
+
+        <span class="label-text">تسجيل مبلغ:</span>
         <input type="number" id="amount" placeholder="المبلغ">
         <input type="text" id="note" placeholder="البيان (اختياري)">
         
         <div class="btn-group">
-            <button class="btn btn-in" onclick="save('in')">إيداع (+)</button>
-            <button class="btn btn-out" onclick="save('out')">سحب (-)</button>
-            <button class="btn btn-loan" onclick="save('loan')">سلف (⚠️)</button>
+            <button class="btn btn-in" onclick="saveTransaction('in')">إيداع (+)</button>
+            <button class="btn btn-out" onclick="saveTransaction('out')">سحب (-)</button>
+            <button class="btn btn-loan" onclick="saveTransaction('loan')">سلف (⚠️)</button>
         </div>
     </div>
 
     <div id="logsArea"></div>
 
 <script>
-    let customers = JSON.parse(localStorage.getItem('X_CUSTOMERS')) || [
-        {name: "أحمد رمضان", phone: "01000000000", color: "#6c5ce7"}
-    ];
-    let db = JSON.parse(localStorage.getItem('X_DB')) || [];
+    let customers = JSON.parse(localStorage.getItem('FIN_CUSTOMERS')) || [];
+    let db = JSON.parse(localStorage.getItem('FIN_DB')) || [];
 
-    function generateColor() {
-        const colors = ['#6c5ce7', '#00b894', '#d63031', '#e17055', '#0984e3', '#2d3436', '#b83280', '#0abde3', '#10ac84', '#f0932b'];
-        return colors[Math.floor(Math.random() * colors.length)];
-    }
+    // وظيفة إشارة الحفظ (تغيير اللون)
+    function triggerSaveEffect() {
+        const body = document.getElementById('mainBody');
+        const btn = document.getElementById('btnUpdate');
+        const saveText = document.getElementById('saveText');
+        const saveIcon = document.getElementById('saveIcon');
 
-    // دالة معالجة الرقم ليقبل مصري ودولي
-    function formatPhone(num) {
-        let clean = num.replace(/\D/g, ''); // مسح أي شيء ليس رقماً
-        if (num.startsWith('+')) return num.replace(/\+/g, ''); // إذا بدأ بـ + نرسله كما هو
+        // ومضة خلفية الشاشة
+        body.classList.add('flash-success');
         
-        // إذا بدأ بـ 01 وهو رقم مصري
-        if (clean.startsWith('01') && clean.length === 11) {
-            return '2' + clean;
-        }
-        // إذا بدأ بـ 1 وهو رقم مصري بدون صفر
-        if (clean.startsWith('1') && clean.length === 10) {
-            return '20' + clean;
-        }
-        return clean; // أي حالة أخرى (دولي) يرسل كما أدخله المستخدم
+        // تغيير شكل الزر
+        btn.classList.add('saved');
+        saveText.innerText = "تم الحفظ بنجاح!";
+        saveIcon.innerText = "✅";
+
+        setTimeout(() => {
+            body.classList.remove('flash-success');
+            btn.classList.remove('saved');
+            saveText.innerText = "حفظ التعديلات";
+            saveIcon.innerText = "💾";
+        }, 1500);
     }
 
-    function addName() {
-        const nameVal = document.getElementById('newName').value.trim();
-        const phoneVal = document.getElementById('newPhone').value.trim();
-        if(nameVal) {
-            if(customers.find(c => c.name === nameVal)) return alert("الاسم موجود!");
-            customers.push({ name: nameVal, phone: phoneVal, color: generateColor() });
-            saveData();
-            document.getElementById('newName').value = '';
-            document.getElementById('newPhone').value = '';
-            sync();
-        }
+    function addCustomer() {
+        const name = document.getElementById('newName').value.trim();
+        const phone = document.getElementById('newPhone').value.trim();
+        if(!name) return;
+        if(customers.find(c => c.name === name)) return alert("موجود مسبقاً");
+        
+        customers.push({ name, phone, color: '#' + Math.floor(Math.random()*16777215).toString(16) });
+        saveToStorage();
+        document.getElementById('newName').value = '';
+        document.getElementById('newPhone').value = '';
+        syncSelect();
     }
 
-    function deleteName(name) {
-        if(confirm(`حذف العميل "${name}"؟`)) {
-            customers = customers.filter(c => c.name !== name);
-            db = db.filter(d => d.name !== name);
-            saveData();
-            sync();
-        }
-    }
-
-    function saveData() {
-        localStorage.setItem('X_CUSTOMERS', JSON.stringify(customers));
-        localStorage.setItem('X_DB', JSON.stringify(db));
-    }
-
-    function sync() {
+    function loadCustomerData() {
+        const selected = document.getElementById('userSelect').value;
+        const editArea = document.getElementById('editArea');
+        if(!selected) { editArea.style.display = 'none'; render(); return; }
+        
+        const customer = customers.find(c => c.name === selected);
+        document.getElementById('editName').value = customer.name;
+        document.getElementById('editPhone').value = customer.phone;
+        editArea.style.display = 'block';
+        
         const sel = document.getElementById('userSelect');
-        const tags = document.getElementById('tagsArea');
-        const current = sel.value;
-        sel.innerHTML = '<option value="">-- كشف عام --</option>';
-        tags.innerHTML = '';
-        customers.sort((a,b) => a.name.localeCompare(b.name)).forEach(c => {
-            sel.innerHTML += `<option value="${c.name}" style="background:${c.color}; color:white">${c.name}</option>`;
-            tags.innerHTML += `<div class="tag" style="background:${c.color}">${c.name} <b onclick="deleteName('${c.name}')">×</b></div>`;
-        });
-        sel.value = current;
-        applySelectColor();
+        sel.style.backgroundColor = customer.color;
+        sel.style.color = "white";
         render();
     }
 
-    function applySelectColor() {
-        const sel = document.getElementById('userSelect');
-        const customer = customers.find(c => c.name === sel.value);
-        if (customer) {
-            sel.style.backgroundColor = customer.color;
-            sel.style.color = "white";
-        } else {
-            sel.style.backgroundColor = "white";
-            sel.style.color = "black";
+    function updateCustomer() {
+        const oldName = document.getElementById('userSelect').value;
+        const newName = document.getElementById('editName').value.trim();
+        const newPhone = document.getElementById('editPhone').value.trim();
+
+        const index = customers.findIndex(c => c.name === oldName);
+        if(index !== -1) {
+            db.forEach(item => {
+                if(item.name === oldName) { item.name = newName; item.phone = newPhone; }
+            });
+            customers[index].name = newName;
+            customers[index].phone = newPhone;
+            
+            saveToStorage();
+            triggerSaveEffect(); // تشغيل التأثير البصري
+            setTimeout(syncSelect, 500);
         }
     }
 
-    function save(type) {
+    function saveToStorage() {
+        localStorage.setItem('FIN_CUSTOMERS', JSON.stringify(customers));
+        localStorage.setItem('FIN_DB', JSON.stringify(db));
+    }
+
+    function syncSelect() {
+        const sel = document.getElementById('userSelect');
+        const current = sel.value;
+        sel.innerHTML = '<option value="">-- كشف حساب عام --</option>';
+        customers.sort((a,b) => a.name.localeCompare(b.name)).forEach(c => {
+            sel.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+        });
+        if(current) sel.value = current;
+        render();
+    }
+
+    function saveTransaction(type) {
         const name = document.getElementById('userSelect').value;
         const amt = parseFloat(document.getElementById('amount').value);
-        const note = document.getElementById('note').value || (type==='in'?'إيداع':(type==='loan'?'سلف':'سحب'));
-        if(!name || isNaN(amt)) return alert("أكمل البيانات");
+        if(!name || isNaN(amt)) return alert("اختر العميل والمبلغ");
 
         const customer = customers.find(c => c.name === name);
         db.unshift({
-            id: Date.now(),
-            name: name,
-            phone: customer.phone,
+            id: Date.now(), name, phone: customer.phone,
             amt: (type === 'in' ? amt : -amt),
-            type: type,
-            note: note,
-            date: new Date().toLocaleDateString('ar-EG'),
-            time: new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})
+            type, note: document.getElementById('note').value || type,
+            date: new Date().toLocaleDateString('ar-EG')
         });
-        saveData();
+        saveToStorage();
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
+        
+        // تأثير بسيط عند إضافة عملية
+        document.getElementById('mainEntryCard').style.transform = "scale(0.98)";
+        setTimeout(() => document.getElementById('mainEntryCard').style.transform = "scale(1)", 100);
         render();
+    }
+
+    function formatWA(num) {
+        let n = num.replace(/\D/g, '');
+        if(num.startsWith('+')) return num.replace('+', '');
+        if(n.startsWith('01') && n.length === 11) return '2' + n;
+        return n;
     }
 
     function sendWA(id) {
         const item = db.find(i => i.id === id);
-        if(!item.phone) return alert("لا يوجد رقم!");
-        
-        const userLogs = db.filter(r => r.name === item.name).reverse();
-        let currentBal = 0;
-        let prevBal = 0;
-        userLogs.forEach(log => {
-            if(log.id === item.id) prevBal = currentBal;
-            currentBal += log.amt;
-        });
-
-        const finalPhone = formatPhone(item.phone);
-        const icon = item.amt > 0 ? "✅ إيداع" : "💸 سحب";
-        const msg = `*فاتورة حساب: ${item.name}*%0A` +
-                    `-------------------------%0A` +
-                    `*السابق:* ${prevBal.toFixed(2)}%0A` +
-                    `*العملية:* ${Math.abs(item.amt).toFixed(2)} [ ${icon} ]%0A` +
-                    `*البيان:* ${item.note}%0A` +
-                    `-------------------------%0A` +
-                    `*الرصيد الحالي:* { *${currentBal.toFixed(2)}* }%0A` +
-                    `-------------------------%0A` +
-                    `📅 ${item.date} | ${item.time}%0A` +
-                    `*شكراً لتعاملكم معنا!*`;
-
-        window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank');
+        const logs = db.filter(r => r.name === item.name).reverse();
+        let bal = 0; let prev = 0;
+        logs.forEach(l => { if(l.id === item.id) prev = bal; bal += l.amt; });
+        const msg = `*حساب: ${item.name}*%0A*السابق:* ${prev}%0A*العملية:* ${Math.abs(item.amt)}%0A*الرصيد:* { *${bal}* }%0A📅 ${item.date}`;
+        window.open(`https://wa.me/${formatWA(item.phone)}?text=${msg}`, '_blank');
     }
 
     function render() {
@@ -259,30 +255,31 @@
         db.forEach(item => {
             if (!selName || item.name === selName) {
                 if(item.amt > 0) tin += item.amt; else tout += Math.abs(item.amt);
-                const customer = customers.find(c => c.name === item.name) || {color: '#ccc'};
-                let color = item.amt > 0 ? 'var(--success)' : (item.type === 'loan' ? 'var(--loan)' : 'var(--danger)');
-                area.innerHTML += `
-                    <div class="log-card" style="border-right: 6px solid ${customer.color}">
-                        <div class="log-info">
-                            <div class="log-date">${item.date} - ${item.time}</div>
-                            <div class="log-name" style="color:${customer.color}">${item.name}</div>
-                            <div class="log-note">${item.note}</div>
-                        </div>
-                        <div style="text-align:left">
-                            <div class="amt-val" style="color:${color}">${item.amt}</div>
-                            <a href="#" class="wa-action" onclick="sendWA(${item.id})">واتساب 🟢</a>
-                        </div>
-                        <span class="del-icon" onclick="del(${item.id})">🗑️</span>
-                    </div>`;
+                const c = customers.find(cust => cust.name === item.name) || {color:'#ccc'};
+                area.innerHTML += `<div class="log-card" style="border-right-color:${c.color}">
+                    <div><div style="font-weight:bold">${item.name}</div><small>${item.date} - ${item.note}</small></div>
+                    <div style="text-align:left"><div style="font-weight:bold;color:${item.amt>0?'#00b894':'#d63031'}">${item.amt}</div>
+                    <a href="#" class="wa-btn" onclick="sendWA(${item.id})">واتساب</a></div>
+                    <span style="margin-right:10px;cursor:pointer" onclick="deleteLog(${item.id})">🗑️</span>
+                </div>`;
             }
         });
-        document.getElementById('tin').innerText = tin.toFixed(2);
-        document.getElementById('tout').innerText = tout.toFixed(2);
-        document.getElementById('tnet').innerText = (tin - tout).toFixed(2);
+        document.getElementById('tin').innerText = tin;
+        document.getElementById('tout').innerText = tout;
+        document.getElementById('tnet').innerText = tin - tout;
     }
 
-    function del(id) { if(confirm("حذف؟")) { db = db.filter(i => i.id !== id); saveData(); render(); } }
-    sync();
+    function deleteLog(id) { if(confirm("حذف؟")) { db = db.filter(i => i.id !== id); saveToStorage(); render(); } }
+    function deleteCustomer() {
+        const name = document.getElementById('userSelect').value;
+        if(confirm("حذف العميل نهائياً؟")) {
+            customers = customers.filter(c => c.name !== name);
+            db = db.filter(d => d.name !== name);
+            saveToStorage(); syncSelect();
+        }
+    }
+
+    syncSelect();
 </script>
 </body>
 </html>
