@@ -285,6 +285,7 @@
 
     function updateLogic(id) {
         const card = document.getElementById(`card-${id}`);
+        if(!card) return;
         const total = parseFloat(card.querySelector('.c-total').value) || 0;
         document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? tafqit(total) : "";
         let paid = 0;
@@ -319,11 +320,11 @@
         db.ref('clients/' + id).update(data).then(() => {
             const t = document.getElementById('toast');
             t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2000);
+            refreshStats();
         });
         localStorage.setItem(`azemaa_pro_v5_${id}`, JSON.stringify(data));
     }
 
-    // وظيفة الأرشفة اليدوية
     function archiveCardManual(id) {
         if(confirm('هل تريد نقل هذا الزبون للأرشيف؟ سيتم إخفاء الكارت الخاص به.')) {
             db.ref('clients/' + id).update({ isArchived: true }).then(() => {
@@ -335,7 +336,6 @@
         }
     }
 
-    // وظيفة الاستعادة من الأرشيف
     function restoreFromArchive(id) {
         if(confirm('هل تريد استعادة هذا الزبون؟')) {
             db.ref('clients/' + id).update({ isArchived: false }).then(() => {
@@ -343,7 +343,9 @@
                     visibleCards.push(id);
                     localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
                 }
-                location.reload();
+                const card = document.getElementById(`card-${id}`);
+                if(card) card.classList.add('visible');
+                refreshStats();
             });
         }
     }
@@ -358,7 +360,6 @@
                     const d = allData[id];
                     const card = document.getElementById(`card-${id}`);
                     if (card) {
-                        // لا تظهر الكارت إذا كان مؤرشفاً يدوياً
                         if (d.isArchived) {
                             visibleCards = visibleCards.filter(c => c != id);
                             card.classList.remove('visible');
@@ -391,14 +392,26 @@
                 visibleCards.push(i);
                 document.getElementById(`card-${i}`).classList.add('visible');
                 localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
-                // تأكد من مسح حالة الأرشفة عند إضافة كارت جديد بنفس الرقم القديم
                 db.ref('clients/' + i).update({ isArchived: false });
                 return;
             }
         }
     }
 
-    function deleteCard(id) { if(confirm('سيتم الحذف نهائياً؟')) { db.ref('clients/' + id).remove(); visibleCards = visibleCards.filter(c => c !== id); localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards)); location.reload(); } }
+    function deleteCard(id) { 
+        if(confirm('سيتم الحذف نهائياً؟')) { 
+            db.ref('clients/' + id).remove().then(() => {
+                visibleCards = visibleCards.filter(c => c !== id); 
+                localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards)); 
+                document.getElementById(`card-${id}`).classList.remove('visible');
+                // إعادة تصفير الحقول
+                const card = document.getElementById(`card-${id}`);
+                card.querySelectorAll('input').forEach(i => i.value = "");
+                card.querySelector('textarea').value = "";
+                refreshStats();
+            }); 
+        } 
+    }
 
     function sendWA(id) {
         const card = document.getElementById(`card-${id}`);
@@ -413,9 +426,9 @@
         let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0;
         let allValidClients = [];
         
-        // جلب البيانات من الكروت (النشطة حالياً)
         visibleCards.forEach(id => {
             const card = document.getElementById(`card-${id}`);
+            if(!card) return;
             const name = card.querySelector('.c-name').value || "غير مسمى";
             const total = parseFloat(card.querySelector('.c-total').value) || 0;
             const notes = card.querySelector('.c-notes').value || "";
@@ -436,7 +449,6 @@
             }
         });
 
-        // جلب البيانات المؤرشفة يدوياً من Firebase لتظهر في جدول الأرشيف فقط
         db.ref('clients').once('value', (snapshot) => {
             const data = snapshot.val();
             const archiveBody = document.getElementById('archive-body');
@@ -444,10 +456,8 @@
             summaryBody.innerHTML = '';
             archiveBody.innerHTML = '';
 
-            // فرز وترتيب
             allValidClients.sort((a, b) => a.sortTimestamp - b.sortTimestamp);
 
-            // عرض في جدول المديونيات
             allValidClients.forEach(c => {
                 if (!c.isPaid) {
                     const stars = `<span class="star-table">${'★'.repeat(c.rating)}${'☆'.repeat(5-c.rating)}</span>`;
@@ -456,7 +466,6 @@
                 }
             });
 
-            // عرض في جدول الأرشيف (الخالص + المؤرشف يدوياً)
             if (data) {
                 Object.keys(data).forEach(id => {
                     const d = data[id];
