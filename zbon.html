@@ -88,7 +88,6 @@
         .summary-footer { background: #2d3436 !important; height: 30px; }
         .notes-td { font-size: 10px; color: #555; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; }
         
-        /* زر الاستعادة */
         .btn-restore { background: #8e44ad; color: white; border: none; padding: 2px 8px; border-radius: 5px; cursor: pointer; font-size: 10px; }
         .btn-archive-icon { color: var(--accent); border: none; background: none; cursor: pointer; font-size: 16px; margin-left: 8px; }
     </style>
@@ -189,17 +188,9 @@
         9: "#fccb90", 10: "#d5dbe5", 11: "#e0c3fc", 12: "#cfd9df"
     };
 
-    function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+    let visibleCards = []; // سنقوم بتعبئتها من قاعدة البيانات
 
-    function highlightRow(id, active) {
-        const rows = document.querySelectorAll('#summary-body tr, #archive-body tr');
-        rows.forEach(row => {
-            if (row.cells[0].innerText == id) {
-                if (active) row.classList.add('pulse-row');
-                else row.classList.remove('pulse-row');
-            }
-        });
-    }
+    function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 
     function forceEN(el) {
         const map = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
@@ -240,10 +231,8 @@
 
     function createCardElement(i) {
         const card = document.createElement('div');
-        card.className = `card ${visibleCards.includes(i) ? 'visible' : ''}`;
+        card.className = `card`;
         card.id = `card-${i}`;
-        card.addEventListener('focusin', () => highlightRow(i, true));
-        card.addEventListener('focusout', () => highlightRow(i, false));
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
                 <span style="direction:rtl; font-size: 13px;">👤 عميل رقم ${i}</span>
@@ -280,7 +269,6 @@
         document.getElementById('mainGrid').appendChild(card);
     }
 
-    let visibleCards = JSON.parse(localStorage.getItem('azemaa_visible_cards')) || [];
     for (let i = 1; i <= 50; i++) createCardElement(i);
 
     function updateLogic(id) {
@@ -315,21 +303,19 @@
             pays: Array.from(card.querySelectorAll('.p-val')).map((p, idx) => ({
                 v: p.value || 0,
                 d: card.querySelectorAll('.p-date')[idx].value || ""
-            }))
+            })),
+            isArchived: false
         };
         db.ref('clients/' + id).update(data).then(() => {
             const t = document.getElementById('toast');
             t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2000);
             refreshStats();
         });
-        localStorage.setItem(`azemaa_pro_v5_${id}`, JSON.stringify(data));
     }
 
     function archiveCardManual(id) {
-        if(confirm('هل تريد نقل هذا الزبون للأرشيف؟ سيتم إخفاء الكارت الخاص به.')) {
+        if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) {
             db.ref('clients/' + id).update({ isArchived: true }).then(() => {
-                visibleCards = visibleCards.filter(c => c !== id);
-                localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
                 document.getElementById(`card-${id}`).classList.remove('visible');
                 refreshStats();
             });
@@ -339,12 +325,7 @@
     function restoreFromArchive(id) {
         if(confirm('هل تريد استعادة هذا الزبون؟')) {
             db.ref('clients/' + id).update({ isArchived: false }).then(() => {
-                if (!visibleCards.includes(id)) {
-                    visibleCards.push(id);
-                    localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
-                }
-                const card = document.getElementById(`card-${id}`);
-                if(card) card.classList.add('visible');
+                document.getElementById(`card-${id}`).classList.add('visible');
                 refreshStats();
             });
         }
@@ -353,19 +334,20 @@
     window.onload = () => {
         const savedCo = localStorage.getItem('azemaa_company_name');
         if(savedCo) document.getElementById('companyNameInput').value = savedCo;
-        db.ref('clients').once('value', (snapshot) => {
+        
+        db.ref('clients').on('value', (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
+                visibleCards = [];
                 for (let id in allData) {
                     const d = allData[id];
                     const card = document.getElementById(`card-${id}`);
                     if (card) {
                         if (d.isArchived) {
-                            visibleCards = visibleCards.filter(c => c != id);
                             card.classList.remove('visible');
                         } else {
-                            if (!visibleCards.includes(parseInt(id))) visibleCards.push(parseInt(id));
                             card.classList.add('visible');
+                            visibleCards.push(parseInt(id));
                         }
                         
                         card.querySelector('.c-name').value = d.n || '';
@@ -381,17 +363,15 @@
                         updateLogic(id);
                     }
                 }
-                localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
             }
         });
     };
 
     function addNewCard() {
         for (let i = 1; i <= 50; i++) {
-            if (!visibleCards.includes(i)) {
-                visibleCards.push(i);
-                document.getElementById(`card-${i}`).classList.add('visible');
-                localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards));
+            const card = document.getElementById(`card-${i}`);
+            if (!card.classList.contains('visible')) {
+                card.classList.add('visible');
                 db.ref('clients/' + i).update({ isArchived: false });
                 return;
             }
@@ -401,11 +381,8 @@
     function deleteCard(id) { 
         if(confirm('سيتم الحذف نهائياً؟')) { 
             db.ref('clients/' + id).remove().then(() => {
-                visibleCards = visibleCards.filter(c => c !== id); 
-                localStorage.setItem('azemaa_visible_cards', JSON.stringify(visibleCards)); 
-                document.getElementById(`card-${id}`).classList.remove('visible');
-                // إعادة تصفير الحقول
                 const card = document.getElementById(`card-${id}`);
+                card.classList.remove('visible');
                 card.querySelectorAll('input').forEach(i => i.value = "");
                 card.querySelector('textarea').value = "";
                 refreshStats();
@@ -415,120 +392,66 @@
 
     function sendWA(id) {
         const card = document.getElementById(`card-${id}`);
-        const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
-        const companyName = document.getElementById('companyNameInput').value || "AZEMAA PRO";
-        
-        if(!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
-
-        const total = card.querySelector('.c-total').value || 0;
-        const rem = document.getElementById(`rem-n-${id}`).innerText; 
-        
-        // تجميع تفاصيل الدفعات
-        let paymentsList = "";
-        const pVals = card.querySelectorAll('.p-val');
-        const pDates = card.querySelectorAll('.p-date');
-        
-        pVals.forEach((p, idx) => {
-            let val = p.value;
-            let date = pDates[idx].value;
-            if(val && parseFloat(val) > 0) {
-                paymentsList += `\n✅ دفعة: ${parseFloat(val).toLocaleString('en-US')} ج.م ${date ? `بتاريخ (${date})` : ''}`;
-            }
-        });
-
-        // صياغة الرسالة النهائية
-        const msg = `السلام عليكم يا ${name}،
-تحية طيبة من ${companyName}.. إليكم تقرير حسابكم:
-
-💰 الإجمالي: ${parseFloat(total).toLocaleString('en-US')} ج.م
---------------------------
-📊 تفاصيل الدفعات: ${paymentsList || "\n(لا توجد دفعات مسجلة بعد)"}
---------------------------
-📉 المتبقي المطلوب: ${rem}
-
-شكراً لتعاملكم معنا.`;
-
-        // فتح الرابط
+        if(!phone) return alert("أدخل الموبايل");
+        const rem = document.getElementById(`rem-n-${id}`).innerText;
+        const msg = `تحية طيبة من ${document.getElementById('companyNameInput').value || 'AZEMAA PRO'}\nتقرير حسابك: ${rem}`;
         window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function refreshStats() {
         let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0;
-        let allValidClients = [];
-        
-        visibleCards.forEach(id => {
-            const card = document.getElementById(`card-${id}`);
-            if(!card) return;
-            const name = card.querySelector('.c-name').value || "غير مسمى";
-            const total = parseFloat(card.querySelector('.c-total').value) || 0;
-            const notes = card.querySelector('.c-notes').value || "";
-            let paid = 0; card.querySelectorAll('.p-val').forEach(p => paid += (parseFloat(p.value) || 0));
-            const rem = total - paid;
-            const dd = card.querySelector('.d-day').value; const mm = card.querySelector('.d-month').value; const yy = card.querySelector('.d-year').value;
-            let dateStr = (dd && mm && yy) ? `${dd}/${mm}/${yy}` : "---";
-            let monthNum = parseInt(mm) || 0;
-            let sortTimestamp = 999999999999;
-            if(dd && mm && yy) { let fullYear = yy.length === 2 ? "20" + yy : yy; sortTimestamp = new Date(fullYear, mm - 1, dd).getTime(); }
-            const rating = card.querySelector(`input[name="rating-${id}"]:checked`)?.value || 0;
-            
-            if(total > 0 || name !== "غير مسمى") {
-                const isPaid = (total > 0 && rem <= 0);
-                allValidClients.push({ id, name, total, paid, rem, dateStr, monthNum, rating, isPaid, sortTimestamp, notes, isArchived: false });
-                if(!isPaid) debt += rem; else paidC++;
-                cust++; totalAll += total; totalPaid += paid; totalRem += rem;
-            }
-        });
+        const summaryBody = document.getElementById('summary-body');
+        const archiveBody = document.getElementById('archive-body');
+        summaryBody.innerHTML = '';
+        archiveBody.innerHTML = '';
 
         db.ref('clients').once('value', (snapshot) => {
             const data = snapshot.val();
-            const archiveBody = document.getElementById('archive-body');
-            const summaryBody = document.getElementById('summary-body');
-            summaryBody.innerHTML = '';
-            archiveBody.innerHTML = '';
+            if (!data) return;
 
-            allValidClients.sort((a, b) => a.sortTimestamp - b.sortTimestamp);
+            Object.keys(data).forEach(id => {
+                const d = data[id];
+                let pVal = 0; 
+                if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0));
+                const total = parseFloat(d.t) || 0;
+                const rem = total - pVal;
+                const isPaid = (total > 0 && rem <= 0);
+                const stars = `<span class="star-table">${'★'.repeat(d.r || 0)}${'☆'.repeat(5-(d.r || 0))}</span>`;
+                const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6";
+                const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---";
 
-            allValidClients.forEach(c => {
-                if (!c.isPaid) {
-                    const stars = `<span class="star-table">${'★'.repeat(c.rating)}${'☆'.repeat(5-c.rating)}</span>`;
-                    const mColor = monthColors[c.monthNum] || "#f1f2f6";
-                    summaryBody.innerHTML += `<tr><td>${c.id}</td><td>${c.name}</td><td style="background-color:${mColor}; color:#2d3436;">${c.dateStr}</td><td class="col-total" style="direction:ltr;">${c.total.toLocaleString('en-US')}</td><td class="col-paid" style="direction:ltr;">${c.paid.toLocaleString('en-US')}</td><td class="col-rem" style="direction:ltr;">${c.rem.toLocaleString('en-US')}</td><td>${stars}</td></tr>`;
+                if (d.isArchived || isPaid) {
+                    archiveBody.innerHTML += `<tr class="row-paid">
+                        <td>${id}</td>
+                        <td>${d.n || '---'}</td>
+                        <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
+                        <td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
+                        <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
+                        <td>${stars}</td>
+                        <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
+                    </tr>`;
+                    if(isPaid) paidC++;
+                } else if (d.n || total > 0) {
+                    summaryBody.innerHTML += `<tr>
+                        <td>${id}</td><td>${d.n}</td>
+                        <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
+                        <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
+                        <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
+                        <td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td>
+                        <td>${stars}</td>
+                    </tr>`;
+                    debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem;
                 }
             });
 
-            if (data) {
-                Object.keys(data).forEach(id => {
-                    const d = data[id];
-                    let pVal = 0; 
-                    if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0));
-                    const isPaid = (parseFloat(d.t) > 0 && (parseFloat(d.t) - pVal <= 0));
-                    
-                    if (d.isArchived || isPaid) {
-                        const stars = `<span class="star-table">${'★'.repeat(d.r || 0)}${'☆'.repeat(5-(d.r || 0))}</span>`;
-                        const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6";
-                        const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---";
-                        
-                        archiveBody.innerHTML += `<tr class="row-paid">
-                            <td>${id}</td>
-                            <td>${d.n || '---'}</td>
-                            <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
-                            <td style="direction:ltr;">${(parseFloat(d.t) || 0).toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
-                            <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
-                            <td>${stars}</td>
-                            <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
-                        </tr>`;
-                    }
-                });
-            }
+            document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); 
+            document.getElementById('stat-cust').innerText = cust; 
+            document.getElementById('stat-paid').innerText = paidC;
+            document.getElementById('total-all-sum').innerText = totalAll.toLocaleString('en-US'); 
+            document.getElementById('total-paid-sum').innerText = totalPaid.toLocaleString('en-US'); 
+            document.getElementById('total-rem-sum').innerText = totalRem.toLocaleString('en-US');
         });
-
-        document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); 
-        document.getElementById('stat-cust').innerText = cust; 
-        document.getElementById('stat-paid').innerText = paidC;
-        document.getElementById('total-all-sum').innerText = totalAll.toLocaleString('en-US'); 
-        document.getElementById('total-paid-sum').innerText = totalPaid.toLocaleString('en-US'); 
-        document.getElementById('total-rem-sum').innerText = totalRem.toLocaleString('en-US');
     }
 
     function filterAll() {
@@ -544,9 +467,7 @@
     function filterArchive() {
         let q = document.getElementById('archiveSearch').value.toLowerCase();
         let rows = document.querySelectorAll('#archive-body tr');
-        rows.forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none";
-        });
+        rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none"; });
     }
 
     function saveSettings() { localStorage.setItem('azemaa_company_name', document.getElementById('companyNameInput').value); }
