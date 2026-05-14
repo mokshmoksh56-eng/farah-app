@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منظومة حضور طلخا المركبة - الموظفين</title>
+    <title>منظومة حضور طلخا المركبة - Online</title>
     <style>
         :root { 
             --turquoise: #008b8b; --danger: #d32f2f; --warning: #ffc107; 
@@ -16,34 +16,36 @@
         .header { background: linear-gradient(135deg, var(--turquoise) 0%, #00ced1 100%); color: white; padding: 20px 10px; text-align: center; }
         #digital-clock { font-size: 45px; font-weight: 800; font-family: 'Courier New', monospace; display: block; color: #e0ffff; }
         .date-display { margin-top:5px; font-weight: bold; font-size: 17px; background: rgba(0,0,0,0.1); padding: 5px 15px; border-radius: 20px; display: inline-block; }
+        
         .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; background: #f0f7f7; }
-        .dash-card { background: white; padding: 10px 5px; border-radius: 15px; text-align: center; border: 1px solid #d1e0e0; cursor: pointer; }
+        .dash-card { background: white; padding: 10px 5px; border-radius: 15px; text-align: center; border: 1px solid #d1e0e0; cursor: pointer; transition: 0.2s; }
+        .dash-card:active { transform: scale(0.95); background: #e0f2f2; }
         .dash-label { font-size: 11px; color: #777; font-weight: bold; display: block; }
         .dash-val { font-size: 14px; font-weight: 800; color: var(--turquoise); }
+
         .user-info-section { padding: 15px; background: #fff; border-bottom: 1px solid #eee; }
         .info-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .info-input { width: 100%; border: 2px solid #eee; border-radius: 12px; padding: 10px; font-size: 13px; font-weight: bold; text-align: center; outline: none; transition: 0.3s; }
-        .info-input:focus { border-color: var(--turquoise); background: #f0ffff; }
-        .id-input-highlight { border: 2px solid var(--info) !important; background: #f0f7ff; }
+        .info-input { width: 100%; border: 2px solid #eee; border-radius: 12px; padding: 10px; font-size: 13px; font-weight: bold; text-align: center; outline: none; }
+
         .actions { padding: 15px; display: flex; flex-direction: column; gap: 8px; }
         .btn-main { width: 100%; padding: 16px; border: none; border-radius: 18px; font-size: 17px; font-weight: bold; cursor: pointer; color: white; transition: 0.3s; }
-        .btn-main:disabled { background: #bdc3c7 !important; }
+        .btn-manual { width: 100%; background: #fff; border: 2px dashed var(--turquoise); color: var(--turquoise); font-size: 14px; padding: 12px; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        
         .table-wrap { padding: 5px; max-height: 250px; overflow-y: auto; background: #fafafa; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
         th { padding: 10px 5px; background: #e0f2f2; color: var(--turquoise); position: sticky; top: 0; }
         td { padding: 10px 5px; border-bottom: 1px solid #eee; font-weight: bold; }
-        .status-badge { padding: 4px 10px; border-radius: 10px; color: white; font-size: 11px; display: inline-block; min-width: 60px; }
-        #sync-loader { font-size: 12px; color: #ffd700; display: none; margin-right: 10px; }
-        .cloud-msg { font-size: 11px; color: var(--info); text-align: center; margin-top: 5px; font-weight: bold; }
+        .status-badge { padding: 4px 10px; border-radius: 10px; color: white; font-size: 11px; display: inline-block; min-width: 65px; }
+
+        #modalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-box { background: white; width: 90%; max-width: 380px; border-radius: 25px; padding: 25px; text-align: center; }
+        .edit-hint { font-size: 9px; color: #999; margin-top: 2px; }
     </style>
 </head>
 <body onload="init()">
 
 <div class="container">
-    <div class="station-header">
-        محطة كهرباء طلخا المركبة ⚡ 
-        <span id="sync-loader">جاري البحث...</span>
-    </div>
+    <div class="station-header">محطة كهرباء طلخا المركبة ⚡ <span id="sync-loader" style="display:none; color:#ffd700;">جاري الحفظ...</span></div>
     
     <div class="header">
         <span id="digital-clock">00:00:00</span>
@@ -51,25 +53,45 @@
     </div>
 
     <div class="user-info-section">
-        <div class="cloud-msg">ادخل الكود الخاص بك لعرض بياناتك من السحابة 👇</div>
-        <div class="info-row" style="margin-top:10px;">
-            <input type="text" id="u-id" class="info-input id-input-highlight" placeholder="الكود الشخصي" onchange="loadFromCloud()">
+        <div class="info-row">
+            <input type="text" id="u-id" class="info-input" style="border:2px solid var(--info)" placeholder="الكود" onchange="loadFromCloud()">
             <input type="text" id="u-name" class="info-input" placeholder="الاسم" readonly>
             <input type="text" id="u-grade" class="info-input" placeholder="الدرجة" readonly>
         </div>
     </div>
 
     <div class="dashboard">
-        <div class="dash-card"><span class="dash-label">رصيد اعتيادي</span><span id="reg-left" class="dash-val" style="color:var(--danger)">--</span></div>
-        <div class="dash-card"><span class="dash-label">رصيد عارضة</span><span id="emg-left" class="dash-val" style="color:var(--danger)">--</span></div>
-        <div class="dash-card"><span class="dash-label">تصاريح الشهر</span><span id="month-permits" class="dash-val" style="color:var(--info)">0 / 3</span></div>
-        <div class="dash-card"><span>تأخير (د)</span><br><span id="sum-late" class="dash-val" style="color:var(--warning)">0</span></div>
-        <div class="dash-card"><span>رصيد دقايق</span><br><span id="rem-mins" class="dash-val" style="color:var(--green)">60</span></div>
-        <div class="dash-card" onclick="location.reload()"><span>تحديث</span><br><span class="dash-val">🔄</span></div>
+        <div class="dash-card" onclick="editBalance('reg')">
+            <span class="dash-label">رصيد اعتيادي</span>
+            <span id="reg-left" class="dash-val" style="color:var(--danger)">--</span>
+            <div class="edit-hint">اضغط للتعديل</div>
+        </div>
+        <div class="dash-card" onclick="editBalance('emg')">
+            <span class="dash-label">رصيد عارضة</span>
+            <span id="emg-left" class="dash-val" style="color:var(--danger)">--</span>
+            <div class="edit-hint">اضغط للتعديل</div>
+        </div>
+        <div class="dash-card">
+            <span class="dash-label">تصاريح الشهر</span>
+            <span id="permits-count" class="dash-val" style="color:var(--info)">0 / 3</span>
+        </div>
+        <div class="dash-card">
+            <span>إجمالي التأخير</span><br>
+            <span id="sum-late" class="dash-val" style="color:var(--warning)">0</span>
+        </div>
+        <div class="dash-card">
+            <span>باقي دقائق</span><br>
+            <span id="rem-mins" class="dash-val" style="color:var(--green)">60</span>
+        </div>
+        <div class="dash-card" onclick="location.reload()">
+            <span>تحديث</span><br>
+            <span class="dash-val">🔄</span>
+        </div>
     </div>
 
     <div class="actions">
-        <button id="main-punch-btn" class="btn-main" onclick="handlePunch(null, null, new Date())">تسجيل حضور الآن 📲</button>
+        <button id="main-punch-btn" class="btn-main" onclick="handlePunch(null, null, new Date())">تسجيل بصمة الآن 📲</button>
+        <button class="btn-manual" onclick="openManualWheel()">إضافة تسجيل يدوي ✍️</button>
     </div>
 
     <div class="table-wrap">
@@ -77,6 +99,21 @@
             <thead><tr><th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>حذف</th></tr></thead>
             <tbody id="log-body"></tbody>
         </table>
+    </div>
+</div>
+
+<div id="modalOverlay">
+    <div class="modal-box">
+        <h3>تسجيل يدوي</h3>
+        <input type="date" id="manual-date-picker" style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; margin-bottom:10px;">
+        <select id="manual-type" style="width:100%; padding:10px; border-radius:10px; margin-bottom:15px; font-weight:bold;">
+            <option value="منتظم">حضور منتظم</option>
+            <option value="تصريح">تصريح خروج</option>
+            <option value="تأخير">تأخير يدوي</option>
+            <option value="غياب">غياب</option>
+        </select>
+        <button class="btn-main" style="background:var(--turquoise); margin-bottom:10px;" onclick="submitManual()">حفظ ✅</button>
+        <button class="btn-main" style="background:#eee; color:#666;" onclick="closeModal()">إلغاء</button>
     </div>
 </div>
 
@@ -96,144 +133,168 @@
     const app = initializeApp(firebaseConfig);
     const fs = getFirestore(app);
 
-    // دالة جلب البيانات من السحابة بناءً على الكود
     window.loadFromCloud = async function() {
         const id = document.getElementById('u-id').value.trim();
-        if (!id || id.length < 1) return;
-
+        if (!id) return;
         const loader = document.getElementById('sync-loader');
         loader.style.display = 'inline';
-        loader.innerText = "جاري جلب البيانات...";
-
+        loader.innerText = "جاري الجلب...";
         try {
             const docSnap = await getDoc(doc(fs, "employees", id));
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                // حفظ البيانات محلياً للموظف
                 localStorage.setItem('u_i', id);
-                localStorage.setItem('u_n', data.name || "");
-                localStorage.setItem('u_g', data.grade || "");
+                localStorage.setItem('u_n', data.name);
+                localStorage.setItem('u_g', data.grade);
                 localStorage.setItem('t_db', JSON.stringify(data.logs || []));
-                localStorage.setItem('t_vacs', JSON.stringify(data.vacations || []));
-                localStorage.setItem('base_reg', data.baseReg || 30);
-                localStorage.setItem('base_emg', data.baseEmg || 7);
-                
-                // تحديث الواجهة
-                document.getElementById('u-name').value = data.name || "";
-                document.getElementById('u-grade').value = data.grade || "";
-                location.reload(); // إعادة تحميل لتحديث الجدول والأرصدة
-            } else {
-                alert("عذراً، هذا الكود غير مسجل في المنظومة");
-                loader.innerText = "غير موجود";
-            }
-        } catch (e) {
-            alert("خطأ في الاتصال بالإنترنت");
-        }
-        setTimeout(() => loader.style.display = 'none', 2000);
+                localStorage.setItem('base_reg', data.baseReg || 0); // رصيد يدوي
+                localStorage.setItem('base_emg', data.baseEmg || 0); // رصيد يدوي
+                location.reload();
+            } else { alert("الكود غير موجود"); }
+        } catch (e) { alert("خطأ اتصال"); }
+        loader.style.display = 'none';
     };
 
-    // دالة حفظ أي حركة جديدة للسحابة فوراً
     window.syncToCloud = async function() {
         const id = localStorage.getItem('u_i');
         if (!id) return;
+        const loader = document.getElementById('sync-loader');
+        loader.style.display = 'inline';
         try {
             await setDoc(doc(fs, "employees", id), {
-                name: localStorage.getItem('u_n'),
-                grade: localStorage.getItem('u_g'),
                 logs: JSON.parse(localStorage.getItem('t_db')) || [],
-                vacations: JSON.parse(localStorage.getItem('t_vacs')) || [],
-                baseReg: localStorage.getItem('base_reg') || 30,
-                baseEmg: localStorage.getItem('base_emg') || 7,
+                baseReg: parseInt(localStorage.getItem('base_reg')) || 0,
+                baseEmg: parseInt(localStorage.getItem('base_emg')) || 0,
                 lastUpdate: new Date().toISOString()
             }, { merge: true });
         } catch (e) { console.error("Sync Error"); }
+        setTimeout(() => loader.style.display = 'none', 1000);
     };
 </script>
 
 <script>
-    // باقي دوال النظام (الرندر، الحسابات، التسجيل) كما هي لضمان عمل الواجهة
     let db = JSON.parse(localStorage.getItem('t_db')) || [];
-    let vacs = JSON.parse(localStorage.getItem('t_vacs')) || [];
-    let baseReg = parseInt(localStorage.getItem('base_reg')) || 30;
-    let baseEmg = parseInt(localStorage.getItem('base_emg')) || 7;
-
-    function arToEn(str) { return str ? str.toString().replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632) : ""; }
-    function formatDateArabic(dateObj) { return `${dateObj.getDate()} / ${dateObj.getMonth()+1} / ${dateObj.getFullYear()}`; }
+    let baseReg = parseInt(localStorage.getItem('base_reg')) || 0;
+    let baseEmg = parseInt(localStorage.getItem('base_emg')) || 0;
 
     function init() {
         document.getElementById('u-id').value = localStorage.getItem('u_i') || "";
         document.getElementById('u-name').value = localStorage.getItem('u_n') || "";
         document.getElementById('u-grade').value = localStorage.getItem('u_g') || "";
-        setInterval(updateTime, 1000);
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('en-GB');
+            document.getElementById('date-text').innerText = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}`;
+            updateBtnColor();
+        }, 1000);
         render();
     }
 
-    function updateTime() {
-        const now = new Date();
-        document.getElementById('digital-clock').innerText = now.toLocaleTimeString('en-GB');
-        document.getElementById('date-text').innerText = formatDateArabic(now);
-        updateBtnColor();
+    function editBalance(type) {
+        let current = type === 'reg' ? baseReg : baseEmg;
+        let title = type === 'reg' ? "الاعتيادي" : "العارضة";
+        let newVal = prompt(`ادخل رصيد ${title} الجديد:`, current);
+        if (newVal !== null && !isNaN(newVal)) {
+            if (type === 'reg') {
+                baseReg = parseInt(newVal);
+                localStorage.setItem('base_reg', baseReg);
+            } else {
+                baseEmg = parseInt(newVal);
+                localStorage.setItem('base_emg', baseEmg);
+            }
+            render();
+            if(window.syncToCloud) window.syncToCloud();
+        }
     }
 
     function updateBtnColor() {
         const now = new Date(), totalMin = now.getHours() * 60 + now.getMinutes(), btn = document.getElementById('main-punch-btn');
-        const isLogged = [...db, ...vacs].find(e => e.fDate === now.toDateString());
+        const isLogged = db.find(e => e.fDate === now.toDateString());
         if (isLogged) { btn.disabled = true; btn.innerText = "تم تسجيل اليوم ✅"; btn.style.background = "#bdc3c7"; } 
-        else if (totalMin < 420 || totalMin > 570) { btn.disabled = true; btn.innerText = "البصمة مغلقة حالياً"; btn.style.background = "#bdc3c7"; }
+        else if (totalMin < 420 || totalMin > 570) { btn.disabled = true; btn.innerText = "البصمة مغلقة"; btn.style.background = "#bdc3c7"; }
         else {
             btn.disabled = false;
             btn.style.background = totalMin <= 475 ? "var(--green)" : (totalMin <= 490 ? "var(--warning)" : "var(--danger)");
-            btn.innerText = "تسجيل حضور الآن 📲";
+            btn.innerText = "تسجيل بصمة الآن 📲";
         }
-    }
-
-    async function handlePunch(h, m, dateInput) {
-        const id = localStorage.getItem('u_i');
-        if(!id) return alert("من فضلك ادخل الكود الخاص بك أولاً");
-        
-        const finalDate = new Date(dateInput), dateKey = finalDate.toDateString();
-        const finalH = h !== null ? h : finalDate.getHours(), finalM = m !== null ? m : finalDate.getMinutes(), tot = finalH * 60 + finalM;
-        
-        let type = "منتظم", late = 0;
-        if (tot > 475 && tot <= 490) { type = "تأخير"; late = tot - 475; }
-        else if (tot > 490) {
-            let choice = prompt("1-اعتيادي 2-عارضة 3-تصريح 4-غياب");
-            if(choice==="1") type="اعتيادي"; else if(choice==="2") type="عارضة"; else if(choice==="3") type="تصريح"; else if(choice==="4") type="غياب"; else return;
-        }
-
-        const item = { id: Date.now(), fDate: dateKey, dDate: formatDateArabic(finalDate), time: (finalH%12||12)+":"+(finalM<10?'0'+finalM:finalM)+(finalH>=12?' م':' ص'), late, type, sortKey: finalDate.getTime() };
-        if(type==='اعتيادي'||type==='عارضة') vacs.unshift(item); else db.unshift(item);
-        
-        localStorage.setItem('t_db', JSON.stringify(db));
-        localStorage.setItem('t_vacs', JSON.stringify(vacs));
-        render();
-        if(window.syncToCloud) await window.syncToCloud();
     }
 
     function render() {
         const body = document.getElementById('log-body');
         body.innerHTML = '';
-        let lateSum = 0, rUsed = 0, eUsed = 0, pUsed = 0;
-        [...db, ...vacs].sort((a,b) => b.sortKey - a.sortKey).forEach(e => {
+        let lateSum = 0, pUsed = 0;
+
+        db.sort((a,b) => b.sortKey - a.sortKey).forEach(e => {
             if(e.type==='تأخير') lateSum += e.late;
-            if(e.type==='اعتيادي') rUsed++;
-            if(e.type==='عارضة') eUsed++;
             if(e.type==='تصريح') pUsed++;
 
-            let color = e.type==="تأخير" ? "var(--danger)" : (e.type==="تصريح" ? "var(--warning)" : (e.type==="منتظم" ? "var(--green)" : "var(--info)"));
-            body.innerHTML += `<tr><td>${e.dDate}</td><td>${e.time}</td><td><span class="status-badge" style="background:${color}">${e.type}</span></td><td><button onclick="deleteRow(${e.id})" style="background:none;border:none;">🗑️</button></td></tr>`;
+            let color = "var(--info)";
+            if(e.type==="تأخير") color = "var(--danger)";
+            if(e.type==="منتظم") color = "var(--green)";
+            if(e.type==="تصريح") color = "var(--warning)";
+            if(e.type==="غياب") color = "var(--navy)";
+
+            body.innerHTML += `<tr>
+                <td>${e.dDate}</td>
+                <td>${e.time}</td>
+                <td><span class="status-badge" style="background:${color}">${e.type}</span></td>
+                <td><button onclick="deleteRow(${e.id})" style="border:none;background:none;cursor:pointer;">🗑️</button></td>
+            </tr>`;
         });
+
         document.getElementById('sum-late').innerText = lateSum;
         document.getElementById('rem-mins').innerText = Math.max(0, 60 - lateSum);
-        document.getElementById('reg-left').innerText = baseReg - rUsed;
-        document.getElementById('emg-left').innerText = baseEmg - eUsed;
-        document.getElementById('month-permits').innerText = `${pUsed} / 3`;
+        document.getElementById('reg-left').innerText = baseReg;
+        document.getElementById('emg-left').innerText = baseEmg;
+        document.getElementById('permits-count').innerText = `${pUsed} / 3`;
+    }
+
+    async function handlePunch(h, m, dateInput, manualType = null) {
+        if(!localStorage.getItem('u_i')) return alert("ادخل الكود أولاً");
+        const finalDate = new Date(dateInput);
+        const finalH = h !== null ? h : finalDate.getHours();
+        const finalM = m !== null ? m : finalDate.getMinutes();
+        
+        let type = manualType || "منتظم", late = 0;
+        
+        if (!manualType) {
+            const tot = finalH * 60 + finalM;
+            if (tot > 475 && tot <= 490) { type = "تأخير"; late = tot - 475; }
+            else if (tot > 490) { type = "تأخير"; late = tot - 475; }
+        } else if (manualType === "تأخير") {
+            late = 15;
+        }
+
+        if (type === "تصريح" && db.filter(e => e.type === "تصريح").length >= 3) {
+            return alert("استنفدت الـ ٣ تصاريح المتاحة!");
+        }
+
+        db.unshift({ 
+            id: Date.now(), 
+            fDate: finalDate.toDateString(), 
+            dDate: `${finalDate.getDate()}/${finalDate.getMonth()+1}`, 
+            time: manualType ? "--:--" : `${finalH%12||12}:${finalM<10?'0'+finalM:finalM}${finalH>=12?'م':'ص'}`, 
+            late, type, sortKey: finalDate.getTime() 
+        });
+
+        localStorage.setItem('t_db', JSON.stringify(db));
+        render(); if(window.syncToCloud) await window.syncToCloud();
+    }
+
+    function openManualWheel() { document.getElementById('modalOverlay').style.display = 'flex'; }
+    function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+    function submitManual() {
+        const d = document.getElementById('manual-date-picker').value;
+        const type = document.getElementById('manual-type').value;
+        if(!d) return alert("اختر التاريخ");
+        handlePunch(null, null, d, type);
+        closeModal();
     }
 
     async function deleteRow(id) {
-        if(confirm("حذف التسجيل؟")) {
-            db = db.filter(i => i.id !== id); vacs = vacs.filter(i => i.id !== id);
-            localStorage.setItem('t_db', JSON.stringify(db)); localStorage.setItem('t_vacs', JSON.stringify(vacs));
+        if(confirm("حذف؟")) {
+            db = db.filter(i => i.id !== id);
+            localStorage.setItem('t_db', JSON.stringify(db));
             render(); if(window.syncToCloud) await window.syncToCloud();
         }
     }
