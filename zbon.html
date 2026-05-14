@@ -21,7 +21,7 @@
         .header { background: var(--primary); color: white; padding: 10px; text-align: center; border-radius: 0 0 30px 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .header h1 { margin: 0; font-size: 20px; font-weight: 900; }
         .toolbar { max-width: 1100px; margin: 8px auto; padding: 0 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        #companyNameInput, #searchInput { padding: 10px; border-radius: 12px; border: 2px solid var(--primary); font-size: 15px; font-weight: 900; outline: none; width: 100%; box-sizing: border-box; }
+        #companyNameInput, #searchInput, .archive-search { padding: 10px; border-radius: 12px; border: 2px solid var(--primary); font-size: 15px; font-weight: 900; outline: none; width: 100%; box-sizing: border-box; }
         .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 1100px; margin: 8px auto; padding: 0 10px; }
         .stat-card { background: white; padding: 6px; border-radius: 12px; text-align: center; border-bottom: 4px solid var(--accent); }
         .stat-card h4 { margin: 0; font-size: 11px; }
@@ -48,7 +48,7 @@
         input, textarea { width: 100%; padding: 7px; border-radius: 8px; border: 1px solid #cbd5e0; box-sizing: border-box; font-size: 13px; font-weight: 900; margin-bottom: 3px; direction: ltr !important; text-align: left; font-family: Arial, sans-serif !important; }
         textarea.c-notes { direction: rtl !important; text-align: right; font-family: 'Segoe UI', Tahoma, sans-serif !important; resize: none; overflow: hidden; min-height: 38px; margin-bottom: 6px; }
         
-        .c-name, #companyNameInput, #searchInput { direction: rtl !important; text-align: right; font-family: 'Segoe UI', Tahoma, sans-serif !important; }
+        .c-name, #companyNameInput, #searchInput, .archive-search { direction: rtl !important; text-align: right; font-family: 'Segoe UI', Tahoma, sans-serif !important; }
         .date-input-group { display: flex; flex-direction: row-reverse; align-items: center; background: #fff0f0; border: 1.5px solid #e74c3c; border-radius: 8px; padding: 2px 5px; direction: ltr !important; }
         .date-input-group input { border: none !important; background: transparent !important; text-align: center; color: #c0392b; width: 100%; margin: 0; padding: 2px; }
         
@@ -69,7 +69,6 @@
         
         .btn-add-client { position: fixed; bottom: 15px; right: 15px; background: #1abc9c; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 25px; cursor: pointer; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        /* ضبط مقاسات الجدول - تقليل الارتفاع */
         .summary-section { max-width: 1100px; margin: 15px auto; padding: 8px; background: white; border-radius: 15px; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .summary-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; min-width: 600px; }
         .summary-table th { background: var(--primary); color: white; padding: 6px; border: 1px solid #ddd; }
@@ -87,6 +86,7 @@
         .star-table { color: var(--star-color); font-size: 9px; letter-spacing: -1px; } 
         .row-paid { background-color: #f0fff4 !important; }
         .summary-footer { background: #2d3436 !important; height: 30px; }
+        .notes-td { font-size: 10px; color: #555; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; }
     </style>
 </head>
 <body>
@@ -104,11 +104,11 @@
 
 <div class="toolbar">
     <input type="text" id="companyNameInput" placeholder="🏢 اسم شركتك..." oninput="saveSettings()">
-    <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم..." onkeyup="filterAll()">
+    <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو التليفون..." onkeyup="filterAll()">
 </div>
 
 <div class="stats-bar">
-    <div class="stat-card"><h4>إجمالي الديون</h4><div id="stat-debt">0</div></div>
+    <div class="stat-card"><h4>إجمالي المديونيات</h4><div id="stat-debt">0</div></div>
     <div class="stat-card"><h4>العملاء</h4><div id="stat-cust">0</div></div>
     <div class="stat-card"><h4>الخالص</h4><div id="stat-paid">0</div></div>
 </div>
@@ -144,6 +144,9 @@
 
 <div class="summary-section archive-section" style="background: #cfd8dc; border: 2px dashed #607d8b;">
     <h2 style="background: #607d8b; color: white; padding: 5px; text-align: center; margin: 0; border-radius: 15px 15px 0 0; font-size: 15px;">📁 أرشيف الزبائن (الخالص)</h2>
+    <div style="padding: 10px;">
+        <input type="text" class="archive-search" id="archiveSearch" placeholder="🔍 بحث في الأرشيف..." onkeyup="filterArchive()">
+    </div>
     <table class="summary-table">
         <thead>
             <tr>
@@ -151,6 +154,7 @@
                 <th>اسم الزبون</th>
                 <th>📅 تاريخ الانتهاء</th>
                 <th>💰 المبلغ المسدد</th>
+                <th>📝 ملاحظات</th>
                 <th style="width: 60px;">⭐</th>
             </tr>
         </thead>
@@ -369,7 +373,9 @@
         visibleCards.forEach(id => {
             const card = document.getElementById(`card-${id}`);
             const name = card.querySelector('.c-name').value || "غير مسمى";
+            const phone = card.querySelector('.c-phone').value || "";
             const total = parseFloat(card.querySelector('.c-total').value) || 0;
+            const notes = card.querySelector('.c-notes').value || "";
             let paid = 0; card.querySelectorAll('.p-val').forEach(p => paid += (parseFloat(p.value) || 0));
             const rem = total - paid;
             const dd = card.querySelector('.d-day').value; const mm = card.querySelector('.d-month').value; const yy = card.querySelector('.d-year').value;
@@ -380,7 +386,7 @@
             const rating = card.querySelector(`input[name="rating-${id}"]:checked`)?.value || 0;
             if(total > 0 || name !== "غير مسمى") {
                 const isPaid = (total > 0 && rem <= 0);
-                allValidClients.push({ id, name, total, paid, rem, dateStr, monthNum, rating, isPaid, sortTimestamp });
+                allValidClients.push({ id, name, phone, total, paid, rem, dateStr, monthNum, rating, isPaid, sortTimestamp, notes });
                 if(!isPaid) debt += rem; else paidC++;
                 cust++; totalAll += total; totalPaid += paid; totalRem += rem;
             }
@@ -391,7 +397,7 @@
         allValidClients.forEach(c => {
             const stars = `<span class="star-table">${'★'.repeat(c.rating)}${'☆'.repeat(5-c.rating)}</span>`;
             const mColor = monthColors[c.monthNum] || "#f1f2f6";
-            if (c.isPaid) { archiveBody.innerHTML += `<tr class="row-paid"><td>${c.id}</td><td>${c.name}</td><td style="background-color:${mColor}; color:#2d3436;">${c.dateStr}</td><td style="direction:ltr;">${c.total.toLocaleString('en-US')} ✅</td><td>${stars}</td></tr>`; }
+            if (c.isPaid) { archiveBody.innerHTML += `<tr class="row-paid"><td>${c.id}</td><td>${c.name}</td><td style="background-color:${mColor}; color:#2d3436;">${c.dateStr}</td><td style="direction:ltr;">${c.total.toLocaleString('en-US')} ✅</td><td class="notes-td" title="${c.notes}">${c.notes}</td><td>${stars}</td></tr>`; }
             else { summaryBody.innerHTML += `<tr><td>${c.id}</td><td>${c.name}</td><td style="background-color:${mColor}; color:#2d3436;">${c.dateStr}</td><td class="col-total" style="direction:ltr;">${c.total.toLocaleString('en-US')}</td><td class="col-paid" style="direction:ltr;">${c.paid.toLocaleString('en-US')}</td><td class="col-rem" style="direction:ltr;">${c.rem.toLocaleString('en-US')}</td><td>${stars}</td></tr>`; }
         });
         document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); document.getElementById('stat-cust').innerText = cust; document.getElementById('stat-paid').innerText = paidC;
@@ -400,7 +406,20 @@
 
     function filterAll() {
         let q = document.getElementById('searchInput').value.toLowerCase();
-        visibleCards.forEach(id => { const card = document.getElementById(`card-${id}`); card.style.display = card.innerText.toLowerCase().includes(q) ? "block" : "none"; });
+        visibleCards.forEach(id => { 
+            const card = document.getElementById(`card-${id}`); 
+            const name = card.querySelector('.c-name').value.toLowerCase();
+            const phone = card.querySelector('.c-phone').value.toLowerCase();
+            card.style.display = (name.includes(q) || phone.includes(q)) ? "block" : "none"; 
+        });
+    }
+
+    function filterArchive() {
+        let q = document.getElementById('archiveSearch').value.toLowerCase();
+        let rows = document.querySelectorAll('#archive-body tr');
+        rows.forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none";
+        });
     }
 
     function saveSettings() { localStorage.setItem('azemaa_company_name', document.getElementById('companyNameInput').value); }
