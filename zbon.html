@@ -74,7 +74,14 @@
         .summary-table th { background: var(--primary); color: white; padding: 6px; border: 1px solid #ddd; }
         .summary-table td { padding: 4px; border: 1px solid #eee; font-weight: 700; transition: background 0.3s ease; }
         
-        .pulse-row { background-color: rgba(241, 196, 15, 0.25) !important; border: 2px solid var(--glow-yellow) !important; }
+        /* تأثير النبض للمتأخرين */
+        @keyframes urgentPulse {
+            0% { background-color: #fff; }
+            50% { background-color: #ffcccc; }
+            100% { background-color: #fff; }
+        }
+        .pulse-row { animation: urgentPulse 1.5s infinite; border: 2px solid var(--danger) !important; }
+
         .col-total { color: var(--col-total); background-color: #f1f9ff; } 
         .col-paid { color: var(--col-paid); background-color: #f2fff4; } 
         .col-rem { color: var(--col-rem); background-color: #fff5f5; } 
@@ -119,7 +126,7 @@
 <div class="grid" id="mainGrid"></div>
 
 <div class="summary-section">
-    <h2 style="text-align: center; color: var(--primary); font-size: 15px; margin: 5px 0;">🗓️ جدول المديونيات</h2>
+    <h2 style="text-align: center; color: var(--primary); font-size: 15px; margin: 5px 0;">🗓️ جدول المديونيات (مرتب زمنياً)</h2>
     <table class="summary-table">
         <thead>
             <tr>
@@ -188,7 +195,7 @@
         9: "#fccb90", 10: "#d5dbe5", 11: "#e0c3fc", 12: "#cfd9df"
     };
 
-    let visibleCards = []; // سنقوم بتعبئتها من قاعدة البيانات
+    let visibleCards = []; 
 
     function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 
@@ -399,6 +406,7 @@
         window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
+    // الوظيفة المحدثة للترتيب الزمني الذكي
     function refreshStats() {
         let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0;
         const summaryBody = document.getElementById('summary-body');
@@ -410,8 +418,22 @@
             const data = snapshot.val();
             if (!data) return;
 
-            Object.keys(data).forEach(id => {
-                const d = data[id];
+            // تحويل البيانات لمصفوفة لسهولة الفرز والترتيب
+            let clientsArr = [];
+            Object.keys(data).forEach(id => clientsArr.push({id, ...data[id]}));
+
+            // الترتيب الزمني: من الأقدم للأحدث بناءً على تاريخ الاستلام
+            clientsArr.sort((a, b) => {
+                const dateA = new Date(a.dy || 2000, (a.dm || 1) - 1, a.dd || 1);
+                const dateB = new Date(b.dy || 2000, (b.dm || 1) - 1, b.dd || 1);
+                return dateA - dateB;
+            });
+
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            clientsArr.forEach(d => {
+                const id = d.id;
                 let pVal = 0; 
                 if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0));
                 const total = parseFloat(d.t) || 0;
@@ -421,7 +443,15 @@
                 const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6";
                 const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---";
 
+                // فحص ما إذا كان التاريخ قد مضى (التاريخ أصغر من اليوم والعميل لم يسدد بالكامل)
+                let isOverdue = false;
+                if (d.dd && d.dm && d.dy && !isPaid) {
+                    const deliveryDate = new Date(d.dy, d.dm - 1, d.dd);
+                    if (deliveryDate < now) isOverdue = true;
+                }
+
                 if (d.isArchived || isPaid) {
+                    // الأرشيف لا يتأثر بالترتيب الزمني للمديونيات
                     archiveBody.innerHTML += `<tr class="row-paid">
                         <td>${id}</td>
                         <td>${d.n || '---'}</td>
@@ -433,14 +463,23 @@
                     </tr>`;
                     if(isPaid) paidC++;
                 } else if (d.n || total > 0) {
-                    summaryBody.innerHTML += `<tr>
+                    const rowClass = isOverdue ? 'pulse-row' : '';
+                    const rowHTML = `<tr class="${rowClass}">
                         <td>${id}</td><td>${d.n}</td>
-                        <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
+                        <td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td>
                         <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
                         <td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td>
                         <td>${stars}</td>
                     </tr>`;
+
+                    // إذا كان ميعاده قد مضى، يتم وضعه في أعلى الجدول
+                    if (isOverdue) {
+                        summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
+                    } else {
+                        summaryBody.innerHTML += rowHTML;
+                    }
+                    
                     debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem;
                 }
             });
