@@ -415,11 +415,42 @@
 
     function sendWA(id) {
         const card = document.getElementById(`card-${id}`);
+        const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
-        if(!phone) return alert("أدخل الموبايل");
-        const rem = document.getElementById(`rem-n-${id}`).innerText;
-        const msg = `تحية طيبة.. تقرير حسابك: ${rem}`;
-        window.open(`https://wa.me/2${phone}?text=${msg}`, '_blank');
+        const companyName = document.getElementById('companyNameInput').value || "AZEMAA PRO";
+        
+        if(!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
+
+        const total = card.querySelector('.c-total').value || 0;
+        const rem = document.getElementById(`rem-n-${id}`).innerText; 
+        
+        // تجميع تفاصيل الدفعات
+        let paymentsList = "";
+        const pVals = card.querySelectorAll('.p-val');
+        const pDates = card.querySelectorAll('.p-date');
+        
+        pVals.forEach((p, idx) => {
+            let val = p.value;
+            let date = pDates[idx].value;
+            if(val && parseFloat(val) > 0) {
+                paymentsList += `\n✅ دفعة: ${parseFloat(val).toLocaleString('en-US')} ج.م ${date ? `بتاريخ (${date})` : ''}`;
+            }
+        });
+
+        // صياغة الرسالة النهائية
+        const msg = `السلام عليكم يا ${name}،
+تحية طيبة من ${companyName}.. إليكم تقرير حسابكم:
+
+💰 الإجمالي: ${parseFloat(total).toLocaleString('en-US')} ج.م
+--------------------------
+📊 تفاصيل الدفعات: ${paymentsList || "\n(لا توجد دفعات مسجلة بعد)"}
+--------------------------
+📉 المتبقي المطلوب: ${rem}
+
+شكراً لتعاملكم معنا.`;
+
+        // فتح الرابط
+        window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function refreshStats() {
