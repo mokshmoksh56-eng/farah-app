@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منظومة حضور طلخا المركبة - Online</title>
+    <title>منظومة حضور طلخا المركبة - Azemaa Pro</title>
     <style>
         :root { 
             --turquoise: #008b8b; --danger: #d32f2f; --warning: #ffc107; 
-            --info: #007bff; --green: #2e7d32; --navy: #001f3f; 
+            --info: #007bff; --green: #2e7d32; --navy: #001f3f; --gold: #ffd700;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background: #eef2f3; margin: 0; padding: 5px; color: #1a1a1a; direction: rtl; }
         .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; height: 98vh; }
         
-        .station-header { background: var(--navy); color: #ffd700; padding: 5px; text-align: center; font-size: 12px; font-weight: bold; border-bottom: 2px solid #ffd700; }
+        .station-header { background: var(--navy); color: var(--gold); padding: 5px; text-align: center; font-size: 12px; font-weight: bold; border-bottom: 2px solid var(--gold); }
         .header { background: linear-gradient(135deg, var(--turquoise) 0%, #00ced1 100%); color: white; padding: 10px 5px; text-align: center; }
         
         .clock-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
         #digital-clock { font-size: 28px; font-weight: 800; font-family: 'Courier New', monospace; color: #e0ffff; }
         
-        /* تنسيق العداد التنازلي */
-        .countdown-timer { font-size: 12px; color: #ffd700; font-weight: bold; background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 10px; margin-top: 5px; border: 1px solid rgba(255,215,0,0.3); }
+        .countdown-timer { font-size: 12px; color: var(--gold); font-weight: bold; background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 10px; margin-top: 5px; border: 1px solid rgba(255,215,0,0.3); }
         #holiday-now { color: #fff; background: var(--danger); padding: 2px 8px; border-radius: 5px; margin-bottom: 5px; display: none; font-size: 13px; }
 
         .date-display { margin-top:5px; font-weight: bold; font-size: 13px; background: rgba(0,0,0,0.1); padding: 3px 12px; border-radius: 15px; display: inline-block; }
@@ -42,11 +41,13 @@
         th { padding: 12px 5px; background: #e0f2f2; color: var(--turquoise); position: sticky; top: 0; font-size: 14px; }
         td { padding: 10px 5px; border-bottom: 1px solid #eee; font-weight: bold; }
         
-        .badge { padding: 5px 10px; border-radius: 8px; color: white; font-size: 11px; display: inline-block; min-width: 65px; font-weight: bold; }
+        /* شارات الحالة المحدثة */
+        .badge { padding: 5px 8px; border-radius: 8px; color: white; font-size: 11px; display: inline-block; min-width: 85px; font-weight: bold; }
         .bg-late { background-color: var(--danger); }    
         .bg-permit { background-color: var(--warning); color: black; } 
         .bg-regular { background-color: var(--green); }  
-        .bg-absent { background-color: var(--info); }    
+        .bg-absent { background-color: var(--info); }
+        .bg-holiday { background-color: var(--navy); color: var(--gold); }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .modal-box { background: white; width: 90%; max-width: 380px; border-radius: 25px; padding: 25px; text-align: center; }
@@ -55,7 +56,7 @@
 <body onload="init()">
 
 <div class="container">
-    <div class="station-header">محطة طلخا المركبة ⚡ <span id="sync-loader" style="display:none; color:#ffd700;">جاري الحفظ...</span></div>
+    <div class="station-header">محطة طلخا المركبة ⚡ <span id="sync-loader" style="display:none; color:var(--gold);">جاري الحفظ...</span></div>
     
     <div class="header">
         <div class="clock-wrapper">
@@ -93,6 +94,7 @@
     </div>
 </div>
 
+<!-- Modals -->
 <div id="manualModal" class="modal-overlay">
     <div class="modal-box">
         <h3>تسجيل يدوي</h3>
@@ -102,6 +104,8 @@
             <option value="تأخير">تأخير</option>
             <option value="تصريح">تصريح</option>
             <option value="غياب">غياب</option>
+            <option value="إجازة اعتيادي">إجازة اعتيادي</option>
+            <option value="إجازة عارضة">إجازة عارضة</option>
         </select>
         <input type="number" id="m-late" class="info-input" placeholder="دقائق التأخير" value="0">
         <button class="btn-main" style="background:var(--turquoise); margin-top:10px;" onclick="submitManual()">حفظ ✅</button>
@@ -173,62 +177,18 @@
 </script>
 
 <script>
-    // قائمة الأعياد الرسمية + رمضان (تقريبي لعام 2026)
     const holidays = [
         { name: "عيد الميلاد المجيد", date: "2026-01-07" },
         { name: "ثورة 25 يناير", date: "2026-01-25" },
-        { name: "شهر رمضان المبارك 🌙", date: "2026-02-18" }, // تقريبي 2026
-        { name: "عيد الفطر المبارك", date: "2026-03-20" }, // تقريبي
+        { name: "شهر رمضان المبارك 🌙", date: "2026-02-18" },
+        { name: "عيد الفطر المبارك", date: "2026-03-20" },
         { name: "عيد تحرير سيناء", date: "2026-04-25" },
         { name: "عيد العمال", date: "2026-05-01" },
-        { name: "عيد الأضحى المبارك", date: "2026-05-27" }, // تقريبي
+        { name: "عيد الأضحى المبارك", date: "2026-05-27" },
         { name: "ثورة 30 يونيو", date: "2026-06-30" },
         { name: "عيد ثورة 23 يوليو", date: "2026-07-23" },
         { name: "نصر أكتوبر", date: "2026-10-06" }
     ];
-
-    function updateCountdown() {
-        const now = new Date();
-        const holidayNowDiv = document.getElementById('holiday-now');
-        let nextHoliday = null;
-        let minDiff = Infinity;
-
-        holidays.forEach(h => {
-            const hDate = new Date(h.date);
-            const diff = hDate - now;
-
-            // إذا كان اليوم هو العيد
-            if (now.toDateString() === hDate.toDateString()) {
-                holidayNowDiv.innerText = `اليوم: ${h.name} 🎉`;
-                holidayNowDiv.style.display = 'block';
-            }
-
-            if (diff > 0 && diff < minDiff) {
-                minDiff = diff;
-                nextHoliday = h;
-            }
-        });
-
-        if (nextHoliday) {
-            const days = Math.floor(minDiff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((minDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            document.getElementById('countdown-display').innerText = 
-                `متبقي على ${nextHoliday.name}: ${days} يوم و ${hours} ساعة`;
-        }
-    }
-
-    function updateTime() {
-        const now = new Date();
-        let hours = now.getHours();
-        const ampm = hours >= 12 ? 'م' : 'ص';
-        hours = hours % 12 || 12;
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const seconds = now.getSeconds().toString().padStart(2, '0');
-        
-        document.getElementById('digital-clock').innerText = `${hours}:${minutes}:${seconds} ${ampm}`;
-        document.getElementById('date-text').innerText = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}`;
-        updateCountdown();
-    }
 
     let db = JSON.parse(localStorage.getItem('t_db')) || [];
     let baseReg = parseInt(localStorage.getItem('u_base_reg')) || 0;
@@ -245,16 +205,68 @@
         render();
     }
 
+    function updateTime() {
+        const now = new Date();
+        let hours = now.getHours();
+        const ampm = hours >= 12 ? 'م' : 'ص';
+        hours = hours % 12 || 12;
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        
+        document.getElementById('digital-clock').innerText = `${hours}:${minutes}:${seconds} ${ampm}`;
+        document.getElementById('date-text').innerText = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}`;
+        updateCountdown();
+    }
+
+    function updateCountdown() {
+        const now = new Date();
+        const holidayNowDiv = document.getElementById('holiday-now');
+        let nextHoliday = null;
+        let minDiff = Infinity;
+
+        holidays.forEach(h => {
+            const hDate = new Date(h.date);
+            const diff = hDate - now;
+            if (now.toDateString() === hDate.toDateString()) {
+                holidayNowDiv.innerText = `اليوم: ${h.name} 🎉`;
+                holidayNowDiv.style.display = 'block';
+            }
+            if (diff > 0 && diff < minDiff) { minDiff = diff; nextHoliday = h; }
+        });
+
+        if (nextHoliday) {
+            const days = Math.floor(minDiff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((minDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            document.getElementById('countdown-display').innerText = `متبقي على ${nextHoliday.name}: ${days} يوم و ${hours} ساعة`;
+        }
+    }
+
     function render() {
         const body = document.getElementById('log-body');
         body.innerHTML = '';
         let lateSum = 0, pUsed = 0;
+        
         db.forEach((e, index) => {
             if(e.type==='تأخير') lateSum += parseInt(e.late || 0);
             if(e.type==='تصريح') pUsed++;
-            let colorClass = e.type === "تأخير" ? "bg-late" : e.type === "تصريح" ? "bg-permit" : e.type === "غياب" ? "bg-absent" : "bg-regular";
-            body.innerHTML += `<tr><td>${e.dDate}</td><td>${e.time}</td><td><span class="badge ${colorClass}">${e.type}</span></td><td><button onclick="deleteRow(${index})" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`;
+            
+            let colorClass = "bg-regular";
+            let displayText = e.type;
+
+            if (e.type === "تأخير") {
+                colorClass = "bg-late";
+                displayText = `تأخير (${e.late} د)`;
+            } else if (e.type === "تصريح") {
+                colorClass = "bg-permit";
+            } else if (e.type.includes("إجازة")) {
+                colorClass = "bg-holiday";
+            } else if (e.type === "غياب") {
+                colorClass = "bg-absent";
+            }
+
+            body.innerHTML += `<tr><td>${e.dDate}</td><td>${e.time}</td><td><span class="badge ${colorClass}">${displayText}</span></td><td><button onclick="deleteRow(${index})" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`;
         });
+
         document.getElementById('sum-late').innerText = lateSum;
         document.getElementById('rem-mins').innerText = Math.max(0, 60 - lateSum);
         document.getElementById('reg-left').innerText = baseReg;
@@ -264,22 +276,75 @@
 
     async function handlePunch() {
         if(!localStorage.getItem('u_i')) return alert("ادخل الكود أولاً");
+        
         const now = new Date();
-        let hours = now.getHours();
-        const ampm = hours >= 12 ? 'م' : 'ص';
-        const item = { dDate: `${now.getDate()}/${now.getMonth()+1}`, time: `${hours % 12 || 12}:${now.getMinutes().toString().padStart(2, '0')} ${ampm}`, type: "منتظم", late: 0 };
-        db.unshift(item); localStorage.setItem('t_db', JSON.stringify(db));
-        render(); if(window.syncToCloud) await window.syncToCloud();
+        const mins = now.getHours() * 60 + now.getMinutes();
+        
+        const start = 7 * 60;             // 07:00
+        const lateLimit = 7 * 60 + 55;    // 07:55
+        const permitLimit = 8 * 60 + 10;  // 08:10
+        const closeTime = 9 * 60 + 30;    // 09:30
+
+        let status = "";
+        let lateMins = 0;
+
+        if (mins < start) {
+            return alert("البصمة تفتح الساعة 7 صباحاً");
+        } else if (mins >= start && mins < lateLimit) {
+            status = "منتظم";
+        } else if (mins >= lateLimit && mins < permitLimit) {
+            status = "تأخير";
+            lateMins = mins - lateLimit;
+        } else if (mins >= permitLimit && mins <= closeTime) {
+            status = "تصريح";
+        } else {
+            const choice = confirm("البصمة مغلقة. هل تريد تسجيل إجازة؟\n(موافق للاعتيادي - إلغاء للعارضة)");
+            if (choice) recordHoliday("إجازة اعتيادي");
+            else {
+                if(confirm("هل تريد تسجيل إجازة عارضة؟")) recordHoliday("إجازة عارضة");
+            }
+            return;
+        }
+
+        const timeStr = `${now.getHours() % 12 || 12}:${now.getMinutes().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'م' : 'ص'}`;
+        saveLog({ dDate: `${now.getDate()}/${now.getMonth()+1}`, time: timeStr, type: status, late: lateMins });
+    }
+
+    async function recordHoliday(type) {
+        if (type === "إجازة اعتيادي") {
+            baseReg = Math.max(0, baseReg - 1);
+            localStorage.setItem('u_base_reg', baseReg);
+        } else {
+            baseEmg = Math.max(0, baseEmg - 1);
+            localStorage.setItem('u_base_emg', baseEmg);
+        }
+        saveLog({ dDate: `${new Date().getDate()}/${new Date().getMonth()+1}`, time: "--:--", type: type, late: 0 });
+    }
+
+    async function saveLog(item) {
+        db.unshift(item); 
+        localStorage.setItem('t_db', JSON.stringify(db));
+        render(); 
+        if(window.syncToCloud) await window.syncToCloud();
+        alert("تم الحفظ بنجاح!");
     }
 
     function submitManual() {
         const date = document.getElementById('m-date').value;
         if(!date) return alert("اختر التاريخ");
         const dObj = new Date(date);
-        db.unshift({ dDate: `${dObj.getDate()}/${dObj.getMonth()+1}`, time: "--:--", type: document.getElementById('m-type').value, late: document.getElementById('m-late').value });
-        localStorage.setItem('t_db', JSON.stringify(db)); closeModal(); render();
-        if(window.syncToCloud) window.syncToCloud();
+        const type = document.getElementById('m-type').value;
+        
+        if(type.includes("إجازة")) recordHoliday(type);
+        else {
+            db.unshift({ dDate: `${dObj.getDate()}/${dObj.getMonth()+1}`, time: "--:--", type: type, late: document.getElementById('m-late').value });
+            localStorage.setItem('t_db', JSON.stringify(db));
+            render();
+            if(window.syncToCloud) window.syncToCloud();
+        }
+        closeModal();
     }
+
     function deleteRow(index) { if(confirm("حذف؟")) { db.splice(index, 1); localStorage.setItem('t_db', JSON.stringify(db)); render(); if(window.syncToCloud) window.syncToCloud(); } }
     function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('manualModal').style.display = 'none'; }
@@ -287,7 +352,7 @@
     function closeRegisterModal() { document.getElementById('registerModal').style.display = 'none'; }
     function editBalance(type) {
         let newVal = prompt("تعديل الرصيد:", type==='reg' ? baseReg : baseEmg);
-        if(newVal) { localStorage.setItem(type==='reg'?'u_base_reg':'u_base_emg', newVal); location.reload(); }
+        if(newVal !== null) { localStorage.setItem(type==='reg'?'u_base_reg':'u_base_emg', newVal); location.reload(); }
     }
 </script>
 </body>
