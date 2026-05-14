@@ -74,7 +74,6 @@
         .summary-table th { background: var(--primary); color: white; padding: 6px; border: 1px solid #ddd; }
         .summary-table td { padding: 4px; border: 1px solid #eee; font-weight: 700; transition: background 0.3s ease; }
         
-        /* تأثير النبض للمتأخرين */
         @keyframes urgentPulse {
             0% { background-color: #fff; }
             50% { background-color: #ffcccc; }
@@ -219,7 +218,7 @@
             n %= 1000;
         }
         res += tafqitBasic(n);
-        return `فقط ${res.trim()} جنيهاً لا غير`;
+        return `${res.trim()}`;
     }
 
     function tafqitBasic(n) {
@@ -282,16 +281,16 @@
         const card = document.getElementById(`card-${id}`);
         if(!card) return;
         const total = parseFloat(card.querySelector('.c-total').value) || 0;
-        document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? tafqit(total) : "";
+        document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? "فقط " + tafqit(total) + " جنيهاً لا غير" : "";
         let paid = 0;
         card.querySelectorAll('.p-val').forEach((p, idx) => {
             let v = parseFloat(p.value) || 0;
             paid += v;
-            document.getElementById(`tafqit-pay-${id}-${idx+1}`).innerText = v > 0 ? tafqit(v) : "";
+            document.getElementById(`tafqit-pay-${id}-${idx+1}`).innerText = v > 0 ? "فقط " + tafqit(v) + " جنيهاً لا غير" : "";
         });
         const rem = total - paid;
         document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString('en-US')} ج.م`;
-        document.getElementById(`rem-w-${id}`).innerText = rem > 0 ? tafqit(rem) : (total > 0 ? "خالص ✓" : "");
+        document.getElementById(`rem-w-${id}`).innerText = rem > 0 ? "فقط " + tafqit(rem) + " جنيهاً لا غير" : (total > 0 ? "خالص ✓" : "");
         if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
         refreshStats();
     }
@@ -399,14 +398,47 @@
 
     function sendWA(id) {
         const card = document.getElementById(`card-${id}`);
+        const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
-        if(!phone) return alert("أدخل الموبايل");
-        const rem = document.getElementById(`rem-n-${id}`).innerText;
-        const msg = `تحية طيبة من ${document.getElementById('companyNameInput').value || 'AZEMAA PRO'}\nتقرير حسابك: ${rem}`;
+        const company = document.getElementById('companyNameInput').value || 'AZEMAA PRO';
+
+        if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
+
+        const totalVal = parseFloat(card.querySelector('.c-total').value) || 0;
+        const totalWord = tafqit(totalVal);
+
+        let paymentsMsg = "";
+        const pVals = card.querySelectorAll('.p-val');
+        const pDates = card.querySelectorAll('.p-date');
+        let paid = 0;
+        
+        pVals.forEach((p, idx) => {
+            let v = parseFloat(p.value) || 0;
+            let d = pDates[idx].value || "---";
+            if (v > 0) {
+                paid += v;
+                paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ج.م\n`;
+            }
+        });
+
+        const remVal = totalVal - paid;
+        const remWord = remVal > 0 ? tafqit(remVal) : "تم السداد بالكامل ✓";
+
+        const msg = `*تحية طيبة من ${company}* 🌸\n\n` +
+                    `أهلاً أ/ *${name}*\n` +
+                    `نحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n` +
+                    `━━━━━━━━━━━━━━\n` +
+                    `💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ج.م\n` +
+                    `✍️ *فقط:* ${totalWord} جنيهاً مصرياً لا غير\n\n` +
+                    `📅 *تفاصيل الدفعات:* \n${paymentsMsg || "━ لا توجد دفعات مسجلة بعد\n"}\n` +
+                    `📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ج.م\n` +
+                    `✍️ *فقط:* ${remWord} ${remVal > 0 ? 'جنيهاً مصرياً لا غير' : ''}\n` +
+                    `━━━━━━━━━━━━━━\n\n` +
+                    `شكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`;
+
         window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
-    // الوظيفة المحدثة للترتيب الزمني الذكي
     function refreshStats() {
         let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0;
         const summaryBody = document.getElementById('summary-body');
@@ -418,11 +450,9 @@
             const data = snapshot.val();
             if (!data) return;
 
-            // تحويل البيانات لمصفوفة لسهولة الفرز والترتيب
             let clientsArr = [];
             Object.keys(data).forEach(id => clientsArr.push({id, ...data[id]}));
 
-            // الترتيب الزمني: من الأقدم للأحدث بناءً على تاريخ الاستلام
             clientsArr.sort((a, b) => {
                 const dateA = new Date(a.dy || 2000, (a.dm || 1) - 1, a.dd || 1);
                 const dateB = new Date(b.dy || 2000, (b.dm || 1) - 1, b.dd || 1);
@@ -443,7 +473,6 @@
                 const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6";
                 const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---";
 
-                // فحص ما إذا كان التاريخ قد مضى (التاريخ أصغر من اليوم والعميل لم يسدد بالكامل)
                 let isOverdue = false;
                 if (d.dd && d.dm && d.dy && !isPaid) {
                     const deliveryDate = new Date(d.dy, d.dm - 1, d.dd);
@@ -451,7 +480,6 @@
                 }
 
                 if (d.isArchived || isPaid) {
-                    // الأرشيف لا يتأثر بالترتيب الزمني للمديونيات
                     archiveBody.innerHTML += `<tr class="row-paid">
                         <td>${id}</td>
                         <td>${d.n || '---'}</td>
@@ -473,7 +501,6 @@
                         <td>${stars}</td>
                     </tr>`;
 
-                    // إذا كان ميعاده قد مضى، يتم وضعه في أعلى الجدول
                     if (isOverdue) {
                         summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
                     } else {
