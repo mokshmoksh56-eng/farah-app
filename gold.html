@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة التلفزيون الرقمي - قنوات مفتوحة</title>
-    <!-- مكتبة مشغل الفيديو المتطور -->
+    <title>منصة التلفزيون والراديو الرقمي</title>
+    <!-- مكتبة مشغل الفيديو والصوت المتطورة -->
     <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
     
     <style>
@@ -14,6 +14,7 @@
             --primary-color: #7b2cbf;
             --text-color: #ffffff;
             --accent-color: #00b4d8;
+            --radio-color: #ffb703;
         }
 
         body {
@@ -56,6 +57,7 @@
             padding: 15px;
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            position: relative;
         }
 
         .channel-title-display {
@@ -65,23 +67,37 @@
             color: var(--accent-color);
         }
 
+        /* القائمة الجانبية مقسمة لأقسام */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            margin: 5px 0;
+            color: var(--accent-color);
+            border-bottom: 2px solid #333;
+            padding-bottom: 5px;
+        }
+
         .channels-grid {
             background: var(--card-bg);
             padding: 15px;
             border-radius: 12px;
-            max-height: 500px;
-            overflow-y: auto;
             display: grid;
             grid-template-columns: 1fr;
-            gap: 12px;
-            align-content: start;
+            gap: 10px;
         }
 
         .channel-btn {
             background: #252538;
             border: 2px solid transparent;
             color: var(--text-color);
-            padding: 15px 10px;
+            padding: 12px 15px;
             border-radius: 8px;
             cursor: pointer;
             text-align: right;
@@ -98,14 +114,31 @@
             background: var(--primary-color);
             border-color: var(--accent-color);
         }
+
+        /* تمييز أزرار الراديو */
+        .radio-section .channel-btn:hover {
+            background: var(--radio-color);
+            color: #000;
+        }
+        .radio-section .channel-btn.active {
+            background: var(--radio-color);
+            border-color: #fff;
+            color: #000;
+        }
+
+        /* خلفية مخصصة عند تشغيل الراديو لتعطي مظهر جذاب */
+        .vjs-audio-mode .vjs-poster {
+            background: radial-gradient(circle, #2c1a4d 0%, #0f0f12 100%) !important;
+            display: block !important;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>منصة البث المباشر (قنوات مفتوحة جاهزة)</h1>
-        <p>اضغط على القناة لتشغيل البث الحي فوراً</p>
+        <h1>منصة التلفزيون المباشر وإذاعات الـ FM</h1>
+        <p>اختر القناة أو محطة الراديو لبدء البث الفوري</p>
     </header>
 
     <div class="main-layout">
@@ -116,16 +149,34 @@
                 class="video-js vjs-default-skin vjs-big-play-centered vjs-16-9"
                 controls
                 preload="auto"
+                poster="https://images.unsplash.com/photo-1610116306796-6ebd3051c330?q=80&w=500"
                 data-setup='{}'>
-                <!-- القناة الافتراضية عند الفتح (beIN الإخبارية الحقيقية) -->
+                <!-- البث الافتراضي عند الفتح -->
                 <source src="https://olympic.exoradios.com/beinsportsnews/index.m3u8" type="application/x-mpegURL">
             </video>
             <div class="channel-title-display" id="current-channel-name">جاري تشغيل: beIN Sports الإخبارية</div>
         </div>
 
-        <!-- قائمة القنوات -->
-        <div class="channels-grid" id="channels-container">
-            <!-- الأزرار تتولد هنا -->
+        <!-- القائمة الجانبية (تلفزيون + راديو) -->
+        <div class="sidebar">
+            
+            <!-- قسم التلفزيون -->
+            <div class="channels-grid">
+                <div class="section-title">📺 قنوات التلفزيون</div>
+                <button class="channel-btn active" onclick="changeSource('beIN Sports الإخبارية', 'https://olympic.exoradios.com/beinsportsnews/index.m3u8', false)">beIN Sports الإخبارية (شغال)</button>
+                <button class="channel-btn" onclick="changeSource('beIN Sports المفتوحة', 'https://olympic.exoradios.com/beinsports/index.m3u8', false)">beIN Sports المفتوحة (شغال)</button>
+                <button class="channel-btn" onclick="changeSource('MBC 2 HD', 'https://your-server.com/live/mbc2.m3u8', false)">MBC 2 (تحتاج سيرفر خاص)</button>
+                <button class="channel-btn" onclick="changeSource('MBC Action', 'https://your-server.com/live/mbcaction.m3u8', false)">MBC Action (تحتاج سيرفر خاص)</button>
+            </div>
+
+            <!-- قسم الراديو الجديد -->
+            <div class="channels-grid radio-section">
+                <div class="section-title">📻 إذاعات الراديو FM (شغالة فوراً)</div>
+                <button class="channel-btn" onclick="changeSource('إذاعة القرآن الكريم من القاهرة', 'https://stream.zeno.fm/f96atv68v68uv', true)">🕌 إذاعة القرآن الكريم</button>
+                <button class="channel-btn" onclick="changeSource('نجوم FM 100.6', 'https://coloradio.radioca.st/stream', true)">🎵 نجوم FM 100.6</button>
+                <button class="channel-btn" onclick="changeSource('راديو مصر 88.7', 'https://radiomisr.radioca.st/stream', true)">🎙️ راديو مصر 88.7</button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -133,38 +184,40 @@
 <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
 
 <script>
-    // تم وضع روابط حقيقية وشغالة الآن للقنوات الإخبارية والمفتوحة للتجربة الفورية
-    const channelsData = [
-        { id: 1, name: "beIN Sports الإخبارية (رابط حي)", url: "https://olympic.exoradios.com/beinsportsnews/index.m3u8" },
-        { id: 2, name: "beIN Sports المفتوحة (رابط حي)", url: "https://olympic.exoradios.com/beinsports/index.m3u8" },
-        { id: 3, name: "قناة MBC 2 (تحتاج سيرفر خاص)", url: "https://your-server.com/live/mbc2.m3u8" },
-        { id: 4, name: "قناة MBC Action (تحتاج سيرفر خاص)", url: "https://your-server.com/live/mbcaction.m3u8" }
-    ];
-
     const player = videojs('main-sports-player');
-    const container = document.getElementById('channels-container');
     const currentChannelText = document.getElementById('current-channel-name');
 
-    channelsData.forEach((channel, index) => {
-        const button = document.createElement('button');
-        button.className = `channel-btn ${index === 0 ? 'active' : ''}`;
-        button.innerText = channel.name;
-        
-        button.onclick = function() {
-            document.querySelector('.channel-btn.active').classList.remove('active');
-            button.classList.add('active');
-            
-            currentChannelText.innerText = `جاري تشغيل: ${channel.name}`;
-            
-            player.src({
-                src: channel.url,
-                type: 'application/x-mpegURL'
-            });
-            player.play();
-        };
+    // وظيفة التبديل الذكي بين التلفزيون والراديو
+    function changeSource(name, url, isRadio) {
+        // تحديث حالة الأزرار النشطة
+        document.querySelectorAll('.channel-btn').forEach(btn => {
+            if(btn.innerText.includes(name)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
 
-        container.appendChild(button);
-    });
+        // تحديث النص أسفل المشغل
+        currentChannelText.innerText = `جاري تشغيل: ${name}`;
+
+        // التبديل بين وضع الفيديو ووضع الراديو النقي لضمان استقرار الصوت
+        if (isRadio) {
+            player.addClass('vjs-audio-mode');
+            player.src({
+                src: url,
+                type: 'audio/mpeg' // نوع البث الخاص بالراديو
+            });
+        } else {
+            player.removeClass('vjs-audio-mode');
+            player.src({
+                src: url,
+                type: 'application/x-mpegURL' // نوع البث الخاص بالقنوات HLS
+            });
+        }
+        
+        player.play();
+    }
 </script>
 
 </body>
