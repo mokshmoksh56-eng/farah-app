@@ -3,168 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azemaa Pro 2026</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap" rel="stylesheet">
+    <title>AZEMAA PRO - Accordion Edition</title>
     <style>
-        :root {
-            --primary: #008080;   
-            --accent: #005f5f;    
-            --bg-color: #004d4d;  
-            --white: #ffffff;
-            --wa-light-green: #a2f9c1;
+        :root { 
+            /* درجات الفيروزي */
+            --p: #006064; 
+            --w: #00838f; 
+            --fb: #0097a7; 
+            --bg: #e0f2f1; 
+            --card-bg: #ffffff; 
+            --text-color: #333;
+            --maroon: #800000; 
         }
 
-        body {
-            font-family: 'Cairo', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+        body.dark-mode {
+            --bg: #00251a;
+            --card-bg: #00302e;
+            --text-color: #e0f2f1;
+            --p: #00363a; 
+        }
+
+        body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg); color: var(--text-color); display: flex; flex-direction: column; transition: 0.3s; min-height: 100vh; }
+        
+        header { 
+            background: var(--p); 
+            color: #fff; 
+            padding: 8px 12px; 
+            border-radius: 12px; 
+            margin-bottom: 12px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            flex-shrink: 0;
+        }
+        
+        .header-title { font-weight: bold; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+        .header-tools { display: flex; align-items: center; gap: 10px; }
+
+        .time-date-box { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            background: rgba(255, 255, 255, 0.1); 
+            padding: 4px 12px; 
+            border-radius: 8px; 
+            min-width: 130px;
+        }
+        #digital-clock { font-family: monospace; font-weight: bold; font-size: 1rem; color: #4dd0e1; }
+        #info-rotator { font-size: 0.7rem; color: #b2dfdb; margin-top: 2px; text-align: center; }
+
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
+        .status-online { background: #4db6ac; box-shadow: 0 0 8px #4db6ac; }
+        .status-offline { background: #e57373; }
+
+        .theme-toggle { background: rgba(255,255,255,0.15); border: none; color: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; }
+
+        .sync-box { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; flex-shrink: 0; }
+        .btn { border: none; color: #fff; padding: 10px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-cloud { background: var(--fb); } 
+        .btn-whatsapp { background: var(--w); }
+
+        /* --- نظام الطي والفرد (Accordion) --- */
+        .accordion-container { display: flex; flex-direction: column; gap: 8px; }
+
+        .card { 
+            background: var(--card-bg); 
+            border-radius: 10px; 
+            border: 1px solid rgba(0,0,0,0.1); 
+            overflow: hidden; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            transition: 0.3s;
+        }
+
+        .h { 
+            background: var(--p); 
+            color: #fff; 
+            padding: 15px; 
+            font-size: 14px; 
+            font-weight: bold; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer; 
+            user-select: none;
+        }
+        
+        .h.notes-header { background: var(--maroon); }
+
+        .h::after {
+            content: '▼';
+            font-size: 10px;
+            transition: 0.3s;
+        }
+        .card.open .h::after { transform: rotate(180deg); }
+
+        /* منطقة المحتوى المختفي */
+        .card-body {
+            max-height: 0;
             overflow: hidden;
-            background: var(--bg-color); 
-        }
-
-        header {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-
-        header h1 { margin: 0; font-size: 1.2rem; font-weight: 900; letter-spacing: 1px; }
-
-        nav {
-            background: var(--primary);
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 3px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 -4px 10px rgba(0,0,0,0.2);
-            transition: transform 0.2s ease;
-        }
-
-        .hide-nav { display: none !important; }
-
-        .nav-item {
+            transition: max-height 0.4s ease-out;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            color: rgba(255, 255, 255, 0.6); 
-            text-decoration: none;
+        }
+        .card.open .card-body {
+            max-height: 500px; /* طول القسم عند الفتح */
+        }
+
+        iframe { border: none; width: 100%; height: 450px; background: #fff; }
+        
+        .zoom-btn { 
+            background: rgba(255,255,255,0.2); 
+            border: 1px solid rgba(255,255,255,0.3); 
+            color: #fff; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
+            font-size: 10px; 
             cursor: pointer;
-            flex: 1;
+            margin-left: 10px;
         }
 
-        .nav-item i { font-size: 1.1rem; margin-bottom: 2px; }
-        .nav-item span { font-size: 0.52rem; font-weight: 800; white-space: nowrap; }
-        .nav-item.active { color: var(--white); }
-        .nav-item.whatsapp { color: var(--wa-light-green); }
-
-        main { flex: 1; position: relative; background: var(--bg-color); }
-        iframe { width: 100%; height: 100%; border: none; display: none; }
-        iframe.active { display: block; }
-
-        @media (max-width: 600px) {
-            nav { order: 2; padding-bottom: env(safe-area-inset-bottom, 10px); }
-            main { order: 1; }
-        }
+        /* ملء الشاشة */
+        .card.fullscreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; border-radius: 0; }
+        .card.fullscreen .card-body { max-height: 100vh !important; }
+        .card.fullscreen iframe { height: calc(100vh - 50px); }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>🚀 Azemaa Pro</h1>
-    <div style="font-size: 0.7rem; opacity: 0.8;">2026</div>
+    <div class="header-title">
+        <span id="internet-dot" class="status-dot"></span>
+        <span>🚀 AZEMAA PRO - الأكورديون</span>
+    </div>
+
+    <div class="header-tools">
+        <div class="time-date-box">
+            <div id="digital-clock">00:00:00</div>
+            <div id="info-rotator">تحميل...</div>
+        </div>
+        <button class="theme-toggle" onclick="toggleDarkMode()">🌙 ليلي</button>
+    </div>
 </header>
 
-<main id="content-area">
-    <iframe src="zbon.html" class="active" id="tab-zbon"></iframe>
-    <iframe src="yom.html" id="tab-yom"></iframe>
-    <iframe src="gyab.html" id="tab-gyab"></iframe>
-    <iframe src="tslem.html" id="tab-tslem"></iframe>
-    <iframe src="takarer.html" id="tab-takarer"></iframe>
-</main>
+<div class="sync-box">
+    <button onclick="saveToCloud()" class="btn btn-cloud">☁️ حفظ سحابي</button>
+    <button onclick="loadFromCloud()" class="btn btn-cloud">🔄 استرجاع سحابي</button>
+    <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">📤 نسخ للواتساب</button>
+    <button onclick="loadFromWhatsApp()" class="btn btn-whatsapp">📥 استرجاع واتساب</button>
+</div>
 
-<nav id="mainNav">
-    <div class="nav-item active" onclick="showTab('zbon', this)"><i>👤</i><span>الزبائن</span></div>
-    <div class="nav-item" onclick="showTab('yom', this)"><i>💸</i><span>اليومية</span></div>
-    <div class="nav-item" onclick="showTab('gyab', this)"><i>👷</i><span>العمال</span></div>
-    <div class="nav-item" onclick="showTab('tslem', this)"><i>📅</i><span>التسليمات</span></div>
-    <div class="nav-item" onclick="showTab('takarer', this)"><i>📊</i><span>التقارير</span></div>
-    <div class="nav-item whatsapp" onclick="backupData()"><i>💾</i><span>نسخة</span></div>
-    <div class="nav-item whatsapp" onclick="restoreData()"><i>📂</i><span>استعادة</span></div>
-</nav>
+<div class="accordion-container">
+    <!-- كارت 1 -->
+    <div class="card open"> <!-- مفتوح افتراضياً -->
+        <div class="h" onclick="toggleAccordion(this)">
+            <span>👤 القسم الرئيسي</span>
+            <button class="zoom-btn" onclick="toggleZoom(this); event.stopPropagation();">تكبير</button>
+        </div>
+        <div class="card-body"><iframe src="zbon.html"></iframe></div>
+    </div>
+
+    <!-- كارت 2 -->
+    <div class="card">
+        <div class="h" onclick="toggleAccordion(this)">
+            <span>💸 الخزينة</span>
+            <button class="zoom-btn" onclick="toggleZoom(this); event.stopPropagation();">تكبير</button>
+        </div>
+        <div class="card-body"><iframe src="yom.html"></iframe></div>
+    </div>
+
+    <!-- كارت 3 -->
+    <div class="card">
+        <div class="h" onclick="toggleAccordion(this)">
+            <span>👷 العمال</span>
+            <button class="zoom-btn" onclick="toggleZoom(this); event.stopPropagation();">تكبير</button>
+        </div>
+        <div class="card-body"><iframe src="gyab.html"></iframe></div>
+    </div>
+
+    <!-- كارت 4 -->
+    <div class="card">
+        <div class="h" onclick="toggleAccordion(this)">
+            <span>📅 التسليم</span>
+            <button class="zoom-btn" onclick="toggleZoom(this); event.stopPropagation();">تكبير</button>
+        </div>
+        <div class="card-body"><iframe src="tslem.html"></iframe></div>
+    </div>
+
+    <!-- كارت 5 (نبيتي) -->
+    <div class="card">
+        <div class="h notes-header" onclick="toggleAccordion(this)">
+            <span>📝 الملاحظات والورشة</span>
+            <button class="zoom-btn" onclick="toggleZoom(this); event.stopPropagation();">تكبير</button>
+        </div>
+        <div class="card-body"><iframe src="notmop.html"></iframe></div>
+    </div>
+
+    <!-- كارت 6 -->
+    <div class="card">
+        <div class="h" onclick="toggleAccordion(this)">
+            <span>📊 التقارير</span>
+            <button class="zoom-btn" onclick="toggleZoom(this); event.stopPropagation();">تكبير</button>
+        </div>
+        <div class="card-body"><iframe src="takarer.html"></iframe></div>
+    </div>
+</div>
 
 <script>
-    function showTab(tabId, el) {
-        document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
-        const target = document.getElementById('tab-' + tabId);
-        if(target) target.classList.add('active');
+    // --- وظيفة الطي والفرد ---
+    function toggleAccordion(header) {
+        const currentCard = header.parentElement;
+        const allCards = document.querySelectorAll('.card');
         
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        el.classList.add('active');
+        // إذا أردت غلق الباقي عند فتح واحد (اختياري):
+        /*
+        allCards.forEach(c => {
+            if (c !== currentCard) c.classList.remove('open');
+        });
+        */
+
+        currentCard.classList.toggle('open');
     }
 
-    // وظيفة الحفظ: تحويل البيانات لكود Base64 لتقليص الحجم وإرساله للواتساب
-    function backupData() {
+    function toggleZoom(btn) {
+        const card = btn.closest('.card');
+        card.classList.toggle('fullscreen');
+        btn.innerText = card.classList.contains('fullscreen') ? "إغلاق" : "تكبير";
+    }
+
+    // --- الساعة والتاريخ الذكي ---
+    const events = [{ name: "عيد الأضحى", date: new Date("May 27, 2026") }, { name: "عيد الفطر", date: new Date("March 10, 2027") }];
+    let infoIndex = 0;
+
+    function updateHeaderInfo() {
+        const now = new Date();
+        let h = now.getHours(), m = String(now.getMinutes()).padStart(2, '0'), s = String(now.getSeconds()).padStart(2, '0');
+        let ampm = h >= 12 ? 'م' : 'ص'; h = h % 12 || 12;
+        document.getElementById('digital-clock').textContent = `${String(h).padStart(2, '0')}:${m}:${s} ${ampm}`;
+
+        const rotator = document.getElementById('info-rotator');
+        let nextEvent = events.find(e => e.date > now);
+        const days = Math.floor((nextEvent.date - now) / (1000 * 60 * 60 * 24));
+        const infoList = [now.toLocaleDateString('ar-EG'), `باقي ${days} يوم على ${nextEvent.name}`];
+
+        if (now.getSeconds() % 5 === 0) {
+            infoIndex = (infoIndex + 1) % infoList.length;
+            rotator.style.opacity = 0;
+            setTimeout(() => { rotator.textContent = infoList[infoIndex]; rotator.style.opacity = 1; }, 500);
+        }
+    }
+    setInterval(updateHeaderInfo, 1000); updateHeaderInfo();
+
+    function checkConn() { document.getElementById('internet-dot').className = navigator.onLine ? 'status-dot status-online' : 'status-dot status-offline'; }
+    window.addEventListener('online', checkConn); window.addEventListener('offline', checkConn); checkConn();
+
+    function toggleDarkMode() {
+        const isDark = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('dark-mode', isDark ? 'enabled' : 'disabled');
+        document.querySelector('.theme-toggle').innerText = isDark ? "☀️ فاتح" : "🌙 ليلي";
+    }
+    if (localStorage.getItem('dark-mode') === 'enabled') { document.body.classList.add('dark-mode'); document.querySelector('.theme-toggle').innerText = "☀️ فاتح"; }
+
+    window.saveToWhatsApp = function() {
+        let data = {}; for (let i = 0; i < localStorage.length; i++) { let k = localStorage.key(i); if(k !== 'dark-mode') data[k] = localStorage.getItem(k); }
+        window.location.href = `whatsapp://send?text=*AZ-BACKUP*\n${btoa(unescape(encodeURIComponent(JSON.stringify(data))))}`;
+    }
+    window.loadFromWhatsApp = function() {
+        let input = prompt("الصق الكود هنا:"); if (!input) return;
         try {
-            const allData = JSON.stringify(localStorage);
-            // تحويل النص لترميز يقلل الحجم ويمنع أخطاء الحروف الخاصة
-            const encodedData = btoa(unescape(encodeURIComponent(allData)));
-            
-            const message = encodeURIComponent("Azemaa_Backup_2026:\n\n" + encodedData);
-            const whatsappUrl = `https://wa.me/?text=${message}`;
-            
-            // فتح واتساب
-            window.open(whatsappUrl, '_blank');
-        } catch (e) {
-            alert("حدث خطأ أثناء إعداد النسخة!");
-        }
+            let clean = input.includes('*AZ-BACKUP*') ? input.split('*AZ-BACKUP*\n')[1] : input;
+            let obj = JSON.parse(decodeURIComponent(escape(atob(clean.trim()))));
+            localStorage.clear(); for (let k in obj) localStorage.setItem(k, obj[k]); location.reload();
+        } catch (e) { alert("❌ خطأ في الكود"); }
     }
-
-    // وظيفة الاستعادة: فك كود الـ Base64 وإرجاعه للـ localStorage
-    function restoreData() {
-        const code = prompt("قم بلصق كود النسخة الاحتياطية المستلم من الواتساب هنا:");
-        if (code) {
-            try {
-                let cleanCode = code.trim();
-                // إذا كان المستخدم نسخ الرسالة بالكامل، نأخذ الجزء المشفر فقط
-                if (cleanCode.includes(":\n\n")) {
-                    cleanCode = cleanCode.split(":\n\n")[1];
-                }
-                
-                // فك التشفير واسترجاع البيانات
-                const decodedData = decodeURIComponent(escape(atob(cleanCode)));
-                const parsed = JSON.parse(decodedData);
-                
-                if(confirm("هل أنت متأكد؟ سيتم حذف البيانات الحالية واستبدالها بالنسخة الجديدة.")) {
-                    localStorage.clear();
-                    Object.keys(parsed).forEach(k => localStorage.setItem(k, parsed[k]));
-                    alert("✅ تمت استعادة البيانات بنجاح!");
-                    location.reload();
-                }
-            } catch (e) {
-                alert("❌ الكود غير صحيح! تأكد من نسخ الكود بشكل كامل.");
-            }
-        }
-    }
-
-    // إخفاء القائمة عند ظهور لوحة المفاتيح
-    const initialHeight = window.innerHeight;
-    const navElement = document.getElementById('mainNav');
-    window.addEventListener('resize', () => {
-        if (window.innerHeight < initialHeight * 0.85) {
-            navElement.classList.add('hide-nav');
-        } else {
-            navElement.classList.remove('hide-nav');
-        }
-    });
 </script>
 
+<script type="module">
+    // --- الفايربيز للسحابي ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    const firebaseConfig = { apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M", authDomain: "farah-kitchen.firebaseapp.com", databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com", projectId: "farah-kitchen", appId: "1:702572851072:web:320a92c9430abba6b71b65" };
+    const app = initializeApp(firebaseConfig); const db = getDatabase(app);
+    window.saveToCloud = async function() {
+        if (!navigator.onLine) return alert("❌ أوفلاين!");
+        let data = {}; for (let i = 0; i < localStorage.length; i++) { let k = localStorage.key(i); if(k !== 'dark-mode') data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); }
+        await set(ref(db, 'backups/azemaa_main'), data); alert("✅ تم الحفظ سحابياً");
+    };
+    window.loadFromCloud = async function() {
+        if (!navigator.onLine) return alert("❌ أوفلاين!");
+        const s = await get(child(ref(db), 'backups/azemaa_main'));
+        if (s.exists()) { localStorage.clear(); const d = s.val(); for (let k in d) localStorage.setItem(k, d[k]); location.reload(); }
+    };
+</script>
 </body>
 </html>
- التقارير مش شغالة عاوز حاجة بسيطة الدخول والخروج اجمالى الاتفاق المتبقى اجور العمال والخ
