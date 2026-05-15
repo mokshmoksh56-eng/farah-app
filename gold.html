@@ -3,65 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Azemaa Pro | Android Version</title>
+    <title>Azemaa Pro 2026</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
-    
     <style>
-        body { 
-            background: #000; 
-            color: #fff; 
-            font-family: sans-serif; 
-            margin: 0; 
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        .header { 
-            background: #ffd700; 
-            color: #000; 
-            padding: 10px; 
-            font-size: 18px; 
-            font-weight: bold; 
-            text-align: center;
-        }
-        #container { 
-            position: relative; 
-            flex-grow: 1;
-            background: #111;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        video { width: 100%; height: auto; object-fit: cover; }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-
-        .status-panel { 
-            position: absolute;
-            bottom: 80px;
-            left: 5%;
-            width: 90%;
-            background: rgba(0,0,0,0.7);
-            padding: 15px;
-            border-radius: 10px;
-            border-right: 5px solid #ffd700;
-        }
-        .data-line { font-size: 18px; color: #ffd700; margin-bottom: 5px; }
-        .btn-start { 
-            background: #ffd700; 
-            border: none; 
-            padding: 15px; 
-            font-size: 18px; 
-            font-weight: bold; 
-            width: 100%;
-            cursor: pointer;
-        }
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        .header { background: #ffd700; color: #000; padding: 10px; font-size: 18px; font-weight: bold; text-align: center; }
+        #container { position: relative; flex-grow: 1; background: #111; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .status-panel { position: absolute; bottom: 100px; left: 5%; width: 90%; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; border-right: 5px solid #ffd700; z-index: 10; }
+        .data-line { font-size: 18px; color: #ffd700; }
+        .btn-start { background: #ffd700; border: none; padding: 15px; font-size: 18px; font-weight: bold; width: 100%; cursor: pointer; position: fixed; bottom: 0; z-index: 20; }
     </style>
 </head>
 <body>
 
-    <div class="header">نظام التتبع المدمج - Azemaa Pro 2026</div>
+    <div class="header">نظام التتبع المدمج - Azemaa Pro</div>
 
     <div id="container">
         <video id="videoInput" autoplay playsinline muted></video>
@@ -69,55 +27,75 @@
     </div>
 
     <div class="status-panel">
-        <div id="materialLabel" class="data-line">اضغط للبدء...</div>
-        <div id="accuracyLabel" style="color: #0f0; font-size: 14px;">جاهز للفحص الميداني</div>
+        <div id="materialLabel" class="data-line">في انتظار الصلاحيات...</div>
+        <div id="accuracyLabel" style="color: #0f0; font-size: 14px;">جاهز للعمل</div>
     </div>
 
-    <button class="btn-start" onclick="startSystem()">تشغيل الكاميرا والمحرك</button>
+    <button class="btn-start" id="startBtn">تشغيل النظام الآن</button>
 
     <script>
         let model;
         const video = document.getElementById('videoInput');
         const canvas = document.getElementById('canvasOutput');
         const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
 
-        async function startSystem() {
+        async function initAI() {
             try {
-                document.getElementById('materialLabel').innerText = "جاري تحميل الذكاء الاصطناعي...";
+                document.getElementById('materialLabel').innerText = "جاري تحميل محرك الذكاء...";
                 model = await mobilenet.load();
-                
+                document.getElementById('materialLabel').innerText = "تم تحميل المحرك. افتح الكاميرا.";
+            } catch (e) {
+                alert("خطأ في تحميل المكتبات. تأكد من اتصال الإنترنت.");
+            }
+        }
+
+        startBtn.onclick = async () => {
+            startBtn.style.display = 'none'; // إخفاء الزر بعد البدء
+            try {
+                // طلب الكاميرا الخلفية تحديداً
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                    video: { 
+                        facingMode: "environment",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }, 
+                    audio: false 
                 });
                 
                 video.srcObject = stream;
+                video.play();
+                
                 video.onloadedmetadata = () => {
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
                     detectFrame();
                 };
             } catch (err) {
-                alert("يرجى السماح بصلاحية الكاميرا أو التأكد من تشغيل الموقع عبر HTTPS");
+                alert("تعذر فتح الكاميرا. تأكد من إعطاء الصلاحية واستخدام HTTPS.");
                 console.error(err);
+                startBtn.style.display = 'block';
             }
-        }
+        };
 
         async function detectFrame() {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            const predictions = await model.classify(video);
-            if (predictions.length > 0) {
-                let topResult = predictions[0];
-                let label = topResult.className;
-                let prob = (topResult.probability * 100).toFixed(1);
+            if (model) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const predictions = await model.classify(video);
+                
+                if (predictions.length > 0) {
+                    let topResult = predictions[0];
+                    let label = topResult.className;
+                    let prob = (topResult.probability * 100).toFixed(1);
 
-                // منطق التمييز المخصص
-                if (label.includes("gold") || label.includes("brass")) {
-                    updateUI("ذهب / نحاس مكتشف", prob, "#ffd700");
-                } else if (label.includes("white") || label.includes("plate")) {
-                    updateUI("فيبر أبيض / أسطح", prob, "#00ffcc");
-                } else {
-                    updateUI("جاري التحليل...", prob, "#fff");
+                    // تخصيص التعرف لعملك (ذهب/ألمنيوم/فيبر)
+                    if (label.includes("gold") || label.includes("brass") || label.includes("metal")) {
+                        updateUI("معدن / ذهب مكتشف", prob, "#ffd700");
+                    } else if (label.includes("white") || label.includes("wall") || label.includes("sheet")) {
+                        updateUI("فيبر أبيض / سطح فاتح", prob, "#00ffcc");
+                    } else {
+                        updateUI("جاري المسح...", prob, "#fff");
+                    }
                 }
             }
             requestAnimationFrame(detectFrame);
@@ -126,12 +104,13 @@
         function updateUI(text, accuracy, color) {
             document.getElementById('materialLabel').innerText = text;
             document.getElementById('accuracyLabel').innerText = `دقة التتبع: ${accuracy}%`;
-            
-            // رسم مربع التتبع
             ctx.strokeStyle = color;
-            ctx.lineWidth = 4;
-            ctx.strokeRect(canvas.width*0.25, canvas.height*0.25, canvas.width*0.5, canvas.height*0.5);
+            ctx.lineWidth = 10;
+            ctx.strokeRect(canvas.width * 0.2, canvas.height * 0.2, canvas.width * 0.6, canvas.height * 0.6);
         }
+
+        // بدء تحميل الموديل فور فتح الصفحة
+        initAI();
     </script>
 </body>
 </html>
