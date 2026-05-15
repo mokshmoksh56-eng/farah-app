@@ -2,102 +2,136 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Azemaa Pro | نظام التتبع والتمييز المدمج</title>
-    <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Azemaa Pro | Android Version</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
     <style>
-        body { background: #050505; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; text-align: center; }
-        .header { background: #ffd700; color: #000; padding: 15px; font-size: 24px; font-weight: bold; box-shadow: 0 4px 15px rgba(255,215,0,0.3); }
-        
-        #container { position: relative; width: 90%; max-width: 640px; margin: 20px auto; border: 3px solid #333; border-radius: 15px; overflow: hidden; }
-        video, canvas { width: 100%; display: block; }
-        canvas { position: absolute; top: 0; left: 0; } /* طبقة التتبع فوق الفيديو */
+        body { 
+            background: #000; 
+            color: #fff; 
+            font-family: sans-serif; 
+            margin: 0; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header { 
+            background: #ffd700; 
+            color: #000; 
+            padding: 10px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            text-align: center;
+        }
+        #container { 
+            position: relative; 
+            flex-grow: 1;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        video { width: 100%; height: auto; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        .status-panel { background: rgba(20,20,20,0.9); padding: 20px; margin: 10px auto; width: 85%; border-radius: 10px; border-right: 8px solid #ffd700; }
-        .data-line { font-size: 22px; margin: 5px 0; color: #ffd700; }
-        .btn-start { background: #ffd700; border: none; padding: 15px 40px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; margin-top: 10px; }
+        .status-panel { 
+            position: absolute;
+            bottom: 80px;
+            left: 5%;
+            width: 90%;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border-right: 5px solid #ffd700;
+        }
+        .data-line { font-size: 18px; color: #ffd700; margin-bottom: 5px; }
+        .btn-start { 
+            background: #ffd700; 
+            border: none; 
+            padding: 15px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            width: 100%;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <div class="header">وحدة التتبع المدمجة - Azemaa Pro</div>
+    <div class="header">نظام التتبع المدمج - Azemaa Pro 2026</div>
 
     <div id="container">
         <video id="videoInput" autoplay playsinline muted></video>
-        <canvas id="canvasOutput"></canvas> </div>
-
-    <div class="status-panel">
-        <div id="materialLabel" class="data-line">في انتظار التشغيل...</div>
-        <div id="accuracyLabel" style="color: #0f0;">جاهز للفحص</div>
+        <canvas id="canvasOutput"></canvas>
     </div>
 
-    <button class="btn-start" onclick="startIntegration()">تشغيل النظام المدمج</button>
+    <div class="status-panel">
+        <div id="materialLabel" class="data-line">اضغط للبدء...</div>
+        <div id="accuracyLabel" style="color: #0f0; font-size: 14px;">جاهز للفحص الميداني</div>
+    </div>
+
+    <button class="btn-start" onclick="startSystem()">تشغيل الكاميرا والمحرك</button>
 
     <script>
         let model;
-        let video = document.getElementById('videoInput');
-        let canvas = document.getElementById('canvasOutput');
-        let ctx = canvas.getContext('2d');
+        const video = document.getElementById('videoInput');
+        const canvas = document.getElementById('canvasOutput');
+        const ctx = canvas.getContext('2d');
 
-        async function startIntegration() {
-            // 1. تحميل الذكاء الاصطناعي (TensorFlow)
-            document.getElementById('materialLabel').innerText = "جاري تحميل محرك التمييز...";
-            model = await mobilenet.load();
-            
-            // 2. تشغيل الكاميرا
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(stream => {
+        async function startSystem() {
+            try {
+                document.getElementById('materialLabel').innerText = "جاري تحميل الذكاء الاصطناعي...";
+                model = await mobilenet.load();
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                });
+                
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    processFrame(); // بدء المعالجة المدمجة
+                    detectFrame();
                 };
-            });
+            } catch (err) {
+                alert("يرجى السماح بصلاحية الكاميرا أو التأكد من تشغيل الموقع عبر HTTPS");
+                console.error(err);
+            }
         }
 
-        async function processFrame() {
-            // 3. اندماج OpenCV للتتبع (Tracking)
-            // نأخذ لقطة من الفيديو ونحللها
+        async function detectFrame() {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // تمييز الأجسام (الذكاء الاصطناعي)
             const predictions = await model.classify(video);
-            let topResult = predictions[0];
-            
-            let label = topResult.className;
-            let prob = (topResult.probability * 100).toFixed(1);
+            if (predictions.length > 0) {
+                let topResult = predictions[0];
+                let label = topResult.className;
+                let prob = (topResult.probability * 100).toFixed(1);
 
-            // تخصيص للذهب والفيبر بناءً على الألوان (منطق OpenCV)
-            // هنا النظام يدمج بين "اسم الشيء" و "لونه"
-            if (label.includes("gold") || label.includes("brass") || label.includes("jewelry")) {
-                label = "ذهب (مكتشف ومُتتبع)";
-                drawTrackingBox(0.3, 0.3, 0.4, 0.4, "#ffd700"); // رسم مربع ذهبي
-            } else if (label.includes("white") || label.includes("sheet")) {
-                label = "فيبر أبيض (عينة مطابخ)";
-                drawTrackingBox(0.2, 0.2, 0.6, 0.6, "#00ffcc"); // رسم مربع فيروزي للفيبر
+                // منطق التمييز المخصص
+                if (label.includes("gold") || label.includes("brass")) {
+                    updateUI("ذهب / نحاس مكتشف", prob, "#ffd700");
+                } else if (label.includes("white") || label.includes("plate")) {
+                    updateUI("فيبر أبيض / أسطح", prob, "#00ffcc");
+                } else {
+                    updateUI("جاري التحليل...", prob, "#fff");
+                }
             }
-
-            document.getElementById('materialLabel').innerText = label;
-            document.getElementById('accuracyLabel').innerText = `دقة التتبع: ${prob}%`;
-
-            requestAnimationFrame(processFrame);
+            requestAnimationFrame(detectFrame);
         }
 
-        // دالة رسم مربع التتبع (Object Tracking UI)
-        function drawTrackingBox(x, y, w, h, color) {
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 5;
-            ctx.strokeRect(canvas.width * x, canvas.height * y, canvas.width * w, canvas.height * h);
+        function updateUI(text, accuracy, color) {
+            document.getElementById('materialLabel').innerText = text;
+            document.getElementById('accuracyLabel').innerText = `دقة التتبع: ${accuracy}%`;
             
-            // إضافة زوايا التتبع
-            ctx.fillStyle = color;
-            ctx.font = "20px Arial";
-            ctx.fillText("TARGET LOCK", canvas.width * x, canvas.height * y - 10);
+            // رسم مربع التتبع
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(canvas.width*0.25, canvas.height*0.25, canvas.width*0.5, canvas.height*0.5);
         }
     </script>
 </body>
 </html>
-
