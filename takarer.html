@@ -4,33 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AZEMAA PRO | التقارير الموحدة</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-
     <style>
-        :root { --primary: #0f172a; --success: #059669; --danger: #dc2626; --accent: #2563eb; --bg: #f1f5f9; --warning: #fbbf24; }
+        :root { --primary: #0f172a; --success: #059669; --danger: #dc2626; --accent: #2563eb; --bg: #f1f5f9; }
         * { box-sizing: border-box; font-weight: 900 !important; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--primary); }
-        
         header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
-        
         .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
         .stat-box { background: white; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid #eee; }
         .stat-box span { display: block; font-size: 12px; color: #64748b; margin-bottom: 5px; }
         .stat-box strong { font-size: 18px; }
-
         .filter-area { background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; display: flex; gap: 10px; }
         select { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #e2e8f0; font-size: 14px; background: #fff; }
-
         .report-card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .report-card h2 { font-size: 16px; margin-top: 0; border-right: 4px solid var(--accent); padding-right: 10px; margin-bottom: 15px; }
-
         .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-        .data-row:last-child { border: none; }
-        .val-in { color: var(--success); }
-        .val-out { color: var(--danger); }
-
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
         .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -45,12 +32,12 @@
 
 <header>
     <h1 style="margin:0; font-size: 20px;">التقرير المالي الموحد</h1>
-    <div id="sync-time" style="font-size: 11px; opacity: 0.8; margin-top: 5px;">مزامنة حية أونلاين</div>
+    <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">نظام Azemaa Pro 2026 الحسي</div>
 </header>
 
 <div class="filter-area">
-    <select id="yearSelect" onchange="processAllData()"></select>
-    <select id="monthSelect" onchange="processAllData()">
+    <select id="yearSelect"></select>
+    <select id="monthSelect">
         <option value="all">كل الشهور</option>
         <option value="0">يناير</option><option value="1">فبراير</option><option value="2">مارس</option>
         <option value="3">أبريل</option><option value="4">مايو</option><option value="5">يونيو</option>
@@ -62,11 +49,11 @@
 <div class="summary-grid">
     <div class="stat-box" style="border-color: var(--success);">
         <span>إجمالي القبض (+)</span>
-        <strong id="total-in" class="val-in">0</strong>
+        <strong id="total-in" style="color: var(--success);">0</strong>
     </div>
     <div class="stat-box" style="border-color: var(--danger);">
         <span>إجمالي الصرف (-)</span>
-        <strong id="total-out" class="val-out">0</strong>
+        <strong id="total-out" style="color: var(--danger);">0</strong>
     </div>
     <div class="stat-box" style="border-color: var(--accent); grid-column: span 2;">
         <span>صافي الربح النهائي</span>
@@ -75,32 +62,27 @@
 </div>
 
 <div class="report-card">
-    <h2>📊 تحليل الشهر</h2>
-    <div class="data-row"><span>دخل الزبائن (zbon)</span><strong id="m-cust" class="val-in">0</strong></div>
-    <div class="data-row"><span>دخل اليومية (yom)</span><strong id="m-yom-in" class="val-in">0</strong></div>
-    <div class="data-row"><span>مصاريف اليومية (yom)</span><strong id="m-yom-out" class="val-out">0</strong></div>
-    <div class="data-row"><span>رواتب العمال (gyab)</span><strong id="m-workers" class="val-out">0</strong></div>
+    <h2>📊 تحليل الفترة</h2>
+    <div class="data-row"><span>دخل الزبائن</span><strong id="m-cust" style="color: var(--success);">0</strong></div>
+    <div class="data-row"><span>وارد الخزينة</span><strong id="m-yom-in" style="color: var(--success);">0</strong></div>
+    <div class="data-row"><span>مصروفات الخزينة</span><strong id="m-yom-out" style="color: var(--danger);">0</strong></div>
+    <div class="data-row"><span>رواتب العمال</span><strong id="m-workers" style="color: var(--danger);">0</strong></div>
 </div>
 
-<div class="report-card">
-    <h2>📈 إحصائيات السنة</h2>
-    <div id="year-stats-list"></div>
-</div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-<script>
-    // الإعدادات الموحدة من ملف zbon
-    const firebaseConfig = {
-        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFLHpOc1M",
-        authDomain: "farah-kitchen.firebaseapp.com",
-        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
-        projectId: "farah-kitchen",
-        storageBucket: "farah-kitchen.firebasestorage.app",
-        messagingSenderId: "702572851072",
-        appId: "1:702572851072:web:320a92c9430abba6b71b65"
+    const firebaseConfig = { 
+        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M", 
+        authDomain: "farah-kitchen.firebaseapp.com", 
+        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com", 
+        projectId: "farah-kitchen", 
+        appId: "1:702572851072:web:320a92c9430abba6b71b65" 
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
 
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
     let dbRaw = { customers: {}, yomya: {}, gyab: {} };
 
     // تهيئة السنوات
@@ -111,75 +93,64 @@
     }
     document.getElementById('monthSelect').value = new Date().getMonth();
 
-    // ربط حي بجميع الجداول
+    // ربط القوائم بالمعالجة
+    yrSel.onchange = () => processAllData();
+    document.getElementById('monthSelect').onchange = () => processAllData();
+
     function startSync() {
         let loaded = 0;
-        const checkDone = () => { loaded++; if(loaded >= 3) { document.getElementById('loading').style.display='none'; processAllData(); } };
+        const checkDone = () => { 
+            loaded++; 
+            if(loaded >= 3) { 
+                document.getElementById('loading').style.display='none'; 
+                processAllData(); 
+            } 
+        };
 
-        db.ref('azemaa_v5/customers').on('value', snap => { dbRaw.customers = snap.val() || {}; checkDone(); });
-        db.ref('azemaa_v5/yomya').on('value', snap => { dbRaw.yomya = snap.val() || {}; checkDone(); });
-        db.ref('azemaa_v5/gyab_data').on('value', snap => { dbRaw.gyab = snap.val() || {}; checkDone(); });
+        onValue(ref(db, 'azemaa_v5/customers'), snap => { dbRaw.customers = snap.val() || {}; checkDone(); });
+        onValue(ref(db, 'azemaa_v5/yomya'), snap => { dbRaw.yomya = snap.val() || {}; checkDone(); });
+        onValue(ref(db, 'azemaa_v5/gyab_data'), snap => { dbRaw.gyab = snap.val() || {}; checkDone(); });
     }
 
-    function processAllData() {
+    window.processAllData = function() {
         const selYear = parseInt(yrSel.value);
         const selMonth = document.getElementById('monthSelect').value;
+        let totalIn = 0, totalOut = 0, mCust = 0, mYomIn = 0, mYomOut = 0, mWorkers = 0;
 
-        let totalIn = 0, totalOut = 0;
-        let mCust = 0, mYomIn = 0, mYomOut = 0, mWorkers = 0;
-
-        // 1. معالجة دخل الزبائن (من zbon)
         Object.values(dbRaw.customers).forEach(c => {
-            if(c.payments) {
-                c.payments.forEach(p => {
-                    const d = new Date(p.date);
-                    if(d.getFullYear() === selYear) {
-                        const amt = parseFloat(p.amount) || 0;
-                        totalIn += amt;
-                        if(selMonth === "all" || d.getMonth() == selMonth) mCust += amt;
-                    }
-                });
-            }
+            if(c.payments) c.payments.forEach(p => {
+                const d = new Date(p.date);
+                if(d.getFullYear() === selYear) {
+                    const amt = parseFloat(p.amount) || 0;
+                    totalIn += amt;
+                    if(selMonth === "all" || d.getMonth() == selMonth) mCust += amt;
+                }
+            });
         });
 
-        // 2. معالجة اليومية (من yom)
         Object.values(dbRaw.yomya).forEach(y => {
             const d = new Date(y.date);
             if(d.getFullYear() === selYear) {
-                const inAmt = parseFloat(y.inVal) || 0;
-                const outAmt = parseFloat(y.outVal) || 0;
-                totalIn += inAmt;
-                totalOut += outAmt;
-                if(selMonth === "all" || d.getMonth() == selMonth) {
-                    mYomIn += inAmt;
-                    mYomOut += outAmt;
-                }
+                const i = parseFloat(y.inVal) || 0, o = parseFloat(y.outVal) || 0;
+                totalIn += i; totalOut += o;
+                if(selMonth === "all" || d.getMonth() == selMonth) { mYomIn += i; mYomOut += o; }
             }
         });
 
-        // 3. معالجة رواتب العمال (من gyab)
         Object.keys(dbRaw.gyab).forEach(weekKey => {
-            const d = new Date(weekKey); // weekKey هو تاريخ السبت
+            const d = new Date(weekKey);
             if(d.getFullYear() === selYear) {
                 dbRaw.gyab[weekKey].forEach(w => {
-                    const paid = parseFloat(w.instPaid || 0) + (parseFloat(w.sal)/6 * (parseFloat(w.att?.reduce((a,b)=>a+parseFloat(b),0)) || 0)) - (w.loans?.reduce((a,b)=>a+(parseFloat(b)||0),0) || 0);
-                    // المعادلة المبسطة للصافي المدفوع فعلياً
-                    const net = Math.max(0, Math.round(parseFloat(document.getElementById('card-'+dbRaw.gyab[weekKey].indexOf(w))?.querySelector('.sum-n')?.innerText) || 0)); 
-                    // ملاحظة: بما أننا في التقارير، سنحسب الصافي المخزن في السحابة
-                    const savedNet = calculateSavedNet(w);
-                    totalOut += savedNet;
-                    if(selMonth === "all" || d.getMonth() == selMonth) mWorkers += savedNet;
+                    const net = calculateSavedNet(w);
+                    totalOut += net;
+                    if(selMonth === "all" || d.getMonth() == selMonth) mWorkers += net;
                 });
             }
         });
 
-        // تحديث الواجهة
         document.getElementById('total-in').innerText = Math.round(totalIn).toLocaleString();
         document.getElementById('total-out').innerText = Math.round(totalOut).toLocaleString();
-        const finalNet = totalIn - totalOut;
-        document.getElementById('total-net').innerText = Math.round(finalNet).toLocaleString();
-        document.getElementById('total-net').style.color = finalNet >= 0 ? 'var(--success)' : 'var(--danger)';
-
+        document.getElementById('total-net').innerText = Math.round(totalIn - totalOut).toLocaleString();
         document.getElementById('m-cust').innerText = Math.round(mCust).toLocaleString();
         document.getElementById('m-yom-in').innerText = Math.round(mYomIn).toLocaleString();
         document.getElementById('m-yom-out').innerText = Math.round(mYomOut).toLocaleString();
@@ -190,11 +161,10 @@
         if(!w.sal || !w.att) return 0;
         let attSum = w.att.reduce((a, b) => a + parseFloat(b), 0);
         let loansSum = w.loans ? w.loans.reduce((a, b) => a + (parseFloat(b) || 0), 0) : 0;
-        let inst = parseFloat(w.instPaid) || 0;
-        return Math.max(0, Math.round(((parseFloat(w.sal) / 6) * attSum) - loansSum - inst));
+        return Math.max(0, Math.round(((parseFloat(w.sal) / 6) * attSum) - loansSum - (parseFloat(w.instPaid) || 0)));
     }
 
-    window.onload = startSync;
+    startSync();
 </script>
 </body>
 </html>
