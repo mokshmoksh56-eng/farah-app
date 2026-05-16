@@ -3,12 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">يومية الورشة - AZEMAA PRO</title>
+    <title id="page-title">يومية الورشة 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
-    
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-
     <style>
         :root {
             --primary: #1e40af; --success: #059669; --danger: #dc2626;
@@ -45,19 +41,19 @@
         .btn-action { border: none; background: #f1f5f9; cursor: pointer; padding: 5px 10px; border-radius: 5px; font-weight: 800; font-family: 'Cairo'; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; transition: 0.2s; }
         .btn-edit { color: var(--primary); border: 1px solid var(--primary); }
         .btn-del { color: var(--danger); }
-        .btn-wa { font-size: 18px; background: none; }
-
-        @media (max-width: 600px) { .form-section { grid-template-columns: 1fr; } .btn-save { grid-column: span 1; } .dashboard { grid-template-columns: 1fr 1fr; } .search-area { flex-direction: column; } }
+        
+        #sync-status { font-size: 11px; text-align: center; margin-bottom: 5px; color: var(--success); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h1 id="main-header">حسابات الورشة أونلاين</h1></header>
+    <header><h1>حسابات الورشة 2026</h1></header>
+    <div id="sync-status">🔄 متصل بالسحابة</div>
 
     <div class="workshop-config">
         <span>🏠 اسم الورشة:</span>
-        <input type="text" id="workshop-name" placeholder="اكتب اسم ورشتك هنا..." oninput="saveWorkshopName()">
+        <input type="text" id="workshop-name" placeholder="اكتب اسم ورشتك هنا...">
     </div>
 
     <div class="dashboard">
@@ -86,87 +82,60 @@
         <input type="number" id="entry-out" style="border-right: 4px solid var(--danger)" placeholder="مبلغ خارج (-)">
         <input type="number" id="entry-in" style="border-right: 4px solid var(--success)" placeholder="مبلغ داخل (+)">
         <input type="hidden" id="edit-id">
-        <button class="btn-save" id="btn-main" onclick="processEntry()">حفظ العملية (سحابياً)</button>
+        <button class="btn-save" id="btn-main">حفظ العملية للسحابة</button>
     </div>
 
     <div class="search-area">
-        <input type="text" id="searchBox" placeholder="🔍 بحث شامل (اسم/بيان/مبلغ/قسم)..." onkeyup="renderUI()">
+        <input type="text" id="searchBox" placeholder="🔍 بحث شامل...">
     </div>
 
     <div class="table-wrapper">
         <table>
-            <thead><tr><th>التاريخ والوقت</th><th>القسم</th><th>الاسم</th><th>البيان</th><th>خارج</th><th>داخل</th><th>إجراء</th></tr></thead>
+            <thead><tr><th>التاريخ</th><th>القسم</th><th>الاسم</th><th>البيان</th><th>خارج</th><th>داخل</th><th>إجراء</th></tr></thead>
             <tbody id="table-body"></tbody>
         </table>
     </div>
 </div>
 
-<script>
-    // تكوين Firebase المستخرج من ملف zbon
-    const firebaseConfig = {
-        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFLHpOc1M",
-        authDomain: "farah-kitchen.firebaseapp.com",
-        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
-        projectId: "farah-kitchen",
-        storageBucket: "farah-kitchen.firebasestorage.app",
-        messagingSenderId: "702572851072",
-        appId: "1:702572851072:web:320a92c9430abba6b71b65"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    let remoteData = []; // لتخزين البيانات القادمة من السحابة
-    const currentYear = new Date().getFullYear();
-
-    window.onload = function() { 
-        updateYearlyUI(); 
-        setActualTime(); 
-        listenToCloud(); // بدء الاستماع للبيانات أونلاين
-        document.getElementById('workshop-name').value = localStorage.getItem('workshop_name') || "";
+    const firebaseConfig = { 
+        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M", 
+        authDomain: "farah-kitchen.firebaseapp.com", 
+        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com", 
+        projectId: "farah-kitchen", 
+        appId: "1:702572851072:web:320a92c9430abba6b71b65" 
     };
 
-    function listenToCloud() {
-        db.ref('azemaa_v5/yomya').on('value', (snap) => {
-            const data = snap.val();
-            remoteData = data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : [];
-            renderUI();
-        });
-    }
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const currentYear = 2026;
 
-    function arToEn(str) {
-        return str.toString().replace(/[٠-٩]/g, function(d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); });
-    }
+    let localData = {};
 
-    function formatTime12h(dateStr) {
-        const date = new Date(dateStr);
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        let hours = date.getHours();
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'م' : 'ص';
-        hours = hours % 12 || 12;
-        return `${day}/${month}/${year} - ${hours}:${minutes} ${ampm}`;
-    }
+    // تحميل اسم الورشة
+    const wsInput = document.getElementById('workshop-name');
+    wsInput.value = localStorage.getItem('workshop_name') || "فرح للمطابخ";
+    wsInput.oninput = () => localStorage.setItem('workshop_name', wsInput.value);
 
-    function saveWorkshopName() {
-        localStorage.setItem('workshop_name', document.getElementById('workshop-name').value);
-    }
-
-    function updateYearlyUI() {
-        document.getElementById('page-title').innerText = `يومية الورشة ${currentYear} (أونلاين)`;
-        document.getElementById('main-header').innerText = `حسابات الورشة ${currentYear}`;
-    }
-
+    // ضبط الوقت التلقائي
     function setActualTime() {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
     }
+    setActualTime();
 
-    function processEntry() {
-        const shopSelect = document.getElementById('entry-shop');
-        const shop = shopSelect.options[shopSelect.selectedIndex].text;
+    // مزامنة البيانات
+    onValue(ref(db, 'azemaa_v5/yomya'), (snapshot) => {
+        localData = snapshot.val() || {};
+        renderTable();
+    });
+
+    window.processEntry = async function() {
+        const shop = document.getElementById('entry-shop').value;
         const customer = document.getElementById('entry-customer').value.trim() || "-";
         const date = document.getElementById('entry-date').value;
         const desc = document.getElementById('entry-desc').value.trim() || "-";
@@ -175,19 +144,20 @@
         const editId = document.getElementById('edit-id').value;
 
         if (inVal === 0 && outVal === 0) { alert("يرجى إدخال مبلغ"); return; }
-        
+
         const entryData = { shop, customer, date, desc, inVal, outVal };
 
-        if (editId) { 
-            db.ref('azemaa_v5/yomya/' + editId).update(entryData)
-            .then(() => { resetForm(); });
+        if (editId) {
+            await update(ref(db, `azemaa_v5/yomya/${editId}`), entryData);
+        } else {
+            const newRef = push(ref(db, 'azemaa_v5/yomya'));
+            await set(newRef, { ...entryData, id: newRef.key });
         }
-        else { 
-            const newRef = db.ref('azemaa_v5/yomya').push();
-            newRef.set(entryData)
-            .then(() => { resetForm(); });
-        }
-    }
+
+        resetForm();
+    };
+
+    document.getElementById('btn-main').onclick = processEntry;
 
     function resetForm() {
         document.getElementById('entry-customer').value = ""; 
@@ -195,92 +165,75 @@
         document.getElementById('entry-in').value = ""; 
         document.getElementById('entry-out').value = ""; 
         document.getElementById('edit-id').value = ""; 
-        document.getElementById('btn-main').innerText = "حفظ العملية (سحابياً)"; 
+        document.getElementById('btn-main').innerText = "حفظ العملية للسحابة"; 
         setActualTime();
     }
 
-    function renderUI() {
+    function renderTable() {
         const tableBody = document.getElementById('table-body');
-        const searchVal = arToEn(document.getElementById('searchBox').value.toLowerCase());
-              
+        const searchVal = document.getElementById('searchBox').value.toLowerCase();
         tableBody.innerHTML = "";
+        
         let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
         const now = new Date();
 
-        // ترتيب البيانات من الأحدث للأقدم
-        const sortedData = [...remoteData].sort((a,b) => new Date(b.date) - new Date(a.date));
+        const sortedKeys = Object.keys(localData).sort((a, b) => new Date(localData[b].date) - new Date(localData[a].date));
 
-        sortedData.forEach((item) => {
+        sortedKeys.forEach(key => {
+            const item = localData[key];
             const rowDate = new Date(item.date);
-            const itemNet = (item.inVal || 0) - (item.outVal || 0);
+            const itemNet = item.inVal - item.outVal;
             
             if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
             if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
-            if (rowDate.getFullYear() === currentYear) { totals.yearOut += (item.outVal || 0); totals.yearNet += itemNet; }
+            if (rowDate.getFullYear() === currentYear) { totals.yearOut += item.outVal; totals.yearNet += itemNet; }
 
-            const itemFullText = (item.customer + item.desc + item.shop + item.inVal + item.outVal).toLowerCase();
-            if (itemFullText.includes(searchVal)) {
-                tableBody.innerHTML += `
-                    <tr>
-                        <td style="font-size:11px; white-space: nowrap;">${formatTime12h(item.date)}</td>
-                        <td><span class="badge">${item.shop}</span></td>
-                        <td>${item.customer}</td>
-                        <td>${item.desc}</td>
-                        <td class="td-out">${item.outVal || '-'}</td>
-                        <td class="td-in">${item.inVal || '-'}</td>
-                        <td style="white-space: nowrap;">
-                            <button class="btn-action btn-wa" onclick="sendToWhatsAppDirect('${item.id}')">🟢</button>
-                            <button class="btn-action btn-edit" onclick="startEdit('${item.id}')">📝 تعديل</button>
-                            <button class="btn-action btn-del" onclick="deleteItem('${item.id}')">🗑️</button>
-                        </td>
-                    </tr>`;
+            if ((item.customer + item.desc + item.shop).toLowerCase().includes(searchVal)) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-size:11px;">${item.date.replace('T', ' ')}</td>
+                    <td><span class="badge">${item.shop}</span></td>
+                    <td>${item.customer}</td>
+                    <td>${item.desc}</td>
+                    <td class="td-out">${item.outVal || '-'}</td>
+                    <td class="td-in">${item.inVal || '-'}</td>
+                    <td>
+                        <button class="btn-action btn-edit" data-id="${key}">📝</button>
+                        <button class="btn-action btn-del" data-id="${key}">🗑️</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
             }
         });
-        
-        document.getElementById('day-total').innerText = totals.day.toLocaleString();
-        document.getElementById('month-total').innerText = totals.month.toLocaleString();
-        document.getElementById('year-out').innerText = totals.yearOut.toLocaleString();
-        document.getElementById('year-net').innerText = totals.yearNet.toLocaleString();
+
+        document.querySelectorAll('.btn-edit').forEach(b => b.onclick = () => startEdit(b.dataset.id));
+        document.querySelectorAll('.btn-del').forEach(b => b.onclick = () => deleteItem(b.dataset.id));
+
+        document.getElementById('day-total').innerText = Math.round(totals.day).toLocaleString();
+        document.getElementById('month-total').innerText = Math.round(totals.month).toLocaleString();
+        document.getElementById('year-out').innerText = Math.round(totals.yearOut).toLocaleString();
+        document.getElementById('year-net').innerText = Math.round(totals.yearNet).toLocaleString();
     }
 
-    function sendToWhatsAppDirect(id) {
-        const item = remoteData.find(i => i.id == id);
-        if(!item) return;
-        const workshop = document.getElementById('workshop-name').value || "ورشة العمل";
-        const timeFormatted = formatTime12h(item.date);
-        const dateObj = new Date(item.date);
-        const dayName = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
-
-        let msg = `🧾 *إيصال عملية - ${workshop}*\n━━━━━━━━━━━━━━━\n`;
-        if(item.inVal > 0) msg += `✅ *تم دخول:* ${item.inVal.toLocaleString()} ج.م\n👤 *من:* ${item.customer}\n`;
-        if(item.outVal > 0) msg += `⚠️ *تم خروج:* ${item.outVal.toLocaleString()} ج.م\n👤 *إلى:* ${item.customer}\n`;
-        msg += `🔹 *القسم:* ${item.shop}\n📝 *البيان:* ${item.desc}\n━━━━━━━━━━━━━━━\n📅 *التوقيت:* ${dayName} | ${timeFormatted}\n━━━━━━━━━━━━━━━`;
-        
-        window.location.href = `whatsapp://send?text=${encodeURIComponent(msg)}`;
-    }
+    document.getElementById('searchBox').onkeyup = renderTable;
 
     function startEdit(id) {
-        const item = remoteData.find(i => i.id == id);
-        if (item) {
-            const entryShop = document.getElementById('entry-shop');
-            for(let i=0; i<entryShop.options.length; i++) {
-                if(entryShop.options[i].text === item.shop) { entryShop.selectedIndex = i; break; }
-            }
-            document.getElementById('entry-customer').value = item.customer;
-            document.getElementById('entry-date').value = item.date;
-            document.getElementById('entry-desc').value = item.desc;
-            document.getElementById('entry-in').value = item.inVal || "";
-            document.getElementById('entry-out').value = item.outVal || "";
-            document.getElementById('edit-id').value = item.id;
-            document.getElementById('btn-main').innerText = "تحديث البيانات أونلاين";
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        const item = localData[id];
+        document.getElementById('entry-shop').value = item.shop;
+        document.getElementById('entry-customer').value = item.customer;
+        document.getElementById('entry-date').value = item.date;
+        document.getElementById('entry-desc').value = item.desc;
+        document.getElementById('entry-in').value = item.inVal || "";
+        document.getElementById('entry-out').value = item.outVal || "";
+        document.getElementById('edit-id').value = id;
+        document.getElementById('btn-main').innerText = "تحديث البيانات أونلاين";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function deleteItem(id) { 
-        if(confirm("هل أنت متأكد من الحذف من السحابة؟")) { 
-            db.ref('azemaa_v5/yomya/' + id).remove(); 
-        } 
+    async function deleteItem(id) {
+        if(confirm("حذف العملية من السحابة نهائياً؟")) {
+            await remove(ref(db, `azemaa_v5/yomya/${id}`));
+        }
     }
 </script>
 </body>
