@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AZEMAA PRO | ترتيب زمني ذكي</title>
     
+    <!-- روابط Firebase SDK المتوافقة (تحديث v9 Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics-compat.js"></script>
 
     <style>
         :root {
@@ -69,7 +71,13 @@
         
         .btn-add-client { position: fixed; bottom: 15px; right: 15px; background: #1abc9c; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 25px; cursor: pointer; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        .summary-section { max-width: 1100px; margin: 15px auto; padding: 8px; background: white; border-radius: 15px; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        /* هنا قمنا بإضافة كلاسات التحكم في إخفاء الجداول بسلاسة */
+        .summary-section, .archive-section { 
+            max-width: 1100px; margin: 15px auto; padding: 8px; background: white; border-radius: 15px; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            transition: opacity 0.2s ease, max-height 0.2s ease, margin 0.2s ease, padding 0.2s ease;
+            opacity: 1;
+            visibility: visible;
+        }
         .summary-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; min-width: 600px; }
         .summary-table th { background: var(--primary); color: white; padding: 6px; border: 1px solid #ddd; }
         .summary-table td { padding: 4px; border: 1px solid #eee; font-weight: 700; transition: background 0.3s ease; }
@@ -96,6 +104,17 @@
         
         .btn-restore { background: #8e44ad; color: white; border: none; padding: 2px 8px; border-radius: 5px; cursor: pointer; font-size: 10px; }
         .btn-archive-icon { color: var(--accent); border: none; background: none; cursor: pointer; font-size: 16px; margin-left: 8px; }
+
+        /* ستايل الإخفاء الفوري عند الكتابة */
+        .hide-tables {
+            opacity: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            visibility: hidden !important;
+            border: none !important;
+        }
     </style>
 </head>
 <body>
@@ -124,7 +143,7 @@
 
 <div class="grid" id="mainGrid"></div>
 
-<div class="summary-section">
+<div class="summary-section" id="debtTableSection">
     <h2 style="text-align: center; color: var(--primary); font-size: 15px; margin: 5px 0;">🗓️ جدول المديونيات (مرتب زمنياً)</h2>
     <table class="summary-table">
         <thead>
@@ -151,7 +170,7 @@
     </table>
 </div>
 
-<div class="summary-section archive-section" style="background: #cfd8dc; border: 2px dashed #607d8b;">
+<div class="summary-section archive-section" id="archiveTableSection" style="background: #cfd8dc; border: 2px dashed #607d8b;">
     <h2 style="background: #607d8b; color: white; padding: 5px; text-align: center; margin: 0; border-radius: 15px 15px 0 0; font-size: 15px;">📁 أرشيف الزبائن (الخالص والمؤرشف)</h2>
     <div style="padding: 10px;">
         <input type="text" class="archive-search" id="archiveSearch" placeholder="🔍 بحث في الأرشيف..." onkeyup="filterArchive()">
@@ -178,15 +197,17 @@
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
-        projectId: "azemaa-proo",
         databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
         storageBucket: "azemaa-proo.firebasestorage.app",
         messagingSenderId: "787350492977",
-        appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        appId: "1:787350492977:web:84061dcf31622fcb07c210",
+        measurementId: "G-R28J7010TH"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const analytics = firebase.analytics();
 
     const monthColors = {
         1: "#ffdde1", 2: "#ee9ca7", 3: "#d4fc79", 4: "#96e6a1",
@@ -276,6 +297,27 @@
     }
 
     for (let i = 1; i <= 50; i++) createCardElement(i);
+
+    // دالة ذكية لمراقبة فتح وإغلاق الكيبورد عبر الـ Focus والـ Blur لإخفاء الجداول
+    function initKeyboardListener() {
+        const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
+        const debtTable = document.getElementById('debtTableSection');
+        const archiveTable = document.getElementById('archiveTableSection');
+
+        targetInputs.forEach(input => {
+            // عند البدء في الكتابة (Focus) -> إخفاء الجداول فوراً
+            input.addEventListener('focus', () => {
+                debtTable.classList.add('hide-tables');
+                archiveTable.classList.add('hide-tables');
+            });
+
+            // عند الانتهاء وإغلاق الكيبورد (Blur) -> إرجاع الجداول للظهور
+            input.addEventListener('blur', () => {
+                debtTable.classList.remove('hide-tables');
+                archiveTable.classList.remove('hide-tables');
+            });
+        });
+    }
 
     function updateLogic(id) {
         const card = document.getElementById(`card-${id}`);
@@ -369,6 +411,8 @@
                         updateLogic(id);
                     }
                 }
+                // تفعيل مستمع الكيبورد بعد تحميل المدخلات وتوليدها بنجاح
+                initKeyboardListener();
             }
         });
     };
