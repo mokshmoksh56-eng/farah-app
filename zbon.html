@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AZEMAA PRO | ترتيب زمني ذكي</title>
     
-    <!-- روابط Firebase SDK المتوافقة (تحديث v9 Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics-compat.js"></script>
@@ -34,17 +33,25 @@
         .card { 
             border-radius: 20px; padding: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
             border: 2px solid #eee; display: none; background: white; transition: 0.3s all ease-in-out; 
+            position: relative;
         }
         .card.visible { display: block; }
         .card.paid { border: 3px solid var(--success) !important; background-color: #f0fff4 !important; }
         
+        /* وضع القفل الخفيف للكارت المغلق */
+        .card.locked-mode { background-color: #fafbfc; border-color: #d1d8e0; }
+        .card.locked-mode input, .card.locked-mode textarea { background: #f1f2f6; color: #7f8c8d; cursor: not-allowed; border: 1px solid #dcdde1; }
+        .card.locked-mode .rating-area label { cursor: not-allowed; pointer-events: none; }
+        .card.locked-mode .date-input-group { background: #f1f2f6; border-color: #ced6e0; }
+        .card.locked-mode .date-input-group input { color: #7f8c8d; }
+
         @keyframes yellowBrightPulse {
             0% { border-color: var(--glow-yellow); box-shadow: 0 0 8px var(--glow-yellow); background-color: #fffdf0; }
             50% { border-color: #ffda00; box-shadow: 0 0 25px var(--glow-yellow); background-color: #fff9c4; }
             100% { border-color: var(--glow-yellow); box-shadow: 0 0 8px var(--glow-yellow); background-color: #fffdf0; }
         }
 
-        .card:focus-within { animation: yellowBrightPulse 1s infinite ease-in-out; transform: translateY(-3px); z-index: 10; }
+        .card:focus-within:not(.locked-mode) { animation: yellowBrightPulse 1s infinite ease-in-out; transform: translateY(-3px); z-index: 10; }
 
         label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 1px; color: #444; }
         input, textarea { width: 100%; padding: 7px; border-radius: 8px; border: 1px solid #cbd5e0; box-sizing: border-box; font-size: 13px; font-weight: 900; margin-bottom: 3px; direction: ltr !important; text-align: left; font-family: Arial, sans-serif !important; }
@@ -65,13 +72,17 @@
         .pay-row { display: grid; grid-template-columns: 110px 1fr; gap: 5px; }
         .result-box { background: var(--primary); color: white; padding: 6px; border-radius: 10px; text-align: center; direction: rtl; margin-bottom: 6px; }
         
-        .btn-card { width: 100%; padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-weight: 900; color: white; margin-top: 3px; font-size: 13px; }
+        .btn-card { width: 100%; padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-weight: 900; color: white; margin-top: 3px; font-size: 11px; }
         .btn-save { background: var(--primary); }
-        .btn-wa { background: var(--success); }
+        .btn-wa-direct { background: #25D366; }
+        .btn-wa-invoice { background: #128C7E; }
         
+        /* أزرار التحكم بالقفل والتعديل */
+        .btn-lock-toggle { background: none; border: none; cursor: pointer; font-size: 15px; margin-left: 8px; padding: 2px 5px; border-radius: 5px; background-color: #f1f2f6; transition: 0.2s; }
+        .btn-lock-toggle:hover { background-color: #dcdde1; }
+
         .btn-add-client { position: fixed; bottom: 15px; right: 15px; background: #1abc9c; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 25px; cursor: pointer; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        /* هنا قمنا بإضافة كلاسات التحكم في إخفاء الجداول بسلاسة */
         .summary-section, .archive-section { 
             max-width: 1100px; margin: 15px auto; padding: 8px; background: white; border-radius: 15px; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
             transition: opacity 0.2s ease, max-height 0.2s ease, margin 0.2s ease, padding 0.2s ease;
@@ -105,7 +116,6 @@
         .btn-restore { background: #8e44ad; color: white; border: none; padding: 2px 8px; border-radius: 5px; cursor: pointer; font-size: 10px; }
         .btn-archive-icon { color: var(--accent); border: none; background: none; cursor: pointer; font-size: 16px; margin-left: 8px; }
 
-        /* ستايل الإخفاء الفوري عند الكتابة */
         .hide-tables {
             opacity: 0 !important;
             max-height: 0 !important;
@@ -124,7 +134,7 @@
     <span id="liveDate">--/--/----</span>
 </div>
 
-<div id="toast" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(50%); background: #333; color: white; padding: 10px 25px; border-radius: 30px; display: none; z-index: 1000;">✅ تم الحفظ والمزامنة</div>
+<div id="toast" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(50%); background: #333; color: white; padding: 10px 25px; border-radius: 30px; display: none; z-index: 1000;">✅ تم الحفظ والمزامنة والقفل</div>
 
 <div class="header">
     <h1>AZEMAA PRO | <span id="currentYear"></span></h1>
@@ -256,41 +266,63 @@
         return text;
     }
 
+    function toggleCardLock(id) {
+        const card = document.getElementById(`card-${id}`);
+        const btn = document.getElementById(`btn-lock-${id}`);
+        const isLocked = card.classList.contains('locked-mode');
+        
+        if (isLocked) {
+            // فتح التعديل
+            card.classList.remove('locked-mode');
+            card.querySelectorAll('input, textarea').forEach(el => el.removeAttribute('disabled'));
+            btn.innerHTML = '🔓 تعديل مفتوح';
+            btn.style.color = 'var(--danger)';
+        } else {
+            // قفل التعديل
+            card.classList.add('locked-mode');
+            card.querySelectorAll('input, textarea').forEach(el => el.setAttribute('disabled', 'true'));
+            btn.innerHTML = '🔒 اضغط للتعديل';
+            btn.style.color = 'var(--accent)';
+        }
+    }
+
     function createCardElement(i) {
         const card = document.createElement('div');
-        card.className = `card`;
+        card.className = `card locked-mode`; // تبدأ مقفلة افتراضياً لزيادة الحماية
         card.id = `card-${i}`;
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
                 <span style="direction:rtl; font-size: 13px;">👤 عميل رقم ${i}</span>
-                <div>
+                <div style="display: flex; align-items: center;">
+                    <button id="btn-lock-${i}" onclick="toggleCardLock(${i})" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button>
                     <button onclick="archiveCardManual(${i})" class="btn-archive-icon" title="أرشفة">📁</button>
                     <button onclick="deleteCard(${i})" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
                 </div>
             </div>
-            <label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic(${i})">
+            <label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic(${i})" disabled>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                <div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic(${i})"></div>
+                <div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic(${i})" disabled></div>
                 <div>
                     <label>📅 الاستلام:</label>
                     <div class="date-input-group">
-                        <input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic(${i})"> /
-                        <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic(${i})"> /
-                        <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic(${i})">
+                        <input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
+                        <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
+                        <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic(${i})" disabled>
                     </div>
                 </div>
             </div>
-            <div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${i}" name="rating-${i}" value="${s}" onclick="updateLogic(${i})"><label for="star${s}-${i}">★</label>`).join('')}</div>
-            <label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic(${i})">
+            <div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${i}" name="rating-${i}" value="${s}" onclick="updateLogic(${i})" disabled><label for="star${s}-${i}">★</label>`).join('')}</div>
+            <label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic(${i})" disabled>
             <div class="tafqit-box" id="tafqit-total-${i}"></div>
             <div class="payment-section">
-                ${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic(${i})"><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic(${i})"></div><div class="tafqit-mini" id="tafqit-pay-${i}-${n}"></div></div>`).join('')}
+                ${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic(${i})" disabled><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic(${i})" disabled></div><div class="tafqit-mini" id="tafqit-pay-${i}-${n}"></div></div>`).join('')}
             </div>
-            <textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic(${i}); autoResize(this)"></textarea>
+            <textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic(${i}); autoResize(this)" disabled></textarea>
             <div class="result-box"><div id="rem-n-${i}" style="direction:ltr; font-size:14px;">المتبقي: 0</div><div id="rem-w-${i}" style="font-size:9px; color:#00d2ff;"></div></div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
-                <button class="btn-card btn-save" onclick="saveToCloud(${i})">💾 حفظ</button>
-                <button class="btn-card btn-wa" onclick="sendWA(${i})">واتساب</button>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
+                <button class="btn-card btn-save" onclick="saveToCloud(${i})">💾 حفظ وقفل</button>
+                <button class="btn-card btn-wa-direct" onclick="sendDirectWA(${i})">واتس مباشر</button>
+                <button class="btn-card btn-wa-invoice" onclick="sendWA(${i})">واتس فاتورة</button>
             </div>
         `;
         document.getElementById('mainGrid').appendChild(card);
@@ -298,20 +330,16 @@
 
     for (let i = 1; i <= 50; i++) createCardElement(i);
 
-    // دالة ذكية لمراقبة فتح وإغلاق الكيبورد عبر الـ Focus والـ Blur لإخفاء الجداول
     function initKeyboardListener() {
         const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
         const debtTable = document.getElementById('debtTableSection');
         const archiveTable = document.getElementById('archiveTableSection');
 
         targetInputs.forEach(input => {
-            // عند البدء في الكتابة (Focus) -> إخفاء الجداول فوراً
             input.addEventListener('focus', () => {
                 debtTable.classList.add('hide-tables');
                 archiveTable.classList.add('hide-tables');
             });
-
-            // عند الانتهاء وإغلاق الكيبورد (Blur) -> إرجاع الجداول للظهور
             input.addEventListener('blur', () => {
                 debtTable.classList.remove('hide-tables');
                 archiveTable.classList.remove('hide-tables');
@@ -355,6 +383,10 @@
             isArchived: false
         };
         db.ref('clients/' + id).update(data).then(() => {
+            // إعادة قفل الكارت فوراً بعد الحفظ لحمايته
+            if (!card.classList.contains('locked-mode')) {
+                toggleCardLock(id);
+            }
             const t = document.getElementById('toast');
             t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2000);
             refreshStats();
@@ -411,7 +443,6 @@
                         updateLogic(id);
                     }
                 }
-                // تفعيل مستمع الكيبورد بعد تحميل المدخلات وتوليدها بنجاح
                 initKeyboardListener();
             }
         });
@@ -422,6 +453,10 @@
             const card = document.getElementById(`card-${i}`);
             if (!card.classList.contains('visible')) {
                 card.classList.add('visible');
+                // تفتحه فوراً للتعديل طالما عميل جديد
+                if (card.classList.contains('locked-mode')) {
+                    toggleCardLock(i);
+                }
                 db.ref('clients/' + i).update({ isArchived: false });
                 return;
             }
@@ -438,6 +473,13 @@
                 refreshStats();
             }); 
         } 
+    }
+
+    function sendDirectWA(id) {
+        const card = document.getElementById(`card-${id}`);
+        const phone = card.querySelector('.c-phone').value;
+        if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
+        window.open(`https://wa.me/2${phone}`, '_blank');
     }
 
     function sendWA(id) {
