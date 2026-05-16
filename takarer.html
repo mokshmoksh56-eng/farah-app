@@ -3,72 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AZEMAA PRO | التقارير الموحدة</title>
+    <title>AZEMAA PRO | التقارير والتحليل الشهري</title>
+    <!-- استدعاء خط Cairo يدعم الأوزان الثقيلة للأرقام والنصوص -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;900&display=swap" rel="stylesheet">
+    
     <style>
         :root { --primary: #0f172a; --success: #059669; --danger: #dc2626; --accent: #2563eb; --bg: #f1f5f9; }
-        * { box-sizing: border-box; font-weight: 900 !important; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--primary); }
-        header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; position: relative; }
-        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-box { background: white; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid #eee; }
-        .stat-box span { display: block; font-size: 12px; color: #64748b; margin-bottom: 5px; }
-        .stat-box strong { font-size: 18px; }
-        .filter-area { background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; display: flex; gap: 10px; }
-        select { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #e2e8f0; font-size: 14px; background: #fff; }
-        .report-card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .report-card h2 { font-size: 16px; margin-top: 0; border-right: 4px solid var(--accent); padding-right: 10px; margin-bottom: 15px; }
-        .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-        #live-indicator { position: absolute; top: 10px; left: 15px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 11px; display: none; }
+        
+        /* تطبيق الخط والوزن العريض جداً على كل العناصر */
+        * { 
+            box-sizing: border-box; 
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+            font-weight: 900 !important; 
+        }
+        
+        body { background: var(--bg); margin: 0; padding: 10px; color: var(--primary); }
+        header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 15px; position: relative; }
+        
+        /* ضبط إحصائيات الموبايل العلوية */
+        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+        .stat-box { background: white; padding: 12px 8px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid #eee; }
+        .stat-box span { display: block; font-size: 11px; color: #64748b; margin-bottom: 5px; }
+        .stat-box strong { font-size: 18px; letter-spacing: 0.5px; word-break: break-all; }
+
+        /* حاوية التقرير والجدول */
+        .report-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .report-card h2 { font-size: 15px; margin-top: 0; border-right: 4px solid var(--accent); padding-right: 8px; margin-bottom: 15px; }
+        
+        /* استجابة الجدول للموبايل عن طريق التمرير الأفقي */
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 13px; }
+        th { background: var(--primary); color: white; padding: 10px 8px; font-size: 12px; }
+        td { padding: 10px 8px; border: 1px solid #e2e8f0; text-align: center; background: white; letter-spacing: 0.5px; }
+        .month-name { background: #f8fafc; color: var(--accent); position: sticky; right: 0; z-index: 1; }
+        
+        .profit-text { color: var(--success); }
+        .loss-text { color: var(--danger); }
+
+        /* ضبط الإحصائيات السفلية للموايل لتصبح مرنة */
+        .final-analysis { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 15px; background: #1e293b; padding: 12px; border-radius: 12px; color: white; }
+        
+        /* على الشاشات المتوسطة والأكبر يتم تقسيمها لـ 3 أعمدة */
+        @media (min-width: 480px) {
+            .final-analysis { grid-template-columns: repeat(3, 1fr); }
+            .stat-box strong { font-size: 22px; }
+        }
+        
+        .final-box { text-align: center; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); }
+        .final-box span { display: block; font-size: 11px; margin-bottom: 3px; opacity: 0.9; }
+        .final-box strong { font-size: 18px; letter-spacing: 0.5px; }
+        
+        #live-indicator { position: absolute; top: 8px; left: 10px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; font-size: 10px; display: none; }
     </style>
 </head>
 <body>
 
 <header>
-    <div id="live-indicator">🔄 جاري المزامنة...</div>
-    <h1 style="margin:0; font-size: 20px;">التقرير المالي الموحد (مباشر)</h1>
-    <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">نظام Azemaa Pro الحسي</div>
+    <div id="live-indicator">🔄 تحديث...</div>
+    <h1 style="margin:0; font-size: 18px;">التحليل المالي السنوي 2026</h1>
 </header>
-
-<div class="filter-area">
-    <select id="yearSelect"></select>
-    <select id="monthSelect">
-        <option value="all">كل الشهور</option>
-        <option value="0">يناير</option><option value="1">فبراير</option><option value="2">مارس</option>
-        <option value="3">أبريل</option><option value="4">مايو</option><option value="5">يونيو</option>
-        <option value="6">يوليو</option><option value="7">أغسطس</option><option value="8">سبتمبر</option>
-        <option value="9">أكتوبر</option><option value="10">نوفمبر</option><option value="11">ديسمبر</option>
-    </select>
-</div>
 
 <div class="summary-grid">
     <div class="stat-box" style="border-color: var(--success);">
-        <span>إجمالي القبض (+)</span>
+        <span>وارد الخزينة (yom)</span>
         <strong id="total-in" style="color: var(--success);">0</strong>
     </div>
     <div class="stat-box" style="border-color: var(--danger);">
-        <span>إجمالي الصرف (-)</span>
+        <span>الصرف والرواتب</span>
         <strong id="total-out" style="color: var(--danger);">0</strong>
-    </div>
-    <div class="stat-box" style="border-color: var(--accent); grid-column: span 2;">
-        <span>صافي الربح النهائي</span>
-        <strong id="total-net">0</strong>
     </div>
 </div>
 
 <div class="report-card">
-    <h2>📊 تحليل الفترة الحالية</h2>
-    <div class="data-row"><span>دخل الزبائن</span><strong id="m-cust" style="color: var(--success);">0</strong></div>
-    <div class="data-row"><span>وارد الخزينة</span><strong id="m-yom-in" style="color: var(--success);">0</strong></div>
-    <div class="data-row"><span>مصروفات الخزينة</span><strong id="m-yom-out" style="color: var(--danger);">0</strong></div>
-    <div class="data-row"><span>رواتب العمال</span><strong id="m-workers" style="color: var(--danger);">0</strong></div>
+    <h2>📅 جدول تحليل الشهور (2026)</h2>
+    
+    <!-- حاوية التمرير الأفقي للموبايل -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>الشهر</th>
+                    <th>🤝 الاتفاقات</th>
+                    <th>💰 مدفوع الزبائن</th>
+                    <th>📥 وارد (yom)</th>
+                    <th>📤 مصروفات + رواتب</th>
+                    <th>📊 صافي الشهر</th>
+                </tr>
+            </thead>
+            <tbody id="monthly-table-body"></tbody>
+        </table>
+    </div>
+
+    <div class="final-analysis">
+        <div class="final-box" style="border-bottom: 4px solid var(--success);">
+            <span>إجمالي الأرباح (+)</span>
+            <strong id="sum-all-profits" class="profit-text">0</strong>
+        </div>
+        <div class="final-box" style="border-bottom: 4px solid var(--danger);">
+            <span>إجمالي الخسائر (-)</span>
+            <strong id="sum-all-losses" class="loss-text">0</strong>
+        </div>
+        <div class="final-box" style="border-bottom: 4px solid var(--accent);">
+            <span>الصافي النهائي</span>
+            <strong id="final-net-result">0</strong>
+        </div>
+    </div>
 </div>
 
 <script type="module">
-    // استخدام روابط CDN من إصدار 10 متوافق مع المتصفح مباشرة
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // إعدادات حسابك الجديد بالكامل
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
@@ -82,141 +129,110 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const currentYear = 2026;
+    const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
-    // تهيئة القوائم المنسدلة
-    const yrSel = document.getElementById('yearSelect');
-    const curYear = new Date().getFullYear();
-    for(let y=2024; y<=2030; y++) {
-        yrSel.add(new Option("سنة " + y, y, y===curYear, y===curYear));
-    }
-    document.getElementById('monthSelect').value = new Date().getMonth();
-
-    yrSel.onchange = () => fetchOnlineData();
-    document.getElementById('monthSelect').onchange = () => fetchOnlineData();
-
-    let unsubscribes = [];
-
-    function fetchOnlineData() {
+    function initReport() {
         document.getElementById('live-indicator').style.display = 'block';
+        const dataStore = { clients: {}, yomya: {}, weeks: {} };
+        let checks = { c: false, y: false, w: false };
 
-        unsubscribes.forEach(unsub => unsub());
-        unsubscribes = [];
-
-        const selYear = parseInt(yrSel.value);
-        const selMonth = document.getElementById('monthSelect').value;
-
-        let dataStore = { customers: {}, yomya: {}, gyab: {} };
-        let checks = { c: false, y: false, g: false };
-
-        const checkAndProcess = () => {
-            if(checks.c && checks.y && checks.g) {
+        const runCalculation = () => {
+            if (checks.c && checks.y && checks.w) {
+                processAndRender(dataStore);
                 document.getElementById('live-indicator').style.display = 'none';
-                calculateFinancials(dataStore, selYear, selMonth);
             }
         };
 
-        // تنبيه: إذا كانت قاعدة بياناتك الجديدة لا تحتوي على مسار "azemaa_v5" قم بحذفها واجعل المسار كالتالي: ref(db, 'customers')
-        
-        // 1. قراءة الزبائن أونلاين
-        const cUnsub = onValue(ref(db, 'azemaa_v5/customers'), snap => {
-            dataStore.customers = snap.val() || {};
-            checks.c = true;
-            checkAndProcess();
-        });
-        unsubscribes.push(cUnsub);
-
-        // 2. قراءة اليومية أونلاين
-        const yUnsub = onValue(ref(db, 'azemaa_v5/yomya'), snap => {
-            dataStore.yomya = snap.val() || {};
-            checks.y = true;
-            checkAndProcess();
-        });
-        unsubscribes.push(yUnsub);
-
-        // 3. قراءة الغياب والرواتب أونلاين
-        const gUnsub = onValue(ref(db, 'azemaa_v5/gyab_data'), snap => {
-            dataStore.gyab = snap.val() || {};
-            checks.g = true;
-            checkAndProcess();
-        });
-        unsubscribes.push(gUnsub);
+        onValue(ref(db, 'clients'), snap => { dataStore.clients = snap.val() || {}; checks.c = true; runCalculation(); });
+        onValue(ref(db, 'azemaa_v5/yomya_2026_clean'), snap => { dataStore.yomya = snap.val() || {}; checks.y = true; runCalculation(); });
+        onValue(ref(db, 'weeks'), snap => { dataStore.weeks = snap.val() || {}; checks.w = true; runCalculation(); });
     }
 
-    function calculateFinancials(data, selYear, selMonth) {
-        let totalIn = 0, totalOut = 0, mCust = 0, mYomIn = 0, mYomOut = 0, mWorkers = 0;
+    function processAndRender(data) {
+        let monthlyStats = Array.from({ length: 12 }, () => ({ deals: 0, custPay: 0, yomIn: 0, totalOut: 0 }));
 
-        // حساب دخل الزبائن
-        Object.values(data.customers).forEach(c => {
-            if(c.payments) {
-                const paymentsArr = Array.isArray(c.payments) ? c.payments : Object.values(c.payments);
-                paymentsArr.forEach(p => {
-                    if(!p.date) return;
-                    const d = new Date(p.date);
-                    if(d.getFullYear() === selYear) {
-                        const amt = parseFloat(p.amount) || 0;
-                        if(selMonth === "all" || d.getMonth() == selMonth) {
-                            mCust += amt;
-                            totalIn += amt;
+        Object.values(data.clients).forEach(client => {
+            if (client.dy == currentYear) {
+                let m = parseInt(client.dm) - 1;
+                if (m >= 0 && m < 12) monthlyStats[m].deals++;
+            }
+            if (client.pays) {
+                client.pays.forEach(p => {
+                    if (p.d) {
+                        const d = new Date(p.d);
+                        if (d.getFullYear() === currentYear) {
+                            monthlyStats[d.getMonth()].custPay += parseFloat(p.v || 0);
                         }
                     }
                 });
             }
         });
 
-        // حساب وارد ومصروفات الخزينة اليومية
         Object.values(data.yomya).forEach(y => {
-            if(!y.date) return;
-            const d = new Date(y.date);
-            if(d.getFullYear() === selYear) {
-                const i = parseFloat(y.inVal) || 0, o = parseFloat(y.outVal) || 0;
-                if(selMonth === "all" || d.getMonth() == selMonth) { 
-                    mYomIn += i; 
-                    mYomOut += o; 
-                    totalIn += i;
-                    totalOut += o;
+            if (y.date) {
+                const d = new Date(y.date);
+                if (d.getFullYear() === currentYear) {
+                    let m = d.getMonth();
+                    monthlyStats[m].yomIn += parseFloat(y.inVal || 0);
+                    monthlyStats[m].totalOut += parseFloat(y.outVal || 0);
                 }
             }
         });
 
-        // حساب رواتب العمال
-        Object.keys(data.gyab).forEach(weekKey => {
+        Object.keys(data.weeks).forEach(weekKey => {
             const d = new Date(weekKey);
-            if(d.getFullYear() === selYear) {
-                const workersArr = Array.isArray(data.gyab[weekKey]) ? data.gyab[weekKey] : Object.values(data.gyab[weekKey]);
-                workersArr.forEach(w => {
-                    const net = calculateSavedNet(w);
-                    if(selMonth === "all" || d.getMonth() == selMonth) {
-                        mWorkers += net;
-                        totalOut += net;
-                    }
+            if (d.getFullYear() === currentYear) {
+                let m = d.getMonth();
+                data.weeks[weekKey].forEach(w => {
+                    let sal = parseFloat(w.sal || 0);
+                    let att = (w.att || []).reduce((a, b) => a + parseFloat(b || 0), 0);
+                    let loans = (w.loans || []).reduce((a, b) => a + parseFloat(b || 0), 0);
+                    let net = ((sal / 6) * att) - loans - (parseFloat(w.instPaid || 0));
+                    monthlyStats[m].totalOut += net > 0 ? Math.round(net) : 0;
                 });
             }
         });
 
-        // تحديث الواجهة فوراً بالأرقام الأونلاين
-        document.getElementById('total-in').innerText = Math.round(totalIn).toLocaleString();
-        document.getElementById('total-out').innerText = Math.round(totalOut).toLocaleString();
-        document.getElementById('total-net').innerText = Math.round(totalIn - totalOut).toLocaleString();
-        document.getElementById('m-cust').innerText = Math.round(mCust).toLocaleString();
-        document.getElementById('m-yom-in').innerText = Math.round(mYomIn).toLocaleString();
-        document.getElementById('m-yom-out').innerText = Math.round(mYomOut).toLocaleString();
-        document.getElementById('m-workers').innerText = Math.round(mWorkers).toLocaleString();
+        renderTable(monthlyStats);
     }
 
-    function calculateSavedNet(w) {
-        if(!w.sal || !w.att) return 0;
-        const attArr = Array.isArray(w.att) ? w.att : Object.values(w.att);
-        let attSum = attArr.reduce((a, b) => a + parseFloat(b || 0), 0);
+    function renderTable(stats) {
+        const tbody = document.getElementById('monthly-table-body');
+        tbody.innerHTML = "";
+        let grandIn = 0, grandOut = 0;
+        let totalProfits = 0, totalLosses = 0;
+
+        stats.forEach((m, index) => {
+            let monthNet = m.yomIn - m.totalOut;
+            grandIn += m.yomIn;
+            grandOut += m.totalOut;
+
+            if (monthNet > 0) totalProfits += monthNet;
+            else totalLosses += Math.abs(monthNet);
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="month-name">${monthNames[index]}</td>
+                    <td>${m.deals}</td>
+                    <td>${m.custPay.toLocaleString()}</td>
+                    <td style="color:var(--success)">${m.yomIn.toLocaleString()}</td>
+                    <td style="color:var(--danger)">${m.totalOut.toLocaleString()}</td>
+                    <td class="${monthNet >= 0 ? 'profit-text' : 'loss-text'}">
+                        ${monthNet.toLocaleString()}
+                    </td>
+                </tr>`;
+        });
+
+        document.getElementById('total-in').innerText = grandIn.toLocaleString();
+        document.getElementById('total-out').innerText = grandOut.toLocaleString();
         
-        let loansSum = 0;
-        if(w.loans) {
-            const loansArr = Array.isArray(w.loans) ? w.loans : Object.values(w.loans);
-            loansSum = loansArr.reduce((a, b) => a + (parseFloat(b) || 0), 0);
-        }
-        return Math.max(0, Math.round(((parseFloat(w.sal) / 6) * attSum) - loansSum - (parseFloat(w.instPaid) || 0)));
+        document.getElementById('sum-all-profits').innerText = totalProfits.toLocaleString();
+        document.getElementById('sum-all-losses').innerText = totalLosses.toLocaleString();
+        document.getElementById('final-net-result').innerText = (totalProfits - totalLosses).toLocaleString();
     }
 
-    fetchOnlineData();
+    initReport();
 </script>
 </body>
 </html>
