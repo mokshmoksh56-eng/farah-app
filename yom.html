@@ -6,7 +6,7 @@
     <title id="page-title">يومية الورشة 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- مكتبات فايربيس المستقرة والمتوافقة مع التشغيل المحلى والسحابى المختلط -->
+    <!-- تحديث المكتبات لإصدارات أكثر استقراراً وتوافقية مع المتصفحات الحديثة للموبايل -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -113,7 +113,6 @@
 </div>
 
 <script>
-    // إعدادات اتصال الفايربيس الخاص بك
     const firebaseConfig = { 
         apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M", 
         authDomain: "farah-kitchen.firebaseapp.com", 
@@ -128,12 +127,10 @@
 
     let localData = {};
 
-    // تحميل البيانات المحلية المخزنة بالمتصفح عند بدء التشغيل
     function initApp() {
         const savedData = localStorage.getItem('azemaa_yomya_data');
         localData = savedData ? JSON.parse(savedData) : {};
         
-        // إدارة اسم الورشة
         const wsInput = document.getElementById('workshop-name');
         wsInput.value = localStorage.getItem('workshop_name') || "فرح للمطابخ";
         wsInput.oninput = () => localStorage.setItem('workshop_name', wsInput.value);
@@ -142,14 +139,12 @@
         renderTable();
     }
 
-    // ضبط حقل الوقت تلقائياً
     function setActualTime() {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
     }
 
-    // [تصدير سحابي] - يرفع كافة بيانات الجدول الحالية للسحابة فوراً
     window.saveToCloud = function() {
         if(Object.keys(localData).length === 0) {
             alert("⚠️ الجدول فارغ تماماً، لا توجد بيانات لرفعها!");
@@ -167,7 +162,6 @@
         });
     };
 
-    // [استيراد سحابي] - يجلب كامل الحسابات المخزنة بالسحابة ويضعها بالجدول
     window.loadFromCloud = function() {
         document.getElementById('sync-status').innerText = "⏳ جاري استيراد البيانات من السحابة...";
         db.ref('azemaa_v5/yomya_backup').once('value').then((s) => {
@@ -185,11 +179,11 @@
             }
         }).catch(err => {
             document.getElementById('sync-status').innerText = "❌ فشل الاستيراد";
-            alert("خطأ أثناء الجلب السحابي: " + err.message);
+            // تعديل لعرض تفاصيل الخطأ الحقيقي للمستخدم لمعرفة إن كانت المشكلة Permission Denied
+            alert("خطأ أثناء جلب البيانات: " + err.message + "\n\nتأكد من إعدادات القواعد (Rules) في الفايربيس الخاص بك.");
         });
     };
 
-    // دالة معالجة الإدخال والحفظ الفوري بالجدول
     function processEntry() {
         const shop = document.getElementById('entry-shop').value;
         const customer = document.getElementById('entry-customer').value.trim() || "-";
@@ -236,16 +230,16 @@
         setActualTime();
     }
 
-    // معالجة وعرض الجدول والبطاقات العلوية بشكل فوري
     function renderTable() {
         const tableBody = document.getElementById('table-body');
-        const searchVal = document.getElementById('searchBox').value.toLowerCase();
+        if(!tableBody) return;
+        const searchBox = document.getElementById('searchBox');
+        const searchVal = searchBox ? searchBox.value.toLowerCase() : "";
         tableBody.innerHTML = "";
         
         let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
         const now = new Date();
 
-        // ترتيب الحسابات من الأحدث للأقدم
         const sortedKeys = Object.keys(localData).sort((a, b) => {
             const dateA = localData[a].date ? new Date(localData[a].date) : new Date(0);
             const dateB = localData[b].date ? new Date(localData[b].date) : new Date(0);
@@ -264,7 +258,6 @@
             const itemOut = parseFloat(item.outVal) || 0;
             const itemNet = itemIn - itemOut;
             
-            // حساب الإحصائيات
             if (itemDateStr) {
                 const rowDate = new Date(itemDateStr);
                 if (!isNaN(rowDate.getTime())) {
@@ -277,7 +270,6 @@
                 }
             }
 
-            // الفلترة والبحث الفوري في الجدول
             const searchPool = `${itemCustomer} ${itemDesc} ${itemShop}`.toLowerCase();
             if (searchPool.includes(searchVal)) {
                 const tr = document.createElement('tr');
@@ -297,14 +289,15 @@
             }
         });
 
-        // طباعة الإجماليات بالمربعات
         document.getElementById('day-total').innerText = Math.round(totals.day).toLocaleString();
         document.getElementById('month-total').innerText = Math.round(totals.month).toLocaleString();
         document.getElementById('year-out').innerText = Math.round(totals.yearOut).toLocaleString();
         document.getElementById('year-net').innerText = Math.round(totals.yearNet).toLocaleString();
     }
 
-    document.getElementById('searchBox').onkeyup = renderTable;
+    if(document.getElementById('searchBox')) {
+        document.getElementById('searchBox').onkeyup = renderTable;
+    }
 
     window.startEdit = function(id) {
         const item = localData[id];
@@ -328,7 +321,6 @@
         }
     }
 
-    // تشغيل التطبيق فور تحميل الصفحة
     window.onload = initApp;
 </script>
 </body>
