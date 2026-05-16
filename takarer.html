@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;900&display=swap" rel="stylesheet">
     
     <style>
-        :root { --primary: #0f172a; --success: #059669; --danger: #dc2626; --accent: #2563eb; --bg: #f1f5f9; }
+        :root { --primary: #0f172a; --success: #059669; --danger: #dc2626; --accent: #2563eb; --bg: #f1f5f9; --warning: #d97706; }
         
         /* تطبيق الخط والوزن العريض جداً على كل العناصر */
         * { 
@@ -22,6 +22,11 @@
         body { background: var(--bg); margin: 0; padding: 10px; color: var(--primary); }
         header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 15px; position: relative; }
         
+        /* تصميم قائمة الأرشيف المنسدلة */
+        .archive-container { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .archive-container label { font-size: 14px; color: #475569; }
+        .archive-select { background: var(--primary); color: white; border: none; padding: 6px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; outline: none; }
+
         /* ضبط إحصائيات الموبايل العلوية */
         .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
         .stat-box { background: white; padding: 12px 8px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid #eee; }
@@ -34,7 +39,7 @@
         
         /* استجابة الجدول للموبايل عن طريق التمرير الأفقي */
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; min-width: 750px; font-size: 13px; }
         th { background: var(--primary); color: white; padding: 10px 8px; font-size: 12px; }
         td { padding: 10px 8px; border: 1px solid #e2e8f0; text-align: center; background: white; letter-spacing: 0.5px; }
         .month-name { background: #f8fafc; color: var(--accent); position: sticky; right: 0; z-index: 1; }
@@ -42,10 +47,19 @@
         .profit-text { color: var(--success); }
         .loss-text { color: var(--danger); }
 
+        /* تعديل تصميم شريط التحليل البصري ليكون دقيقاً */
+        .progress-bar-container { background: #edf2f7; border-radius: 6px; height: 16px; width: 100%; overflow: hidden; position: relative; border: 1px solid #cbd5e1; }
+        .progress-bar-fill { height: 100%; transition: width 0.4s ease-in-out; }
+        .progress-text { font-size: 10px; position: absolute; width: 100%; text-align: center; top: -1px; color: #000; font-weight: 900; }
+
+        /* كرت المساعد المالي الذكي */
+        .insights-card { background: linear-gradient(135deg, #f8fafc, #edf2f7); border-right: 5px solid var(--accent); padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); }
+        .insights-card h3 { margin: 0 0 8px 0; font-size: 14px; color: var(--primary); display: flex; align-items: center; gap: 5px; }
+        .insights-text { font-size: 12px; color: #334155; line-height: 1.6; }
+
         /* ضبط الإحصائيات السفلية للموايل لتصبح مرنة */
         .final-analysis { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 15px; background: #1e293b; padding: 12px; border-radius: 12px; color: white; }
         
-        /* على الشاشات المتوسطة والأكبر يتم تقسيمها لـ 3 أعمدة */
         @media (min-width: 480px) {
             .final-analysis { grid-template-columns: repeat(3, 1fr); }
             .stat-box strong { font-size: 22px; }
@@ -62,8 +76,16 @@
 
 <header>
     <div id="live-indicator">🔄 تحديث...</div>
-    <h1 style="margin:0; font-size: 18px;">التحليل المالي السنوي 2026</h1>
+    <h1 style="margin:0; font-size: 18px;">التحليل المالي السنوي <span id="header-year">2026</span></h1>
 </header>
+
+<!-- قسم الأرشيف الذكي لاختيار السنوات -->
+<div class="archive-container">
+    <label for="year-select">📂 أرشيف السنوات المالي:</label>
+    <select id="year-select" class="archive-select">
+        <!-- سيتم ملء السنوات برمجياً من 2024 لـ 2070 -->
+    </select>
+</div>
 
 <div class="summary-grid">
     <div class="stat-box" style="border-color: var(--success);">
@@ -76,10 +98,15 @@
     </div>
 </div>
 
+<!-- المساعد المالي الذكي لقراءة وتحليل الأرقام فورياً -->
+<div class="insights-card">
+    <h3>💡 المساعد المالي الذكي (AZEMAA AI):</h3>
+    <div id="ai-insights-content" class="insights-text">جاري تحليل البيانات وإعداد التوصيات الفورية...</div>
+</div>
+
 <div class="report-card">
-    <h2>📅 جدول تحليل الشهور (2026)</h2>
+    <h2>📅 جدول تحليل الشهور (<span id="table-year">2026</span>)</h2>
     
-    <!-- حاوية التمرير الأفقي للموبايل -->
     <div class="table-container">
         <table>
             <thead>
@@ -89,6 +116,7 @@
                     <th>💰 مدفوع الزبائن</th>
                     <th>📥 وارد (yom)</th>
                     <th>📤 مصروفات + رواتب</th>
+                    <th>📊 نسبة استهلاك الوارد</th>
                     <th>📊 صافي الشهر</th>
                 </tr>
             </thead>
@@ -114,7 +142,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
@@ -129,31 +157,59 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const currentYear = 2026;
+    
+    let currentYear = new Date().getFullYear();
     const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
-    function initReport() {
+    // توليد خيارات السنوات ديناميكياً من 2024 وحتى 2070
+    const yearSelect = document.getElementById('year-select');
+    for (let y = 2024; y <= 2070; y++) {
+        let option = document.createElement('option');
+        option.value = y;
+        option.text = y;
+        yearSelect.appendChild(option);
+    }
+
+    yearSelect.value = currentYear;
+    document.getElementById('header-year').innerText = currentYear;
+    document.getElementById('table-year').innerText = currentYear;
+
+    let clientsRef, yomyaRef, weeksRef;
+
+    function initReport(selectedYear) {
         document.getElementById('live-indicator').style.display = 'block';
+        document.getElementById('header-year').innerText = selectedYear;
+        document.getElementById('table-year').innerText = selectedYear;
+
+        if(clientsRef) off(clientsRef);
+        if(yomyaRef) off(yomyaRef);
+        if(weeksRef) off(weeksRef);
+
         const dataStore = { clients: {}, yomya: {}, weeks: {} };
         let checks = { c: false, y: false, w: false };
 
         const runCalculation = () => {
             if (checks.c && checks.y && checks.w) {
-                processAndRender(dataStore);
+                processAndRender(dataStore, selectedYear);
                 document.getElementById('live-indicator').style.display = 'none';
             }
         };
 
-        onValue(ref(db, 'clients'), snap => { dataStore.clients = snap.val() || {}; checks.c = true; runCalculation(); });
-        onValue(ref(db, 'azemaa_v5/yomya_2026_clean'), snap => { dataStore.yomya = snap.val() || {}; checks.y = true; runCalculation(); });
-        onValue(ref(db, 'weeks'), snap => { dataStore.weeks = snap.val() || {}; checks.w = true; runCalculation(); });
+        clientsRef = ref(db, 'clients');
+        yomyaRef = ref(db, `azemaa_v5/yomya_${selectedYear}_clean`);
+        weeksRef = ref(db, 'weeks');
+
+        onValue(clientsRef, snap => { dataStore.clients = snap.val() || {}; checks.c = true; runCalculation(); });
+        onValue(yomyaRef, snap => { dataStore.yomya = snap.val() || {}; checks.y = true; runCalculation(); });
+        onValue(weeksRef, snap => { dataStore.weeks = snap.val() || {}; checks.w = true; runCalculation(); });
     }
 
-    function processAndRender(data) {
+    function processAndRender(data, targetYear) {
         let monthlyStats = Array.from({ length: 12 }, () => ({ deals: 0, custPay: 0, yomIn: 0, totalOut: 0 }));
 
+        // 1. حساب الزبائن
         Object.values(data.clients).forEach(client => {
-            if (client.dy == currentYear) {
+            if (client.dy == targetYear) {
                 let m = parseInt(client.dm) - 1;
                 if (m >= 0 && m < 12) monthlyStats[m].deals++;
             }
@@ -161,7 +217,7 @@
                 client.pays.forEach(p => {
                     if (p.d) {
                         const d = new Date(p.d);
-                        if (d.getFullYear() === currentYear) {
+                        if (d.getFullYear() === targetYear) {
                             monthlyStats[d.getMonth()].custPay += parseFloat(p.v || 0);
                         }
                     }
@@ -169,10 +225,11 @@
             }
         });
 
+        // 2. حساب اليومية
         Object.values(data.yomya).forEach(y => {
             if (y.date) {
                 const d = new Date(y.date);
-                if (d.getFullYear() === currentYear) {
+                if (d.getFullYear() === targetYear) {
                     let m = d.getMonth();
                     monthlyStats[m].yomIn += parseFloat(y.inVal || 0);
                     monthlyStats[m].totalOut += parseFloat(y.outVal || 0);
@@ -180,9 +237,10 @@
             }
         });
 
+        // 3. حساب رواتب العمال
         Object.keys(data.weeks).forEach(weekKey => {
             const d = new Date(weekKey);
-            if (d.getFullYear() === currentYear) {
+            if (d.getFullYear() === targetYear) {
                 let m = d.getMonth();
                 data.weeks[weekKey].forEach(w => {
                     let sal = parseFloat(w.sal || 0);
@@ -194,14 +252,15 @@
             }
         });
 
-        renderTable(monthlyStats);
+        renderTable(monthlyStats, targetYear);
     }
 
-    function renderTable(stats) {
+    function renderTable(stats, targetYear) {
         const tbody = document.getElementById('monthly-table-body');
         tbody.innerHTML = "";
         let grandIn = 0, grandOut = 0;
         let totalProfits = 0, totalLosses = 0;
+        let bestMonth = { name: '', net: -Infinity };
 
         stats.forEach((m, index) => {
             let monthNet = m.yomIn - m.totalOut;
@@ -211,6 +270,39 @@
             if (monthNet > 0) totalProfits += monthNet;
             else totalLosses += Math.abs(monthNet);
 
+            if(monthNet > bestMonth.net && m.yomIn > 0) {
+                bestMonth = { name: monthNames[index], net: monthNet };
+            }
+
+            // التصحيح البرمجي الذكي لحساب الإشارة والنسبة المئوية للمصروفات:
+            let expPercentage = 0;
+            let barColor = 'var(--success)';
+            let displayText = '0%';
+            let barWidth = 0;
+
+            if (m.yomIn > 0) {
+                expPercentage = Math.round((m.totalOut / m.yomIn) * 100);
+                displayText = expPercentage + '%';
+                barWidth = Math.min(expPercentage, 100);
+                
+                if (expPercentage > 100) {
+                    barColor = 'var(--danger)';
+                    displayText = `عجز (${expPercentage}%)`;
+                } else if (expPercentage > 80) {
+                    barColor = 'var(--danger)';
+                } else if (expPercentage > 50) {
+                    barColor = 'var(--warning)';
+                } else {
+                    barColor = 'var(--success)';
+                }
+            } else if (m.totalOut > 0) {
+                // إذا كان هناك مصروفات بدون أي وارد (عجز كامل للشهر)
+                expPercentage = 100;
+                barWidth = 100;
+                barColor = 'var(--danger)';
+                displayText = 'عجز كامل (100%)';
+            }
+
             tbody.innerHTML += `
                 <tr>
                     <td class="month-name">${monthNames[index]}</td>
@@ -218,8 +310,15 @@
                     <td>${m.custPay.toLocaleString()}</td>
                     <td style="color:var(--success)">${m.yomIn.toLocaleString()}</td>
                     <td style="color:var(--danger)">${m.totalOut.toLocaleString()}</td>
+                    <td>
+                        <!-- شريط التقدم البصري المصحح والمطور -->
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="width: ${barWidth}%; background-color: ${barColor};"></div>
+                            <div class="progress-text">${displayText}</div>
+                        </div>
+                    </td>
                     <td class="${monthNet >= 0 ? 'profit-text' : 'loss-text'}">
-                        ${monthNet.toLocaleString()}
+                        ${monthNet >= 0 ? '▲ ' : '▼ '}${monthNet.toLocaleString()}
                     </td>
                 </tr>`;
         });
@@ -229,10 +328,48 @@
         
         document.getElementById('sum-all-profits').innerText = totalProfits.toLocaleString();
         document.getElementById('sum-all-losses').innerText = totalLosses.toLocaleString();
-        document.getElementById('final-net-result').innerText = (totalProfits - totalLosses).toLocaleString();
+        
+        let finalNet = totalProfits - totalLosses;
+        const finalNetElem = document.getElementById('final-net-result');
+        finalNetElem.innerText = finalNet.toLocaleString();
+        finalNetElem.className = finalNet >= 0 ? 'profit-text' : 'loss-text';
+
+        generateAiInsights(grandIn, grandOut, finalNet, bestMonth, targetYear);
     }
 
-    initReport();
+    function generateAiInsights(grandIn, grandOut, finalNet, bestMonth, year) {
+        const insightsContainer = document.getElementById('ai-insights-content');
+        if(grandIn === 0 && grandOut === 0) {
+            insightsContainer.innerHTML = `⚠️ لا توجد بيانات مسجلة بعد لسنة <b>${year}</b> في قاعدة البيانات الحالية.`;
+            return;
+        }
+
+        let advice = "";
+        let ratio = grandIn > 0 ? ((grandOut / grandIn) * 100).toFixed(1) : 100;
+
+        if (finalNet > 0) {
+            advice += `📈 أداء مالي ممتاز ومستقر لسنة <b>${year}</b>! حققت صافي أرباح نهائية بقيمة <b class="profit-text">${finalNet.toLocaleString()}</b>. `;
+            if(bestMonth.name) {
+                advice += `أفضل أداء شهري مسجل كان في شهر <b>${bestMonth.name}</b> بصافي ربح <b>${bestMonth.net.toLocaleString()}</b>. `;
+            }
+            if(ratio > 70) {
+                advice += `⚠️ تنبيه: على الرغم من الربحية، إلا أن نسبة المصروفات والرواتب مرتفعة وتلتهم <b>${ratio}%</b> من إجمالي الخزينة. ينصح بمراجعة بنود الهدر المالي.`;
+            } else {
+                advice += `✨ نسبة استهلاك الخزينة آمنة جداً وممتازة وتساوي <b>${ratio}%</b> فقط من الإيراد المالي.`;
+            }
+        } else {
+            advice += `🚨 الوضع المالي حرج لسنة <b>${year}</b>! هناك عجز وصافي خسارة مجمع بقيمة <b class="loss-text">${Math.abs(finalNet).toLocaleString()}</b>. `;
+            advice += `حجم الصرف والرواتب يتجاوز الوارد الفعلي بنسبة ضخمة، حيث تستهلك المصاريف حوالي <b>${ratio}%</b> من السيولة المتاحة. ينصح بوقف الصرف غير الضروري ومراجعة التحصيلات فوراً.`;
+        }
+
+        insightsContainer.innerHTML = advice;
+    }
+
+    yearSelect.addEventListener('change', (e) => {
+        initReport(parseInt(e.target.value));
+    });
+
+    initReport(currentYear);
 </script>
 </body>
 </html>
