@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AZEMAA PRO | نظام الراتب السحابي v10</title>
+    <title>AZEMAA PRO | النظام المتكامل المتصل بالسحاب</title>
     <style>
         :root {
             --whatsapp-green: #25D366; --dark-green: #075E54; --teal: #128C7E;
@@ -79,8 +79,8 @@
 <body>
 
 <header>
-    <div class="header-title">AZEMAA PRO 🌐 v10</div>
-    <div id="weekRangeDisplay">جاري الاتصال بالسحاب...</div>
+    <div class="header-title">AZEMAA PRO 🌐</div>
+    <div id="weekRangeDisplay">جاري التحميل...</div>
     <div class="dashboard">
         <div class="dash-card"><span>رواتب</span><strong id="stat-sal">0</strong></div>
         <div class="dash-card"><span>خصومات</span><strong id="stat-loan">0</strong></div>
@@ -126,12 +126,12 @@
     <button id="saveWeekBtn" style="width:100%; padding:15px; background:var(--dark-green); color:white; border:none; border-radius:12px; font-weight:900; cursor:pointer;">💾 حفظ الأسبوع الحالي سحابياً</button>
 </div>
 
-<!-- استيراد مكتبات Firebase Web v10 باستخدام CDN الرسمي السريع والمستقر -->
+<!-- جلب مكتبات Firebase من السيرفر مباشرة -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // إعدادات الفايربيس الخاصة بمشروعك
+    // إعدادات الفايربيس الخاصة بك
     const firebaseConfig = {
       apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
       authDomain: "azemaa-proo.firebaseapp.com",
@@ -143,7 +143,7 @@
       measurementId: "G-R28J7010TH"
     };
 
-    // تهيئة Firebase v10 وقاعدة البيانات اللحظية
+    // تهيئة المشروع وقاعدة البيانات
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
@@ -152,7 +152,7 @@
     let currentWeekDates = [];
     let currentWeekID = "";
 
-    // ربط الدوال لتعمل بشكل صحيح في نطاق الصفحة الخارجي (Global Window scope)
+    // ربط الوظائف بـ window لتظل قابلة للاستدعاء من الـ HTML
     window.updateDateFromSelectors = updateDateFromSelectors;
     window.handleDateChange = handleDateChange;
     window.toggleAtt = toggleAtt;
@@ -161,6 +161,7 @@
     window.updateInst = updateInst;
     window.removeWorker = removeWorker;
 
+    // البدء عند تحميل الصفحة
     window.onload = async function() {
         initDateSelectors();
         await fetchMasterWorkers();
@@ -208,28 +209,34 @@
         loadWeekData();
     }
 
-    // جلب قائمة العمال الرئيسية من السحاب v10
+    // جلب قائمة العمال من فايربيس
     async function fetchMasterWorkers() {
         const dbRef = ref(db);
         try {
             const snapshot = await get(child(dbRef, 'masterWorkers'));
-            masterWorkers = snapshot.exists() ? snapshot.val() : [];
+            if (snapshot.exists()) {
+                masterWorkers = snapshot.val();
+            } else {
+                masterWorkers = [];
+            }
             updateWorkerEditor();
             updateArchiveDropdown();
         } catch (error) {
-            console.error("خطأ في جلب العمال من السحاب:", error);
+            console.error("خطأ في جلب بيانات العمال:", error);
         }
     }
 
-    // جلب وحقن بيانات الحضور والسلف للأسبوع المحدد
+    // جلب بيانات الأسبوع الحالي من فايربيس
     async function loadWeekData() {
         const dbRef = ref(db);
         let saved = [];
         try {
             const snapshot = await get(child(dbRef, `weeks/${currentWeekID}`));
-            if (snapshot.exists()) saved = snapshot.val();
+            if (snapshot.exists()) {
+                saved = snapshot.val();
+            }
         } catch (error) {
-            console.error("خطأ في جلب بيانات الأسبوع الحالية:", error);
+            console.error("خطأ في جلب بيانات الأسبوع:", error);
         }
 
         const container = document.getElementById('cardsList');
@@ -289,7 +296,7 @@
         document.getElementById('stat-sal').innerText = gS; document.getElementById('stat-loan').innerText = gL; document.getElementById('stat-net').innerText = gN;
     }
 
-    // حفظ أسبوع في سحاب Firebase v10
+    // حفظ أسبوع في فايربيس
     document.getElementById('saveWeekBtn').onclick = async function saveWeek() {
         const data = Array.from(document.querySelectorAll('.worker-card')).map((c, idx) => ({
             name: c.querySelector('.card-name').innerText.trim(), 
@@ -303,14 +310,14 @@
 
         try {
             await set(ref(db, `weeks/${currentWeekID}`), data);
-            alert("✔️ تم الحفظ السحابي بنجاح (v10)");
+            alert("✔️ تم الحفظ في السحاب بنجاح");
             buildArchiveHistory();
         } catch (error) {
             alert("❌ فشل الحفظ: " + error.message);
         }
     }
 
-    // بناء سجل الأرشيف سحابياً بالكامل لقراءته على أي جهاز
+    // بناء سجل الأرشيف من البيانات السحابية مباشرة
     async function buildArchiveHistory() {
         const selectedName = document.getElementById('archiveSearch').value.trim();
         const display = document.getElementById('archiveContent');
@@ -360,7 +367,7 @@
                 });
             }
         } catch (error) {
-            console.error("خطأ في معالجة الأرشيف:", error);
+            console.error("خطأ في جلب الأرشيف:", error);
         }
         display.innerHTML = html || "<center>لا توجد بيانات لهذا الاسم</center>";
     }
@@ -382,7 +389,7 @@
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
     }
 
-    // إضافة عامل وحفظه في السحاب
+    // إضافة عامل جديد وحفظه في فايربيس
     document.getElementById('addWorkerBtn').onclick = async function addNewWorker() { 
         let name = document.getElementById('workerNameInp').value.trim(); 
         if(name) { 
@@ -406,7 +413,7 @@
                 loadWeekData(); 
             } 
         } catch (error) {
-            console.error("حدث خطأ أثناء مزامنة العمال مع السحاب:", error);
+            console.error("حدث خطأ أثناء حفظ قائمة العمال:", error);
         }
     }
 
