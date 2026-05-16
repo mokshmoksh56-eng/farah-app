@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="page-title">يومية الورشة 2026</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght=600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- تحديث المكتبات لإصدارات أكثر استقراراً وتوافقية مع المتصفحات الحديثة للموبايل -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -135,8 +134,57 @@
         wsInput.value = localStorage.getItem('workshop_name') || "فرح للمطابخ";
         wsInput.oninput = () => localStorage.setItem('workshop_name', wsInput.value);
 
-        setActualTime();
+        // استرجاع البيانات المكتوبة في الخانات قبل الريفريش (إن وجدت)
+        restoreDraftForm();
+        
+        // ربط أحداث الكتابة لحفظ المسودات فوراً منعاً لضياعها عند الريفريش
+        setupDraftAutoSave();
+
         renderTable();
+    }
+
+    // دالة لحفظ أي شيء يكتبه المستخدم في الذاكرة فوراً لقهر الريفريش
+    function setupDraftAutoSave() {
+        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id', 'searchBox'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.addEventListener('input', () => {
+                    localStorage.setItem(`draft_${id}`, el.value);
+                    if(id === 'edit-id' || id === 'searchBox') {
+                        if(id === 'searchBox') renderTable();
+                    }
+                });
+            }
+        });
+    }
+
+    // دالة استرجاع البيانات المكتوبة بعد إعادة تحميل الصفحة
+    function restoreDraftForm() {
+        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id', 'searchBox'];
+        inputs.forEach(id => {
+            const savedVal = localStorage.getItem(`draft_${id}`);
+            if(savedVal !== null) {
+                document.getElementById(id).value = savedVal;
+            }
+        });
+
+        // إذا لم يكن هناك تاريخ محفوظ، نضع الوقت الحالي الافتراضي
+        if(!localStorage.getItem('draft_entry-date')) {
+            setActualTime();
+        }
+
+        // تحديث نص زر الحفظ بناءً على ما إذا كنا في وضع التعديل أم لا
+        const editId = document.getElementById('edit-id').value;
+        if(editId) {
+            document.getElementById('btn-main').innerText = "تعديل العملية بالجدول";
+        }
+    }
+
+    // مسح المسودات المؤقتة بعد إتمام الحفظ بنجاح
+    function clearDraftStorage() {
+        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id'];
+        inputs.forEach(id => localStorage.removeItem(`draft_${id}`));
     }
 
     function setActualTime() {
@@ -179,8 +227,7 @@
             }
         }).catch(err => {
             document.getElementById('sync-status').innerText = "❌ فشل الاستيراد";
-            // تعديل لعرض تفاصيل الخطأ الحقيقي للمستخدم لمعرفة إن كانت المشكلة Permission Denied
-            alert("خطأ أثناء جلب البيانات: " + err.message + "\n\nتأكد من إعدادات القواعد (Rules) في الفايربيس الخاص بك.");
+            alert("خطأ أثناء جلب البيانات: " + err.message);
         });
     };
 
@@ -210,6 +257,7 @@
         }
 
         saveToLocalStorage();
+        clearDraftStorage();
         resetForm();
         renderTable();
     }
@@ -310,6 +358,13 @@
         document.getElementById('entry-out').value = item.outVal || "";
         document.getElementById('edit-id').value = id;
         document.getElementById('btn-main').innerText = "تعديل العملية بالجدول";
+        
+        // حفظ بيانات التعديل في الـ LocalStorage فوراً لحمايتها من الريفريش
+        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id'];
+        inputs.forEach(inpId => {
+            localStorage.setItem(`draft_${inpId}`, document.getElementById(inpId).value);
+        });
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
