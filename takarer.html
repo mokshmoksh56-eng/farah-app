@@ -8,7 +8,7 @@
         :root { --primary: #0f172a; --success: #059669; --danger: #dc2626; --accent: #2563eb; --bg: #f1f5f9; }
         * { box-sizing: border-box; font-weight: 900 !important; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--primary); }
-        header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+        header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; position: relative; }
         .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
         .stat-box { background: white; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid #eee; }
         .stat-box span { display: block; font-size: 12px; color: #64748b; margin-bottom: 5px; }
@@ -18,20 +18,16 @@
         .report-card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .report-card h2 { font-size: 16px; margin-top: 0; border-right: 4px solid var(--accent); padding-right: 10px; margin-bottom: 15px; }
         .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* مؤشر تحميل علوي خفيف بدل الشاشة الكاملة */
+        #live-indicator { position: absolute; top: 10px; left: 15px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 11px; display: none; }
     </style>
 </head>
 <body>
 
-<div id="loading">
-    <div class="spinner"></div>
-    <p>جاري سحب البيانات من السحابة...</p>
-</div>
-
 <header>
-    <h1 style="margin:0; font-size: 20px;">التقرير المالي الموحد</h1>
+    <div id="live-indicator">🔄 جاري المزامنة...</div>
+    <h1 style="margin:0; font-size: 20px;">التقرير المالي الموحد (مباشر)</h1>
     <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">نظام Azemaa Pro 2026 الحسي</div>
 </header>
 
@@ -62,7 +58,7 @@
 </div>
 
 <div class="report-card">
-    <h2>📊 تحليل الفترة</h2>
+    <h2>📊 تحليل الفترة الحالي</h2>
     <div class="data-row"><span>دخل الزبائن</span><strong id="m-cust" style="color: var(--success);">0</strong></div>
     <div class="data-row"><span>وارد الخزينة</span><strong id="m-yom-in" style="color: var(--success);">0</strong></div>
     <div class="data-row"><span>مصروفات الخزينة</span><strong id="m-yom-out" style="color: var(--danger);">0</strong></div>
@@ -83,9 +79,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    let dbRaw = { customers: {}, yomya: {}, gyab: {} };
 
-    // تهيئة السنوات
+    // تهيئة القوائم المنسدلة
     const yrSel = document.getElementById('yearSelect');
     const curYear = new Date().getFullYear();
     for(let y=2024; y<=2030; y++) {
@@ -93,61 +88,110 @@
     }
     document.getElementById('monthSelect').value = new Date().getMonth();
 
-    // ربط القوائم بالمعالجة
-    yrSel.onchange = () => processAllData();
-    document.getElementById('monthSelect').onchange = () => processAllData();
+    // تشغيل المزامنة الأونلاين المباشرة عند أي تغيير في الفلاتر
+    yrSel.onchange = () => fetchOnlineData();
+    document.getElementById('monthSelect').onchange = () => fetchOnlineData();
 
-    function startSync() {
-        let loaded = 0;
-        const checkDone = () => { 
-            loaded++; 
-            if(loaded >= 3) { 
-                document.getElementById('loading').style.display='none'; 
-                processAllData(); 
-            } 
-        };
+    let unsubscribes = [];
 
-        onValue(ref(db, 'azemaa_v5/customers'), snap => { dbRaw.customers = snap.val() || {}; checkDone(); });
-        onValue(ref(db, 'azemaa_v5/yomya'), snap => { dbRaw.yomya = snap.val() || {}; checkDone(); });
-        onValue(ref(db, 'azemaa_v5/gyab_data'), snap => { dbRaw.gyab = snap.val() || {}; checkDone(); });
-    }
+    function fetchOnlineData() {
+        // إظهار مؤشر التحميل الذكي
+        document.getElementById('live-indicator').style.display = 'block';
 
-    window.processAllData = function() {
+        // إلغاء الاستماع القديم لتوفير استهلاك البيانات والأداء
+        unsubscribes.forEach(unsub => unsub());
+        unsubscribes = [];
+
         const selYear = parseInt(yrSel.value);
         const selMonth = document.getElementById('monthSelect').value;
+
+        let dataStore = { customers: {}, yomya: {}, gyab: {} };
+        let checks = { c: false, y: false, g: false };
+
+        const checkAndProcess = () => {
+            if(checks.c && checks.y && checks.g) {
+                document.getElementById('live-indicator').style.display = 'none';
+                calculateFinancials(dataStore, selYear, selMonth);
+            }
+        };
+
+        // 1. سحب مباشر للزبائن أونلاين
+        const cUnsub = onValue(ref(db, 'azemaa_v5/customers'), snap => {
+            dataStore.customers = snap.val() || {};
+            checks.c = true;
+            checkAndProcess();
+        });
+        unsubscribes.push(cUnsub);
+
+        // 2. سحب مباشر لليومية أونلاين
+        const yUnsub = onValue(ref(db, 'azemaa_v5/yomya'), snap => {
+            dataStore.yomya = snap.val() || {};
+            checks.y = true;
+            checkAndProcess();
+        });
+        unsubscribes.push(yUnsub);
+
+        // 3. سحب مباشر للغياب والرواتب أونلاين
+        const gUnsub = onValue(ref(db, 'azemaa_v5/gyab_data'), snap => {
+            dataStore.gyab = snap.val() || {};
+            checks.g = true;
+            checkAndProcess();
+        });
+        unsubscribes.push(gUnsub);
+    }
+
+    function calculateFinancials(data, selYear, selMonth) {
         let totalIn = 0, totalOut = 0, mCust = 0, mYomIn = 0, mYomOut = 0, mWorkers = 0;
 
-        Object.values(dbRaw.customers).forEach(c => {
-            if(c.payments) c.payments.forEach(p => {
-                const d = new Date(p.date);
-                if(d.getFullYear() === selYear) {
-                    const amt = parseFloat(p.amount) || 0;
-                    totalIn += amt;
-                    if(selMonth === "all" || d.getMonth() == selMonth) mCust += amt;
-                }
-            });
-        });
-
-        Object.values(dbRaw.yomya).forEach(y => {
-            const d = new Date(y.date);
-            if(d.getFullYear() === selYear) {
-                const i = parseFloat(y.inVal) || 0, o = parseFloat(y.outVal) || 0;
-                totalIn += i; totalOut += o;
-                if(selMonth === "all" || d.getMonth() == selMonth) { mYomIn += i; mYomOut += o; }
-            }
-        });
-
-        Object.keys(dbRaw.gyab).forEach(weekKey => {
-            const d = new Date(weekKey);
-            if(d.getFullYear() === selYear) {
-                dbRaw.gyab[weekKey].forEach(w => {
-                    const net = calculateSavedNet(w);
-                    totalOut += net;
-                    if(selMonth === "all" || d.getMonth() == selMonth) mWorkers += net;
+        // حساب دخل الزبائن
+        Object.values(data.customers).forEach(c => {
+            if(c.payments) {
+                const paymentsArr = Array.isArray(c.payments) ? c.payments : Object.values(c.payments);
+                paymentsArr.forEach(p => {
+                    if(!p.date) return;
+                    const d = new Date(p.date);
+                    if(d.getFullYear() === selYear) {
+                        const amt = parseFloat(p.amount) || 0;
+                        if(selMonth === "all" || d.getMonth() == selMonth) {
+                            mCust += amt;
+                            totalIn += amt;
+                        }
+                    }
                 });
             }
         });
 
+        // حساب وارد ومصروفات الخزينة اليومية
+        Object.values(data.yomya).forEach(y => {
+            if(!y.date) return;
+            const d = new Date(y.date);
+            if(d.getFullYear() === selYear) {
+                const i = parseFloat(y.inVal) || 0, o = parseFloat(y.outVal) || 0;
+                if(selMonth === "all" || d.getMonth() == selMonth) { 
+                    mYomIn += i; 
+                    mYomOut += o; 
+                    totalIn += i;
+                    totalOut += o;
+                }
+            }
+        });
+
+        // حساب رواتب العمال
+        Object.keys(data.gyab).forEach(weekKey => {
+            const d = new Date(weekKey);
+            if(d.getFullYear() === selYear) {
+                const workersArr = Array.isArray(data.gyab[weekKey]) ? data.gyab[weekKey] : Object.values(data.gyab[weekKey]);
+                workersArr.forEach(w => {
+                    const net = calculateSavedNet(w);
+                    if(selMonth === "all" || d.getMonth() == selMonth) {
+                        mWorkers += net;
+                        totalOut += net;
+                    }
+                });
+            }
+        });
+
+        // تحديث الواجهة فوراً بالأرقام الأونلاين
         document.getElementById('total-in').innerText = Math.round(totalIn).toLocaleString();
         document.getElementById('total-out').innerText = Math.round(totalOut).toLocaleString();
         document.getElementById('total-net').innerText = Math.round(totalIn - totalOut).toLocaleString();
@@ -159,12 +203,19 @@
 
     function calculateSavedNet(w) {
         if(!w.sal || !w.att) return 0;
-        let attSum = w.att.reduce((a, b) => a + parseFloat(b), 0);
-        let loansSum = w.loans ? w.loans.reduce((a, b) => a + (parseFloat(b) || 0), 0) : 0;
+        const attArr = Array.isArray(w.att) ? w.att : Object.values(w.att);
+        let attSum = attArr.reduce((a, b) => a + parseFloat(b || 0), 0);
+        
+        let loansSum = 0;
+        if(w.loans) {
+            const loansArr = Array.isArray(w.loans) ? w.loans : Object.values(w.loans);
+            loansSum = loansArr.reduce((a, b) => a + (parseFloat(b) || 0), 0);
+        }
         return Math.max(0, Math.round(((parseFloat(w.sal) / 6) * attSum) - loansSum - (parseFloat(w.instPaid) || 0)));
     }
 
-    startSync();
+    // استدعاء أولي عند فتح الصفحة
+    fetchOnlineData();
 </script>
 </body>
 </html>
