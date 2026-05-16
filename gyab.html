@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AZEMAA PRO | النظام المتكامل المتصل بالسحاب</title>
+    <title>AZEMAA PRO | النظام المتكامل</title>
     <style>
         :root {
             --whatsapp-green: #25D366; --dark-green: #075E54; --teal: #128C7E;
@@ -75,12 +75,45 @@
 
         .footer-nav { position: fixed; bottom: 0; width: 100%; background: white; padding: 12px; display: flex; box-sizing: border-box; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 2000; }
     </style>
+
+    <!-- تضمين مكتبات Firebase الرسمية للمتصفح -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // إعدادات Firebase الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210",
+            measurementId: "G-R28J7010TH"
+        };
+
+        // تهيئة Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // ربط الدوال بـ window لتصبح متاحة في كود الـ HTML التقليدي
+        window.fbDB = db;
+        window.fbRef = ref;
+        window.fbSet = set;
+        window.fbGet = get;
+        window.fbChild = child;
+        window.fbUpdate = update;
+
+        // تشغيل النظام بعد التحميل والاتصال بقاعدة البيانات
+        initSystem();
+    </script>
 </head>
 <body>
 
 <header>
-    <div class="header-title">AZEMAA PRO 🌐</div>
-    <div id="weekRangeDisplay">جاري التحميل...</div>
+    <div class="header-title">AZEMAA PRO</div>
+    <div id="weekRangeDisplay">...</div>
     <div class="dashboard">
         <div class="dash-card"><span>رواتب</span><strong id="stat-sal">0</strong></div>
         <div class="dash-card"><span>خصومات</span><strong id="stat-loan">0</strong></div>
@@ -107,7 +140,7 @@
             <summary style="font-weight: 900; color: var(--teal); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 10px;">⚙️ الإعدادات</summary>
             <div style="display:flex; gap:5px; margin-top:10px;">
                 <input type="text" id="workerNameInp" style="flex:2; border: 1px solid #ddd; padding: 8px; border-radius: 8px;" placeholder="اسم جديد">
-                <button id="addWorkerBtn" style="background:var(--teal); color:white; border:none; padding:0 15px; border-radius:8px;">إضافة</button>
+                <button onclick="addNewWorker()" style="background:var(--teal); color:white; border:none; padding:0 15px; border-radius:8px;">إضافة</button>
             </div>
             <div id="workerListEditor" style="margin-top:10px;"></div>
         </details>
@@ -117,55 +150,28 @@
 
     <div style="background: white; border-radius: 15px; padding: 15px; margin-top: 20px; border: 2px solid var(--teal); margin-bottom: 80px;">
         <h3 style="text-align:center; color: var(--dark-green); margin:0 0 10px 0;">📂 الأرشيف التفصيلي</h3>
-        <select id="archiveSearch" style="width:100%; padding:12px; border-radius:10px; font-weight:900; border:2px solid var(--teal);"></select>
+        <select id="archiveSearch" oninput="buildArchiveHistory()" style="width:100%; padding:12px; border-radius:10px; font-weight:900; border:2px solid var(--teal);"></select>
         <div id="archiveContent" style="margin-top:15px;"></div>
     </div>
 </div>
 
 <div class="footer-nav">
-    <button id="saveWeekBtn" style="width:100%; padding:15px; background:var(--dark-green); color:white; border:none; border-radius:12px; font-weight:900; cursor:pointer;">💾 حفظ الأسبوع الحالي سحابياً</button>
+    <button onclick="saveWeek()" style="width:100%; padding:15px; background:var(--dark-green); color:white; border:none; border-radius:12px; font-weight:900; cursor:pointer;">💾 حفظ الأسبوع الحالي</button>
 </div>
 
-<!-- جلب مكتبات Firebase من السيرفر مباشرة -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-    // إعدادات الفايربيس الخاصة بك
-    const firebaseConfig = {
-      apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-      authDomain: "azemaa-proo.firebaseapp.com",
-      databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-      projectId: "azemaa-proo",
-      storageBucket: "azemaa-proo.firebasestorage.app",
-      messagingSenderId: "787350492977",
-      appId: "1:787350492977:web:84061dcf31622fcb07c210",
-      measurementId: "G-R28J7010TH"
-    };
-
-    // تهيئة المشروع وقاعدة البيانات
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
+<script>
     const weekdays = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+    
     let masterWorkers = [];
     let currentWeekDates = [];
     let currentWeekID = "";
+    let allArchiveData = {}; // لتخزين الأرشيف السحابي وسرعة البحث المباشر
 
-    // ربط الوظائف بـ window لتظل قابلة للاستدعاء من الـ HTML
-    window.updateDateFromSelectors = updateDateFromSelectors;
-    window.handleDateChange = handleDateChange;
-    window.toggleAtt = toggleAtt;
-    window.recalc = recalc;
-    window.shareToWhatsApp = shareToWhatsApp;
-    window.updateInst = updateInst;
-    window.removeWorker = removeWorker;
-
-    // البدء عند تحميل الصفحة
-    window.onload = async function() {
+    // دالة تبدأ بمجرد تحميل مكتبة الفايربيز
+    function initSystem() {
         initDateSelectors();
-        await fetchMasterWorkers();
-    };
+        loadMasterWorkers();
+    }
 
     function initDateSelectors() {
         const dSel = document.getElementById('dayPicker');
@@ -209,11 +215,10 @@
         loadWeekData();
     }
 
-    // جلب قائمة العمال من فايربيس
-    async function fetchMasterWorkers() {
-        const dbRef = ref(db);
-        try {
-            const snapshot = await get(child(dbRef, 'masterWorkers'));
+    // جلب قائمة العمال من Firebase
+    function loadMasterWorkers() {
+        if(!window.fbDB) return;
+        window.fbGet(window.fbRef(window.fbDB, 'masterWorkers')).then((snapshot) => {
             if (snapshot.exists()) {
                 masterWorkers = snapshot.val();
             } else {
@@ -221,56 +226,49 @@
             }
             updateWorkerEditor();
             updateArchiveDropdown();
-        } catch (error) {
-            console.error("خطأ في جلب بيانات العمال:", error);
-        }
+            loadWeekData();
+            preloadAllArchive(); // جلب بيانات الأرشيف بالكامل في الخلفية لضمان عمل الفلتر
+        }).catch((error) => console.error("Error loading workers:", error));
     }
 
-    // جلب بيانات الأسبوع الحالي من فايربيس
-    async function loadWeekData() {
-        const dbRef = ref(db);
-        let saved = [];
-        try {
-            const snapshot = await get(child(dbRef, `weeks/${currentWeekID}`));
-            if (snapshot.exists()) {
-                saved = snapshot.val();
-            }
-        } catch (error) {
-            console.error("خطأ في جلب بيانات الأسبوع:", error);
-        }
-
-        const container = document.getElementById('cardsList');
-        container.innerHTML = masterWorkers.map((worker, idx) => {
-            let d = saved.find(s => s.name === worker.name) || {sal:'', loans:['','','','','',''], att:[1,1,1,1,1,1], note:''};
-            return `
-                <div class="worker-card" id="card-${idx}">
-                    <div class="card-name">${worker.name}</div>
-                    <input type="text" inputmode="decimal" class="salary-input" value="${d.sal}" oninput="recalc(${idx})" placeholder="الراتب الأسبوعي">
-                    <div class="days-grid">
-                        ${[0,1,2,3,4,5].map(di => `
-                            <div class="day-row">
-                                <div class="day-info">
-                                    <span class="day-name">${weekdays[di]}</span>
-                                    <span class="day-num">${currentWeekDates[di]}</span>
+    // جلب بيانات الأسبوع الحالي من Firebase
+    function loadWeekData() {
+        if(!window.fbDB || masterWorkers.length === 0) return;
+        window.fbGet(window.fbRef(window.fbDB, 'weeks/' + currentWeekID)).then((snapshot) => {
+            const saved = snapshot.exists() ? snapshot.val() : [];
+            const container = document.getElementById('cardsList');
+            container.innerHTML = masterWorkers.map((worker, idx) => {
+                let d = saved.find(s => s.name === worker.name) || {sal:'', loans:['','','','','',''], att:[1,1,1,1,1,1], note:''};
+                return `
+                    <div class="worker-card" id="card-${idx}">
+                        <div class="card-name">${worker.name}</div>
+                        <input type="text" inputmode="decimal" class="salary-input" value="${d.sal || ''}" oninput="recalc(${idx})" placeholder="الراتب الأسبوعي">
+                        <div class="days-grid">
+                            ${[0,1,2,3,4,5].map(di => `
+                                <div class="day-row">
+                                    <div class="day-info">
+                                        <span class="day-name">${weekdays[di]}</span>
+                                        <span class="day-num">${currentWeekDates[di]}</span>
+                                    </div>
+                                    <div class="att-btns">
+                                        <button class="btn-tgl ${d.att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx})">ح</button>
+                                        <button class="btn-tgl ${d.att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx})">½</button>
+                                        <button class="btn-tgl ${d.att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx})">غ</button>
+                                    </div>
+                                    <input type="text" inputmode="decimal" class="loan-input" value="${d.loans ? (d.loans[di] || '') : ''}" oninput="recalc(${idx})" placeholder="سلفه">
                                 </div>
-                                <div class="att-btns">
-                                    <button class="btn-tgl ${d.att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx})">ح</button>
-                                    <button class="btn-tgl ${d.att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx})">½</button>
-                                    <button class="btn-tgl ${d.att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx})">غ</button>
-                                </div>
-                                <input type="text" inputmode="decimal" class="loan-input" value="${d.loans[di] || ''}" oninput="recalc(${idx})" placeholder="سلفه">
-                            </div>
-                        `).join('')}
-                    </div>
-                    <textarea class="note-input" placeholder="ملاحظات العمال..." rows="2">${d.note || ''}</textarea>
-                    <div class="card-footer">
-                        <div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>قسط: <span class="sum-inst">0</span></span></div>
-                        <div class="footer-line" style="font-size:14px; color:var(--dark-green);"><span>الصافي:</span> <span class="sum-n">0</span></div>
-                    </div>
-                    <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال واتساب 🟢</button>
-                </div>`;
-        }).join('');
-        masterWorkers.forEach((_, i) => recalc(i));
+                            `).join('')}
+                        </div>
+                        <textarea class="note-input" placeholder="ملاحظات العمال..." rows="2">${d.note || ''}</textarea>
+                        <div class="card-footer">
+                            <div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>قسط: <span class="sum-inst">0</span></span></div>
+                            <div class="footer-line" style="font-size:14px; color:var(--dark-green);"><span>الصافي:</span> <span class="sum-n">0</span></div>
+                        </div>
+                        <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال واتساب 🟢</button>
+                    </div>`;
+            }).join('');
+            masterWorkers.forEach((_, i) => recalc(i));
+        }).catch((error) => console.error("Error loading week data:", error));
     }
 
     function toggleAtt(btn, idx) { Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active')); btn.classList.add('active'); recalc(idx); }
@@ -296,8 +294,9 @@
         document.getElementById('stat-sal').innerText = gS; document.getElementById('stat-loan').innerText = gL; document.getElementById('stat-net').innerText = gN;
     }
 
-    // حفظ أسبوع في فايربيس
-    document.getElementById('saveWeekBtn').onclick = async function saveWeek() {
+    // حفظ أسبوع الحضور في Firebase سحابياً
+    function saveWeek() {
+        if(!window.fbDB) return;
         const data = Array.from(document.querySelectorAll('.worker-card')).map((c, idx) => ({
             name: c.querySelector('.card-name').innerText.trim(), 
             sal: c.querySelector('.salary-input').value,
@@ -307,72 +306,67 @@
             instPaid: parseFloat(c.querySelector('.sum-inst').innerText) || 0, 
             fullDates: currentWeekDates 
         }));
-
-        try {
-            await set(ref(db, `weeks/${currentWeekID}`), data);
-            alert("✔️ تم الحفظ في السحاب بنجاح");
-            buildArchiveHistory();
-        } catch (error) {
-            alert("❌ فشل الحفظ: " + error.message);
-        }
+        
+        window.fbSet(window.fbRef(window.fbDB, 'weeks/' + currentWeekID), data).then(() => {
+            alert("✔️ تم الحفظ سحابياً في Firebase بنجاح");
+            preloadAllArchive();
+        }).catch((error) => alert("خطأ أثناء الحفظ: " + error));
     }
 
-    // بناء سجل الأرشيف من البيانات السحابية مباشرة
-    async function buildArchiveHistory() {
+    // جلب مسبق لكافة الأسابيع لبناء الأرشيف بشكل فوري عند الفلترة
+    function preloadAllArchive() {
+        window.fbGet(window.fbRef(window.fbDB, 'weeks')).then((snapshot) => {
+            if(snapshot.exists()) {
+                allArchiveData = snapshot.val();
+            }
+        });
+    }
+
+    function buildArchiveHistory() {
         const selectedName = document.getElementById('archiveSearch').value.trim();
         const display = document.getElementById('archiveContent');
         if(!selectedName) { display.innerHTML = ""; return; }
-        
         let html = "";
-        try {
-            const snapshot = await get(child(ref(db), 'weeks'));
-            if(snapshot.exists()) {
-                const allWeeks = snapshot.val();
-                let keys = Object.keys(allWeeks).sort((a,b) => b.localeCompare(a));
-                
-                keys.forEach(key => {
-                    const dataArr = allWeeks[key];
-                    const d = dataArr.find(r => r.name.trim() === selectedName);
-                    if(d) {
-                        let loansArr = d.loans || [0,0,0,0,0,0];
-                        let attArr = d.att || [1,1,1,1,1,1];
-                        let fDates = d.fullDates || ["","","","","",""];
-                        let tL = loansArr.reduce((a, b) => a + (parseFloat(b) || 0), 0);
-                        let attSum = attArr.reduce((a, b) => a + parseFloat(b), 0);
-                        let net = Math.max(0, Math.round(((parseFloat(d.sal)/6)*attSum)-tL-(d.instPaid||0)));
+        
+        let keys = Object.keys(allArchiveData).sort((a,b) => b.localeCompare(a));
+        
+        keys.forEach(key => {
+            const dataArr = allArchiveData[key];
+            const d = dataArr.find(r => r.name.trim() === selectedName);
+            if(d) {
+                let loansArr = d.loans || [0,0,0,0,0,0];
+                let attArr = d.att || [1,1,1,1,1,1];
+                let fDates = d.fullDates || ["","","","","",""];
+                let tL = loansArr.reduce((a, b) => a + (parseFloat(b) || 0), 0);
+                let attSum = attArr.reduce((a, b) => a + parseFloat(b), 0);
+                let net = Math.max(0, Math.round(((parseFloat(d.sal)/6)*attSum)-tL-(d.instPaid||0)));
 
-                        let tableRows = "";
-                        for(let i=0; i<6; i++) {
-                            let status = attArr[i] == 1 ? "حاضر" : (attArr[i] == 0.5 ? "نصف يوم" : "غائب");
-                            let rowClass = attArr[i] == 0 ? "row-absent" : (attArr[i] == 0.5 ? "row-half" : "");
-                            tableRows += `<tr class="${rowClass}">
-                                <td style="font-size:10px;">${weekdays[i]}<br>${fDates[i]}</td>
-                                <td>${status}</td>
-                                <td>${loansArr[i] || '-'}</td>
-                            </tr>`;
-                        }
+                let tableRows = "";
+                for(let i=0; i<6; i++) {
+                    let status = attArr[i] == 1 ? "حاضر" : (attArr[i] == 0.5 ? "نصف يوم" : "غائب");
+                    let rowClass = attArr[i] == 0 ? "row-absent" : (attArr[i] == 0.5 ? "row-half" : "");
+                    tableRows += `<tr class="${rowClass}">
+                        <td style="font-size:10px;">${weekdays[i]}<br>${fDates[i]}</td>
+                        <td>${status}</td>
+                        <td>${loansArr[i] || '-'}</td>
+                    </tr>`;
+                }
 
-                        html += `<div style="margin-bottom:25px; border:2px solid #ddd; border-radius:10px; overflow:hidden;">
-                            <div style="background:#f8f9fa; padding:10px; border-bottom:1px solid #ddd;">
-                                <div style="font-weight:900; color:var(--dark-green);">📅 أسبوع: ${fDates[0]}</div>
-                                <div style="font-size:11px;">الراتب الأساسي: ${d.sal} | قسط: ${d.instPaid} | <b>الصافي: ${net}</b></div>
-                            </div>
-                            <table class="archive-table">
-                                <thead><tr><th>اليوم</th><th>الحالة</th><th>سلف</th></tr></thead>
-                                <tbody>${tableRows}</tbody>
-                            </table>
-                            ${d.note ? `<div style="padding:10px; font-size:12px; font-weight:900; background:#fffdef; border-top:1px solid #eee;">📝 ملاحظة: ${d.note}</div>` : ''}
-                        </div>`;
-                    }
-                });
+                html += `<div style="margin-bottom:25px; border:2px solid #ddd; border-radius:10px; overflow:hidden;">
+                    <div style="background:#f8f9fa; padding:10px; border-bottom:1px solid #ddd;">
+                        <div style="font-weight:900; color:var(--dark-green);">📅 أسبوع: ${fDates[0]}</div>
+                        <div style="font-size:11px;">الراتب الأساسي: ${d.sal} | قسط: ${d.instPaid} | <b>الصافي: ${net}</b></div>
+                    </div>
+                    <table class="archive-table">
+                        <thead><tr><th>اليوم</th><th>الحالة</th><th>سلف</th></tr></thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                    ${d.note ? `<div style="padding:10px; font-size:12px; font-weight:900; background:#fffdef; border-top:1px solid #eee;">📝 ملاحظة: ${d.note}</div>` : ''}
+                </div>`;
             }
-        } catch (error) {
-            console.error("خطأ في جلب الأرشيف:", error);
-        }
+        });
         display.innerHTML = html || "<center>لا توجد بيانات لهذا الاسم</center>";
     }
-
-    document.getElementById('archiveSearch').oninput = buildArchiveHistory;
 
     function shareToWhatsApp(idx) {
         const c = document.getElementById(`card-${idx}`);
@@ -389,42 +383,39 @@
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
     }
 
-    // إضافة عامل جديد وحفظه في فايربيس
-    document.getElementById('addWorkerBtn').onclick = async function addNewWorker() { 
+    function addNewWorker() { 
         let name = document.getElementById('workerNameInp').value.trim(); 
         if(name) { 
             masterWorkers.push({id: Date.now(), name: name, inst_weekly: ''}); 
-            await saveMaster(true); 
+            saveMaster(true); 
             document.getElementById('workerNameInp').value = ""; 
         } 
     }
-
+    
     function updateInst(idx, val) { 
         masterWorkers[idx].inst_weekly = val; 
-        saveMaster(); 
+        saveMaster(false); 
     }
-
-    async function saveMaster(refreshUI = false) { 
-        try {
-            await set(ref(db, 'masterWorkers'), masterWorkers);
+    
+    function saveMaster(refreshUI = false) { 
+        if(!window.fbDB) return;
+        window.fbSet(window.fbRef(window.fbDB, 'masterWorkers'), masterWorkers).then(() => {
             if(refreshUI) { 
                 updateWorkerEditor(); 
                 updateArchiveDropdown(); 
                 loadWeekData(); 
             } 
-        } catch (error) {
-            console.error("حدث خطأ أثناء حفظ قائمة العمال:", error);
-        }
+        });
     }
-
+    
     function updateWorkerEditor() { 
         document.getElementById('workerListEditor').innerHTML = masterWorkers.map((w, i) => `<div style="padding:10px; border:1px solid #ddd; background:#fff; margin-bottom:8px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;"><b>${w.name}</b><div style="display:flex; gap:5px;"><input type="number" placeholder="قسط" style="width:60px; padding:5px" value="${w.inst_weekly || ''}" oninput="updateInst(${i}, this.value)"><button onclick="removeWorker(${i})" style="color:red; border:none; background:none;">🗑️</button></div></div>`).join(''); 
     }
     
-    async function removeWorker(i) { 
+    function removeWorker(i) { 
         if(confirm("حذف العامل؟")) { 
             masterWorkers.splice(i,1); 
-            await saveMaster(true); 
+            saveMaster(true); 
         } 
     }
     
