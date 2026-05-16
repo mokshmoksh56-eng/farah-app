@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AZEMAA PRO 3D - Online Notes</title>
     
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-    
     <style>
         :root { --primary: #2563eb; --bg: #f0f2f5; }
         
@@ -30,7 +27,6 @@
             background: #f9fafb; outline: none;
         }
 
-        /* زر الحفظ الأصفر */
         .btn-main { 
             width: 100%; padding: 16px; background: #facc15; color: #1e293b; 
             border: none; border-radius: 12px; font-weight: 900; margin-top: 15px; 
@@ -118,33 +114,45 @@
         <h2 style="text-align: center; color: var(--primary);">🚀 AZEMAA ONLINE-NOTES</h2>
         <textarea id="noteInput" placeholder="اكتب ملاحظتك هنا.."></textarea>
         <label style="display:block; margin-top:10px; text-align:center; background:#eee; padding:10px; border-radius:10px; cursor:pointer;">
-            🖼️ اختيار صورة <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="processFile(event)">
+            🖼️ اختيار صورة <input type="file" id="fileInput" accept="image/*" style="display:none;">
         </label>
         <input type="hidden" id="editId" value="">
-        <button class="btn-main" onclick="handleSave()">حفظ الملحوظة أونلاين ✅</button>
+        <button class="btn-main" id="saveBtn">حفظ الملحوظة أونلاين ✅</button>
     </div>
 
-    <input type="text" id="searchBox" class="search-box" placeholder="🔍 ابحث بالكلمات أو الأرقام (123 أو ١٢٣)..." onkeyup="loadNotes()">
+    <input type="text" id="searchBox" class="search-box" placeholder="🔍 ابحث بالكلمات أو الأرقام (123 أو ١٢٣)...">
     
     <div id="notesList" class="notes-grid"></div>
 </div>
 
-<script>
+<!-- تحويل الـ script إلى نوع module للتعامل مع v10 -->
+<script type="module">
+    // استيراد حزم الـ SDK الخاصة بـ Firebase v10
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // إعدادات مشروعك الجديد
     const firebaseConfig = {
-        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFLHpOc1M",
-        authDomain: "farah-kitchen.firebaseapp.com",
-        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com",
-        projectId: "farah-kitchen",
-        storageBucket: "farah-kitchen.firebasestorage.app",
-                messagingSenderId: "702572851072",
-        appId: "1:702572851072:web:320a92c9430abba6b71b65"
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
     
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    // تهيئة Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
     let currentImageData = "";
     const colors = ["#bae6fd", "#fef08a", "#bbf7d0", "#fecaca", "#ddd6fe", "#ffedd5", "#a5f3fc", "#e9d5ff"];
+
+    // ربط الأحداث (Event Listeners) لأن النمط الحديث لا يفضل الـ inline onclick
+    document.getElementById('fileInput').addEventListener('change', processFile);
+    document.getElementById('saveBtn').addEventListener('click', handleSave);
+    document.getElementById('searchBox').addEventListener('keyup', loadNotes);
 
     function processFile(e) {
         const file = e.target.files[0];
@@ -182,7 +190,6 @@
         return `${day}-${month}-${year} | ${formattedHours}:${minutes}:${seconds} ${ampm}`;
     }
 
-    // دالة ذكية لتحويل الأرقام العربية (الهندية المشرقية) إلى إنجليزية
     function convertArabicNumbersToEnglish(str) {
         const arabicNumbers = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
         for (let i = 0; i < 10; i++) {
@@ -199,7 +206,8 @@
         const dateStr = getFormattedDateTime();
 
         if (editId) {
-            db.ref('azemaa_notes/' + editId).update({
+            // تحديث بالأسلوب الحديث v10
+            update(ref(db, 'azemaa_notes/' + editId), {
                 text: text,
                 image: currentImageData,
                 date: dateStr + " (تعديل)"
@@ -211,8 +219,9 @@
                 date: dateStr,
                 bgColor: colors[Math.floor(Math.random() * colors.length)]
             };
-            const newRef = db.ref('azemaa_notes').push();
-            newRef.set(noteData).then(() => resetForm());
+            // إضافة بالأسلوب الحديث v10
+            const newRef = push(ref(db, 'azemaa_notes'));
+            set(newRef, noteData).then(() => resetForm());
         }
     }
 
@@ -224,13 +233,14 @@
     }
 
     function loadNotes() {
-        // تحويل نص البحث إلى حروف صغيرة وتوحيد الأرقام المكتوبة فيه إلى أرقام إنجليزية
         let term = document.getElementById('searchBox').value.toLowerCase();
         term = convertArabicNumbersToEnglish(term);
         
         const list = document.getElementById('notesList');
+        const dbRef = ref(db, 'azemaa_notes');
 
-        db.ref('azemaa_notes').on('value', (snapshot) => {
+        // جلب البيانات ومراقبتها بالأسلوب الحديث v10
+        onValue(dbRef, (snapshot) => {
             list.innerHTML = "";
             const data = snapshot.val();
             if (!data) return;
@@ -238,46 +248,56 @@
             const notesArray = Object.keys(data).map(key => ({...data[key], fbId: key})).reverse();
 
             notesArray.forEach(note => {
-                // توحيد الأرقام الموجودة داخل نص الملحوظة الأصلي لتسهيل مطابقتها بالبحث
                 const normalizedNoteText = convertArabicNumbersToEnglish(note.text.toLowerCase());
 
                 if (normalizedNoteText.includes(term)) {
-                    list.innerHTML += `
-                        <div class="card" style="background: ${note.bgColor}">
-                            ${note.image ? `<img src="${note.image}" class="note-img">` : ""}
-                            <div class="card-header-split">
-                                <span class="date-badge">📅 ${note.date}</span>
-                            </div>
-                            <div class="card-body-split">
-                                <div class="note-content">${note.text}</div>
-                            </div>
-                            <div class="actions">
-                                <span class="edit-btn" onclick="editNote('${note.fbId}')">✏️</span>
-                                <span class="del-btn" onclick="deleteNote('${note.fbId}')">🗑️</span>
-                            </div>
-                        </div>`;
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.style.background = note.bgColor;
+                    card.innerHTML = `
+                        ${note.image ? `<img src="${note.image}" class="note-img">` : ""}
+                        <div class="card-header-split">
+                            <span class="date-badge">📅 ${note.date}</span>
+                        </div>
+                        <div class="card-body-split">
+                            <div class="note-content">${note.text}</div>
+                        </div>
+                        <div class="actions">
+                            <span class="edit-btn">✏️</span>
+                            <span class="del-btn">🗑️</span>
+                        </div>
+                    `;
+
+                    // ربط أزرار التعديل والحذف بشكل آمن داخل الموديول
+                    card.querySelector('.edit-btn').addEventListener('click', () => editNote(note.fbId));
+                    card.querySelector('.del-btn').addEventListener('click', () => deleteNote(note.fbId));
+
+                    list.appendChild(card);
                 }
             });
         });
     }
 
     function editNote(id) {
-        db.ref('azemaa_notes/' + id).once('value', (snap) => {
-            const note = snap.val();
-            document.getElementById('noteInput').value = note.text;
-            document.getElementById('editId').value = id;
-            currentImageData = note.image || "";
-            window.scrollTo({top: 0, behavior: 'smooth'});
+        get(ref(db, 'azemaa_notes/' + id)).then((snap) => {
+            if (snap.exists()) {
+                const note = snap.val();
+                document.getElementById('noteInput').value = note.text;
+                document.getElementById('editId').value = id;
+                currentImageData = note.image || "";
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            }
         });
     }
 
     function deleteNote(id) {
         if (confirm("حذف الملحوظة؟")) {
-            db.ref('azemaa_notes/' + id).remove();
+            remove(ref(db, 'azemaa_notes/' + id));
         }
     }
 
-    window.onload = loadNotes;
+    // تشغيل جلب البيانات عند تحميل الصفحة أول مرة
+    loadNotes();
 </script>
 </body>
 </html>
