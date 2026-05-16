@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="page-title">يومية الورشة 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- مكتبات فايربيس المستقرة والمتوافقة مع التشغيل المحلى والسحابى المختلط -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
         :root {
             --primary: #1e40af; --success: #059669; --danger: #dc2626;
             --whatsapp: #25d366; --bg: #f8fafc; --card-bg: #ffffff; --text-main: #1e293b;
+            --cloud-blue: #00a8ff;
         }
         body { font-family: 'Cairo', sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; padding: 10px; line-height: 1.4; font-weight: 700; }
         .container { max-width: 1100px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
@@ -42,14 +48,18 @@
         .btn-edit { color: var(--primary); border: 1px solid var(--primary); }
         .btn-del { color: var(--danger); }
         
-        #sync-status { font-size: 11px; text-align: center; margin-bottom: 5px; color: var(--success); font-weight: bold; }
+        #sync-status { font-size: 12px; text-align: center; margin-bottom: 5px; color: var(--success); font-weight: bold; }
+
+        .sync-box-yom { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; border-top: 2px solid #eee; padding-top: 15px; }
+        .btn-cloud-yom { border: none; color: #fff; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; background: var(--cloud-blue); transition: 0.3s; }
+        .btn-cloud-yom:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header><h1>حسابات الورشة 2026</h1></header>
-    <div id="sync-status">🔄 متصل بالسحابة</div>
+    <div id="sync-status">💾 حفظ فوري بالجدول محلياً مع دعم المزامنة السحابية</div>
 
     <div class="workshop-config">
         <span>🏠 اسم الورشة:</span>
@@ -82,11 +92,11 @@
         <input type="number" id="entry-out" style="border-right: 4px solid var(--danger)" placeholder="مبلغ خارج (-)">
         <input type="number" id="entry-in" style="border-right: 4px solid var(--success)" placeholder="مبلغ داخل (+)">
         <input type="hidden" id="edit-id">
-        <button class="btn-save" id="btn-main">حفظ العملية للسحابة</button>
+        <button class="btn-save" id="btn-main">حفظ العملية بالجدول</button>
     </div>
 
     <div class="search-area">
-        <input type="text" id="searchBox" placeholder="🔍 بحث شامل...">
+        <input type="text" id="searchBox" placeholder="🔍 بحث شامل في الجدول...">
     </div>
 
     <div class="table-wrapper">
@@ -95,12 +105,15 @@
             <tbody id="table-body"></tbody>
         </table>
     </div>
+
+    <div class="sync-box-yom">
+        <button onclick="saveToCloud()" class="btn-cloud-yom">☁️ تصدير (حفظ الجدول للسحابة)</button>
+        <button onclick="loadFromCloud()" class="btn-cloud-yom">🔄 استيراد (تحميل الحسابات من السحابة)</button>
+    </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
+<script>
+    // إعدادات اتصال الفايربيس الخاص بك
     const firebaseConfig = { 
         apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M", 
         authDomain: "farah-kitchen.firebaseapp.com", 
@@ -109,55 +122,109 @@
         appId: "1:702572851072:web:320a92c9430abba6b71b65" 
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
     const currentYear = 2026;
 
     let localData = {};
 
-    // تحميل اسم الورشة
-    const wsInput = document.getElementById('workshop-name');
-    wsInput.value = localStorage.getItem('workshop_name') || "فرح للمطابخ";
-    wsInput.oninput = () => localStorage.setItem('workshop_name', wsInput.value);
+    // تحميل البيانات المحلية المخزنة بالمتصفح عند بدء التشغيل
+    function initApp() {
+        const savedData = localStorage.getItem('azemaa_yomya_data');
+        localData = savedData ? JSON.parse(savedData) : {};
+        
+        // إدارة اسم الورشة
+        const wsInput = document.getElementById('workshop-name');
+        wsInput.value = localStorage.getItem('workshop_name') || "فرح للمطابخ";
+        wsInput.oninput = () => localStorage.setItem('workshop_name', wsInput.value);
 
-    // ضبط الوقت التلقائي
+        setActualTime();
+        renderTable();
+    }
+
+    // ضبط حقل الوقت تلقائياً
     function setActualTime() {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
     }
-    setActualTime();
 
-    // مزامنة البيانات
-    onValue(ref(db, 'azemaa_v5/yomya'), (snapshot) => {
-        localData = snapshot.val() || {};
-        renderTable();
-    });
+    // [تصدير سحابي] - يرفع كافة بيانات الجدول الحالية للسحابة فوراً
+    window.saveToCloud = function() {
+        if(Object.keys(localData).length === 0) {
+            alert("⚠️ الجدول فارغ تماماً، لا توجد بيانات لرفعها!");
+            return;
+        }
+        document.getElementById('sync-status').innerText = "⏳ جاري رفع الحسابات للسحابة...";
+        db.ref('azemaa_v5/yomya_backup').set(localData)
+        .then(() => {
+            document.getElementById('sync-status').innerText = "🟢 تم تصدير الجدول وحفظه بالسحابة بنجاح";
+            alert("✅ تم رفع وحفظ نسخة الجدول بالكامل على السحابة بنجاح!");
+        })
+        .catch(err => {
+            document.getElementById('sync-status').innerText = "❌ فشل التصدير السحابي";
+            alert("خطأ في الاتصال: " + err.message);
+        });
+    };
 
-    window.processEntry = async function() {
+    // [استيراد سحابي] - يجلب كامل الحسابات المخزنة بالسحابة ويضعها بالجدول
+    window.loadFromCloud = function() {
+        document.getElementById('sync-status').innerText = "⏳ جاري استيراد البيانات من السحابة...";
+        db.ref('azemaa_v5/yomya_backup').once('value').then((s) => {
+            if (s.exists()) { 
+                if(confirm("⚠️ هل تريد استيراد الحسابات السحابية؟ هذا الإجراء سيقوم بتحديث جدولك بالكامل بالبيانات المسترجعة.")) {
+                    localData = s.val() || {};
+                    saveToLocalStorage();
+                    renderTable();
+                    document.getElementById('sync-status').innerText = "🟢 تم استيراد الحسابات من السحابة بنجاح";
+                    alert("✅ تم استرجاع وبناء الجدول من السحابة بنجاح!");
+                }
+            } else {
+                document.getElementById('sync-status').innerText = "⚠️ لا توجد حسابات محفوظة مسبقاً على السحابة";
+                alert("لا توجد بيانات محفوظة على السحابة لهذا الحساب!");
+            }
+        }).catch(err => {
+            document.getElementById('sync-status').innerText = "❌ فشل الاستيراد";
+            alert("خطأ أثناء الجلب السحابي: " + err.message);
+        });
+    };
+
+    // دالة معالجة الإدخال والحفظ الفوري بالجدول
+    function processEntry() {
         const shop = document.getElementById('entry-shop').value;
         const customer = document.getElementById('entry-customer').value.trim() || "-";
-        const date = document.getElementById('entry-date').value;
+        const date = document.getElementById('entry-date').value || new Date().toISOString().slice(0, 16);
         const desc = document.getElementById('entry-desc').value.trim() || "-";
         const inVal = parseFloat(document.getElementById('entry-in').value) || 0;
         const outVal = parseFloat(document.getElementById('entry-out').value) || 0;
         const editId = document.getElementById('edit-id').value;
 
-        if (inVal === 0 && outVal === 0) { alert("يرجى إدخال مبلغ"); return; }
+        if (inVal === 0 && outVal === 0) { 
+            alert("يرجى كتابة مبلغ (داخل أو خارج) أولاً ليتم الحفظ بالجدول"); 
+            return; 
+        }
 
         const entryData = { shop, customer, date, desc, inVal, outVal };
 
         if (editId) {
-            await update(ref(db, `azemaa_v5/yomya/${editId}`), entryData);
+            entryData.id = editId;
+            localData[editId] = entryData;
         } else {
-            const newRef = push(ref(db, 'azemaa_v5/yomya'));
-            await set(newRef, { ...entryData, id: newRef.key });
+            const uniqueId = 'id_' + Date.now();
+            entryData.id = uniqueId;
+            localData[uniqueId] = entryData;
         }
 
+        saveToLocalStorage();
         resetForm();
-    };
+        renderTable();
+    }
 
     document.getElementById('btn-main').onclick = processEntry;
+
+    function saveToLocalStorage() {
+        localStorage.setItem('azemaa_yomya_data', JSON.stringify(localData));
+    }
 
     function resetForm() {
         document.getElementById('entry-customer').value = ""; 
@@ -165,10 +232,11 @@
         document.getElementById('entry-in').value = ""; 
         document.getElementById('entry-out').value = ""; 
         document.getElementById('edit-id').value = ""; 
-        document.getElementById('btn-main').innerText = "حفظ العملية للسحابة"; 
+        document.getElementById('btn-main').innerText = "حفظ العملية بالجدول"; 
         setActualTime();
     }
 
+    // معالجة وعرض الجدول والبطاقات العلوية بشكل فوري
     function renderTable() {
         const tableBody = document.getElementById('table-body');
         const searchVal = document.getElementById('searchBox').value.toLowerCase();
@@ -177,38 +245,59 @@
         let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
         const now = new Date();
 
-        const sortedKeys = Object.keys(localData).sort((a, b) => new Date(localData[b].date) - new Date(localData[a].date));
+        // ترتيب الحسابات من الأحدث للأقدم
+        const sortedKeys = Object.keys(localData).sort((a, b) => {
+            const dateA = localData[a].date ? new Date(localData[a].date) : new Date(0);
+            const dateB = localData[b].date ? new Date(localData[b].date) : new Date(0);
+            return dateB - dateA;
+        });
 
         sortedKeys.forEach(key => {
             const item = localData[key];
-            const rowDate = new Date(item.date);
-            const itemNet = item.inVal - item.outVal;
-            
-            if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
-            if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
-            if (rowDate.getFullYear() === currentYear) { totals.yearOut += item.outVal; totals.yearNet += itemNet; }
+            if (!item) return;
 
-            if ((item.customer + item.desc + item.shop).toLowerCase().includes(searchVal)) {
+            const itemDateStr = item.date || "";
+            const itemShop = item.shop || "-";
+            const itemCustomer = item.customer || "-";
+            const itemDesc = item.desc || "-";
+            const itemIn = parseFloat(item.inVal) || 0;
+            const itemOut = parseFloat(item.outVal) || 0;
+            const itemNet = itemIn - itemOut;
+            
+            // حساب الإحصائيات
+            if (itemDateStr) {
+                const rowDate = new Date(itemDateStr);
+                if (!isNaN(rowDate.getTime())) {
+                    if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
+                    if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
+                    if (rowDate.getFullYear() === currentYear) { 
+                        totals.yearOut += itemOut; 
+                        totals.yearNet += itemNet; 
+                    }
+                }
+            }
+
+            // الفلترة والبحث الفوري في الجدول
+            const searchPool = `${itemCustomer} ${itemDesc} ${itemShop}`.toLowerCase();
+            if (searchPool.includes(searchVal)) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="font-size:11px;">${item.date.replace('T', ' ')}</td>
-                    <td><span class="badge">${item.shop}</span></td>
-                    <td>${item.customer}</td>
-                    <td>${item.desc}</td>
-                    <td class="td-out">${item.outVal || '-'}</td>
-                    <td class="td-in">${item.inVal || '-'}</td>
+                    <td style="font-size:11px;">${itemDateStr.replace('T', ' ')}</td>
+                    <td><span class="badge">${itemShop}</span></td>
+                    <td>${itemCustomer}</td>
+                    <td>${itemDesc}</td>
+                    <td class="td-out">${itemOut || '-'}</td>
+                    <td class="td-in">${itemIn || '-'}</td>
                     <td>
-                        <button class="btn-action btn-edit" data-id="${key}">📝</button>
-                        <button class="btn-action btn-del" data-id="${key}">🗑️</button>
+                        <button class="btn-action btn-edit" onclick="startEdit('${key}')">📝 تعديل</button>
+                        <button class="btn-action btn-del" onclick="deleteItem('${key}')">🗑️ حذف</button>
                     </td>
                 `;
                 tableBody.appendChild(tr);
             }
         });
 
-        document.querySelectorAll('.btn-edit').forEach(b => b.onclick = () => startEdit(b.dataset.id));
-        document.querySelectorAll('.btn-del').forEach(b => b.onclick = () => deleteItem(b.dataset.id));
-
+        // طباعة الإجماليات بالمربعات
         document.getElementById('day-total').innerText = Math.round(totals.day).toLocaleString();
         document.getElementById('month-total').innerText = Math.round(totals.month).toLocaleString();
         document.getElementById('year-out').innerText = Math.round(totals.yearOut).toLocaleString();
@@ -217,24 +306,30 @@
 
     document.getElementById('searchBox').onkeyup = renderTable;
 
-    function startEdit(id) {
+    window.startEdit = function(id) {
         const item = localData[id];
-        document.getElementById('entry-shop').value = item.shop;
-        document.getElementById('entry-customer').value = item.customer;
-        document.getElementById('entry-date').value = item.date;
-        document.getElementById('entry-desc').value = item.desc;
+        if(!item) return;
+        document.getElementById('entry-shop').value = item.shop || "زبون";
+        document.getElementById('entry-customer').value = item.customer === '-' ? '' : (item.customer || '');
+        document.getElementById('entry-date').value = item.date || new Date().toISOString().slice(0, 16);
+        document.getElementById('entry-desc').value = item.desc === '-' ? '' : (item.desc || '');
         document.getElementById('entry-in').value = item.inVal || "";
         document.getElementById('entry-out').value = item.outVal || "";
         document.getElementById('edit-id').value = id;
-        document.getElementById('btn-main').innerText = "تحديث البيانات أونلاين";
+        document.getElementById('btn-main').innerText = "تعديل العملية بالجدول";
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    async function deleteItem(id) {
-        if(confirm("حذف العملية من السحابة نهائياً؟")) {
-            await remove(ref(db, `azemaa_v5/yomya/${id}`));
+    window.deleteItem = function(id) {
+        if(confirm("هل تريد بالتأكيد حذف هذه العملية من الجدول؟")) {
+            delete localData[id];
+            saveToLocalStorage();
+            renderTable();
         }
     }
+
+    // تشغيل التطبيق فور تحميل الصفحة
+    window.onload = initApp;
 </script>
 </body>
 </html>
