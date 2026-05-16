@@ -4,49 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام التسليمات السحابي - AZEMAA PRO</title>
-    <!-- استدعاء مكتبات Firebase المتوافقة مع أسلوب الكود الحالي -->
+    <!-- استدعاء مكتبات Firebase المتوافقة -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    <!-- استدعاء Analytics إذا كنت تحتاجه (اختياري) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
     
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; --success: #27ae60; --danger: #e74c3c; }
-        * { box-sizing: border-box; font-weight: 900 !important; }
-        body { font-family: 'Segoe UI', sans-serif; background: #d1d8e0; margin: 0; }
-        header { background: var(--primary); color: white; padding: 10px; position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th { background: #34495e; color: white; padding: 8px; position: sticky; top: 45px; font-size: 12px; }
-        td { border: 1px solid #b2bec3; padding: 2px; text-align: center; }
+        :root { 
+            --primary: #2c3e50; --accent: #3498db; --success: #27ae60; --danger: #e74c3c;
+            --bg-main: #d1d8e0; --bg-card: white; --text-main: #2c3e50; --border: #b2bec3;
+            --row-fri: #dfe6e9; --row-today: #fff9c4; --month-divider: #7f8c8d;
+        }
+        [data-theme="dark"] {
+            --primary: #1e272e; --accent: #05c46b; --bg-main: #111417; --bg-card: #1e2124;
+            --text-main: #f5f6fa; --border: #485460; --row-fri: #2d3436; --row-today: #574b15;
+            --month-divider: #57606f;
+        }
+        * { box-sizing: border-box; font-weight: 900 !important; transition: background 0.15s, color 0.15s; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; padding-bottom: 40px; }
+        
+        header { background: var(--primary); color: white; padding: 12px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .nav-container { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+        
+        .controls-bar { background: var(--bg-card); padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 2px solid var(--border); position: sticky; top: 55px; z-index: 999; }
+        
+        select, input, button { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text-main); outline: none; font-size: 14px; }
+        button { cursor: pointer; background: var(--accent); color: white; border: none; }
+        button:hover { opacity: 0.9; }
+
+        .stats-badge { background: #34495e; color: white; padding: 4px 10px; border-radius: 6px; font-size: 13px; display: flex; gap: 8px; }
+
+        table { width: 100%; border-collapse: collapse; background: var(--bg-card); }
+        th { background: #34495e; color: white; padding: 10px; position: sticky; top: 110px; font-size: 13px; z-index: 98; }
+        td { border: 1px solid var(--border); padding: 2px; text-align: center; }
+        
+        /* فواصل الشهور */
+        .month-header-row { background: var(--month-divider) !important; color: white !important; font-size: 16px; text-align: center; }
+        .month-header-row td { padding: 8px; border: none; }
+
+        .row-friday { background-color: var(--row-fri) !important; }
+        .row-today { background-color: var(--row-today) !important; border: 2px solid #f1c40f !important; }
         .row-done { background-color: #ff7675 !important; color: white !important; }
-        .name-input { width: 100%; border: none; background: transparent; text-align: center; outline: none; }
+        .row-done input { color: white !important; }
+        
+        .name-input { width: 100%; border: none; background: transparent; text-align: center; padding: 6px 0; color: var(--text-main); }
+        .name-input:focus { background: rgba(52, 152, 219, 0.2); }
         #sync-status { font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; }
     </style>
 </head>
 <body>
+
 <header>
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <h2 style="margin:0; font-size: 16px;">📦 التسليمات</h2>
-        <span id="sync-status">🔄 جاري المزامنة...</span>
+    <div class="nav-container">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 style="margin:0; font-size: 18px;">📦 AZEMAA PRO v7</h2>
+            <span id="sync-status">🔄 جاري المزامنة...</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button onclick="toggleTheme()" style="background:#f1c40f; color:#000;">🌙 المظهر</button>
+            <button onclick="goToToday()" style="background: var(--accent);">📍 اليوم الحالي</button>
+        </div>
     </div>
-    <button onclick="goToToday()" style="background: var(--accent); color: white; border:none; padding:5px 15px; border-radius:5px;">📍 اليوم</button>
 </header>
+
+<div class="controls-bar">
+    <label>السنة المعروضة:</label>
+    <select id="yearSelect" onchange="renderWholeYear()"></select>
+    
+    <input type="text" id="searchInput" placeholder="🔍 بحث عن عميل في السنة..." oninput="filterTable()">
+    
+    <select id="statusFilter" onchange="filterTable()">
+        <option value="all">كل الحالات 📑</option>
+        <option value="pending">المعلق فقط ⏳</option>
+        <option value="done">المكتمل فقط ✅</option>
+    </select>
+
+    <div class="stats-badge">
+        <span>⏳ معلق بالسنة: <b id="stat-pending">0</b></span> | 
+        <span>✅ تم بالسنة: <b id="stat-done">0</b></span>
+    </div>
+</div>
 
 <table id="mainTable">
     <thead>
         <tr>
-            <th style="width:100px">التاريخ</th>
+            <th style="width:180px">التاريخ واليوم</th>
             <th>العميل 1</th>
             <th>العميل 2</th>
-            <th>ملاحظات</th>
-            <th style="width:50px">حالة</th>
+            <th style="width:70px">الحالة</th>
         </tr>
     </thead>
     <tbody id="tableBody"></tbody>
 </table>
 
 <script>
-    // تم تحديث الإعدادات لتطابق مشروع AZEMAA PRO الجديد الخاص بك
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
@@ -58,66 +109,205 @@
         measurementId: "G-R28J7010TH"
     };
     
-    // تهيئة الـ Firebase بالطريقة المتوافقة مع الكود القديم
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    if(typeof firebase.analytics === 'function') firebase.analytics();
+
+    const daysOfWeek = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+    const monthsAr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     
-    // تفعيل Analytics إذا أردت
-    if(typeof firebase.analytics === 'function') {
-        firebase.analytics();
+    let globalData = {};
+
+    // إنشاء قائمة السنوات من 2026 إلى 2070
+    function initSelectors() {
+        const yearSelect = document.getElementById('yearSelect');
+        const currentYear = new Date().getFullYear();
+
+        for (let y = 2026; y <= 2070; y++) {
+            let opt = document.createElement('option');
+            opt.value = y; opt.innerText = y;
+            if(y === currentYear) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
     }
 
-    function renderTable() {
+    // بناء السنة كاملة في جدول واحد مقسمة بشهور
+    function renderWholeYear() {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
-        const year = 2026;
-        let date = new Date(year, 0, 1);
-        const today = new Date().toDateString();
+        
+        const selectedYear = parseInt(document.getElementById('yearSelect').value);
+        const todayStr = new Date().toDateString();
+        
+        let indexCounter = 0;
 
-        while (date.getFullYear() === year) {
-            const d = date.getDate(), m = date.getMonth() + 1;
-            const id = `${d}-${m}-${year}`;
-            const tr = document.createElement('tr');
-            if (date.toDateString() === today) { tr.id = 'todayRow'; tr.style.background = "#fff9c4"; }
+        for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
+            
+            const monthHeader = document.createElement('tr');
+            monthHeader.className = 'month-header-row';
+            monthHeader.innerHTML = `<td colspan="4">🌟 شهر ${monthsAr[monthIdx]} (${selectedYear}) 🌟</td>`;
+            tbody.appendChild(monthHeader);
 
-            tr.innerHTML = `
-                <td>${d}/${m}</td>
-                <td><input class="name-input" id="${id}-c1" onchange="save('${id}', 'c1', this.value)"></td>
-                <td><input class="name-input" id="${id}-c2" onchange="save('${id}', 'c2', this.value)"></td>
-                <td><input class="name-input" id="${id}-n" onchange="save('${id}', 'n', this.value)"></td>
-                <td><select id="${id}-s" onchange="save('${id}', 's', this.value)">
-                    <option value="pending">⏳</option>
-                    <option value="done">✅</option>
-                </select></td>
-            `;
-            tbody.appendChild(tr);
-            date.setDate(date.getDate() + 1);
-        }
-        loadData();
-    }
+            let date = new Date(selectedYear, monthIdx, 1);
 
-    function save(id, field, val) {
-        db.ref('azemaa_v5/deliveries/' + id).update({ [field]: val });
-    }
+            while (date.getMonth() === monthIdx) {
+                const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
+                const id = `${d}-${m}-${y}`;
+                const dayName = daysOfWeek[date.getDay()];
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-id', id);
+                
+                if (date.getDay() === 5) tr.classList.add('row-friday');
+                if (date.toDateString() === todayStr) { tr.id = 'todayRow'; tr.classList.add('row-today'); }
 
-    function loadData() {
-        db.ref('azemaa_v5/deliveries').on('value', snap => {
-            const data = snap.val() || {};
-            for (let id in data) {
-                if(document.getElementById(id+'-c1')) document.getElementById(id+'-c1').value = data[id].c1 || '';
-                if(document.getElementById(id+'-c2')) document.getElementById(id+'-c2').value = data[id].c2 || '';
-                if(document.getElementById(id+'-n')) document.getElementById(id+'-n').value = data[id].n || '';
-                if(document.getElementById(id+'-s')) {
-                    document.getElementById(id+'-s').value = data[id].s || 'pending';
-                    document.getElementById(id+'-s').closest('tr').className = data[id].s === 'done' ? 'row-done' : '';
-                }
+                // تم استخدام oninput هنا لضمان الحفظ اللحظي التلقائي حرفاً بحرف
+                tr.innerHTML = `
+                    <td>${dayName} ${d}/${m}/${y}</td>
+                    <td><input class="name-input" id="${id}-c1" data-index="${indexCounter}" data-col="1" oninput="save('${id}', 'c1', this.value)"></td>
+                    <td><input class="name-input" id="${id}-c2" data-index="${indexCounter}" data-col="2" oninput="save('${id}', 'c2', this.value)"></td>
+                    <td><select id="${id}-s" onchange="save('${id}', 's', this.value); updateRowStyle('${id}', this.value);">
+                        <option value="pending">⏳</option>
+                        <option value="done">✅</option>
+                    </select></td>
+                `;
+                tbody.appendChild(tr);
+                indexCounter++;
+                date.setDate(date.getDate() + 1);
             }
+        }
+        applyDataToDOM();
+        setupArrowNavigation();
+    }
+
+    // دالة الحفظ التلقائي في قاعدة البيانات السحابية
+    function save(id, field, val) {
+        document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
+        db.ref('azemaa_v5/deliveries/' + id).update({ [field]: val }).then(() => {
             document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
         });
     }
 
-    function goToToday() { document.getElementById('todayRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-    renderTable();
+    function loadData() {
+        db.ref('azemaa_v5/deliveries').on('value', snap => {
+            globalData = snap.val() || {};
+            applyDataToDOM();
+            document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
+        });
+    }
+
+    function applyDataToDOM() {
+        // نتحقق إن كان المستخدم يكتب حالياً في أي خانة لكي لا نقوم بتخريب موضع المؤشر أثناء الحفظ
+        const activeElId = document.activeElement ? document.activeElement.id : null;
+
+        for (let id in globalData) {
+            const c1 = document.getElementById(id+'-c1');
+            const c2 = document.getElementById(id+'-c2');
+            const s = document.getElementById(id+'-s');
+            
+            if(c1 && activeElId !== id+'-c1') c1.value = globalData[id].c1 || '';
+            if(c2 && activeElId !== id+'-c2') c2.value = globalData[id].c2 || '';
+            if(s) {
+                s.value = globalData[id].s || 'pending';
+                updateRowStyle(id, s.value);
+            }
+        }
+        filterTable();
+    }
+
+    function updateRowStyle(id, status) {
+        const el = document.getElementById(id+'-s');
+        if(el) {
+            const tr = el.closest('tr');
+            if (status === 'done') tr.classList.add('row-done');
+            else tr.classList.remove('row-done');
+        }
+        calculateStats();
+    }
+
+    function filterTable() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filter = document.getElementById('statusFilter').value;
+        const rows = document.querySelectorAll('#tableBody tr:not(.month-header-row)');
+
+        rows.forEach(row => {
+            const id = row.getAttribute('data-id');
+            const c1Val = document.getElementById(id+'-c1')?.value.toLowerCase() || '';
+            const c2Val = document.getElementById(id+'-c2')?.value.toLowerCase() || '';
+            const status = document.getElementById(id+'-s')?.value || 'pending';
+
+            const matchesSearch = c1Val.includes(query) || c2Val.includes(query);
+            const matchesFilter = filter === 'all' || status === filter;
+
+            if(matchesSearch && matchesFilter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function calculateStats() {
+        const selects = document.querySelectorAll('#tableBody select');
+        let pending = 0, done = 0;
+        selects.forEach(s => {
+            if(s.value === 'done') done++;
+            else pending++;
+        });
+        document.getElementById('stat-pending').innerText = pending;
+        document.getElementById('stat-done').innerText = done;
+    }
+
+    function setupArrowNavigation() {
+        const inputs = document.querySelectorAll('.name-input');
+        inputs.forEach(input => {
+            input.addEventListener('keydown', function(e) {
+                const currentIndex = parseInt(this.getAttribute('data-index'));
+                const currentCol = parseInt(this.getAttribute('data-col'));
+                let nextInput;
+
+                if (e.key === 'ArrowDown') {
+                    nextInput = document.querySelector(`[data-index="${currentIndex + 1}"][data-col="${currentCol}"]`);
+                } else if (e.key === 'ArrowUp') {
+                    nextInput = document.querySelector(`[data-index="${currentIndex - 1}"][data-col="${currentCol}"]`);
+                } else if (e.key === 'ArrowLeft') { 
+                    nextInput = document.querySelector(`[data-index="${currentIndex}"][data-col="${currentCol === 1 ? 2 : 1}"]`);
+                } else if (e.key === 'ArrowRight') {
+                    nextInput = document.querySelector(`[data-index="${currentIndex}"][data-col="${currentCol === 2 ? 1 : 2}"]`);
+                }
+
+                if (nextInput) {
+                    e.preventDefault();
+                    nextInput.focus();
+                }
+            });
+        });
+    }
+
+    function goToToday() {
+        const today = new Date();
+        const yearSelect = document.getElementById('yearSelect');
+        
+        if (parseInt(yearSelect.value) !== today.getFullYear()) {
+            yearSelect.value = today.getFullYear();
+            renderWholeYear();
+        }
+        
+        setTimeout(() => {
+            document.getElementById('todayRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    }
+
+    if(localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    initSelectors();
+    renderWholeYear();
+    loadData();
 </script>
 </body>
 </html>
