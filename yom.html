@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">يومية الورشة 2026</title>
+    <title id="page-title">يومية الورشة 2026 - تحديث فوري</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght=600;700;800;900&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -13,16 +13,12 @@
         :root {
             --primary: #1e40af; --success: #059669; --danger: #dc2626;
             --whatsapp: #25d366; --bg: #f8fafc; --card-bg: #ffffff; --text-main: #1e293b;
-            --cloud-blue: #00a8ff;
         }
         body { font-family: 'Cairo', sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; padding: 10px; line-height: 1.4; font-weight: 700; }
         .container { max-width: 1100px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         header { text-align: center; background: linear-gradient(135deg, var(--primary), #3b82f6); color: white; padding: 10px; border-radius: 12px; margin-bottom: 15px; }
         header h1 { margin: 0; font-size: 1.3rem; font-weight: 900; }
         
-        .workshop-config { background: #eff6ff; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px dashed var(--primary); display: flex; align-items: center; gap: 10px; }
-        .workshop-config input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 800; text-align: center; color: var(--primary); }
-
         .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px; }
         .card { background: var(--card-bg); padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; }
         .card h3 { font-size: 0.8rem; margin: 0; color: #64748b; font-weight: 800; }
@@ -48,22 +44,13 @@
         .btn-del { color: var(--danger); }
         
         #sync-status { font-size: 12px; text-align: center; margin-bottom: 5px; color: var(--success); font-weight: bold; }
-
-        .sync-box-yom { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; border-top: 2px solid #eee; padding-top: 15px; }
-        .btn-cloud-yom { border: none; color: #fff; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; background: var(--cloud-blue); transition: 0.3s; }
-        .btn-cloud-yom:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header><h1>حسابات الورشة 2026</h1></header>
-    <div id="sync-status">💾 حفظ فوري بالجدول محلياً مع دعم المزامنة السحابية</div>
-
-    <div class="workshop-config">
-        <span>🏠 اسم الورشة:</span>
-        <input type="text" id="workshop-name" placeholder="اكتب اسم ورشتك هنا...">
-    </div>
+    <div id="sync-status">🟢 النظام جاهز ويعمل بنظام التحديث الفوري المزدوج</div>
 
     <div class="dashboard">
         <div class="card"><h3>اليوم</h3><div class="value" id="day-total" style="color:var(--success)">0</div></div>
@@ -91,11 +78,11 @@
         <input type="number" id="entry-out" style="border-right: 4px solid var(--danger)" placeholder="مبلغ خارج (-)">
         <input type="number" id="entry-in" style="border-right: 4px solid var(--success)" placeholder="مبلغ داخل (+)">
         <input type="hidden" id="edit-id">
-        <button class="btn-save" id="btn-main">حفظ العملية بالجدول</button>
+        <button class="btn-save" id="btn-main" onclick="processEntry()">حفظ العملية بالسحابة</button>
     </div>
 
     <div class="search-area">
-        <input type="text" id="searchBox" placeholder="🔍 بحث شامل في الجدول...">
+        <input type="text" id="searchBox" placeholder="🔍 بحث شامل في الجدول..." onkeyup="renderTable()">
     </div>
 
     <div class="table-wrapper">
@@ -103,11 +90,6 @@
             <thead><tr><th>التاريخ</th><th>القسم</th><th>الاسم</th><th>البيان</th><th>خارج</th><th>داخل</th><th>إجراء</th></tr></thead>
             <tbody id="table-body"></tbody>
         </table>
-    </div>
-
-    <div class="sync-box-yom">
-        <button onclick="saveToCloud()" class="btn-cloud-yom">☁️ تصدير (حفظ الجدول للسحابة)</button>
-        <button onclick="loadFromCloud()" class="btn-cloud-yom">🔄 استيراد (تحميل الحسابات من السحابة)</button>
     </div>
 </div>
 
@@ -122,69 +104,22 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const dbRef = db.ref('azemaa_v5/yomya_2026_clean'); 
     const currentYear = 2026;
 
     let localData = {};
 
     function initApp() {
-        const savedData = localStorage.getItem('azemaa_yomya_data');
-        localData = savedData ? JSON.parse(savedData) : {};
-        
-        const wsInput = document.getElementById('workshop-name');
-        wsInput.value = localStorage.getItem('workshop_name') || "فرح للمطابخ";
-        wsInput.oninput = () => localStorage.setItem('workshop_name', wsInput.value);
-
-        // استرجاع البيانات المكتوبة في الخانات قبل الريفريش (إن وجدت)
-        restoreDraftForm();
-        
-        // ربط أحداث الكتابة لحفظ المسودات فوراً منعاً لضياعها عند الريفريش
-        setupDraftAutoSave();
-
-        renderTable();
-    }
-
-    // دالة لحفظ أي شيء يكتبه المستخدم في الذاكرة فوراً لقهر الريفريش
-    function setupDraftAutoSave() {
-        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id', 'searchBox'];
-        inputs.forEach(id => {
-            const el = document.getElementById(id);
-            if(el) {
-                el.addEventListener('input', () => {
-                    localStorage.setItem(`draft_${id}`, el.value);
-                    if(id === 'edit-id' || id === 'searchBox') {
-                        if(id === 'searchBox') renderTable();
-                    }
-                });
-            }
-        });
-    }
-
-    // دالة استرجاع البيانات المكتوبة بعد إعادة تحميل الصفحة
-    function restoreDraftForm() {
-        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id', 'searchBox'];
-        inputs.forEach(id => {
-            const savedVal = localStorage.getItem(`draft_${id}`);
-            if(savedVal !== null) {
-                document.getElementById(id).value = savedVal;
-            }
+        // الاستماع للتحديثات القادمة من السحابة
+        dbRef.on('value', (snapshot) => {
+            const cloudData = snapshot.val() || {};
+            // دمج البيانات السحابية مع البيانات المحلية لضمان عدم اختفاء أي سطر
+            localData = Object.assign({}, localData, cloudData);
+            renderTable();
+            document.getElementById('sync-status').innerText = "🟢 متصل بالسحابة (محدث تلقائياً)";
         });
 
-        // إذا لم يكن هناك تاريخ محفوظ، نضع الوقت الحالي الافتراضي
-        if(!localStorage.getItem('draft_entry-date')) {
-            setActualTime();
-        }
-
-        // تحديث نص زر الحفظ بناءً على ما إذا كنا في وضع التعديل أم لا
-        const editId = document.getElementById('edit-id').value;
-        if(editId) {
-            document.getElementById('btn-main').innerText = "تعديل العملية بالجدول";
-        }
-    }
-
-    // مسح المسودات المؤقتة بعد إتمام الحفظ بنجاح
-    function clearDraftStorage() {
-        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id'];
-        inputs.forEach(id => localStorage.removeItem(`draft_${id}`));
+        if(!document.getElementById('entry-date').value) setActualTime();
     }
 
     function setActualTime() {
@@ -192,44 +127,6 @@
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
     }
-
-    window.saveToCloud = function() {
-        if(Object.keys(localData).length === 0) {
-            alert("⚠️ الجدول فارغ تماماً، لا توجد بيانات لرفعها!");
-            return;
-        }
-        document.getElementById('sync-status').innerText = "⏳ جاري رفع الحسابات للسحابة...";
-        db.ref('azemaa_v5/yomya_backup').set(localData)
-        .then(() => {
-            document.getElementById('sync-status').innerText = "🟢 تم تصدير الجدول وحفظه بالسحابة بنجاح";
-            alert("✅ تم رفع وحفظ نسخة الجدول بالكامل على السحابة بنجاح!");
-        })
-        .catch(err => {
-            document.getElementById('sync-status').innerText = "❌ فشل التصدير السحابي";
-            alert("خطأ في الاتصال: " + err.message);
-        });
-    };
-
-    window.loadFromCloud = function() {
-        document.getElementById('sync-status').innerText = "⏳ جاري استيراد البيانات من السحابة...";
-        db.ref('azemaa_v5/yomya_backup').once('value').then((s) => {
-            if (s.exists()) { 
-                if(confirm("⚠️ هل تريد استيراد الحسابات السحابية؟ هذا الإجراء سيقوم بتحديث جدولك بالكامل بالبيانات المسترجعة.")) {
-                    localData = s.val() || {};
-                    saveToLocalStorage();
-                    renderTable();
-                    document.getElementById('sync-status').innerText = "🟢 تم استيراد الحسابات من السحابة بنجاح";
-                    alert("✅ تم استرجاع وبناء الجدول من السحابة بنجاح!");
-                }
-            } else {
-                document.getElementById('sync-status').innerText = "⚠️ لا توجد حسابات محفوظة مسبقاً على السحابة";
-                alert("لا توجد بيانات محفوظة على السحابة لهذا الحساب!");
-            }
-        }).catch(err => {
-            document.getElementById('sync-status').innerText = "❌ فشل الاستيراد";
-            alert("خطأ أثناء جلب البيانات: " + err.message);
-        });
-    };
 
     function processEntry() {
         const shop = document.getElementById('entry-shop').value;
@@ -240,97 +137,67 @@
         const outVal = parseFloat(document.getElementById('entry-out').value) || 0;
         const editId = document.getElementById('edit-id').value;
 
-        if (inVal === 0 && outVal === 0) { 
-            alert("يرجى كتابة مبلغ (داخل أو خارج) أولاً ليتم الحفظ بالجدول"); 
-            return; 
-        }
+        if (inVal === 0 && outVal === 0) { alert("يرجى كتابة مبلغ أولاً"); return; }
 
-        const entryData = { shop, customer, date, desc, inVal, outVal };
+        const uniqueId = editId || 'id_' + Date.now();
+        const entryData = { id: uniqueId, shop, customer, date, desc, inVal, outVal };
 
-        if (editId) {
-            entryData.id = editId;
-            localData[editId] = entryData;
-        } else {
-            const uniqueId = 'id_' + Date.now();
-            entryData.id = uniqueId;
-            localData[uniqueId] = entryData;
-        }
+        // [تحديث فوري محلي]: إدراج البيانات في الجدول فوراً دون انتظار استجابة السيرفر
+        localData[uniqueId] = entryData;
+        renderTable(); 
 
-        saveToLocalStorage();
-        clearDraftStorage();
-        resetForm();
-        renderTable();
-    }
-
-    document.getElementById('btn-main').onclick = processEntry;
-
-    function saveToLocalStorage() {
-        localStorage.setItem('azemaa_yomya_data', JSON.stringify(localData));
-    }
-
-    function resetForm() {
-        document.getElementById('entry-customer').value = ""; 
-        document.getElementById('entry-desc').value = ""; 
-        document.getElementById('entry-in').value = ""; 
-        document.getElementById('entry-out').value = ""; 
-        document.getElementById('edit-id').value = ""; 
-        document.getElementById('btn-main').innerText = "حفظ العملية بالجدول"; 
-        setActualTime();
+        // إرسال البيانات للسحابة في الخلفية لضمان حفظها ومزامنتها مع باقي الأجهزة
+        dbRef.child(uniqueId).set(entryData).then(() => {
+            resetForm();
+        }).catch(err => {
+            console.log("تم الحفظ محلياً وجاري إعادة المحاولة للسحابة: " + err.message);
+            resetForm();
+        });
     }
 
     function renderTable() {
         const tableBody = document.getElementById('table-body');
         if(!tableBody) return;
-        const searchBox = document.getElementById('searchBox');
-        const searchVal = searchBox ? searchBox.value.toLowerCase() : "";
+        
+        const searchVal = document.getElementById('searchBox').value.toLowerCase();
         tableBody.innerHTML = "";
         
         let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
         const now = new Date();
 
-        const sortedKeys = Object.keys(localData).sort((a, b) => {
-            const dateA = localData[a].date ? new Date(localData[a].date) : new Date(0);
-            const dateB = localData[b].date ? new Date(localData[b].date) : new Date(0);
-            return dateB - dateA;
-        });
+        const validItems = Object.values(localData).filter(item => item && item.date);
+        const sorted = validItems.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        sortedKeys.forEach(key => {
-            const item = localData[key];
-            if (!item) return;
-
-            const itemDateStr = item.date || "";
-            const itemShop = item.shop || "-";
-            const itemCustomer = item.customer || "-";
-            const itemDesc = item.desc || "-";
-            const itemIn = parseFloat(item.inVal) || 0;
-            const itemOut = parseFloat(item.outVal) || 0;
-            const itemNet = itemIn - itemOut;
+        sorted.forEach(item => {
+            const rowDate = new Date(item.date);
+            const itemNet = (item.inVal || 0) - (item.outVal || 0);
             
-            if (itemDateStr) {
-                const rowDate = new Date(itemDateStr);
-                if (!isNaN(rowDate.getTime())) {
-                    if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
-                    if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
-                    if (rowDate.getFullYear() === currentYear) { 
-                        totals.yearOut += itemOut; 
-                        totals.yearNet += itemNet; 
-                    }
-                }
+            if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
+            if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
+            if (rowDate.getFullYear() === currentYear) { 
+                totals.yearOut += (item.outVal || 0); 
+                totals.yearNet += itemNet; 
             }
 
-            const searchPool = `${itemCustomer} ${itemDesc} ${itemShop}`.toLowerCase();
+            const customerStr = (item.customer || "-").toString().toLowerCase();
+            const descStr = (item.desc || "-").toString().toLowerCase();
+            const shopStr = (item.shop || "-").toString().toLowerCase();
+            const searchPool = `${customerStr} ${descStr} ${shopStr}`;
+
             if (searchPool.includes(searchVal)) {
                 const tr = document.createElement('tr');
+                const cleanDate = typeof item.date === 'string' ? item.date.replace('T', ' ') : item.date;
+                
                 tr.innerHTML = `
-                    <td style="font-size:11px;">${itemDateStr.replace('T', ' ')}</td>
-                    <td><span class="badge">${itemShop}</span></td>
-                    <td>${itemCustomer}</td>
-                    <td>${itemDesc}</td>
-                    <td class="td-out">${itemOut || '-'}</td>
-                    <td class="td-in">${itemIn || '-'}</td>
+                    <td style="font-size:11px;">${cleanDate}</td>
+                    <td><span class="badge">${item.shop || '-'}</span></td>
+                    <td>${item.customer || '-'}</td>
+                    <td>${item.desc || '-'}</td>
+                    <td class="td-out">${item.outVal || '-'}</td>
+                    <td class="td-in">${item.inVal || '-'}</td>
                     <td>
-                        <button class="btn-action btn-edit" onclick="startEdit('${key}')">📝 تعديل</button>
-                        <button class="btn-action btn-del" onclick="deleteItem('${key}')">🗑️ حذف</button>
+                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')">📝 تعديل</button>
+                        <button class="btn-action btn-del" onclick="deleteItem('${item.id}')">🗑️ حذف</button>
                     </td>
                 `;
                 tableBody.appendChild(tr);
@@ -343,37 +210,36 @@
         document.getElementById('year-net').innerText = Math.round(totals.yearNet).toLocaleString();
     }
 
-    if(document.getElementById('searchBox')) {
-        document.getElementById('searchBox').onkeyup = renderTable;
-    }
-
     window.startEdit = function(id) {
         const item = localData[id];
         if(!item) return;
-        document.getElementById('entry-shop').value = item.shop || "زبون";
-        document.getElementById('entry-customer').value = item.customer === '-' ? '' : (item.customer || '');
-        document.getElementById('entry-date').value = item.date || new Date().toISOString().slice(0, 16);
-        document.getElementById('entry-desc').value = item.desc === '-' ? '' : (item.desc || '');
+        document.getElementById('entry-shop').value = item.shop;
+        document.getElementById('entry-customer').value = item.customer === '-' ? '' : item.customer;
+        document.getElementById('entry-date').value = item.date;
+        document.getElementById('entry-desc').value = item.desc === '-' ? '' : item.desc;
         document.getElementById('entry-in').value = item.inVal || "";
         document.getElementById('entry-out').value = item.outVal || "";
         document.getElementById('edit-id').value = id;
-        document.getElementById('btn-main').innerText = "تعديل العملية بالجدول";
-        
-        // حفظ بيانات التعديل في الـ LocalStorage فوراً لحمايتها من الريفريش
-        const inputs = ['entry-shop', 'entry-customer', 'entry-date', 'entry-desc', 'entry-out', 'entry-in', 'edit-id'];
-        inputs.forEach(inpId => {
-            localStorage.setItem(`draft_${inpId}`, document.getElementById(inpId).value);
-        });
-
+        document.getElementById('btn-main').innerText = "تعديل العملية بالسحابة";
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     window.deleteItem = function(id) {
-        if(confirm("هل تريد بالتأكيد حذف هذه العملية من الجدول؟")) {
+        if(confirm("هل تريد حذف هذه العملية نهائياً؟")) {
             delete localData[id];
-            saveToLocalStorage();
             renderTable();
+            dbRef.child(id).remove();
         }
+    }
+
+    function resetForm() {
+        document.getElementById('entry-customer').value = ""; 
+        document.getElementById('entry-desc').value = ""; 
+        document.getElementById('entry-in').value = ""; 
+        document.getElementById('entry-out').value = ""; 
+        document.getElementById('edit-id').value = ""; 
+        document.getElementById('btn-main').innerText = "حفظ العملية بالسحابة"; 
+        setActualTime();
     }
 
     window.onload = initApp;
