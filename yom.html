@@ -99,7 +99,8 @@
         <button class="btn-save" id="btn-main">حفظ العملية بالسحابة</button>
     </div>
 
-    <div class="search-area">
+    <!-- تم إضافة معرف id="yom-section" هنا للتحكم في ثبات الصفحة عند التحديث -->
+    <div class="search-area" id="yom-section">
         <input type="text" id="searchBox" placeholder="🔍 بحث شامل في الجدول...">
     </div>
 
@@ -152,6 +153,12 @@
             renderTable();
             document.getElementById('sync-status').innerText = "🟢 متصل بالسحابة بشكل آمن ومستقر";
             document.getElementById('sync-status').style.color = "var(--success)";
+            
+            // كود ذكي: فحص إذا كان الرابط يحتوي على #yom للحفاظ على ثبات الشاشة ومكان التمرير
+            if(window.location.hash === '#yom') {
+                const target = document.getElementById('yom-section');
+                if(target) target.scrollIntoView({ behavior: 'smooth' });
+            }
         }, (error) => {
             console.error(error);
             document.getElementById('sync-status').innerText = "🔴 خطأ في الصلاحيات! يرجى مراجعة تفعيل الـ Rules في الفايربيز";
@@ -165,6 +172,13 @@
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
+    }
+
+    // لتحديث رابط المتصفح تلقائياً عند الدخول على الجدول دون الخروج من صفحة الـ index الرئيسية
+    function updateUrlHash() {
+        if(window.location.hash !== '#yom') {
+            window.history.pushState(null, null, '#yom');
+        }
     }
 
     function processEntry() {
@@ -183,6 +197,7 @@
 
         localData[uniqueId] = entryData;
         renderTable(); 
+        updateUrlHash();
 
         set(child(dbRef, uniqueId), entryData).then(() => {
             resetForm();
@@ -274,7 +289,6 @@
         const item = localData[id];
         if(!item) return;
 
-        // تجهيز تفاصيل العملية في نص منسق
         const typeStr = item.inVal > 0 ? "📥 عملية داخل (+)" : "📤 عملية خارج (-)";
         const amountStr = item.inVal > 0 ? item.inVal : item.outVal;
         const cleanDate = typeof item.date === 'string' ? item.date.replace('T', ' ') : item.date;
@@ -288,7 +302,6 @@
                         `📝 *البيان:* ${item.desc || '-'}\n` +
                         `📅 *التاريخ:* ${cleanDate}`;
 
-        // تشفير النص ليتناسب مع روابط الويب
         const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     }
@@ -327,6 +340,9 @@
 
     document.getElementById('btn-main').onclick = processEntry;
     document.getElementById('searchBox').onkeyup = renderTable;
+    
+    // مراقبة كتابة أي حرف في البحث لحفظ الرابط فوراً من الضياع
+    document.getElementById('searchBox').oninput = updateUrlHash;
 
     initApp();
 </script>
