@@ -37,19 +37,24 @@
             background: #eab308;
         }
 
+        /* تعديل شبكة العرض لتدعم الارتفاع التلقائي الممتد */
         .notes-grid { 
             display: grid; 
             grid-template-columns: repeat(2, 1fr); 
             gap: 10px; 
             padding: 10px;
+            align-items: start; /* يمنع الكروت القصيرة من التمدد إجبارياً لطول جيرانها */
         }
 
+        /* تعديل الكارت ليتمدد تلقائياً مع محتواه بالكامل */
         .card { 
             background: #fff;
-            display: flex; flex-direction: column;
+            display: flex; 
+            flex-direction: column;
             border-bottom: 5px solid rgba(0,0,0,0.15);
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            height: fit-content; 
+            height: auto; /* يجعل الكارت يتمدد تلقائياً */
+            min-height: 120px; /* حد أدنى لطيف لارتفاع الكارت */
             border-radius: 10px;
             overflow: hidden;
         }
@@ -62,10 +67,12 @@
             border-bottom: 1px dashed rgba(0,0,0,0.1);
         }
 
+        /* تعديل منطقة النص لضمان كسر السطور وتمدد المساحة */
         .card-body-split { 
             padding: 12px;
+            flex-grow: 1; /* يجعل منطقة النص تأخذ المساحة المتاحة بالكامل */
             word-wrap: break-word;
-            overflow-wrap: anywhere; 
+            overflow-wrap: break-word; 
             word-break: break-word;
         }
 
@@ -90,6 +97,7 @@
         .actions { 
             display: flex; justify-content: space-around; padding: 8px; 
             background: rgba(255,255,255,0.5); border-top: 1px solid rgba(0,0,0,0.05);
+            margin-top: auto; /* يضمن بقاء أزرار التحكم في أسفل الكارت دائماً */
         }
         
         .edit-btn, .del-btn { 
@@ -125,13 +133,10 @@
     <div id="notesList" class="notes-grid"></div>
 </div>
 
-<!-- تحويل الـ script إلى نوع module للتعامل مع v10 -->
 <script type="module">
-    // استيراد حزم الـ SDK الخاصة بـ Firebase v10
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // إعدادات مشروعك الجديد
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
@@ -142,14 +147,12 @@
         appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
     
-    // تهيئة Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
     let currentImageData = "";
     const colors = ["#bae6fd", "#fef08a", "#bbf7d0", "#fecaca", "#ddd6fe", "#ffedd5", "#a5f3fc", "#e9d5ff"];
 
-    // ربط الأحداث (Event Listeners) لأن النمط الحديث لا يفضل الـ inline onclick
     document.getElementById('fileInput').addEventListener('change', processFile);
     document.getElementById('saveBtn').addEventListener('click', handleSave);
     document.getElementById('searchBox').addEventListener('keyup', loadNotes);
@@ -206,7 +209,6 @@
         const dateStr = getFormattedDateTime();
 
         if (editId) {
-            // تحديث بالأسلوب الحديث v10
             update(ref(db, 'azemaa_notes/' + editId), {
                 text: text,
                 image: currentImageData,
@@ -219,7 +221,6 @@
                 date: dateStr,
                 bgColor: colors[Math.floor(Math.random() * colors.length)]
             };
-            // إضافة بالأسلوب الحديث v10
             const newRef = push(ref(db, 'azemaa_notes'));
             set(newRef, noteData).then(() => resetForm());
         }
@@ -239,7 +240,6 @@
         const list = document.getElementById('notesList');
         const dbRef = ref(db, 'azemaa_notes');
 
-        // جلب البيانات ومراقبتها بالأسلوب الحديث v10
         onValue(dbRef, (snapshot) => {
             list.innerHTML = "";
             const data = snapshot.val();
@@ -268,7 +268,6 @@
                         </div>
                     `;
 
-                    // ربط أزرار التعديل والحذف بشكل آمن داخل الموديول
                     card.querySelector('.edit-btn').addEventListener('click', () => editNote(note.fbId));
                     card.querySelector('.del-btn').addEventListener('click', () => deleteNote(note.fbId));
 
@@ -296,7 +295,6 @@
         }
     }
 
-    // تشغيل جلب البيانات عند تحميل الصفحة أول مرة
     loadNotes();
 </script>
 </body>
