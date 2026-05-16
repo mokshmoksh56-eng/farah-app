@@ -153,10 +153,8 @@
             document.getElementById('sync-status').innerText = "🟢 متصل بالسحابة بشكل آمن ومستقر";
             document.getElementById('sync-status').style.color = "var(--success)";
             
-            if(window.location.hash === '#yom') {
-                const target = document.getElementById('yom-section');
-                if(target) target.scrollIntoView({ behavior: 'smooth' });
-            }
+            // استرجاع موضع التمرير تلقائياً بعد إعادة تحميل الصفحة (Refresh)
+            restoreScrollPosition();
         }, (error) => {
             console.error(error);
             document.getElementById('sync-status').innerText = "🔴 خطأ في الصلاحيات! يرجى مراجعة تفعيل الـ Rules في الفايربيز";
@@ -164,6 +162,11 @@
         });
 
         if(!document.getElementById('entry-date').value) setActualTime();
+        
+        // حفظ موضع التصفح في الذاكرة المؤقتة للمتصفح عند حركة المستخدم
+        window.addEventListener('scroll', () => {
+            localStorage.setItem('scrollPosition', window.scrollY);
+        });
     }
 
     function setActualTime() {
@@ -172,9 +175,10 @@
         document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
     }
 
-    function updateUrlHash() {
-        if(window.location.hash !== '#yom') {
-            window.history.pushState(null, null, '#yom');
+    function restoreScrollPosition() {
+        const savedPosition = localStorage.getItem('scrollPosition');
+        if (savedPosition) {
+            window.scrollTo({ top: parseInt(savedPosition), behavior: 'smooth' });
         }
     }
 
@@ -194,7 +198,6 @@
 
         localData[uniqueId] = entryData;
         renderTable(); 
-        updateUrlHash();
 
         set(child(dbRef, uniqueId), entryData).then(() => {
             resetForm();
@@ -286,27 +289,28 @@
         const item = localData[id];
         if(!item) return;
 
-        // تحديد الحالة (تم دخول أو تم خروج) والجهة (إلى أو من) بناءً على نوع المبلغ
         let statusStr = "";
         let directionStr = "";
-        let amountStr = 0;
 
+        // إضافة إيموجي وحركات منسقة وثابتة داخل النص العريض
         if (item.inVal > 0) {
-            statusStr = `🟢 *تم دخول مبلغ:* *${item.inVal}*`;
-            directionStr = `*من:* *${item.customer || '-'}*`;
+            statusStr = `💰✨ *تـم دخـول مـبـلـغ:* *[ ${item.inVal} ]*`;
+            directionStr = `📥 *مـن:* *${item.customer || '-'}*`;
         } else {
-            statusStr = `🔴 *تم خروج مبلغ:* *${item.outVal}*`;
-            directionStr = `*إلى:* *${item.customer || '-'}*`;
+            statusStr = `💸💥 *تـم خـروج مـبـلـغ:* *[ ${item.outVal} ]*`;
+            directionStr = `📤 *إلـى:* *${item.customer || '-'}*`;
         }
 
         const cleanDate = typeof item.date === 'string' ? item.date.replace('T', ' ') : item.date;
 
-        // صياغة الرسالة لتكون بخط عريض (Bold) بالكامل حسب طلبك
-        const message = `${statusStr}\n` +
+        const message = `=========================\n` +
+                        `${statusStr}\n` +
+                        `=========================\n` +
                         `${directionStr}\n` +
-                        `*القسم:* *${item.shop || '-'}*\n` +
-                        `*البيان:* *${item.desc || '-'}*\n` +
-                        `*التوقيت:* *${cleanDate}*`;
+                        `⚙️ *الـقـسـم:* *${item.shop || '-'}*\n` +
+                        `📝 *الـبـيـان:* *${item.desc || '-'}*\n` +
+                        `📅 *التوقيت:* *${cleanDate}*\n` +
+                        `=========================`;
 
         const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
@@ -346,7 +350,6 @@
 
     document.getElementById('btn-main').onclick = processEntry;
     document.getElementById('searchBox').onkeyup = renderTable;
-    document.getElementById('searchBox').oninput = updateUrlHash;
 
     initApp();
 </script>
