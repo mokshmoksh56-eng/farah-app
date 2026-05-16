@@ -18,8 +18,6 @@
         .report-card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .report-card h2 { font-size: 16px; margin-top: 0; border-right: 4px solid var(--accent); padding-right: 10px; margin-bottom: 15px; }
         .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-        
-        /* مؤشر تحميل علوي خفيف بدل الشاشة الكاملة */
         #live-indicator { position: absolute; top: 10px; left: 15px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 11px; display: none; }
     </style>
 </head>
@@ -28,7 +26,7 @@
 <header>
     <div id="live-indicator">🔄 جاري المزامنة...</div>
     <h1 style="margin:0; font-size: 20px;">التقرير المالي الموحد (مباشر)</h1>
-    <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">نظام Azemaa Pro 2026 الحسي</div>
+    <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">نظام Azemaa Pro الحسي</div>
 </header>
 
 <div class="filter-area">
@@ -58,7 +56,7 @@
 </div>
 
 <div class="report-card">
-    <h2>📊 تحليل الفترة الحالي</h2>
+    <h2>📊 تحليل الفترة الحالية</h2>
     <div class="data-row"><span>دخل الزبائن</span><strong id="m-cust" style="color: var(--success);">0</strong></div>
     <div class="data-row"><span>وارد الخزينة</span><strong id="m-yom-in" style="color: var(--success);">0</strong></div>
     <div class="data-row"><span>مصروفات الخزينة</span><strong id="m-yom-out" style="color: var(--danger);">0</strong></div>
@@ -66,15 +64,20 @@
 </div>
 
 <script type="module">
+    // استخدام روابط CDN من إصدار 10 متوافق مع المتصفح مباشرة
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const firebaseConfig = { 
-        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M", 
-        authDomain: "farah-kitchen.firebaseapp.com", 
-        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com", 
-        projectId: "farah-kitchen", 
-        appId: "1:702572851072:web:320a92c9430abba6b71b65" 
+    // إعدادات حسابك الجديد بالكامل
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210",
+        measurementId: "G-R28J7010TH"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -88,17 +91,14 @@
     }
     document.getElementById('monthSelect').value = new Date().getMonth();
 
-    // تشغيل المزامنة الأونلاين المباشرة عند أي تغيير في الفلاتر
     yrSel.onchange = () => fetchOnlineData();
     document.getElementById('monthSelect').onchange = () => fetchOnlineData();
 
     let unsubscribes = [];
 
     function fetchOnlineData() {
-        // إظهار مؤشر التحميل الذكي
         document.getElementById('live-indicator').style.display = 'block';
 
-        // إلغاء الاستماع القديم لتوفير استهلاك البيانات والأداء
         unsubscribes.forEach(unsub => unsub());
         unsubscribes = [];
 
@@ -115,7 +115,9 @@
             }
         };
 
-        // 1. سحب مباشر للزبائن أونلاين
+        // تنبيه: إذا كانت قاعدة بياناتك الجديدة لا تحتوي على مسار "azemaa_v5" قم بحذفها واجعل المسار كالتالي: ref(db, 'customers')
+        
+        // 1. قراءة الزبائن أونلاين
         const cUnsub = onValue(ref(db, 'azemaa_v5/customers'), snap => {
             dataStore.customers = snap.val() || {};
             checks.c = true;
@@ -123,7 +125,7 @@
         });
         unsubscribes.push(cUnsub);
 
-        // 2. سحب مباشر لليومية أونلاين
+        // 2. قراءة اليومية أونلاين
         const yUnsub = onValue(ref(db, 'azemaa_v5/yomya'), snap => {
             dataStore.yomya = snap.val() || {};
             checks.y = true;
@@ -131,7 +133,7 @@
         });
         unsubscribes.push(yUnsub);
 
-        // 3. سحب مباشر للغياب والرواتب أونلاين
+        // 3. قراءة الغياب والرواتب أونلاين
         const gUnsub = onValue(ref(db, 'azemaa_v5/gyab_data'), snap => {
             dataStore.gyab = snap.val() || {};
             checks.g = true;
@@ -214,7 +216,6 @@
         return Math.max(0, Math.round(((parseFloat(w.sal) / 6) * attSum) - loansSum - (parseFloat(w.instPaid) || 0)));
     }
 
-    // استدعاء أولي عند فتح الصفحة
     fetchOnlineData();
 </script>
 </body>
