@@ -34,22 +34,56 @@
 
         .stats-badge { background: #34495e; color: white; padding: 4px 10px; border-radius: 6px; font-size: 13px; display: flex; gap: 8px; }
 
-        table { width: 100%; border-collapse: collapse; background: var(--bg-card); }
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        table { width: 100%; border-collapse: collapse; background: var(--bg-card); min-width: 600px; }
         th { background: #34495e; color: white; padding: 10px; position: sticky; top: 110px; font-size: 13px; z-index: 98; }
         td { border: 1px solid var(--border); padding: 2px; text-align: center; }
         
-        /* فواصل الشهور */
-        .month-header-row { background: var(--month-divider) !important; color: white !important; font-size: 16px; text-align: center; }
+        .month-header-row { background: var(--month-divider) !important; color: white !important; font-size: 16px; text-align: center; position: sticky; z-index: 90; }
         .month-header-row td { padding: 8px; border: none; }
 
         .row-friday { background-color: var(--row-fri) !important; }
         .row-today { background-color: var(--row-today) !important; border: 2px solid #f1c40f !important; }
-        .row-done { background-color: #ff7675 !important; color: white !important; }
+        .row-done { background-color: #27ae60 !important; color: white !important; }
         .row-done input { color: white !important; }
         
-        .name-input { width: 100%; border: none; background: transparent; text-align: center; padding: 6px 0; color: var(--text-main); }
-        .name-input:focus { background: rgba(52, 152, 219, 0.2); }
+        /* علامة النص المكتوب للمتأخر الفعلي داخل خلية التاريخ */
+        .overdue-badge { background: #c0392b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; display: inline-block; }
+
+        /* تصميم العلامة العائمة الذكية المتجاوبة في الجنب */
+        .floating-overdue-btn {
+            position: fixed; bottom: 20px; left: 20px;
+            background: var(--danger); color: white; border: none;
+            width: 60px; height: 60px; border-radius: 50%;
+            font-size: 26px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 9999; animation: bounce-float 2s infinite alternate;
+        }
+        .floating-badge {
+            position: absolute; top: -5px; right: -5px;
+            background: #ffffff; color: #c0392b; border: 2px solid #c0392b;
+            border-radius: 50%; width: 24px; height: 24px;
+            font-size: 12px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold !important;
+        }
+        @keyframes bounce-float {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-8px); box-shadow: 0 8px 20px rgba(231, 76, 60, 0.7); }
+        }
+
+        .name-input { width: 100%; border: none; background: transparent; text-align: center; padding: 8px 4px; color: var(--text-main); font-size: 15px; }
+        .name-input:focus { background: rgba(52, 152, 219, 0.2); outline: none; }
         #sync-status { font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; }
+
+        .col-date { width: 180px; }
+        .col-client { width: 35%; min-width: 180px; }
+        .col-status { width: 80px; }
+
+        @media (max-width: 768px) {
+            .controls-bar { position: static; }
+            th { top: 55px; }
+        }
     </style>
 </head>
 <body>
@@ -85,17 +119,24 @@
     </div>
 </div>
 
-<table id="mainTable">
-    <thead>
-        <tr>
-            <th style="width:180px">التاريخ واليوم</th>
-            <th>العميل 1</th>
-            <th>العميل 2</th>
-            <th style="width:70px">الحالة</th>
-        </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-</table>
+<!-- زر التذكير العائم في الجنب -->
+<button class="floating-overdue-btn" id="floatingOverdueBtn" onclick="scrollToNextOverdue()" style="display: none;">
+    🚨 <span class="floating-badge" id="floatingOverdueCount">0</span>
+</button>
+
+<div class="table-responsive">
+    <table id="mainTable">
+        <thead>
+            <tr>
+                <th class="col-date">التاريخ واليوم</th>
+                <th class="col-client">العميل 1</th>
+                <th class="col-client">العميل 2</th>
+                <th class="col-status">الحالة</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
 
 <script>
     const firebaseConfig = {
@@ -117,8 +158,8 @@
     const monthsAr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     
     let globalData = {};
+    let currentOverdueTrackIndex = 0;
 
-    // إنشاء قائمة السنوات من 2026 إلى 2070
     function initSelectors() {
         const yearSelect = document.getElementById('yearSelect');
         const currentYear = new Date().getFullYear();
@@ -131,13 +172,14 @@
         }
     }
 
-    // بناء السنة كاملة في جدول واحد مقسمة بشهور
     function renderWholeYear() {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
         
         const selectedYear = parseInt(document.getElementById('yearSelect').value);
-        const todayStr = new Date().toDateString();
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const todayStr = today.toDateString();
         
         let indexCounter = 0;
 
@@ -157,15 +199,20 @@
                 const tr = document.createElement('tr');
                 tr.setAttribute('data-id', id);
                 
+                const isPast = date < today;
+                tr.setAttribute('data-past', isPast ? "true" : "false");
+
                 if (date.getDay() === 5) tr.classList.add('row-friday');
                 if (date.toDateString() === todayStr) { tr.id = 'todayRow'; tr.classList.add('row-today'); }
 
-                // تم استخدام oninput هنا لضمان الحفظ اللحظي التلقائي حرفاً بحرف
                 tr.innerHTML = `
-                    <td>${dayName} ${d}/${m}/${y}</td>
+                    <td id="${id}-date-cell">
+                        <span class="date-text">${dayName} ${d}/${m}/${y}</span>
+                        <span class="overdue-badge" id="${id}-overdue" style="display:none;">متأخر ⚠️</span>
+                    </td>
                     <td><input class="name-input" id="${id}-c1" data-index="${indexCounter}" data-col="1" oninput="save('${id}', 'c1', this.value)"></td>
                     <td><input class="name-input" id="${id}-c2" data-index="${indexCounter}" data-col="2" oninput="save('${id}', 'c2', this.value)"></td>
-                    <td><select id="${id}-s" onchange="save('${id}', 's', this.value); updateRowStyle('${id}', this.value);">
+                    <td><select id="${id}-s" onchange="save('${id}', 's', this.value); updateRowStyle('${id}');">
                         <option value="pending">⏳</option>
                         <option value="done">✅</option>
                     </select></td>
@@ -179,11 +226,13 @@
         setupArrowNavigation();
     }
 
-    // دالة الحفظ التلقائي في قاعدة البيانات السحابية
     function save(id, field, val) {
         document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
         db.ref('azemaa_v5/deliveries/' + id).update({ [field]: val }).then(() => {
             document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
+            // إعادة فحص السطر فوراً عند إدخال أو مسح أي اسم للحفاظ على دقة التنبيه
+            updateRowStyle(id);
+            updateFloatingBadge();
         });
     }
 
@@ -196,7 +245,6 @@
     }
 
     function applyDataToDOM() {
-        // نتحقق إن كان المستخدم يكتب حالياً في أي خانة لكي لا نقوم بتخريب موضع المؤشر أثناء الحفظ
         const activeElId = document.activeElement ? document.activeElement.id : null;
 
         for (let id in globalData) {
@@ -208,20 +256,81 @@
             if(c2 && activeElId !== id+'-c2') c2.value = globalData[id].c2 || '';
             if(s) {
                 s.value = globalData[id].s || 'pending';
-                updateRowStyle(id, s.value);
             }
+            updateRowStyle(id);
         }
+        
+        // التحقق من الأسطر الفارغة التي ليس لها بيانات في السحاب
+        const allSelects = document.querySelectorAll('#tableBody select');
+        allSelects.forEach(s => {
+            const id = s.id.replace('-s', '');
+            if (!globalData[id]) {
+                updateRowStyle(id);
+            }
+        });
+
         filterTable();
+        updateFloatingBadge();
     }
 
-    function updateRowStyle(id, status) {
+    // دالة فحص وتحديث كلاسات السطر المتأخر بناءً على وجود الأسماء أو عدمها
+    function updateRowStyle(id) {
         const el = document.getElementById(id+'-s');
-        if(el) {
+        const c1 = document.getElementById(id+'-c1');
+        const c2 = document.getElementById(id+'-c2');
+
+        if(el && c1 && c2) {
             const tr = el.closest('tr');
-            if (status === 'done') tr.classList.add('row-done');
-            else tr.classList.remove('row-done');
+            const isPast = tr.getAttribute('data-past') === 'true';
+            const badge = document.getElementById(id+'-overdue');
+            const status = el.value;
+
+            // التأكد هل توجد أسماء مكتوبة فعلياً في السطر؟
+            const hasNames = c1.value.trim() !== "" || c2.value.trim() !== "";
+
+            tr.classList.remove('row-done', 'row-overdue');
+            if (badge) badge.style.display = 'none';
+
+            if (status === 'done') {
+                tr.classList.add('row-done');
+            } else if (status === 'pending' && isPast && hasNames) {
+                // 🚨 يُعتبر متأخراً فقط إذا كان قديماً، معلقاً، ومكتوب فيه اسم عِاميل فعلياً
+                tr.classList.add('row-overdue');
+                if (badge) badge.style.display = 'inline-block';
+            }
         }
         calculateStats();
+    }
+
+    function updateFloatingBadge() {
+        const overdueRows = document.querySelectorAll('.row-overdue');
+        const count = overdueRows.length;
+        const btn = document.getElementById('floatingOverdueBtn');
+        const badgeCount = document.getElementById('floatingOverdueCount');
+        
+        if(count > 0) {
+            btn.style.display = 'flex';
+            badgeCount.innerText = count;
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    function scrollToNextOverdue() {
+        const overdueRows = document.querySelectorAll('.row-overdue');
+        if(overdueRows.length === 0) return;
+        
+        if(currentOverdueTrackIndex >= overdueRows.length) {
+            currentOverdueTrackIndex = 0;
+        }
+        
+        overdueRows[currentOverdueTrackIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        const tr = overdueRows[currentOverdueTrackIndex];
+        tr.style.outline = "4px solid #f1c40f";
+        setTimeout(() => { tr.style.outline = "none"; }, 1500);
+
+        currentOverdueTrackIndex++;
     }
 
     function filterTable() {
