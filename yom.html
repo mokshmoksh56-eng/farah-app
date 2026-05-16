@@ -6,9 +6,6 @@
     <title id="page-title">يومية الورشة 2026 - تحديث فوري</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght=600;700;800;900&display=swap" rel="stylesheet">
     
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
     <style>
         :root {
             --primary: #1e40af; --success: #059669; --danger: #dc2626;
@@ -50,7 +47,7 @@
 
 <div class="container">
     <header><h1>حسابات الورشة 2026</h1></header>
-    <div id="sync-status">🟢 النظام جاهز ويعمل بنظام التحديث الفوري المزدوج</div>
+    <div id="sync-status">⏳ جاري الاتصال بالسحابة...</div>
 
     <div class="dashboard">
         <div class="card"><h3>اليوم</h3><div class="value" id="day-total" style="color:var(--success)">0</div></div>
@@ -78,11 +75,11 @@
         <input type="number" id="entry-out" style="border-right: 4px solid var(--danger)" placeholder="مبلغ خارج (-)">
         <input type="number" id="entry-in" style="border-right: 4px solid var(--success)" placeholder="مبلغ داخل (+)">
         <input type="hidden" id="edit-id">
-        <button class="btn-save" id="btn-main" onclick="processEntry()">حفظ العملية بالسحابة</button>
+        <button class="btn-save" id="btn-main">حفظ العملية بالسحابة</button>
     </div>
 
     <div class="search-area">
-        <input type="text" id="searchBox" placeholder="🔍 بحث شامل في الجدول..." onkeyup="renderTable()">
+        <input type="text" id="searchBox" placeholder="🔍 بحث شامل في الجدول...">
     </div>
 
     <div class="table-wrapper">
@@ -93,27 +90,35 @@
     </div>
 </div>
 
-<script>
-    const firebaseConfig = { 
-        apiKey: "AIzaSyCnqyHFTyhsyIea9p0VCG3qJpfFlHpOc1M", 
-        authDomain: "farah-kitchen.firebaseapp.com", 
-        databaseURL: "https://farah-kitchen-default-rtdb.firebaseio.com", 
-        projectId: "farah-kitchen", 
-        appId: "1:702572851072:web:320a92c9430abba6b71b65" 
+<!-- استدعاء إصدار الفايربيز الحديث كـ Modules -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, child, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // إعدادات مشروعك الجديد (azemaa-proo)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210",
+        measurementId: "G-R28J7010TH"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const dbRef = db.ref('azemaa_v5/yomya_2026_clean'); 
+    // تهيئة التطبيق وقاعدة البيانات
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const dbRef = ref(db, 'azemaa_v5/yomya_2026_clean'); 
     const currentYear = 2026;
 
     let localData = {};
 
     function initApp() {
-        // الاستماع للتحديثات القادمة من السحابة
-        dbRef.on('value', (snapshot) => {
+        // الاستماع للتحديثات القادمة من السحابة بنظام v10
+        onValue(dbRef, (snapshot) => {
             const cloudData = snapshot.val() || {};
-            // دمج البيانات السحابية مع البيانات المحلية لضمان عدم اختفاء أي سطر
             localData = Object.assign({}, localData, cloudData);
             renderTable();
             document.getElementById('sync-status').innerText = "🟢 متصل بالسحابة (محدث تلقائياً)";
@@ -142,12 +147,11 @@
         const uniqueId = editId || 'id_' + Date.now();
         const entryData = { id: uniqueId, shop, customer, date, desc, inVal, outVal };
 
-        // [تحديث فوري محلي]: إدراج البيانات في الجدول فوراً دون انتظار استجابة السيرفر
         localData[uniqueId] = entryData;
         renderTable(); 
 
-        // إرسال البيانات للسحابة في الخلفية لضمان حفظها ومزامنتها مع باقي الأجهزة
-        dbRef.child(uniqueId).set(entryData).then(() => {
+        // الحفظ في السحابة بالنظام الجديد
+        set(child(dbRef, uniqueId), entryData).then(() => {
             resetForm();
         }).catch(err => {
             console.log("تم الحفظ محلياً وجاري إعادة المحاولة للسحابة: " + err.message);
@@ -196,8 +200,8 @@
                     <td class="td-out">${item.outVal || '-'}</td>
                     <td class="td-in">${item.inVal || '-'}</td>
                     <td>
-                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')">📝 تعديل</button>
-                        <button class="btn-action btn-del" onclick="deleteItem('${item.id}')">🗑️ حذف</button>
+                        <button class="btn-action btn-edit" data-id="${item.id}">📝 تعديل</button>
+                        <button class="btn-action btn-del" data-id="${item.id}">🗑️ حذف</button>
                     </td>
                 `;
                 tableBody.appendChild(tr);
@@ -208,9 +212,17 @@
         document.getElementById('month-total').innerText = Math.round(totals.month).toLocaleString();
         document.getElementById('year-out').innerText = Math.round(totals.yearOut).toLocaleString();
         document.getElementById('year-net').innerText = Math.round(totals.yearNet).toLocaleString();
+
+        // ربط الأحداث للأزرار الديناميكية
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.onclick = () => startEdit(btn.getAttribute('data-id'));
+        });
+        document.querySelectorAll('.btn-del').forEach(btn => {
+            btn.onclick = () => deleteItem(btn.getAttribute('data-id'));
+        });
     }
 
-    window.startEdit = function(id) {
+    function startEdit(id) {
         const item = localData[id];
         if(!item) return;
         document.getElementById('entry-shop').value = item.shop;
@@ -224,11 +236,11 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    window.deleteItem = function(id) {
+    function deleteItem(id) {
         if(confirm("هل تريد حذف هذه العملية نهائياً؟")) {
             delete localData[id];
             renderTable();
-            dbRef.child(id).remove();
+            remove(child(dbRef, id));
         }
     }
 
@@ -242,7 +254,12 @@
         setActualTime();
     }
 
-    window.onload = initApp;
+    // ربط الدوال بأزرار ومحرك البحث المستمر
+    document.getElementById('btn-main').onclick = processEntry;
+    document.getElementById('searchBox').onkeyup = renderTable;
+
+    // تشغيل التطبيق
+    initApp();
 </script>
 </body>
 </html>
