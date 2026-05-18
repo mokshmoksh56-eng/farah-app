@@ -78,20 +78,29 @@
         .card-notmop { border-color: #fbc531; } .h-notmop { background: #fbc531; color: #2d3436; }
         .card-takarer { border-color: #0984e3; } .h-takarer { background: #0984e3; }
 
-        /* تعديل هنا: جعل الـ overlay لا يمنع الضغط */
+        /* طبقة الحماية التي تحمي الشاشة أثناء التمرير والسحب الخارجي */
         .overlay { 
             position: absolute; top: 50px; left: 0; right: 0; bottom: 0; 
             background: transparent; z-index: 5; 
-            pointer-events: none; /* هذا يسمح بالضغط على ما تحته */
+            pointer-events: auto; 
+            cursor: pointer;
         }
 
-        .h { padding: 15px 20px; font-size: 14px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        /* عند تكبير الصفحة تختفي الحماية لتبدأ في تسجيل بياناتك */
+        .card.fullscreen .overlay {
+            pointer-events: none;
+            display: none;
+        }
 
-        /* تعديل هنا: السماح بالتفاعل مع الـ iframe دائماً */
+        .h { 
+            padding: 15px 20px; font-size: 14px; font-weight: bold; color: #fff; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 10; 
+            cursor: pointer; user-select: none; 
+        }
+
         iframe { 
             flex: 1; border: none; width: 100%; height: 100%; 
             background: #fff; 
-            pointer-events: auto; /* تم التغيير من none إلى auto */
         }
 
         .zoom-btn { background: rgba(255,255,255,0.25); color: inherit; border: none; padding: 6px 14px; border-radius: 12px; font-size: 11px; cursor: pointer; }
@@ -196,16 +205,30 @@
 
 <script>
     const holidays = [
-        { name: "عيد الأضحى المبارك 🐑", date: new Date("June 16, 2026 00:00:00").getTime() },
-        { name: "ثورة 30 يونيو 🇪🇬", date: new Date("June 30, 2026 00:00:00").getTime() }
+        { name: "عيد القوات المسلحة 🎖️", date: new Date("October 6, 2026 00:00:00").getTime() },
+        { name: "المولد النبوي الشريف 🌙", date: new Date("August 25, 2026 00:00:00").getTime() },
+        { name: "ثورة 23 يوليو 🇪🇬", date: new Date("July 23, 2026 00:00:00").getTime() },
+        { name: "ثورة 30 يونيو 🇪🇬", date: new Date("June 30, 2026 00:00:00").getTime() },
+        { name: "عيد الأضحى المبارك 🐑", date: new Date("May 27, 2026 00:00:00").getTime() }
     ];
 
     function updateHeader() {
         const now = new Date();
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const upcomingHolidays = [...holidays].reverse();
+        const nextHoliday = upcomingHolidays.find(h => h.date >= todayMidnight) || holidays[holidays.length - 1];
+        const timeDiff = nextHoliday.date - todayMidnight;
+        const days = Math.round(timeDiff / (1000 * 60 * 60 * 24));
+        
         document.getElementById('digital-clock').innerHTML = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-        const nextHoliday = holidays.find(h => h.date > now.getTime()) || holidays[0];
-        const days = Math.ceil((nextHoliday.date - now.getTime()) / (1000 * 60 * 60 * 24));
-        document.getElementById('countdown').innerHTML = days <= 0 ? `اليوم ${nextHoliday.name}` : `باقي ${days} يوم على ${nextHoliday.name}`;
+        
+        if (days === 0) {
+            document.getElementById('countdown').innerHTML = `اليوم هو ${nextHoliday.name} 🎉 كل عام وأنتم بخير`;
+        } else if (days < 0) {
+            document.getElementById('countdown').innerHTML = `انتهت أعياد هذا العام الرسمية ✨`;
+        } else {
+            document.getElementById('countdown').innerHTML = `باقي ${days} أيام على ${nextHoliday.name}`;
+        }
     }
     setInterval(updateHeader, 1000); updateHeader();
 
@@ -227,6 +250,23 @@
         const btn = card.querySelector('.zoom-btn');
         btn.innerText = card.classList.contains('fullscreen') ? "✕ إغلاق" : "⛶ تكبير";
     }
+
+    // 1️⃣ ميزة التكبير عند الضغط مرتين على شريط العنوان (.h)
+    document.querySelectorAll('.h').forEach(header => {
+        header.addEventListener('dblclick', function(e) {
+            if (e.target.classList.contains('zoom-btn')) return;
+            const card = this.closest('.card');
+            toggleZoom(card);
+        });
+    });
+
+    // 2️⃣ 🟢 الميزة الجديدة: التكبير وفتح الصفحة عند الضغط مرتين على طبقة الحماية (جسم الصفحة)
+    document.querySelectorAll('.overlay').forEach(layer => {
+        layer.addEventListener('dblclick', function() {
+            const card = this.closest('.card');
+            toggleZoom(card);
+        });
+    });
 
     function generateBackupCode() {
         let data = {}; for (let i = 0; i < localStorage.length; i++) { let k = localStorage.key(i); if(k!=='theme') data[k] = localStorage.getItem(k); }
