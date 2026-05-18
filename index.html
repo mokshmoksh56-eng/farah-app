@@ -58,7 +58,8 @@
     </div>
     <div style="display: flex; gap: 10px;">
         <button onclick="document.body.classList.toggle('dark-mode')" style="background:rgba(255,255,255,0.2); border:none; color:#fff; padding:10px; border-radius:12px; cursor:pointer;">🌙</button>
-        <button onclick="logout()" style="background:rgba(255,0,0,0.3); border:none; color:#fff; padding:10px; border-radius:12px; cursor:pointer;">🚪 خروج</button>
+        <!-- تعديل الزر ليظهر حالة جاري الحفظ أثناء الخروج -->
+        <button id="logout-btn" onclick="logout()" style="background:rgba(255,0,0,0.3); border:none; color:#fff; padding:10px; border-radius:12px; cursor:pointer;">🚪 خروج</button>
     </div>
 </header>
 
@@ -97,12 +98,6 @@
         document.getElementById('digital-clock').innerHTML = now.toLocaleTimeString('ar-EG');
     }, 1000);
 
-    // 2. وظيفة الخروج (تمسح الجلسة وتعود للـ login)
-    window.logout = () => {
-        sessionStorage.clear();
-        window.location.replace("login.html");
-    };
-
     // 3. التكبير بالنقر المزدوج على العناوين
     document.querySelectorAll('.h').forEach(el => {
         el.addEventListener('dblclick', () => {
@@ -110,7 +105,7 @@
         });
     });
 
-    // 4. الحفظ السحابي
+    // 4. الحفظ السحابي كدالة أساسية
     async function cloudSave() {
         let data = {}; 
         for (let i=0; i<localStorage.length; i++) {
@@ -119,6 +114,26 @@
         }
         await set(ref(db, 'backups/azemaa_main'), data);
     }
+
+    // ⚠️ تعديل وظيفة الخروج لتصبح تلقائية الحفظ
+    window.logout = async () => {
+        const logoutBtn = document.getElementById('logout-btn');
+        logoutBtn.innerText = "⏳ جاري حفظ البيانات والخروج...";
+        logoutBtn.disabled = true; // تعطيل الزر لمنع النقرات المتعددة
+        
+        try {
+            // تنفيذ الحفظ السحابي التلقائي فوراً
+            await cloudSave();
+            console.log("تم الحفظ التلقائي بنجاح قبل الخروج.");
+        } catch (e) {
+            // في حال فشل الإنترنت، يتم تنبيه المستخدم لكن يستمر بالخروج لحمايته
+            alert("⚠️ تنبيه: تعذر الحفظ السحابي التلقائي بسبب ضعف الاتصال، سيتم الخروج الآن.");
+        } finally {
+            // مسح الجلسة والتوجه لصفحة الدخول في كل الأحوال
+            sessionStorage.clear();
+            window.location.replace("login.html");
+        }
+    };
 
     document.getElementById('manual-cloud-save').onclick = async () => {
         const btn = document.getElementById('manual-cloud-save');
