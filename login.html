@@ -5,27 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>دخول نظام أزيماء</title>
     <style>
-        /* الأنماط الأساسية */
         body { font-family: 'Segoe UI', sans-serif; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; overflow: hidden; }
         
-        .login-box, #exit-screen { 
+        .login-box { 
             background: #1e293b; padding: 40px; border-radius: 28px; 
             box-shadow: 0 20px 45px rgba(0,0,0,0.5); text-align: center; 
             border: 3px solid #6e8efb; width: 90%; max-width: 400px; 
-            transition: 0.3s;
+            transition: opacity 0.2s ease;
         }
-
-        #exit-screen { border-color: #ff7675; display: none; }
 
         input { padding: 18px; width: 100%; border-radius: 15px; border: none; margin-bottom: 20px; font-size: 30px; text-align: center; letter-spacing: 10px; -webkit-text-security: disc; background: #2d3d52; color: white; box-sizing: border-box; outline: none; }
         
         button { background: linear-gradient(135deg, #6e8efb, #a777e3); color: white; border: none; padding: 18px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 1.2rem; width: 100%; margin-bottom: 10px; transition: 0.2s; }
         button:active { transform: scale(0.98); }
 
-        .btn-exit { background: transparent; border: 1px solid #ff7675; color: #ff7675; }
+        .btn-exit { background: transparent; border: 1px solid #ff7675; color: #ff7675; margin-top: 10px; }
         
         #msg { color: #ff7675; margin-top: 10px; font-weight: bold; }
-        .exit-icon { font-size: 3rem; margin-bottom: 15px; display: block; }
     </style>
 </head>
 <body>
@@ -33,18 +29,10 @@
 <div class="login-box" id="loginUI">
     <h2>🚀 azemaa pro</h2>
     <p>أدخل الرقم السري للمتابعة</p>
-    <input type="text" id="passCode" maxlength="4" inputmode="numeric">
+    <input type="text" id="passCode" maxlength="4" inputmode="numeric" autocomplete="off">
     <button onclick="verify()">دخول النظام</button>
-    <button class="btn-exit" onclick="finalExit()">الخروج من التطبيق</button>
+    <button class="btn-exit" onclick="finalExit()">خروج نهائي</button>
     <div id="msg"></div>
-</div>
-
-<div id="exit-screen">
-    <span class="exit-icon">👋</span>
-    <h2 style="color: #ff7675;">تم الخروج بنجاح</h2>
-    <p>تم تأمين كافة بياناتك وإغلاق الجلسة.</p>
-    <p style="font-size: 0.8rem; opacity: 0.6;">يمكنك الآن إغلاق التبويب بأمان.</p>
-    <button onclick="location.reload()" style="margin-top: 10px;">العودة للدخول</button>
 </div>
 
 <script type="module">
@@ -61,29 +49,24 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // دالة الخروج النهائي التي تقضي على الشاشة البيضاء
+    // دالة الخروج النهائي الفوري بدون شاشة بيضاء
     window.finalExit = () => {
-        if(confirm("هل تريد إغلاق azemaa pro؟")) {
-            // إخفاء واجهة الدخول وإظهار شاشة الوداع فوراً
-            document.getElementById('loginUI').style.display = 'none';
-            document.getElementById('exit-screen').style.display = 'block';
-            
-            // محاولة إغلاق النافذة (تعمل في وضع الـ PWA/الشاشة الرئيسية)
-            window.close();
-
-            // تحويل المسار لصفحة فارغة بعد ثانية كخيار احتياطي أخير
-            setTimeout(() => {
-                if (!window.closed) {
-                    window.location.replace("about:blank");
-                }
-            }, 1000);
-        }
+        // إخفاء الواجهة فوراً
+        document.getElementById('loginUI').style.opacity = '0';
+        
+        // محاولة إغلاق النافذة برمجياً
+        window.close();
+        
+        // توجيه المتصفح لصفحة فارغة وقتل العمليات
+        setTimeout(() => {
+            window.location.replace("about:blank");
+            document.body.innerHTML = ""; 
+        }, 50);
     };
 
-    // منع الرجوع العشوائي وإجبار الخروج عند محاولة العودة
+    // منع الرجوع وإجبار الإغلاق
     history.pushState(null, null, window.location.href);
     window.onpopstate = () => {
-        history.pushState(null, null, window.location.href);
         finalExit();
     };
 
@@ -104,7 +87,7 @@
                 document.getElementById('passCode').value = "";
             }
         } catch (e) {
-            msg.innerText = "خطأ في الاتصال!";
+            msg.innerText = "خطأ في الاتصال بالخادم!";
         }
     };
 </script>
