@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>دخول نظام أزيماء</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; overflow: hidden; }
         
         .login-box { 
             background: #1e293b; padding: 40px; border-radius: 28px; 
@@ -22,6 +22,9 @@
         .btn-exit { background: transparent; border: 1px solid #ff7675; color: #ff7675; margin-top: 10px; }
         
         #msg { color: #ff7675; margin-top: 10px; font-weight: bold; }
+
+        /* حالة التدمير عند الخروج لمنع البياض */
+        .exit-active { opacity: 0 !important; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -49,28 +52,34 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // دالة الخروج النهائي الفوري بدون شاشة بيضاء
+    // --- نظام الخروج النهائي الصامت ---
     window.finalExit = () => {
-        // إخفاء الواجهة فوراً
-        document.getElementById('loginUI').style.opacity = '0';
-        
-        // محاولة إغلاق النافذة برمجياً
-        window.close();
-        
-        // توجيه المتصفح لصفحة فارغة وقتل العمليات
+        // 1. إخفاء الواجهة فوراً لتحويلها للون الأسود (بدل الأبيض)
+        document.getElementById('loginUI').classList.add('exit-active');
+        document.body.style.backgroundColor = "black";
+
+        // 2. إرسال أمر إغلاق لبيئات WebView (Android)
+        if (window.Android && window.Android.finish) {
+            window.Android.finish();
+        }
+
+        // 3. تدمير محتوى الصفحة بالكامل لقطع العمليات
         setTimeout(() => {
+            document.body.innerHTML = "";
+            window.close(); // للمتصفحات التي تدعم الإغلاق البرمجي
+            
+            // 4. الحل النهائي لكروم: توجيه لصفحة فارغة تماماً
             window.location.replace("about:blank");
-            document.body.innerHTML = ""; 
         }, 50);
     };
 
-    // منع الرجوع وإجبار الإغلاق
+    // منع زر الرجوع في الهاتف من إظهار شاشات بيضاء وإجباره على الخروج
     history.pushState(null, null, window.location.href);
     window.onpopstate = () => {
         finalExit();
     };
 
-    // التحقق من الكود
+    // --- نظام التحقق ---
     window.verify = async () => {
         const val = document.getElementById('passCode').value;
         const msg = document.getElementById('msg');
