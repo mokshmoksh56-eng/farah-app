@@ -3,13 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa pro - لوحة التحكم الشاملة</title>
-    <script>
-        // 1. حماية فورية: إذا لم يتم التحقق، اذهب لصفحة الدخول
-        if (sessionStorage.getItem("isAllowed") !== "true") {
-            window.location.replace("login.html");
-        }
-    </script>
+    <title>Azemaa Pro - لوحة التحكم الشاملة</title>
     <style>
         :root { 
             --bg-main: #eef2f7; --card-bg: #ffffff; --text-color: #2d3436;
@@ -38,13 +32,11 @@
         .main-container { display: flex; flex-direction: column; gap: 20px; }
         .card { background: var(--card-bg); border-radius: var(--card-radius); height: 420px; display: flex; flex-direction: column; overflow: hidden; position: relative; box-shadow: 0 12px 30px rgba(0,0,0,0.1); border: 3px solid transparent; }
         
-        /* طبقة حماية للتمرير فوق الـ iframe */
         .overlay { position: absolute; top: 55px; left: 0; right: 0; bottom: 0; background: transparent; z-index: 5; pointer-events: none; }
         
         .h { padding: 15px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 1.1rem; }
         iframe { flex: 1; border: none; width: 100%; height: 100%; background: #fff; }
         
-        /* وضع ملء الشاشة */
         .card.fullscreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; border-radius: 0; }
         .card.fullscreen .overlay { display: none; }
     </style>
@@ -54,7 +46,7 @@
 <header>
     <div>
         <div id="digital-clock" style="font-size: 1.2rem; font-weight: bold;">00:00:00 ص</div>
-        <div id="countdown" style="font-size: 0.8rem; opacity: 0.8;">جاري حساب المواعيد...</div>
+        <div id="countdown" style="font-size: 0.8rem; opacity: 0.8;">Azemaa Pro Software</div>
     </div>
     <div style="display: flex; gap: 10px;">
         <button onclick="document.body.classList.toggle('dark-mode')" style="background:rgba(255,255,255,0.2); border:none; color:#fff; padding:10px; border-radius:12px; cursor:pointer;">🌙</button>
@@ -62,9 +54,8 @@
 </header>
 
 <div class="sync-box">
-    <!-- تم تعديل هذا الزر ليقوم بالحفظ السحابي ثم الخروج مباشرة -->
-    <button id="manual-cloud-save" class="btn btn-cloud" style="background-color: #e17055;">☁️ حفظ سحابي وخروج</button>
-    <button id="manual-cloud-load" class="btn btn-cloud">🔄 استرجاع</button>
+    <button id="manual-cloud-save" class="btn btn-cloud" style="background-color: #e17055;">☁️ حفظ سحابي للبيانات</button>
+    <button id="manual-cloud-load" class="btn btn-cloud">🔄 استرجاع النسخة</button>
     <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">🟢 نسخ للواتساب</button>
     <button onclick="loadFromWhatsApp()" class="btn btn-whatsapp">📥 استعادة يدوي</button>
 </div>
@@ -91,20 +82,20 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // 1. الساعة والعد التنازلي
+    // 1. الساعة
     setInterval(() => {
         const now = new Date();
         document.getElementById('digital-clock').innerHTML = now.toLocaleTimeString('ar-EG');
     }, 1000);
 
-    // 3. التكبير بالنقر المزدوج على العناوين
+    // 2. التكبير بالنقر المزدوج
     document.querySelectorAll('.h').forEach(el => {
         el.addEventListener('dblclick', () => {
             el.closest('.card').classList.toggle('fullscreen');
         });
     });
 
-    // 4. الحفظ السحابي
+    // 3. الحفظ السحابي
     async function cloudSave() {
         let data = {}; 
         for (let i=0; i<localStorage.length; i++) {
@@ -114,21 +105,20 @@
         await set(ref(db, 'backups/azemaa_main'), data);
     }
 
-    // زر "حفظ سحابي وخروج" يجمع الوظيفتين الآن
     document.getElementById('manual-cloud-save').onclick = async () => {
         const btn = document.getElementById('manual-cloud-save');
-        btn.innerText = "⏳ جاري الرفع والخروج...";
+        btn.innerText = "⏳ جاري الرفع...";
         btn.disabled = true;
 
         try { 
             await cloudSave(); 
-            // بعد نجاح الحفظ، يتم الخروج فوراً ومسح الجلسة
-            sessionStorage.clear();
-            window.location.replace("login.html");
+            alert("✅ تم الحفظ السحابي بنجاح!");
+            btn.innerText = "☁️ حفظ سحابي للبيانات";
+            btn.disabled = false;
         } 
         catch (e) { 
-            alert("❌ فشل الاتصال بالسيرفر! يرجى التحقق من الإنترنت والمحاولة مجدداً لضمان حفظ البيانات."); 
-            btn.innerText = "☁️ حفظ سحابي وخروج";
+            alert("❌ فشل في الاتصال! تأكد من الإنترنت."); 
+            btn.innerText = "☁️ حفظ سحابي للبيانات";
             btn.disabled = false;
         }
     };
@@ -147,7 +137,7 @@
         } catch (e) { alert("❌ خطأ في السيرفر!"); }
     };
 
-    // 5. وظائف الواتساب
+    // 4. وظائف الواتساب
     window.saveToWhatsApp = () => {
         let data = {}; 
         for (let i=0; i<localStorage.length; i++) data[localStorage.key(i)] = localStorage.getItem(localStorage.key(i));
