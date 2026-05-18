@@ -12,7 +12,10 @@
             border: 3px solid #6e8efb; width: 90%; max-width: 400px; 
         }
         input { padding: 18px; width: 100%; border-radius: 15px; border: none; margin-bottom: 20px; font-size: 30px; text-align: center; letter-spacing: 10px; -webkit-text-security: disc; background: #2d3d52; color: white; box-sizing: border-box; outline: none; }
-        button { background: linear-gradient(135deg, #6e8efb, #a777e3); color: white; border: none; padding: 18px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 1.2rem; width: 100%; margin-bottom: 10px; transition: 0.2s; }
+        button { border: none; padding: 18px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 1.2rem; width: 100%; margin-bottom: 10px; transition: 0.2s; }
+        #loginBtn { background: linear-gradient(135deg, #6e8efb, #a777e3); color: white; }
+        /* تنسيق زر الخروج من التطبيق */
+        #exitBtn { background: rgba(255, 0, 0, 0.2); color: #ff7675; border: 1px solid rgba(255, 0, 0, 0.4); margin-top: 5px; }
         button:active { transform: scale(0.98); }
         #msg { color: #ff7675; margin-top: 10px; font-weight: bold; min-height: 20px; }
     </style>
@@ -24,6 +27,8 @@
     <p>أدخل الرقم السري للمتابعة</p>
     <input type="text" id="passCode" maxlength="4" inputmode="numeric" autocomplete="off">
     <button id="loginBtn">دخول النظام</button>
+    <!-- زر الخروج المضاف حديثاً -->
+    <button id="exitBtn">🚪 الخروج من التطبيق</button>
     <div id="msg"></div>
 </div>
 
@@ -42,6 +47,7 @@
     const db = getDatabase(app);
 
     const loginBtn = document.getElementById('loginBtn');
+    const exitBtn = document.getElementById('exitBtn');
     const passInput = document.getElementById('passCode');
     const msg = document.getElementById('msg');
 
@@ -57,7 +63,6 @@
             const snapshot = await get(ref(db, 'passcode'));
             if (snapshot.exists() && val == snapshot.val()) {
                 sessionStorage.setItem("isAllowed", "true");
-                // التوجيه لملف اللوحة الأساسية
                 window.location.replace("index.html");
             } else {
                 msg.innerText = "الرمز غير صحيح!";
@@ -71,6 +76,19 @@
             loginBtn.disabled = false;
         }
     }
+
+    // وظيفة الخروج من التطبيق وإغلاق النافذة
+    exitBtn.onclick = () => {
+        sessionStorage.clear(); // مسح أي بيانات مخزنة للجلسة بأمان
+        
+        // محاولة إغلاق النافذة فوراً
+        window.close();
+        
+        // حل بديل في حال منع المتصفح الإغلاق المباشر (التوجيه لصفحة فارغة)
+        setTimeout(() => {
+            window.location.replace("about:blank");
+        }, 100);
+    };
 
     loginBtn.onclick = verify;
 
