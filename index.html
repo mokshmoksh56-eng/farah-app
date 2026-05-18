@@ -78,7 +78,6 @@
         .card-notmop { border-color: #fbc531; } .h-notmop { background: #fbc531; color: #2d3436; }
         .card-takarer { border-color: #0984e3; } .h-takarer { background: #0984e3; }
 
-        /* طبقة الحماية التي تحمي الشاشة أثناء التمرير والسحب الخارجي */
         .overlay { 
             position: absolute; top: 50px; left: 0; right: 0; bottom: 0; 
             background: transparent; z-index: 5; 
@@ -86,7 +85,6 @@
             cursor: pointer;
         }
 
-        /* عند تكبير الصفحة تختفي الحماية لتبدأ في تسجيل بياناتك */
         .card.fullscreen .overlay {
             pointer-events: none;
             display: none;
@@ -245,13 +243,37 @@
     function backspaceCalc() { calcScreen.value = calcScreen.value.slice(0, -1) || '0'; }
     function calculateResult() { try { calcScreen.value = eval(calcScreen.value.replace(/×/g, '*').replace(/÷/g, '/')); } catch(e) { calcScreen.value = 'Error'; setTimeout(clearCalc, 1000); } }
 
-    function toggleZoom(card) {
-        card.classList.toggle('fullscreen');
+    // 🟢 تعديل دالة التكبير لحل مشكلة زر الرجوع
+    function toggleZoom(card, isBackButton = false) {
+        const isCurrentlyFullscreen = card.classList.contains('fullscreen');
+        
+        if (!isCurrentlyFullscreen) {
+            // فتح التكبير: إضافة حالة وهمية في تاريخ المتصفح
+            card.classList.add('fullscreen');
+            window.history.pushState({ fullscreenOpen: true }, "");
+        } else {
+            // إغلاق التكبير
+            card.classList.remove('fullscreen');
+            // إذا أغلقنا بالزر العادي وليس بزر الهاتف، نسحب الحالة الوهمية حتى لا يخرب زر الرجوع لاحقاً
+            if (!isBackButton) {
+                window.history.replaceState(null, "");
+            }
+        }
+        
         const btn = card.querySelector('.zoom-btn');
         btn.innerText = card.classList.contains('fullscreen') ? "✕ إغلاق" : "⛶ تكبير";
     }
 
-    // 1️⃣ ميزة التكبير عند الضغط مرتين على شريط العنوان (.h)
+    // 🟢 التقاط حدث ضغط زر الرجوع للهاتف أو المتصفح
+    window.addEventListener('popstate', function(event) {
+        const activeFullscreenCard = document.querySelector('.card.fullscreen');
+        if (activeFullscreenCard) {
+            // لو في صفحة مكبرة، اقفلها واصرف نظر عن الرجوع للخلف
+            toggleZoom(activeFullscreenCard, true);
+        }
+    });
+
+    // ميزة التكبير عند الضغط مرتين على شريط العنوان (.h)
     document.querySelectorAll('.h').forEach(header => {
         header.addEventListener('dblclick', function(e) {
             if (e.target.classList.contains('zoom-btn')) return;
@@ -260,7 +282,7 @@
         });
     });
 
-    // 2️⃣ 🟢 الميزة الجديدة: التكبير وفتح الصفحة عند الضغط مرتين على طبقة الحماية (جسم الصفحة)
+    // التكبير وفتح الصفحة عند الضغط مرتين على طبقة الحماية (جسم الصفحة)
     document.querySelectorAll('.overlay').forEach(layer => {
         layer.addEventListener('dblclick', function() {
             const card = this.closest('.card');
