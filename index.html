@@ -64,7 +64,7 @@
         }
         .header-left { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
         .system-title { font-size: 1.1rem; font-weight: 800; color: #fff; }
-        #digital-clock { font-size: 1.1rem; font-weight: bold; font-family: sans-serif; }
+        #digital-clock { font-size: 1.1rem; font-weight: bold; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #countdown-container { font-size: 0.85rem; font-weight: bold; color: #fff; background: rgba(0, 0, 0, 0.2); padding: 4px 10px; border-radius: 10px; transition: 0.5s; }
         
         .header-right { display: flex; align-items: center; gap: 12px; }
@@ -146,8 +146,8 @@
     <header>
         <div class="header-left">
             <span class="system-title">🚀 azemaa pro</span>
-            <!-- الساعة الرقمية بالإنجليزية -->
-            <div id="digital-clock">00:00:00 AM</div>
+            <!-- الساعة الرقمية المحدثة لتعمل بـ ص وم -->
+            <div id="digital-clock">12:00:00 ص</div>
             <!-- شريط العداد التنازلي المدمج جنب الساعة -->
             <div id="countdown-container">جرٍ حساب المناسبات القادمة...</div>
         </div>
@@ -166,7 +166,6 @@
     </div>
 
     <div class="main-container">
-        <!-- إضافة التكبير بالضغط المزدوج على مستوى الكارت وشريط الصفحات بالكامل -->
         <div class="card card-zbon" ondblclick="toggleZoom(this)">
             <div class="overlay"></div>
             <div class="h h-zbon"><span>👤 القسم الرئيسي</span><button style="background:rgba(255,255,255,0.2); border:none; color:inherit; border-radius:5px; padding:2px 8px;">⛶</button></div>
@@ -240,14 +239,29 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // سكريبت تحديث الساعة بنظام 12 ساعة (ص / م)
+    function updateClock() {
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'م' : 'ص';
+        
+        hours = hours % 12;
+        hours = hours ? hours : 12; // تحويل الساعة 0 إلى 12
+        const formattedHours = String(hours).padStart(2, '0');
+
+        document.getElementById('digital-clock').innerText = `${formattedHours}:${minutes}:${seconds} ${ampm}`;
+    }
+
     function checkAuth() {
         if(localStorage.getItem('azemaa_user_pin')) {
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('appContent').style.display = 'block';
             
-            setInterval(() => {
-                document.getElementById('digital-clock').innerText = new Date().toLocaleTimeString('en-US');
-            }, 1000);
+            // تشغيل الساعة فوراً وتحديثها دورياً
+            updateClock();
+            setInterval(updateClock, 1000);
             
             startHolidaysCarousel();
         }
@@ -323,20 +337,16 @@
         location.reload();
     });
 
-    // التحكم الذكي في التكبير والتصغير وتاريخ المتصفح (يدعم شريط الصفحات والأزرار)
     window.toggleZoom = (card) => {
         const isFullscreen = card.classList.contains('fullscreen');
-        
         if (!isFullscreen) {
             card.classList.add('fullscreen');
-            // دفع حالة جديدة لتاريخ المتصفح لمنع الخروج عند الضغط على سهم الرجوع الخلفي للهاتف
             history.pushState({ isMaximized: true }, "");
         } else {
             card.classList.remove('fullscreen');
         }
     };
 
-    // الاستماع لسهم الرجوع الخلفي في الهاتف أو المتصفح لإغلاق الكروت المكبرة فوراً
     window.addEventListener('popstate', (event) => {
         const activeFullscreenCard = document.querySelector('.card.fullscreen');
         if (activeFullscreenCard) {
