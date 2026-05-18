@@ -5,21 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>دخول نظام أزيماء</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; overflow: hidden; }
-        
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; overflow: hidden; }
         .login-box { 
             background: #1e293b; padding: 40px; border-radius: 28px; 
             box-shadow: 0 20px 45px rgba(0,0,0,0.5); text-align: center; 
             border: 3px solid #6e8efb; width: 90%; max-width: 400px; 
-            transition: opacity 0.2s ease;
         }
-
         input { padding: 18px; width: 100%; border-radius: 15px; border: none; margin-bottom: 20px; font-size: 30px; text-align: center; letter-spacing: 10px; -webkit-text-security: disc; background: #2d3d52; color: white; box-sizing: border-box; outline: none; }
-        
         button { background: linear-gradient(135deg, #6e8efb, #a777e3); color: white; border: none; padding: 18px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 1.2rem; width: 100%; margin-bottom: 10px; transition: 0.2s; }
         button:active { transform: scale(0.98); }
-        
-        #msg { color: #ff7675; margin-top: 10px; font-weight: bold; }
+        #msg { color: #ff7675; margin-top: 10px; font-weight: bold; min-height: 20px; }
     </style>
 </head>
 <body>
@@ -28,9 +23,7 @@
     <h2>🚀 azemaa pro</h2>
     <p>أدخل الرقم السري للمتابعة</p>
     <input type="text" id="passCode" maxlength="4" inputmode="numeric" autocomplete="off">
-    
-    <button onclick="verify()">دخول النظام</button>
-    
+    <button id="loginBtn">دخول النظام</button>
     <div id="msg"></div>
 </div>
 
@@ -48,26 +41,43 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // --- نظام التحقق ---
-    window.verify = async () => {
-        const val = document.getElementById('passCode').value;
-        const msg = document.getElementById('msg');
-        
+    const loginBtn = document.getElementById('loginBtn');
+    const passInput = document.getElementById('passCode');
+    const msg = document.getElementById('msg');
+
+    // وظيفة التحقق
+    async function verify() {
+        const val = passInput.value;
         if (!val) { msg.innerText = "أدخل الرمز أولاً!"; return; }
+
+        loginBtn.innerText = "⏳ جاري التحقق...";
+        loginBtn.disabled = true;
 
         try {
             const snapshot = await get(ref(db, 'passcode'));
             if (snapshot.exists() && val == snapshot.val()) {
                 sessionStorage.setItem("isAllowed", "true");
+                // التوجيه لملف اللوحة الأساسية
                 window.location.replace("index.html");
             } else {
                 msg.innerText = "الرمز غير صحيح!";
-                document.getElementById('passCode').value = "";
+                passInput.value = "";
+                loginBtn.innerText = "دخول النظام";
+                loginBtn.disabled = false;
             }
         } catch (e) {
-            msg.innerText = "خطأ في الاتصال بالخادم!";
+            msg.innerText = "خطأ في الاتصال! تأكد من الإنترنت.";
+            loginBtn.innerText = "دخول النظام";
+            loginBtn.disabled = false;
         }
-    };
+    }
+
+    loginBtn.onclick = verify;
+
+    // الدخول عند الضغط على Enter في لوحة المفاتيح
+    passInput.addEventListener("keyup", (event) => {
+        if (event.key === "Enter") verify();
+    });
 </script>
 </body>
 </html>
