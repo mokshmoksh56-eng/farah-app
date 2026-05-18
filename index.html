@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>azemaa pro - لوحة التحكم الشاملة</title>
     <script>
+        // حماية الصفحة: إذا لم يسجل الدخول يتم تحويله فوراً
         if (sessionStorage.getItem("isAllowed") !== "true") {
             window.location.replace("login.html");
         }
@@ -16,16 +17,16 @@
             --whatsapp-green: #25D366; --cloud-blue: #00a8ff; --card-radius: 20px;
         }
         body.dark-mode { --bg-main: #0f172a; --card-bg: #1e293b; --text-color: #f1f5f9; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 12px; background: var(--bg-main); color: var(--text-color); display: flex; flex-direction: column; gap: 15px; transition: 0.3s; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 12px; background: var(--bg-main); color: var(--text-color); display: flex; flex-direction: column; gap: 15px; transition: 0.3s; overflow-x: hidden; }
         
         header { 
-            background: var(--header-grad); color: #fff; padding: 10px 15px; 
+            background: var(--header-grad); color: #fff; padding: 12px 18px; 
             border-radius: var(--card-radius); display: flex; 
             justify-content: space-between; align-items: center;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
         }
 
-        /* أزرار المزامنة والواتساب */
+        /* شريط أدوات المزامنة */
         .sync-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 5px 0; }
         .btn { 
             border: none; color: #fff; padding: 12px; border-radius: 15px; 
@@ -37,55 +38,59 @@
         .btn:active { transform: scale(0.95); }
 
         .main-container { display: flex; flex-direction: column; gap: 20px; }
+        
+        /* تصميم الكروت */
         .card { background: var(--card-bg); border-radius: var(--card-radius); height: 420px; display: flex; flex-direction: column; overflow: hidden; position: relative; box-shadow: 0 12px 30px rgba(0,0,0,0.1); border: 3px solid transparent; }
-        .overlay { position: absolute; top: 50px; left: 0; right: 0; bottom: 0; background: transparent; z-index: 5; cursor: pointer; }
+        .overlay { position: absolute; top: 55px; left: 0; right: 0; bottom: 0; background: transparent; z-index: 5; cursor: pointer; }
         .card.fullscreen .overlay { display: none; }
-        .h { padding: 15px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .h { padding: 15px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 1.1rem; }
         iframe { flex: 1; border: none; width: 100%; height: 100%; background: #fff; }
+        
+        /* وضع ملء الشاشة */
         .card.fullscreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; border-radius: 0; }
         
-        /* مودال الخروج */
-        .logout-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card-bg); border: 2px solid #ff7675; padding: 25px; border-radius: 20px; box-shadow: 0 15px 50px rgba(0,0,0,0.4); z-index: 20000; width: 310px; text-align: center; }
+        /* مودال الخروج الاحترافي */
+        .logout-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card-bg); border: 2px solid #ff7675; padding: 25px; border-radius: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.4); z-index: 20000; width: 85%; max-width: 320px; text-align: center; }
         .logout-btns { display: flex; gap: 10px; margin-top: 20px; }
         .btn-confirm { background: #ff7675; color: white; border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; flex: 1; }
         .btn-cancel { background: #2d3436; color: white; border: none; padding: 12px; border-radius: 12px; cursor: pointer; flex: 1; }
-        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 19999; }
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 19999; backdrop-filter: blur(4px); }
     </style>
 </head>
-<body>
+<body class="dark-mode">
 
 <header>
     <div>
-        <div id="digital-clock">00:00:00 ص</div>
-        <div id="countdown">تحميل المواعيد...</div>
+        <div id="digital-clock" style="font-size: 1.2rem; font-weight: bold;">00:00:00 ص</div>
+        <div id="countdown" style="font-size: 0.8rem; opacity: 0.8;">جاري حساب المواعيد...</div>
     </div>
-    <button onclick="document.body.classList.toggle('dark-mode')" style="background:rgba(255,255,255,0.2); border:none; color:#fff; padding:8px; border-radius:10px;">🌙</button>
+    <button onclick="document.body.classList.toggle('dark-mode')" style="background:rgba(255,255,255,0.2); border:none; color:#fff; padding:10px; border-radius:12px; cursor:pointer;">🌙</button>
 </header>
 
 <div class="sync-box">
     <button id="manual-cloud-save" class="btn btn-cloud">☁️ حفظ سحابي</button>
     <button id="manual-cloud-load" class="btn btn-cloud">🔄 استرجاع</button>
-    <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">🟢 واتساب</button>
-    <button onclick="loadFromWhatsApp()" class="btn btn-whatsapp">📥 يدوي</button>
+    <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">🟢 نسخ للواتساب</button>
+    <button onclick="loadFromWhatsApp()" class="btn btn-whatsapp">📥 استعادة يدوي</button>
 </div>
 
 <div class="modal-overlay" id="logoutOverlay" onclick="closeLogout()"></div>
 <div class="logout-modal" id="logoutModal">
-    <h3>هل تريد الخروج من azemaa pro؟</h3>
-    <p style="font-size: 0.8rem; color: #666;">سيتم حفظ البيانات سحابياً لتأمين الحسابات</p>
+    <h3 style="margin-top: 0;">خروج من النظام؟</h3>
+    <p style="font-size: 0.85rem; color: #666;">سيتم حفظ كافة البيانات والفلوس سحابياً قبل الإغلاق.</p>
     <div class="logout-btns">
-        <button class="btn-confirm" id="confirmLogoutBtn">نعم، خروج</button>
+        <button class="btn-confirm" id="confirmLogoutBtn">تأكيد الخروج</button>
         <button class="btn-cancel" onclick="closeLogout()">إلغاء</button>
     </div>
 </div>
 
 <div class="main-container">
-    <div class="card" style="border-color: #ff7675;"><div class="overlay"></div><div class="h" style="background: #ff7675;">👤 الزبائن</div><iframe src="./zbon.html"></iframe></div>
-    <div class="card" style="border-color: #00cec9;"><div class="overlay"></div><div class="h" style="background: #00cec9;">💸 الخزينة</div><iframe src="./yom.html"></iframe></div>
-    <div class="card" style="border-color: #6c5ce7;"><div class="overlay"></div><div class="h" style="background: #6c5ce7;">👷 العمال</div><iframe src="./gyab.html"></iframe></div>
-    <div class="card" style="border-color: #e17055;"><div class="overlay"></div><div class="h" style="background: #e17055;">📅 التسليم</div><iframe src="./tslem.html"></iframe></div>
-    <div class="card" style="border-color: #fbc531;"><div class="overlay"></div><div class="h" style="background: #fbc531; color:#000;">📝 الملاحظات</div><iframe src="./notmop.html"></iframe></div>
-    <div class="card" style="border-color: #0984e3;"><div class="overlay"></div><div class="h" style="background: #0984e3;">📊 التقارير</div><iframe src="./takarer.html"></iframe></div>
+    <div class="card" style="border-color: #ff7675;"><div class="overlay"></div><div class="h" style="background: #ff7675;">👤 حسابات الزبائن</div><iframe src="./zbon.html"></iframe></div>
+    <div class="card" style="border-color: #00cec9;"><div class="overlay"></div><div class="h" style="background: #00cec9;">💸 حركة الخزينة</div><iframe src="./yom.html"></iframe></div>
+    <div class="card" style="border-color: #6c5ce7;"><div class="overlay"></div><div class="h" style="background: #6c5ce7;">👷 سجل العمال</div><iframe src="./gyab.html"></iframe></div>
+    <div class="card" style="border-color: #e17055;"><div class="overlay"></div><div class="h" style="background: #e17055;">📅 مواعيد التسليم</div><iframe src="./tslem.html"></iframe></div>
+    <div class="card" style="border-color: #fbc531;"><div class="overlay"></div><div class="h" style="background: #fbc531; color:#000;">📝 الملاحظات السريعة</div><iframe src="./notmop.html"></iframe></div>
+    <div class="card" style="border-color: #0984e3;"><div class="overlay"></div><div class="h" style="background: #0984e3;">📊 التقارير الختامية</div><iframe src="./takarer.html"></iframe></div>
 </div>
 
 <script type="module">
@@ -101,11 +106,11 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // دالة العد التنازلي
+    // 1️⃣ الساعة والعد التنازلي للمناسبات
     const events = [
-        { name: "عيد الأضحى المبارك 🐑", date: new Date("May 27, 2026").getTime() },
-        { name: "ثورة 30 يونيو 🇪🇬", date: new Date("June 30, 2026").getTime() },
-        { name: "رمضان المبارك 🌙", date: new Date("February 18, 2027").getTime() }
+        { name: "عيد الأضحى", date: new Date("May 27, 2026").getTime() },
+        { name: "رأس السنة الهجرية", date: new Date("June 16, 2026").getTime() },
+        { name: "رمضان المبارك", date: new Date("February 18, 2027").getTime() }
     ];
 
     setInterval(() => {
@@ -113,10 +118,10 @@
         document.getElementById('digital-clock').innerHTML = now.toLocaleTimeString('ar-EG');
         const next = events.find(e => e.date > now.getTime()) || events[0];
         const days = Math.ceil((next.date - now.getTime()) / (1000*60*60*24));
-        document.getElementById('countdown').innerHTML = `باقي ${days} يوم على ${next.name}`;
+        document.getElementById('countdown').innerHTML = `باقي ${days} يوم على ${next.name} 🌙`;
     }, 1000);
 
-    // وظائف السحاب (حفظ واسترجاع)
+    // 2️⃣ وظائف الحفظ السحابي
     async function cloudSave() {
         let data = {}; 
         for (let i=0; i<localStorage.length; i++) {
@@ -128,34 +133,33 @@
 
     document.getElementById('manual-cloud-save').onclick = async () => {
         const btn = document.getElementById('manual-cloud-save');
-        btn.innerText = "⏳ جاري الحفظ...";
-        try {
-            await cloudSave();
-            alert("✅ تم الحفظ السحابي بنجاح");
-        } catch (e) { alert("❌ فشل الحفظ!"); }
+        btn.innerText = "⏳ جاري الرفع...";
+        try { await cloudSave(); alert("✅ تم الحفظ السحابي بنجاح"); } 
+        catch (e) { alert("❌ فشل الاتصال!"); }
         btn.innerText = "☁️ حفظ سحابي";
     };
 
     document.getElementById('manual-cloud-load').onclick = async () => {
-        if(!confirm("⚠️ هل تريد استرجاع البيانات؟ سيتم مسح البيانات الحالية!")) return;
+        if(!confirm("⚠️ استرجاع البيانات سيحذف أي تعديلات حالية غير محفوظة، متابعة؟")) return;
         try {
             const snapshot = await get(child(ref(db), 'backups/azemaa_main'));
             if (snapshot.exists()) {
-                const data = snapshot.val();
                 localStorage.clear();
+                const data = snapshot.val();
                 for (let key in data) localStorage.setItem(key, data[key]);
-                alert("🔄 تم استرجاع البيانات بنجاح! سيتم إعادة تحميل الصفحة.");
+                alert("🔄 تم الاسترجاع بنجاح!");
                 location.reload();
-            } else { alert("❌ لا يوجد نسخة احتياطية!"); }
-        } catch (e) { alert("❌ فشل الاسترجاع!"); }
+            } else { alert("❌ لا توجد نسخة سحابية!"); }
+        } catch (e) { alert("❌ خطأ في السيرفر!"); }
     };
 
-    // إدارة الخروج
+    // 3️⃣ إدارة الخروج ومنع الشاشة البيضاء
     window.closeLogout = () => { 
         document.getElementById('logoutModal').style.display = 'none'; 
         document.getElementById('logoutOverlay').style.display = 'none'; 
     };
 
+    // فتح المودال عند محاولة الرجوع بالهاتف
     window.addEventListener('popstate', () => { 
         if(document.querySelector('.card.fullscreen')) { 
             document.querySelector('.card.fullscreen').classList.remove('fullscreen'); 
@@ -168,36 +172,37 @@
     history.pushState(null, null, "");
 
     document.getElementById('confirmLogoutBtn').onclick = async () => {
-        document.getElementById('confirmLogoutBtn').innerText = "⏳ جاري الحفظ...";
+        document.getElementById('confirmLogoutBtn').innerText = "⏳ جاري تأمين البيانات...";
         try { await cloudSave(); } catch(e){}
         sessionStorage.clear();
+        // التوجيه لصفحة الـ Login مع مسح الـ History لمنع العودة للشاشة البيضاء
         window.location.replace("login.html");
     };
 
-    // تكبير الكروت
+    // 4️⃣ تكبير الجداول (Double Click)
     document.querySelectorAll('.h, .overlay').forEach(el => el.addEventListener('dblclick', () => {
         const c = el.closest('.card'); c.classList.toggle('fullscreen');
         if(c.classList.contains('fullscreen')) history.pushState(null, null, "");
     }));
 
-    // وظائف الواتساب
+    // 5️⃣ وظائف الواتساب
     window.saveToWhatsApp = () => {
         let data = {}; 
         for (let i=0; i<localStorage.length; i++) data[localStorage.key(i)] = localStorage.getItem(localStorage.key(i));
         let code = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-        window.location.href = `whatsapp://send?text=*AZ-BACKUP*\n${code}`;
+        window.location.href = `whatsapp://send?text=*AZ-BACKUP-PRO*%0A${code}`;
     };
 
     window.loadFromWhatsApp = () => {
-        let input = prompt("الصق الكود المستلم من واتساب:");
+        let input = prompt("الصق كود النسخة الاحتياطية هنا:");
         if (!input) return;
         try {
-            let clean = input.includes('*AZ-BACKUP*\n') ? input.split('*AZ-BACKUP*\n')[1] : input;
+            let clean = input.includes('PRO*\n') ? input.split('PRO*\n')[1] : input;
             let obj = JSON.parse(decodeURIComponent(escape(atob(clean.trim()))));
             localStorage.clear(); 
             for (let k in obj) localStorage.setItem(k, obj[k]);
             location.reload();
-        } catch (e) { alert("❌ كود غير صحيح!"); }
+        } catch (e) { alert("❌ الكود غير صالح!"); }
     };
 </script>
 </body>
