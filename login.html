@@ -5,12 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>دخول نظام أزيماء</title>
     <style>
+        /* الأنماط الأساسية */
         body { font-family: 'Segoe UI', sans-serif; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; overflow: hidden; }
-        .login-box { background: #1e293b; padding: 40px; border-radius: 28px; box-shadow: 0 20px 45px rgba(0,0,0,0.5); text-align: center; border: 3px solid #6e8efb; width: 90%; max-width: 400px; }
-        input { padding: 18px; width: 100%; border-radius: 15px; border: none; margin-bottom: 20px; font-size: 30px; text-align: center; letter-spacing: 10px; -webkit-text-security: disc; background: #2d3d52; color: white; box-sizing: border-box; }
-        button { background: linear-gradient(135deg, #6e8efb, #a777e3); color: white; border: none; padding: 18px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 1.2rem; width: 100%; margin-bottom: 10px; }
-        #exit-msg { display: none; text-align: center; }
-        #exit-msg h2 { color: #ff7675; }
+        
+        .login-box, #exit-screen { 
+            background: #1e293b; padding: 40px; border-radius: 28px; 
+            box-shadow: 0 20px 45px rgba(0,0,0,0.5); text-align: center; 
+            border: 3px solid #6e8efb; width: 90%; max-width: 400px; 
+            transition: 0.3s;
+        }
+
+        #exit-screen { border-color: #ff7675; display: none; }
+
+        input { padding: 18px; width: 100%; border-radius: 15px; border: none; margin-bottom: 20px; font-size: 30px; text-align: center; letter-spacing: 10px; -webkit-text-security: disc; background: #2d3d52; color: white; box-sizing: border-box; outline: none; }
+        
+        button { background: linear-gradient(135deg, #6e8efb, #a777e3); color: white; border: none; padding: 18px; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 1.2rem; width: 100%; margin-bottom: 10px; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
+
+        .btn-exit { background: transparent; border: 1px solid #ff7675; color: #ff7675; }
+        
+        #msg { color: #ff7675; margin-top: 10px; font-weight: bold; }
+        .exit-icon { font-size: 3rem; margin-bottom: 15px; display: block; }
     </style>
 </head>
 <body>
@@ -20,43 +35,76 @@
     <p>أدخل الرقم السري للمتابعة</p>
     <input type="text" id="passCode" maxlength="4" inputmode="numeric">
     <button onclick="verify()">دخول النظام</button>
-    <button onclick="finalExit()" style="background:transparent; border:1px solid #ff7675; color:#ff7675;">الخروج من التطبيق</button>
-    <div id="msg" style="color:#ff7675; margin-top:10px;"></div>
+    <button class="btn-exit" onclick="finalExit()">الخروج من التطبيق</button>
+    <div id="msg"></div>
 </div>
 
-<div id="exit-msg">
-    <h2>👋 تم الخروج بنجاح</h2>
-    <p>تم تأمين بياناتك. يمكنك إغلاق الصفحة الآن.</p>
-    <button onclick="location.reload()" style="background:#6e8efb; border:none; color:#fff; padding:10px 20px; border-radius:10px;">العودة للدخول</button>
+<div id="exit-screen">
+    <span class="exit-icon">👋</span>
+    <h2 style="color: #ff7675;">تم الخروج بنجاح</h2>
+    <p>تم تأمين كافة بياناتك وإغلاق الجلسة.</p>
+    <p style="font-size: 0.8rem; opacity: 0.6;">يمكنك الآن إغلاق التبويب بأمان.</p>
+    <button onclick="location.reload()" style="margin-top: 10px;">العودة للدخول</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    const firebaseConfig = { apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", authDomain: "azemaa-proo.firebaseapp.com", databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", projectId: "azemaa-proo" };
-    const db = getDatabase(initializeApp(firebaseConfig));
 
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", 
+        authDomain: "azemaa-proo.firebaseapp.com", 
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", 
+        projectId: "azemaa-proo" 
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // دالة الخروج النهائي التي تقضي على الشاشة البيضاء
     window.finalExit = () => {
         if(confirm("هل تريد إغلاق azemaa pro؟")) {
+            // إخفاء واجهة الدخول وإظهار شاشة الوداع فوراً
             document.getElementById('loginUI').style.display = 'none';
-            document.getElementById('exit-msg').style.display = 'block';
+            document.getElementById('exit-screen').style.display = 'block';
+            
+            // محاولة إغلاق النافذة (تعمل في وضع الـ PWA/الشاشة الرئيسية)
             window.close();
-            setTimeout(() => { window.location.replace("about:blank"); }, 500);
+
+            // تحويل المسار لصفحة فارغة بعد ثانية كخيار احتياطي أخير
+            setTimeout(() => {
+                if (!window.closed) {
+                    window.location.replace("about:blank");
+                }
+            }, 1000);
         }
     };
 
-    // منع الرجوع
-    history.pushState(null, null, "");
-    window.onpopstate = () => { history.pushState(null, null, ""); finalExit(); };
+    // منع الرجوع العشوائي وإجبار الخروج عند محاولة العودة
+    history.pushState(null, null, window.location.href);
+    window.onpopstate = () => {
+        history.pushState(null, null, window.location.href);
+        finalExit();
+    };
 
+    // التحقق من الكود
     window.verify = async () => {
         const val = document.getElementById('passCode').value;
-        const snapshot = await get(ref(db, 'passcode'));
-        if (val == snapshot.val()) {
-            sessionStorage.setItem("isAllowed", "true");
-            window.location.replace("index.html");
-        } else {
-            document.getElementById('msg').innerText = "الرمز خطأ!";
+        const msg = document.getElementById('msg');
+        
+        if (!val) { msg.innerText = "أدخل الرمز أولاً!"; return; }
+
+        try {
+            const snapshot = await get(ref(db, 'passcode'));
+            if (snapshot.exists() && val == snapshot.val()) {
+                sessionStorage.setItem("isAllowed", "true");
+                window.location.replace("index.html");
+            } else {
+                msg.innerText = "الرمز غير صحيح!";
+                document.getElementById('passCode').value = "";
+            }
+        } catch (e) {
+            msg.innerText = "خطأ في الاتصال!";
         }
     };
 </script>
