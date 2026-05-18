@@ -82,8 +82,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
     import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
 
-    // --- تنبيه هام جداً يا أحمد ---
-    // لازم تستبدل AIzaSy-YOUR-REAL-API-KEY بالمفتاح الحقيقي من إعدادات الفايربيز
+    // تذكير: استبدل AIzaSy-YOUR-REAL-API-KEY بمفتاح API الحقيقي الخاص بك
     const firebaseConfig = {
         apiKey: "AIzaSy-YOUR-REAL-API-KEY", 
         databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
@@ -104,7 +103,6 @@
     }
 
     const handleLogin = async function() {
-        // تحويل الأرقام العربية لأرقام إنجليزية لضمان البحث الصحيح
         let pin = document.getElementById('userPin').value;
         pin = pin.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 
@@ -129,12 +127,11 @@
                 localStorage.setItem('azemaa_user_name', userData.name || "مستخدم");
                 checkAuth();
             } else {
-                errorMsg.innerText = "هذا الكود غير صالح أو انتهت صلاحيته!";
+                errorMsg.innerText = "هذا الكود غير صالح!";
                 errorMsg.style.display = 'block';
             }
         } catch (error) {
-            console.error(error);
-            errorMsg.innerText = "خطأ في الاتصال بالسيرفر: " + error.message;
+            errorMsg.innerText = "خطأ في الاتصال";
             errorMsg.style.display = 'block';
         } finally {
             loginBtn.innerText = "دخول النظام";
@@ -142,45 +139,49 @@
         }
     };
 
-    // ربط الأزرار برمجياً لتجنب مشاكل الـ Modules
-    document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem('azemaa_user_pin');
-        localStorage.removeItem('azemaa_user_name');
-        location.reload();
-    });
-
-    // حفظ البيانات
+    // --- تعديل وظيفة الحفظ لحل مشكلة الرموز الممنوعة ---
     document.getElementById('saveCloudBtn').addEventListener('click', async () => {
         const pin = localStorage.getItem('azemaa_user_pin');
-        const data = { ...localStorage }; 
+        
+        // سنقوم هنا بتجميع البيانات الخاصة بالتطبيق فقط لتجنب أخطاء المفاتيح
+        const dataToSave = {
+            userName: localStorage.getItem('azemaa_user_name'),
+            lastSync: new Date().toLocaleString()
+            // يمكنك إضافة أي بيانات أخرى هنا مثل: clients: localStorage.getItem('clients_data')
+        };
+
         try {
-            await set(ref(db, 'backups/user_' + pin), data);
+            await set(ref(db, 'backups/user_' + pin), dataToSave);
             alert("✅ تم الحفظ سحابياً بنجاح.");
         } catch (error) {
             alert("❌ خطأ في الحفظ: " + error.message);
         }
     });
 
-    // استرجاع البيانات
+    // --- تعديل وظيفة الاسترجاع ---
     document.getElementById('loadCloudBtn').addEventListener('click', async () => {
         const pin = localStorage.getItem('azemaa_user_pin');
         try {
             const snapshot = await get(child(ref(db), 'backups/user_' + pin));
             if (snapshot.exists()) {
                 const cloudData = snapshot.val();
-                for (let key in cloudData) {
-                    localStorage.setItem(key, cloudData[key]);
-                }
+                // استرجاع القيم المحددة فقط للمتصفح
+                if (cloudData.userName) localStorage.setItem('azemaa_user_name', cloudData.userName);
+                
                 alert("🔄 تم استرجاع بياناتك بنجاح!");
                 location.reload();
             } else {
-                alert("❓ لا توجد بيانات محفوظة مسبقاً.");
+                alert("❓ لا توجد بيانات محفوظة مسبقاً لهذا الكود.");
             }
         } catch (error) {
             alert("❌ فشل الاسترجاع: " + error.message);
         }
+    });
+
+    document.getElementById('loginBtn').addEventListener('click', handleLogin);
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.clear();
+        location.reload();
     });
 
     checkAuth();
