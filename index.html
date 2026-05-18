@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>azemaa pro - Cyber Night Edition</title>
     <script>
+        // التحقق من حالة تسجيل الدخول
         if (sessionStorage.getItem("isAllowed") !== "true") {
             window.location.replace("login.html");
         }
@@ -115,7 +116,7 @@
         .calc-btn { padding: 10px; border-radius: 8px; cursor: pointer; border: none; font-weight: bold; }
         .calc-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); z-index: 9999; }
 
-        /* نافذة تأكيد الخروج الاحترافية */
+        /* نافذة تأكيد الخروج المخصصة */
         .logout-modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: var(--card-bg); border: 2px solid #ff7675; padding: 25px;
@@ -177,10 +178,9 @@
 
 <div class="calc-overlay" id="logoutOverlay" onclick="toggleLogoutModal(false)"></div>
 <div class="logout-modal" id="logoutModal">
-    <h3>🚪 خروج وحفظ سحابي</h3>
+    <h3>🚪 خروج من azemaa pro</h3>
     <p>سيتم حفظ كافة البيانات سحابياً تلقائياً لتأمين حساباتك قبل الخروج. هل تود المتابعة؟</p>
     <div class="logout-btns">
-        <!-- تم ربط حدث الـ click هنا ليقوم بالحفظ أولاً -->
         <button class="logout-btn-confirm" id="logout-confirm-btn">نعم، حفظ وخروج</button>
         <button class="logout-btn-cancel" onclick="toggleLogoutModal(false)">إلغاء</button>
     </div>
@@ -227,6 +227,7 @@
 </div>
 
 <script>
+    // مصفوفة الأعياد الرسمية
     const holidays = [
         { name: "عيد القوات المسلحة 🎖️", date: new Date("October 6, 2026 00:00:00").getTime() },
         { name: "المولد النبوي الشريف 🌙", date: new Date("August 25, 2026 00:00:00").getTime() },
@@ -261,6 +262,7 @@
     }
     if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
 
+    // وظائف الحاسبة
     const calcScreen = document.getElementById('calc-screen');
     function toggleCalc(show) { document.getElementById('calcModal').style.display = show ? 'block' : 'none'; document.getElementById('calcOverlay').style.display = show ? 'block' : 'none'; }
     function pressCalc(v) { if(calcScreen.value === '0') calcScreen.value = v; else calcScreen.value += v; }
@@ -268,6 +270,7 @@
     function backspaceCalc() { calcScreen.value = calcScreen.value.slice(0, -1) || '0'; }
     function calculateResult() { try { calcScreen.value = eval(calcScreen.value.replace(/×/g, '*').replace(/÷/g, '/')); } catch(e) { calcScreen.value = 'Error'; setTimeout(clearCalc, 1000); } }
 
+    // التحكم في زر الرجوع وتثبيت الحالة
     window.addEventListener('load', () => {
         window.history.replaceState({ appHome: true }, "");
     });
@@ -289,6 +292,7 @@
         btn.innerText = card.classList.contains('fullscreen') ? "✕ إغلاق" : "⛶ تكبير";
     }
 
+    // إدارة زر الرجوع بالهاتف لمنع الخروج المزدوج
     window.addEventListener('popstate', function(event) {
         const activeFullscreenCard = document.querySelector('.card.fullscreen');
         if (activeFullscreenCard) {
@@ -304,7 +308,7 @@
         document.getElementById('logoutOverlay').style.display = show ? 'block' : 'none';
     }
 
-    // ميزة التكبير عند الضغط مرتين على شريط العنوان (.h)
+    // التفاعل بالضغط مرتين
     document.querySelectorAll('.h').forEach(header => {
         header.addEventListener('dblclick', function(e) {
             if (e.target.classList.contains('zoom-btn')) return;
@@ -313,7 +317,6 @@
         });
     });
 
-    // التكبير وفتح الصفحة عند الضغط مرتين على طبقة الحماية (جسم الصفحة)
     document.querySelectorAll('.overlay').forEach(layer => {
         layer.addEventListener('dblclick', function() {
             const card = this.closest('.card');
@@ -321,6 +324,7 @@
         });
     });
 
+    // النسخ الاحتياطي
     function generateBackupCode() {
         let data = {}; for (let i = 0; i < localStorage.length; i++) { let k = localStorage.key(i); if(k!=='theme') data[k] = localStorage.getItem(k); }
         return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
@@ -350,7 +354,7 @@
     const app = initializeApp(firebaseConfig); 
     const db = getDatabase(app);
 
-    // دالة موحدة لجمع بيانات الـ localStorage ورفعها للسيرفر
+    // دالة الحفظ السحابي
     async function uploadDataToCloud() {
         let data = {}; 
         for (let i = 0; i < localStorage.length; i++) { 
@@ -360,7 +364,6 @@
         await set(ref(db, 'backups/azemaa_main'), data);
     }
 
-    // تفعيل زر الحفظ السحابي العادي
     document.getElementById('cloud-save-btn').onclick = async () => {
         try {
             await uploadDataToCloud();
@@ -370,24 +373,20 @@
         }
     };
 
-    // 🟢 تفعيل ميزة التمكين والحفظ التلقائي الإجباري عند تأكيد الخروج
+    // الحفظ الإجباري عند تأكيد الخروج
     document.getElementById('logout-confirm-btn').onclick = async function() {
         const origText = this.innerText;
         this.innerText = "⏳ جاري الحفظ الآمن...";
         this.disabled = true;
         
         try {
-            // تنفيذ الرفع السحابي الإجباري لبيانات وفلوس الناس أولاً
             await uploadDataToCloud();
-            
-            // بعد نجاح الحفظ، يتم إنهاء الجلسة والخروج بأمان
             sessionStorage.removeItem("isAllowed");
             window.location.replace("login.html");
         } catch (error) {
-            // صمام أمان: لو الإنترنت معطل والرفع السحابي فشل، يسأله لحماية الفلوس
             this.innerText = origText;
             this.disabled = false;
-            if (confirm("⚠️ فشل الحفظ السحابي بسبب ضعف الإنترنت! هل تريد الخروج على أي حال بدون حفظ التعديلات الأخيرة؟")) {
+            if (confirm("⚠️ فشل الحفظ السحابي (ربما الإنترنت ضعيف). هل تريد الخروج على أي حال بدون حفظ؟")) {
                 sessionStorage.removeItem("isAllowed");
                 window.location.replace("login.html");
             }
