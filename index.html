@@ -267,7 +267,6 @@
     function getDeviceFingerprint() {
         let deviceId = localStorage.getItem('azemaa_device_token');
         if (!deviceId) {
-            // توليد كود عشوائي فريد ومستحيل تكراره للجهاز الحالي
             deviceId = 'dev_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
             localStorage.setItem('azemaa_device_token', deviceId);
         }
@@ -306,19 +305,16 @@
             if (snapshot.exists()) {
                 const userData = snapshot.val();
                 
-                // إذا كان الكود مستخدم لأول مرة، نربطه بالهاتف الحالي تلقائياً داخل قاعدة البيانات
                 if (!userData.deviceId) {
                     await set(ref(db, 'authorized_users/' + pin + '/deviceId'), currentDeviceToken);
                     userData.deviceId = currentDeviceToken;
                 }
 
-                // مقارنة بصمة الهاتف الحالي بالبصمة المسجلة في Firebase للكود هذا
                 if (userData.deviceId === currentDeviceToken) {
                     localStorage.setItem('azemaa_user_pin', pin);
                     localStorage.setItem('azemaa_user_name', userData.name);
                     checkAuth();
                 } else {
-                    // إذا تطابق الكود ولكن من هاتف آخر غير هاتفك المقيد
                     document.getElementById('errorMsg').innerText = "⚠️ هذا الكود مقيد بجهاز آخر ولا يمكن استخدامه هنا!";
                     document.getElementById('errorMsg').style.display = 'block';
                 }
@@ -329,16 +325,48 @@
         } catch (e) { alert("خطأ اتصال بالنظام"); }
     });
 
-    // بقية العمليات السحابية والعداد التنازلي كما هي
+    // عمليات الحفظ السحابي
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
         const pin = localStorage.getItem('azemaa_user_pin');
+        if(!pin) return alert("الرجاء تسجيل الدخول أولاً");
+        
         let data = {};
         for (let i = 0; i < localStorage.length; i++) {
             let k = localStorage.key(i);
             if (!k.includes('.') && !k.includes('#')) data[k] = localStorage.getItem(k);
         }
-        await set(ref(db, 'backups/user_' + pin), data);
-        alert("✅ تم الحفظ سحابياً بنجاح.");
+        try {
+            await set(ref(db, 'backups/user_' + pin), data);
+            alert("✅ تم الحفظ سحابياً بنجاح.");
+        } catch(e) { alert("فشل الحفظ السحابي، تأكد من الاتصال بالإنترنت."); }
+    });
+
+    // إضافة كود استرجاع البيانات الفعلي من Firebase
+    document.getElementById('cloud-load-btn').addEventListener('click', async () => {
+        const pin = localStorage.getItem('azemaa_user_pin');
+        if(!pin) return alert("الرجاء تسجيل الدخول أولاً");
+
+        if(confirm("هل أنت متأكد من استرجاع البيانات؟ سيؤدي هذا إلى استبدال البيانات الحالية على هذا الجهاز بالنسخة الاحتياطية السحابية.")) {
+            try {
+                const snapshot = await get(child(ref(db), 'backups/user_' + pin));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // مسح البيانات الحالية باستثناء توكن الجهاز لتجنب قفل الحساب
+                    const deviceToken = localStorage.getItem('azemaa_device_token');
+                    localStorage.clear();
+                    if(deviceToken) localStorage.setItem('azemaa_device_token', deviceToken);
+
+                    // كتابة البيانات المسترجعة
+                    for (let key in data) {
+                        localStorage.setItem(key, data[key]);
+                    }
+                    alert("🔄 تم استرجاع البيانات سحابياً بنجاح! سيتم إعادة تحميل الصفحة الآن.");
+                    location.reload();
+                } else {
+                    alert("❌ لا توجد نسخة احتياطية مخزنة لهذا الحساب سحابياً.");
+                }
+            } catch(e) { alert("خطأ أثناء استرجاع البيانات."); }
+        }
     });
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
