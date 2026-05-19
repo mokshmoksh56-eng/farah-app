@@ -14,7 +14,7 @@
     <style>
         :root { --primary: #0f172a; --gold: #d4af37; --accent: #2563eb; --bg: #e0e0e0; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; }
-        .container { max-width: 500px; margin: 0 auto; }
+        .container { max-width: 500px; margin: 0 auto; padding-bottom: 60px; }
         header { text-align: center; padding: 20px; background: var(--primary); color: var(--gold); border-radius: 15px; margin-bottom: 15px; }
         .panel { background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         input, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; }
@@ -31,38 +31,60 @@
         .size-val { font-weight: bold; color: var(--accent); font-size: 24px; text-align: center; }
         .size-lbl { font-size: 12px; display: block; color: #888; }
         .actions { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-act { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; }
+        .btn-act { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .edit { background: #e8f5e9; color: #2e7d32; }
         .del { background: #ffebee; color: #c62828; }
+        
+        /* إشعار المزامنة (Toast) */
+        #toast {
+            position: fixed; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: #1abc9c; 
+            color: white; 
+            padding: 12px 25px; 
+            border-radius: 30px; 
+            display: none; 
+            z-index: 1000;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-align: center;
+            width: max-content;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header><h2>فرح كيتشن FARAH</h2><p>نظام المقاسات - متزامن سحابياً ☁️</p></header>
+        
         <div class="panel" id="mainPanel">
             <h4 id="modeTxt">إضافة مقاس جديد</h4>
             <select id="cat">
-                <option>ثلاجة ❄️</option><option>ميكرووف ⚡</option><option>ديب فريزر 🧊</option>
+                <option>ثلاجة ❄️</option><option>ميكروويف ⚡</option><option>ديب فريزر 🧊</option>
                 <option>بوتاجاز 🔥</option><option>غسالة 🧺</option><option>غسالة أطباق 🍽️</option>
                 <option>فرن ♨️</option><option>سخان غاز 🛁</option><option>سخان كهرباء 💧</option>
                 <option>كولدير مياه 💧</option>
             </select>
-            <input type="text" id="name" placeholder="الشركة">
-            <input type="text" id="notes" placeholder="ملاحظات">
+            <input type="text" id="name" placeholder="الشركة والموديل">
+            <input type="text" id="notes" placeholder="ملاحظات إضافية">
             <div class="size-grid">
                 <div><label style="font-size:12px; font-weight:bold;">عرض</label><input type="text" id="w" placeholder="0" inputmode="decimal"></div>
                 <div><label style="font-size:12px; font-weight:bold;">ارتفاع</label><input type="text" id="h" placeholder="0" inputmode="decimal"></div>
                 <div><label style="font-size:12px; font-weight:bold;">عمق</label><input type="text" id="d" placeholder="0" inputmode="decimal"></div>
             </div>
-            <button class="btn btn-add" id="btnAdd" onclick="add()">حفظ ✅</button>
-            <button class="btn btn-update" id="btnUpd" onclick="update()">تحديث 🔄</button>
+            <button class="btn btn-add" id="btnAdd" onclick="add()">حفظ ومزامنة ✅</button>
+            <button class="btn btn-update" id="btnUpd" onclick="update()">تحديث البيانات 🔄</button>
         </div>
-        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الرقم..." onkeyup="render()">
+        
+        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الشركة..." onkeyup="render()">
         <div id="list"></div>
     </div>
 
+    <div id="toast">✅ تم الحفظ والمزامنة سحابياً</div>
+
     <script>
-        // إعدادات Firebase المحدثة
+        // إعدادات Firebase الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -77,12 +99,9 @@
         // تهيئة فايربيز 
         firebase.initializeApp(firebaseConfig);
 
-        // تهيئة الإحصائيات بأمان (لتجنب إيقاف التطبيق)
         if (typeof firebase.analytics === "function") {
             firebase.analytics.isSupported().then((supported) => {
-                if (supported) {
-                    const analytics = firebase.analytics();
-                }
+                if (supported) { const analytics = firebase.analytics(); }
             }).catch((err) => console.log("Analytics not supported or blocked", err));
         }
 
@@ -91,6 +110,14 @@
 
         let devicesData = {};
         let editKey = null;
+
+        // دالة لإظهار إشعار المزامنة
+        function showToast(message) {
+            const t = document.getElementById('toast');
+            t.innerText = message;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2500);
+        }
 
         function norm(t) {
             if(!t) return "";
@@ -101,6 +128,7 @@
             return r.replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
         }
 
+        // جلب البيانات لحظياً
         devicesRef.on('value', (snapshot) => {
             devicesData = snapshot.val() || {};
             render();
@@ -130,8 +158,8 @@
                         <div><span class="size-lbl">عمـق</span><span class="size-val">${item.d}</span></div>
                     </div>
                     <div class="actions">
-                        <button class="btn-act edit" onclick="startEdit('${item.id}')">تعديل</button>
-                        <button class="btn-act del" onclick="del('${item.id}')">حذف</button>
+                        <button class="btn-act edit" onclick="startEdit('${item.id}')">تعديل ✏️</button>
+                        <button class="btn-act del" onclick="del('${item.id}')">حذف 🗑️</button>
                     </div>
                 </div>`;
             }).join('');
@@ -146,11 +174,12 @@
                 h: norm(document.getElementById('h').value), 
                 d: norm(document.getElementById('d').value) 
             };
-            if(!item.name || !item.w) return alert("أكمل البيانات");
+            if(!item.name || !item.w) return alert("يرجى إكمال البيانات الأساسية (الشركة والعرض على الأقل)");
             
             devicesRef.push(item).then(() => {
                 clear();
-            });
+                showToast("✅ تم إضافة المقاس والمزامنة سحابياً");
+            }).catch(err => alert("حدث خطأ في الاتصال: " + err));
         }
 
         function startEdit(id) {
@@ -163,6 +192,7 @@
             document.getElementById('h').value = d.h;
             document.getElementById('d').value = d.d;
             
+            document.getElementById('modeTxt').innerText = "تعديل المقاس";
             document.getElementById('btnAdd').style.display = 'none';
             document.getElementById('btnUpd').style.display = 'block';
             window.scrollTo(0,0);
@@ -181,15 +211,19 @@
             
             devicesRef.child(editKey).update(item).then(() => {
                 editKey = null;
+                document.getElementById('modeTxt').innerText = "إضافة مقاس جديد";
                 document.getElementById('btnAdd').style.display = 'block';
                 document.getElementById('btnUpd').style.display = 'none';
                 clear();
+                showToast("🔄 تم تعديل المقاس والمزامنة سحابياً");
             });
         }
 
         function del(id) { 
-            if(confirm("هل أنت متأكد من الحذف؟")) { 
-                devicesRef.child(id).remove();
+            if(confirm("هل أنت متأكد من حذف هذا المقاس نهائياً؟")) { 
+                devicesRef.child(id).remove().then(() => {
+                    showToast("🗑️ تم الحذف من قاعدة البيانات");
+                });
             } 
         }
 
