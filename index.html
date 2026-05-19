@@ -13,12 +13,14 @@
             --whatsapp-green: #25D366;
             --cloud-blue: #00a8ff;
             --card-radius: 20px;
+            --accent-color: #6e8efb;
         }
 
         body.dark-mode {
             --bg-main: #0f172a;
             --card-bg: #1e293b;
             --text-color: #f1f5f9;
+            --accent-color: #a777e3;
         }
 
         body { 
@@ -41,7 +43,7 @@
         .system-title { font-size: 0.95rem; font-weight: 800; letter-spacing: 0.3px; opacity: 0.95; text-transform: lowercase; }
         #digital-clock { font-size: 1rem; font-weight: bold; font-family: 'Segoe UI', monospace; }
         
-        #countdown { font-size: 0.7rem; opacity: 0.9; margin-top: 2px; color: #fff; font-weight: bold; }
+        #countdown { font-size: 0.7rem; opacity: 0.9; margin-top: 2px; color: #fff; font-weight: bold; cursor: pointer; text-decoration: underline dotted; }
 
         .header-btns { display: flex; gap: 6px; }
 
@@ -51,6 +53,44 @@
             display: flex; align-items: center; gap: 4px; transition: 0.2s;
         }
         .theme-btn:hover, .calc-trigger-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* تنسيق قائمة المناسبات المنسدلة */
+        .holidays-dropdown {
+            display: none;
+            background: var(--card-bg);
+            border: 2px solid var(--cloud-blue);
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            max-height: 250px;
+            overflow-y: auto;
+            margin-bottom: -5px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .holidays-dropdown.show { display: block; }
+        .holiday-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        body.dark-mode .holiday-item { border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .holiday-item:last-child { border-bottom: none; }
+        /* تمييز وتلوين المناسبة القادمة */
+        .holiday-item.next-up {
+            background: var(--header-grad);
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(110, 142, 251, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         .sync-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .btn { 
@@ -123,11 +163,11 @@
 <header>
     <div class="header-info">
         <div class="clock-container">
-            <!-- تم تعديل الكلمة هنا لحروف صغيرة سموول -->
             <span class="system-title">🚀 azemaa pro</span>
             <div id="digital-clock">00:00:00 ص</div>
         </div>
-        <div id="countdown">جرٍ حساب المناسبات القادمة...</div>
+        <!-- تم إضافة حدث عند الضغط لفتح القائمة المنسدلة -->
+        <div id="countdown" onclick="toggleHolidaysDropdown(event)">جرٍ حساب المناسبات القادمة... (اضغط للعرض)</div>
     </div>
     <div class="header-btns">
         <button class="calc-trigger-btn" onclick="toggleCalc(true)">🧮 حاسبة</button>
@@ -183,6 +223,9 @@
         <button class="calc-btn sci" onclick="pressSci('fact')">x!</button>
     </div>
 </div>
+
+<!-- حاوية القائمة المنسدلة التي ستظهر فوق أزرار الحفظ السحابي والواتساب -->
+<div id="holidaysDropdown" class="holidays-dropdown"></div>
 
 <div class="sync-box">
     <button id="cloud-save-btn" class="btn btn-cloud">☁️ حفظ سحابي</button>
@@ -243,24 +286,72 @@
         { name: "شم النسيم 🐟", date: new Date("May 3, 2027 00:00:00").getTime() }
     ];
 
+    let nextHolidayGlobal = null;
+
     function updateHeader() {
         const now = new Date();
         document.getElementById('digital-clock').innerHTML = now.toLocaleTimeString('ar-EG', {
             hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
         });
         
-        const nextHoliday = holidays.find(h => h.date > now.getTime()) || holidays[0];
-        const diff = nextHoliday.date - now.getTime();
+        // ترتيب المناسبات المستقبلية للحصول على الأقرب
+        const futureHolidays = holidays.filter(h => h.date > now.getTime()).sort((a, b) => a.date - b.date);
+        nextHolidayGlobal = futureHolidays[0] || holidays[0];
+        
+        const diff = nextHolidayGlobal.date - now.getTime();
         const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
         
         if (days <= 0) {
-            document.getElementById('countdown').innerHTML = `اليوم هو ${nextHoliday.name} 🎉`;
+            document.getElementById('countdown').innerHTML = `اليوم هو ${nextHolidayGlobal.name} 🎉 (اضغط للتفاصيل)`;
         } else {
-            document.getElementById('countdown').innerHTML = `باقي ${days} يوم على ${nextHoliday.name}`;
+            document.getElementById('countdown').innerHTML = `باقي ${days} يوم على ${nextHolidayGlobal.name} 📅`;
         }
     }
     setInterval(updateHeader, 1000);
     updateHeader();
+
+    // دالة إنشاء وتثبيت القائمة المنسدلة وتلوين المناسبة القادمة
+    function toggleHolidaysDropdown(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('holidaysDropdown');
+        
+        if (dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+            return;
+        }
+
+        dropdown.innerHTML = ''; // تفريغ القائمة لإعادة البناء
+        const now = new Date().getTime();
+
+        // ترتيب المواعيد لعرض الأقرب فالأبعد
+        const sortedHolidays = [...holidays].sort((a,b) => a.date - b.date);
+
+        sortedHolidays.forEach(h => {
+            const item = document.createElement('div');
+            item.className = 'holiday-item';
+            
+            const diff = h.date - now;
+            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            
+            let dateStr = new Date(h.date).toLocaleDateString('ar-EG', { month: 'long', day: 'numeric' });
+            let statusText = days > 0 ? `باقي ${days} يوم` : "مرت";
+
+            if (h === nextHolidayGlobal && days > 0) {
+                item.classList.add('next-up'); // تلوين المناسبة القادمة
+                statusText = `(المناسبة القادمة ✨) - ${statusText}`;
+            }
+
+            item.innerHTML = `<span>${h.name}</span> <span style="font-size:0.75rem; opacity:0.9;">${dateStr} | ${statusText}</span>`;
+            dropdown.appendChild(item);
+        });
+
+        dropdown.classList.add('show');
+    }
+
+    // إغلاق القائمة عند النقر في أي مكان آخر بالصفحة
+    document.addEventListener('click', () => {
+        document.getElementById('holidaysDropdown').classList.remove('show');
+    });
 
     // 2. الوضع الليلي
     function toggleTheme() {
@@ -380,7 +471,6 @@
     }
 </script>
 
-<!-- سكريبت الـ Firebase المحدث والمحمي بالكامل ضد مشكلة الشاشة البيضاء -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
