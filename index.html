@@ -26,10 +26,9 @@
             background: var(--bg-main); 
             color: var(--text-color); 
             transition: 0.3s; 
-            -webkit-tap-highlight-color: transparent; /* إزالة المربع الأزرق عند الضغط في الموبايل */
+            -webkit-tap-highlight-color: transparent; 
         }
         
-        /* تنسيق الهيدر ليكون مرناً */
         header { 
             position: relative; 
             background: var(--header-grad); 
@@ -40,8 +39,8 @@
             justify-content: space-between; 
             align-items: center; 
             margin-bottom: 10px;
-            flex-wrap: wrap; /* للسماح بنزول العناصر في الموبايل */
-            user-select: none; /* منع تحديد النص عند النقر المزدوج */
+            flex-wrap: wrap; 
+            user-select: none; 
         }
         
         .header-center { 
@@ -63,7 +62,7 @@
         
         .sync-box { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 15px; }
         .btn { border: none; color: #fff; padding: 10px 2px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
-        .btn:active { transform: scale(0.95); } /* تأثير الضغط للموبايل */
+        .btn:active { transform: scale(0.95); } 
         .btn-whatsapp { background: var(--whatsapp-green); }
         .btn-cloud { background: var(--cloud-blue); }
         .btn-device { background: #a29bfe; }
@@ -84,34 +83,15 @@
         .holidays-dropdown.show { display: block; }
         .holiday-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; display: flex; justify-content: space-between; }
 
-        /* ======== قواعد توافق الموبايل ======== */
+        .time-date-container { display: flex; align-items: baseline; gap: 10px; }
+
         @media (max-width: 550px) {
-            header {
-                padding: 12px;
-            }
-            .header-center {
-                /* نقل المؤشر للأسفل لعدم التداخل مع الساعة في الشاشات الصغيرة */
-                position: static;
-                transform: none;
-                order: 3;
-                width: 100%;
-                justify-content: center;
-                margin-top: 10px;
-                background: rgba(255, 255, 255, 0.15);
-                padding: 8px;
-            }
-            .sync-box {
-                gap: 4px;
-            }
-            .btn {
-                font-size: 9.5px;
-                padding: 8px 1px;
-                border-radius: 6px;
-            }
-            .holidays-dropdown {
-                width: 90vw;
-                right: 5vw; /* توسيط القائمة في الموبايل */
-            }
+            header { padding: 12px; }
+            .header-center { position: static; transform: none; order: 3; width: 100%; justify-content: center; margin-top: 10px; background: rgba(255, 255, 255, 0.15); padding: 8px; }
+            .sync-box { gap: 4px; }
+            .btn { font-size: 9.5px; padding: 8px 1px; border-radius: 6px; }
+            .holidays-dropdown { width: 90vw; right: 5vw; }
+            .time-date-container { gap: 6px; }
         }
     </style>
 </head>
@@ -119,14 +99,16 @@
 
 <header>
     <div>
-        <div id="digital-clock" style="font-weight:bold; font-size: 1.2rem;">00:00</div>
-        <div id="countdown" onclick="toggleHolidaysDropdown(event)" style="font-size: 0.75rem; cursor: pointer; padding-top: 2px;">جاري التحميل...</div>
+        <!-- دمج الساعة والتاريخ جنباً إلى جنب -->
+        <div class="time-date-container">
+            <div id="digital-clock" style="font-weight:bold; font-size: 1.2rem;">00:00</div>
+            <div id="digital-date" style="font-size: 0.9rem; font-weight: bold; opacity: 0.9;">0000/00/00</div>
+        </div>
+        <div id="countdown" onclick="toggleHolidaysDropdown(event)" style="font-size: 0.75rem; cursor: pointer; padding-top: 4px;">جاري التحميل...</div>
     </div>
 
-    <!-- زر الوضع الليلي -->
     <button onclick="toggleTheme()" style="background:none; border:none; color:white; cursor:pointer; font-size: 1.4rem; padding: 5px;">🌙</button>
 
-    <!-- مؤشر حالة الإنترنت (سينزل سطراً مستقلاً في الموبايل) -->
     <div class="header-center network-status" id="network-status">
         <span class="status-dot"></span>
         <span id="status-text">متصل</span>
@@ -185,7 +167,6 @@
     // --- 1. نظام التكبير والتصغير ---
     function toggleZoom(card, event) {
         if(event) event.stopPropagation();
-        
         if (card.classList.contains('fullscreen')) {
             card.classList.remove('fullscreen');
             card.querySelector('.zoom-btn').innerText = "تكبير";
@@ -199,30 +180,21 @@
         }
     }
 
-    // --- 2. إدارة النقرات داخل الـ Iframes ---
     document.querySelectorAll('iframe').forEach(iframe => {
         iframe.addEventListener('load', function() {
             try {
                 this.contentWindow.document.addEventListener('dblclick', function() {
                     const card = iframe.closest('.card');
-                    if(card.classList.contains('fullscreen')) {
-                        toggleZoom(card);
-                    }
+                    if(card.classList.contains('fullscreen')) { toggleZoom(card); }
                 });
-                
                 this.contentWindow.document.addEventListener('click', function() {
                     const dropdown = document.getElementById('holidaysDropdown');
-                    if(dropdown.classList.contains('show')) {
-                        dropdown.classList.remove('show');
-                    }
+                    if(dropdown.classList.contains('show')) { dropdown.classList.remove('show'); }
                 });
-            } catch(e) {
-                console.log("تعذر إضافة الأحداث بسبب سياسات المتصفح");
-            }
+            } catch(e) { console.log("تعذر إضافة الأحداث بسبب سياسات المتصفح"); }
         });
     });
 
-    // إغلاق القائمة المنسدلة عند النقر في الخلفية
     document.addEventListener('click', function(event) {
         const dropdown = document.getElementById('holidaysDropdown');
         const countdown = document.getElementById('countdown');
@@ -231,7 +203,6 @@
         }
     });
 
-    // زر الرجوع في الموبايل
     window.addEventListener('popstate', (e) => {
         const fullCard = document.querySelector('.card.fullscreen');
         if (fullCard) {
@@ -241,7 +212,7 @@
     });
     history.pushState(null, null, window.location.href);
 
-    // --- 3. مؤشر حالة الإنترنت ---
+    // --- 2. مؤشر حالة الإنترنت ---
     function updateOnlineStatus() {
         const statusDiv = document.getElementById('network-status');
         const statusText = document.getElementById('status-text');
@@ -257,7 +228,7 @@
     window.addEventListener('offline', updateOnlineStatus);
     updateOnlineStatus();
 
-    // --- 4. بيانات المناسبات والساعة ---
+    // --- 3. بيانات المناسبات والساعة ---
     const holidays = [
         { name: "عيد الأضحى المبارك 🐑", date: new Date("May 27, 2026").getTime() },
         { name: "رأس السنة الهجرية 🌙", date: new Date("June 16, 2026").getTime() },
@@ -279,6 +250,11 @@
         const now = new Date();
         document.getElementById('digital-clock').innerText = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
         
+        const yyyy = now.toLocaleDateString('ar-EG', { year: 'numeric' });
+        const mm = now.toLocaleDateString('ar-EG', { month: '2-digit' });
+        const dd = now.toLocaleDateString('ar-EG', { day: '2-digit' });
+        document.getElementById('digital-date').innerText = yyyy + '/' + mm + '/' + dd;
+        
         let next = holidays.find(h => h.date > now.getTime()) || holidays[0];
         let diff = Math.ceil((next.date - now.getTime()) / (1000 * 60 * 60 * 24));
         document.getElementById('countdown').innerText = "باقي " + diff + " يوم على " + next.name;
@@ -294,12 +270,100 @@
     }
 
     function toggleTheme() { document.body.classList.toggle('dark-mode'); }
-
     setInterval(updateHeader, 60000);
     updateHeader();
 
-    function saveToWhatsApp() { alert('سيتم حفظ البيانات'); }
-    function loadFromWhatsApp() { alert('سيتم استرجاع البيانات'); }
+    function saveToWhatsApp() { alert('سيتم تجهيز الكود للواتساب...'); }
+    function loadFromWhatsApp() { alert('سيتم استرجاع البيانات يدوياً...'); }
+</script>
+
+<!-- --- 4. نظام قاعدة البيانات Firebase --- -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210"
+    };
+    
+    const app = initializeApp(firebaseConfig); 
+    const db = getDatabase(app);
+
+    document.getElementById('cloud-save-btn').addEventListener('click', async () => {
+        if(!navigator.onLine) {
+            alert("⚠️ أنت غير متصل بالإنترنت حالياً!");
+            return;
+        }
+
+        let data = {}; 
+        let hasData = false;
+        
+        for (let i = 0; i < localStorage.length; i++) { 
+            let k = localStorage.key(i); 
+            if (k !== 'theme') { 
+                data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); 
+                hasData = true;
+            } 
+        }
+
+        if (!hasData) {
+            alert("⚠️ لا توجد بيانات مسجلة لحفظها!");
+            return;
+        }
+
+        try {
+            const btn = document.getElementById('cloud-save-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ جاري الحفظ...";
+
+            await set(ref(db, 'backups/azemaa_main'), data); 
+            alert("تم الحفظ فى السحابة"); 
+            btn.innerHTML = originalText;
+        } catch (error) {
+            alert("❌ فشل الحفظ: " + error.message);
+            document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ";
+        }
+    });
+
+    document.getElementById('cloud-load-btn').addEventListener('click', async () => {
+        if(!navigator.onLine) {
+            alert("⚠️ أنت غير متصل بالإنترنت حالياً!");
+            return;
+        }
+
+        const isConfirmed = confirm("هل أنت متأكد من استرجاع البيانات؟ (سيتم مسح البيانات الحالية)");
+        if (!isConfirmed) return;
+
+        try {
+            const btn = document.getElementById('cloud-load-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ استرجاع...";
+
+            const snapshot = await get(child(ref(db), 'backups/azemaa_main'));
+            if (snapshot.exists() && snapshot.val() !== null) { 
+                const d = snapshot.val(); 
+                for (let k in d) {
+                    if (d.hasOwnProperty(k)) {
+                        localStorage.setItem(k, d[k]); 
+                    }
+                }
+                alert("🔄 تم استرجاع البيانات بنجاح! سيتم تحديث النظام...");
+                window.location.reload();
+            } else {
+                alert("❓ لم يتم العثور على أي نسخة احتياطية سابقة.");
+                btn.innerHTML = originalText;
+            }
+        } catch (error) {
+            alert("❌ فشل الاسترجاع: " + error.message);
+            document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع";
+        }
+    });
 </script>
 </body>
 </html>
