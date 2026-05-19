@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <title>فرح كيتشن - أوفلاين</title>
+    <title>فرح كيتشن - سحابي</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+
     <style>
         :root { --primary: #0f172a; --gold: #d4af37; --accent: #2563eb; --bg: #e0e0e0; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; }
@@ -33,7 +37,7 @@
 </head>
 <body>
     <div class="container">
-        <header><h2>فرح كيتشن FARAH</h2><p>نظام المقاسات - يعمل بدون إنترنت</p></header>
+        <header><h2>فرح كيتشن FARAH</h2><p>نظام المقاسات - متزامن سحابياً ☁️</p></header>
         <div class="panel" id="mainPanel">
             <h4 id="modeTxt">إضافة مقاس جديد</h4>
             <select id="cat">
@@ -52,14 +56,30 @@
             <button class="btn btn-add" id="btnAdd" onclick="add()">حفظ ✅</button>
             <button class="btn btn-update" id="btnUpd" onclick="update()">تحديث 🔄</button>
         </div>
-        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الرقم..." onkeyup="filter()">
+        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الرقم..." onkeyup="render()">
         <div id="list"></div>
     </div>
 
     <script>
-        let db = JSON.parse(localStorage.getItem('farah_offline_final')) || [];
-        let editIdx = null;
+        // إعدادات Firebase الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        };
 
+        firebase.initializeApp(firebaseConfig);
+        const fdb = firebase.database();
+        const devicesRef = fdb.ref('farah_agheza_sizes');
+
+        let devicesData = {};
+        let editKey = null;
+
+        // دالة لتوحيد الأرقام والحروف لتسهيل البحث والحسابات
         function norm(t) {
             if(!t) return "";
             const ar = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
@@ -69,10 +89,28 @@
             return r.replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
         }
 
+        // جلب البيانات من فايربيز وعرضها لحظياً
+        devicesRef.on('value', (snapshot) => {
+            devicesData = snapshot.val() || {};
+            render();
+        });
+
         function render() {
-            localStorage.setItem('farah_offline_final', JSON.stringify(db));
             const container = document.getElementById('list');
-            container.innerHTML = db.map((item, i) => `
+            const q = norm(document.getElementById('search').value);
+            
+            // تحويل الكائن إلى مصفوفة لعكس الترتيب (الأحدث أولاً)
+            const itemsArray = Object.keys(devicesData).map(key => ({
+                id: key,
+                ...devicesData[key]
+            })).reverse();
+
+            container.innerHTML = itemsArray.map(item => {
+                const searchStr = norm(item.cat + " " + item.name + " " + (item.notes || ""));
+                // فلترة البحث
+                if (q && !searchStr.includes(q)) return '';
+
+                return `
                 <div class="card">
                     <div style="font-size:12px; color:var(--gold); font-weight:bold;">${item.cat}</div>
                     <div class="card-name">${item.name}</div>
@@ -83,51 +121,76 @@
                         <div><span class="size-lbl">عمـق</span><span class="size-val">${item.d}</span></div>
                     </div>
                     <div class="actions">
-                        <button class="btn-act edit" onclick="startEdit(${i})">تعديل</button>
-                        <button class="btn-act del" onclick="del(${i})">حذف</button>
+                        <button class="btn-act edit" onclick="startEdit('${item.id}')">تعديل</button>
+                        <button class="btn-act del" onclick="del('${item.id}')">حذف</button>
                     </div>
-                </div>
-            `).reverse().join('');
+                </div>`;
+            }).join('');
         }
 
         function add() {
-            const item = { cat:document.getElementById('cat').value, name:document.getElementById('name').value, notes:document.getElementById('notes').value, w:norm(document.getElementById('w').value), h:norm(document.getElementById('h').value), d:norm(document.getElementById('d').value) };
+            const item = { 
+                cat: document.getElementById('cat').value, 
+                name: document.getElementById('name').value, 
+                notes: document.getElementById('notes').value, 
+                w: norm(document.getElementById('w').value), 
+                h: norm(document.getElementById('h').value), 
+                d: norm(document.getElementById('d').value) 
+            };
             if(!item.name || !item.w) return alert("أكمل البيانات");
-            db.push(item); render(); clear();
+            
+            // الإضافة إلى فايربيز بدلاً من المصفوفة المحلية
+            devicesRef.push(item).then(() => {
+                clear();
+            });
         }
 
-        function startEdit(i) {
-            const idx = db.length - 1 - i;
-            editIdx = idx;
-            const d = db[idx];
+        function startEdit(id) {
+            editKey = id;
+            const d = devicesData[id];
             document.getElementById('cat').value = d.cat;
             document.getElementById('name').value = d.name;
             document.getElementById('notes').value = d.notes;
             document.getElementById('w').value = d.w;
             document.getElementById('h').value = d.h;
             document.getElementById('d').value = d.d;
+            
             document.getElementById('btnAdd').style.display = 'none';
             document.getElementById('btnUpd').style.display = 'block';
             window.scrollTo(0,0);
         }
 
         function update() {
-            db[editIdx] = { cat:document.getElementById('cat').value, name:document.getElementById('name').value, notes:document.getElementById('notes').value, w:norm(document.getElementById('w').value), h:norm(document.getElementById('h').value), d:norm(document.getElementById('d').value) };
-            editIdx = null;
-            document.getElementById('btnAdd').style.display = 'block';
-            document.getElementById('btnUpd').style.display = 'none';
-            render(); clear();
+            if (!editKey) return;
+            const item = { 
+                cat: document.getElementById('cat').value, 
+                name: document.getElementById('name').value, 
+                notes: document.getElementById('notes').value, 
+                w: norm(document.getElementById('w').value), 
+                h: norm(document.getElementById('h').value), 
+                d: norm(document.getElementById('d').value) 
+            };
+            
+            // التحديث المباشر في قاعدة البيانات
+            devicesRef.child(editKey).update(item).then(() => {
+                editKey = null;
+                document.getElementById('btnAdd').style.display = 'block';
+                document.getElementById('btnUpd').style.display = 'none';
+                clear();
+            });
         }
 
-        function del(i) { if(confirm("حذف؟")) { db.splice(db.length-1-i, 1); render(); } }
-        function clear() { ['name','notes','w','h','d'].forEach(id => document.getElementById(id).value = ''); }
-        function filter() {
-            const q = norm(document.getElementById('search').value);
-            document.querySelectorAll('.card').forEach(c => c.style.display = norm(c.innerText).includes(q) ? '' : 'none');
+        function del(id) { 
+            if(confirm("هل أنت متأكد من الحذف؟")) { 
+                devicesRef.child(id).remove();
+            } 
         }
-        render();
 
-        // كود تشغيل الأوفلاين
+        function clear() { 
+            ['name','notes','w','h','d'].forEach(id => document.getElementById(id).value = ''); 
+        }
+
+        // Service Worker للأوفلاين (اختياري بس هيفضل شغال للكاش)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register(URL.createObjectURL(new Blob([`
                 const c = 'f1';
