@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>azemaa proo - نظام حساب التكاليف</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #eff6ff;
+            --accent: #ea580c;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --border: #e2e8f0;
+            --text: #334155;
+        }
+        
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background-color: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        
+        .container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        /* الهيدر بالتدرج اللوني والظل */
+        .header { 
+            background: linear-gradient(135deg, var(--primary), #3b82f6); 
+            padding: 25px 15px; 
+            border-radius: 12px; 
+            margin-bottom: 25px; 
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        .header::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .header h1 { color: #ffffff; margin: 0; font-size: 2.4em; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); letter-spacing: 1px; }
+        .header p { color: #e0e7ff; margin-top: 8px; font-size: 1.05em; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); font-weight: bold; }
+
+        .customer-section { background: var(--primary-light); padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-right: 4px solid var(--primary); }
+        .customer-section label { font-weight: bold; color: var(--primary); }
+        .customer-section input { flex: 1; min-width: 150px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 1.1em; }
+        .customer-section input:focus, input[type="number"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1); }
+
+        .config-bar { background: #fff7ed; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; border: 1px solid #fed7aa; }
+        .input-group { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; min-width: 100px; }
+        .input-group label { font-weight: bold; color: var(--primary); font-size: 0.9em; }
+        .input-group input { width: 100%; max-width: 120px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; text-align: center; font-size: 1.1em; font-weight: bold; }
+        
+        .plus-sign { color: var(--accent); font-size: 1.5em; font-weight: bold; }
+
+        .result-badge { background: linear-gradient(135deg, var(--primary), #1e40af); color: white; padding: 12px 15px; border-radius: 8px; text-align: center; min-width: 120px; flex: 1; box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2); }
+        .result-badge span { display: block; font-size: 1.3em; font-weight: bold; color: #fbd38d; margin-top: 5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; min-width: 600px; border-collapse: collapse; margin-top: 5px; background: white; font-size: 0.95em; }
+        
+        th { background: linear-gradient(180deg, var(--primary), #1e40af); color: white; padding: 12px 10px; font-size: 0.95em; white-space: nowrap; text-align: center; border: 1px solid #1e3a8a; }
+        td { padding: 10px 8px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border); }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        tr:hover { background-color: #f1f5f9; }
+        
+        .qty { width: 60px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; text-align: center; font-weight: bold; font-size: 1.1em; background: #fff; }
+        .custom-input { width: 70px; padding: 8px; border: 2px solid #bae6fd; border-radius: 5px; text-align: center; font-weight: bold; font-size: 1.1em; color: #0369a1; background: #f0f9ff; }
+        
+        .row-total { font-weight: bold; color: var(--success); font-size: 1.1em; }
+        
+        .footer-total { background: linear-gradient(135deg, var(--success), #22c55e) !important; color: white; font-size: 1.2em; font-weight: bold; padding: 12px !important; border: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        
+        /* تنسيق زر تثبيت الافتراضية داخل الجدول */
+        tr.no-hover { background-color: transparent !important; }
+        tr.no-hover:hover { background-color: transparent !important; }
+        tr.no-hover td { border-bottom: none; }
+        
+        .btn-set-default-table { 
+            background: linear-gradient(135deg, #475569, #94a3b8); 
+            box-shadow: 0 3px 8px rgba(71, 85, 105, 0.3); 
+            border: none; padding: 8px 10px; border-radius: 6px; 
+            cursor: pointer; font-family: inherit; font-size: 0.85em; 
+            font-weight: bold; color: white; width: 100%; white-space: nowrap;
+            transition: all 0.3s ease; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); 
+        }
+        .btn-set-default-table:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 5px 12px rgba(71, 85, 105, 0.4); }
+        .btn-set-default-table:active { transform: translateY(1px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        .add-row-section { background: #f1f5f9; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px dashed #94a3b8; text-align: center; }
+        .add-row-section h4 { margin: 0 0 10px 0; color: var(--primary); }
+        .add-row-inputs { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+        .add-row-inputs input, .add-row-inputs select { padding: 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 1em; outline: none; }
+        .add-row-inputs input:focus, .add-row-inputs select:focus { border-color: var(--primary); }
+
+        .controls { display: flex; gap: 12px; margin-top: 25px; flex-wrap: wrap; justify-content: center; }
+        .btn { border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 1.05em; font-weight: bold; flex: 1; min-width: 140px; max-width: 220px; color: white; transition: all 0.3s ease; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        
+        .btn-save { background: linear-gradient(135deg, #16a34a, #22c55e); box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3); }
+        .btn-new { background: linear-gradient(135deg, #0284c7, #38bdf8); box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3); }
+        .btn-print { background: linear-gradient(135deg, #1e3a8a, #3b82f6); box-shadow: 0 4px 10px rgba(30, 58, 138, 0.3); }
+        .btn-add { background: linear-gradient(135deg, #7c3aed, #a78bfa); box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3); padding: 8px 20px; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+
+        .btn:hover, .btn-add:hover { transform: translateY(-3px); filter: brightness(1.05); }
+        .btn-save:hover { box-shadow: 0 6px 15px rgba(22, 163, 74, 0.4); }
+        .btn-new:hover { box-shadow: 0 6px 15px rgba(2, 132, 199, 0.4); }
+        .btn-print:hover { box-shadow: 0 6px 15px rgba(30, 58, 138, 0.4); }
+        .btn-add:hover { box-shadow: 0 6px 15px rgba(124, 58, 237, 0.4); }
+        .btn:active, .btn-add:active { transform: translateY(1px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        .archive-section { margin-top: 30px; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .archive-header { background: linear-gradient(135deg, #e2e8f0, #f8fafc); color: var(--text); padding: 12px; font-size: 1em; font-weight: bold; text-align: center; border-bottom: 1px solid var(--border); }
+        .archive-list { list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto; }
+        .archive-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); gap: 10px; transition: 0.2s; }
+        .archive-item:hover { background: #f8fafc; transform: translateX(-2px); }
+        
+        .customer-avatar { width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1em; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .archive-info { flex: 1; line-height: 1.4; }
+        .archive-info strong { font-size: 1.05em; display: block; color: var(--primary); }
+        .archive-info span { font-size: 0.85em; color: #64748b; }
+        
+        .archive-actions { display: flex; gap: 6px; }
+        .btn-sm { padding: 6px 12px; font-size: 0.85em; border-radius: 6px; cursor: pointer; border: none; color: white; font-weight: bold; transition: all 0.2s ease; text-shadow: 1px 1px 1px rgba(0,0,0,0.2); }
+        .btn-edit { background: linear-gradient(135deg, var(--warning), #fbbf24); box-shadow: 0 3px 6px rgba(245, 158, 11, 0.3); }
+        .btn-delete { background: linear-gradient(135deg, var(--danger), #f87171); box-shadow: 0 3px 6px rgba(220, 38, 38, 0.3); }
+        .btn-sm:hover { transform: translateY(-2px); filter: brightness(1.05); }
+
+        /* تنسيقات حالة الاتصال بالإنترنت المضافة */
+        .header-status { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            background: rgba(0, 0, 0, 0.2); 
+            padding: 5px 12px; 
+            border-radius: 20px; 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            color: white;
+            z-index: 10;
+        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; transition: 0.3s; }
+        .network-status.offline .status-dot { background-color: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
+
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            .container { padding: 12px; }
+            .header { padding: 20px 10px; margin-bottom: 15px; }
+            .header h1 { font-size: 1.8em; }
+            .customer-section, .config-bar { flex-direction: column; align-items: stretch; padding: 12px; }
+            .config-bar { flex-direction: row; flex-wrap: wrap; }
+            .input-group input { max-width: 100%; }
+            .result-badge { width: 100%; }
+            
+            td { padding: 8px 5px; }
+            .qty { width: 55px; }
+            .custom-input { width: 65px; }
+            .btn-set-default-table { font-size: 0.8em; padding: 6px 4px; }
+            
+            .archive-item { flex-wrap: wrap; padding: 10px; }
+            .archive-actions { flex-basis: 100%; justify-content: flex-end; margin-top: 5px; }
+        }
+
+        @media print {
+            .no-print { display: none; }
+            .header-status { display: none; } /* إخفاء مؤشر الاتصال عند الطباعة */
+            .container { padding: 0; border: none; box-shadow: none; }
+            body { background: white; }
+            .header { background: none; box-shadow: none; padding: 10px 0; margin-bottom: 10px; }
+            .header h1 { color: black; text-shadow: none; }
+            .header p { color: black; text-shadow: none; }
+            input[type="number"], .customer-section input { border: none; background: transparent; text-align: center; color: black; }
+            .customer-section { background: transparent; border: none; padding: 0; margin-bottom: 15px; }
+            .customer-section::after { content: attr(data-print-name); font-size: 1.2em; font-weight: bold; }
+            table { border: 1px solid #000; }
+            th, td, .footer-total { border: 1px solid #000; color: #000 !important; background: transparent !important; text-shadow: none; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="header-status network-status" id="network-status">
+            <span class="status-dot"></span>
+            <span id="status-text">متصل</span>
+        </div>
+        
+        <h1>azemaa proo</h1>
+        <p>نظام حساب تكاليف القطاعات والمواد</p>
+    </div>
+
+    <div class="customer-section no-print" id="customer-container">
+        <label>اسم الزبون / المشروع:</label>
+        <input type="text" id="customer-name" placeholder="أدخل اسم الزبون هنا..." oninput="updatePrintName()">
+    </div>
+
+    <div class="config-bar">
+        <div class="input-group">
+            <label>سعر الخام</label>
+            <input type="number" id="alum-price" placeholder="0" oninput="calculate()">
+        </div>
+        <div class="plus-sign">+</div>
+        <div class="input-group">
+            <label>سعر الدهان</label>
+            <input type="number" id="paint-price" placeholder="0" oninput="calculate()">
+        </div>
+        <div class="result-badge">
+            <small>إجمالي الكيلو</small>
+            <span id="total-kg-display">0</span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align: right;">اسم القطاع</th>
+                    <th>العدد</th>
+                    <th>الوزن / السعر</th>
+                    <th>إجمالي الوزن</th>
+                    <th>الإجمالي (ج)</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr class="kg-item static-row" data-default-weight="1.8">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">عود 2.5 بـ U</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td><input type="number" step="0.01" class="custom-input weight-input" oninput="calculate()"></td>
+                    <td class="res-w">-</td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="kg-item static-row" data-default-weight="1.8">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">عود 2.5 متباعد</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td><input type="number" step="0.01" class="custom-input weight-input" oninput="calculate()"></td>
+                    <td class="res-w">-</td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="kg-item static-row" data-default-weight="1.9">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">عود دلفة دبل عدل</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td><input type="number" step="0.01" class="custom-input weight-input" oninput="calculate()"></td>
+                    <td class="res-w">-</td>
+                    <td class="row-total"></td>
+                </tr>
+                
+                <tr class="price-item static-row" data-default-price="900">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">عود 2 × 8</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="900">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">عود كورنيشة</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="160">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">عود حرف f</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="150">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">عود زاوية 2×2</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="700">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">زاوية تجميع 2×3</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="800">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">زاوية 3×3</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="790">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">فيبر (لوح)</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="820">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">كيلادنج (لوح)</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+                <tr class="price-item static-row" data-default-price="820">
+                    <td style="text-align: right; font-weight: bold;"><span class="item-name-text">كيلادنج دواخل</span></td>
+                    <td><input type="number" class="qty" placeholder="-" oninput="calculate()"></td>
+                    <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" oninput="calculate()"></td>
+                    <td class="row-total"></td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="no-print no-hover">
+                    <td colspan="2" style="border: none;"></td>
+                    <td style="border: none; padding: 10px 5px;">
+                        <button class="btn-set-default-table" onclick="saveCurrentDefaults()" title="حفظ الأرقام الحالية لتكون هي الأساسية">⚙️ تثبيت كافتراضية</button>
+                    </td>
+                    <td colspan="2" style="border: none;"></td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="footer-total" style="text-align: left;">الإجمالي النهائي</td>
+                    <td id="grand-total" class="footer-total"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="add-row-section no-print">
+        <h4>➕ إضافة قطاع جديد للقائمة الدائمة</h4>
+        <div class="add-row-inputs">
+            <input type="text" id="new-item-name" placeholder="اسم القطاع (مثال: عود 4 سم)">
+            <select id="new-item-type">
+                <option value="kg">حساب بالوزن (كجم)</option>
+                <option value="price">حساب بالسعر (قطعة)</option>
+            </select>
+            <input type="number" id="new-item-val" placeholder="السعر أو الوزن">
+            <button class="btn-add" onclick="handleAddRow()">إضافة وتثبيت</button>
+        </div>
+    </div>
+
+    <div class="controls no-print">
+        <button class="btn btn-save" onclick="saveEstimate()">💾 حفظ المقايسة</button>
+        <button class="btn btn-new" onclick="clearForm()">📝 مقايسة جديدة</button>
+        <button class="btn btn-print" onclick="window.print()">🖨️ طباعة</button>
+    </div>
+
+    <div class="archive-section no-print">
+        <div class="archive-header">📁 سجل مقايسات العملاء</div>
+        <ul class="archive-list" id="archive-list"></ul>
+    </div>
+</div>
+
+<script>
+    let currentEstimateId = null;
+
+    function generateColorFromName(name) {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        let h = Math.abs(hash) % 360; 
+        return `hsl(${h}, 70%, 45%)`; 
+    }
+
+    function updatePrintName() {
+        let name = document.getElementById('customer-name').value;
+        let container = document.getElementById('customer-container');
+        container.setAttribute('data-print-name', name ? name : 'عميل نقدي');
+        
+        if(name) {
+            container.style.borderRightColor = generateColorFromName(name);
+        } else {
+            container.style.borderRightColor = 'var(--primary)';
+        }
+    }
+
+    function handleAddRow() {
+        let name = document.getElementById('new-item-name').value.trim();
+        let type = document.getElementById('new-item-type').value;
+        let val = parseFloat(document.getElementById('new-item-val').value);
+
+        if (!name || isNaN(val) || val <= 0) {
+            alert("يرجى إدخال اسم القطاع والقيمة بشكل صحيح!");
+            return;
+        }
+
+        let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
+        
+        let exists = globalSectors.find(s => s.name === name);
+        if(exists) {
+            alert("هذا القطاع موجود بالفعل في القائمة!");
+            return;
+        }
+
+        globalSectors.push({ name: name, type: type, defaultVal: val });
+        localStorage.setItem('azemaa_global_sectors', JSON.stringify(globalSectors));
+
+        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+        globalItemValues[name] = val;
+        localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
+
+        addNewRowUI(name, type, val, "");
+
+        document.getElementById('new-item-name').value = '';
+        document.getElementById('new-item-val').value = '';
+        document.getElementById('new-item-name').focus();
+    }
+
+    function addNewRowUI(name, type, currentVal, qty) {
+        let tbody = document.getElementById('table-body');
+        let tr = document.createElement('tr');
+        tr.className = 'static-row ' + (type === 'kg' ? 'kg-item' : 'price-item');
+
+        if (type === 'kg') {
+            tr.innerHTML = `
+                <td style="text-align: right; font-weight: bold;"><span class="item-name-text">${name}</span></td>
+                <td><input type="number" class="qty" placeholder="-" value="${qty}" oninput="calculate()"></td>
+                <td><input type="number" step="0.01" class="custom-input weight-input" value="${currentVal}" oninput="calculate()"></td>
+                <td class="res-w">-</td>
+                <td class="row-total"></td>
+            `;
+        } else {
+            tr.innerHTML = `
+                <td style="text-align: right; font-weight: bold;"><span class="item-name-text">${name}</span></td>
+                <td><input type="number" class="qty" placeholder="-" value="${qty}" oninput="calculate()"></td>
+                <td colspan="2"><input type="number" step="0.01" class="custom-input price-input" value="${currentVal}" oninput="calculate()"></td>
+                <td class="row-total"></td>
+            `;
+        }
+        tbody.appendChild(tr);
+        calculate();
+    }
+
+    function calculate() {
+        let alumVal = document.getElementById('alum-price').value;
+        let paintVal = document.getElementById('paint-price').value;
+        
+        let alumPrice = parseFloat(alumVal) || 0;
+        let paintPrice = parseFloat(paintVal) || 0;
+        let globalPrice = alumPrice + paintPrice;
+        
+        document.getElementById('total-kg-display').innerText = globalPrice.toLocaleString('ar-EG') + " ج.م";
+
+        let rows = document.querySelectorAll('#table-body tr');
+        let grandTotal = 0;
+        
+        rows.forEach(row => {
+            let qtyInput = row.querySelector('.qty');
+            if(!qtyInput) return;
+            let qty = parseFloat(qtyInput.value);
+            let rowTotalDisplay = row.querySelector('.row-total');
+            let rowSum = 0;
+
+            let customInput = row.querySelector('.custom-input');
+            if(!customInput) return;
+            let currentVal = parseFloat(customInput.value) || 0;
+
+            if (!isNaN(qty) && qty > 0) {
+                if (row.classList.contains('kg-item')) {
+                    let totalW = qty * currentVal;
+                    row.querySelector('.res-w').innerText = totalW.toLocaleString('ar-EG', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " كجم";
+                    rowSum = totalW * globalPrice;
+                } else if (row.classList.contains('price-item')) {
+                    rowSum = qty * currentVal;
+                }
+                
+                rowTotalDisplay.innerText = rowSum.toLocaleString('ar-EG') + " ج.م";
+                grandTotal += rowSum;
+            } else {
+                rowTotalDisplay.innerText = "";
+                if (row.querySelector('.res-w')) row.querySelector('.res-w').innerText = "-";
+            }
+        });
+
+        document.getElementById('grand-total').innerText = grandTotal > 0 ? grandTotal.toLocaleString('ar-EG') + " ج.م" : "";
+    }
+
+    function saveCurrentDefaults() {
+        let alumVal = document.getElementById('alum-price').value;
+        let paintVal = document.getElementById('paint-price').value;
+        
+        localStorage.setItem('azemaa_global_alum_price', alumVal);
+        localStorage.setItem('azemaa_global_paint_price', paintVal);
+
+        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+        let rows = document.querySelectorAll('#table-body tr');
+        
+        rows.forEach(row => {
+            let itemNameSpan = row.querySelector('.item-name-text');
+            if(!itemNameSpan) return;
+            let itemName = itemNameSpan.innerText.trim();
+            
+            let customInput = row.querySelector('.custom-input');
+            if(!customInput) return;
+            let currentVal = parseFloat(customInput.value) || 0;
+            
+            if(currentVal > 0) {
+                globalItemValues[itemName] = currentVal;
+            }
+        });
+
+        localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
+        alert("✅ تم حفظ أسعار الخامات والأوزان/الأسعار الحالية بنجاح لتكون الافتراضية دائماً.");
+    }
+
+    function saveEstimate() {
+        let customerName = document.getElementById('customer-name').value.trim();
+        if (!customerName) {
+            alert("يرجى إدخال اسم الزبون قبل الحفظ!");
+            document.getElementById('customer-name').focus();
+            return;
+        }
+
+        let alumPrice = document.getElementById('alum-price').value;
+        let paintPrice = document.getElementById('paint-price').value;
+        let grandTotalText = document.getElementById('grand-total').innerText;
+        
+        let items = [];
+        let customWeights = []; 
+        let customPrices = []; 
+        
+        document.querySelectorAll('#table-body tr.static-row').forEach(row => {
+            items.push(row.querySelector('.qty').value);
+            
+            if (row.classList.contains('kg-item')) {
+                customWeights.push(row.querySelector('.weight-input').value);
+                customPrices.push(null);
+            } else if (row.classList.contains('price-item')) {
+                customPrices.push(row.querySelector('.price-input').value);
+                customWeights.push(null);
+            }
+        });
+
+        let d = new Date();
+        let dateString = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
+        let timeString = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        let fullDate = `${dateString} ${timeString}`;
+
+        let estimateData = {
+            id: currentEstimateId || Date.now().toString(),
+            name: customerName,
+            date: fullDate,
+            total: grandTotalText || "0 ج.م",
+            alumPrice: alumPrice,
+            paintPrice: paintPrice,
+            quantities: items,
+            weights: customWeights,
+            prices: customPrices
+        };
+
+        let archive = JSON.parse(localStorage.getItem('azemaa_archive')) || [];
+
+        if (currentEstimateId) {
+            let index = archive.findIndex(item => item.id === currentEstimateId);
+            if (index !== -1) archive[index] = estimateData;
+        } else {
+            archive.unshift(estimateData);
+            currentEstimateId = estimateData.id;
+        }
+
+        localStorage.setItem('azemaa_archive', JSON.stringify(archive));
+        renderArchive();
+    }
+
+    function renderArchive() {
+        let archive = JSON.parse(localStorage.getItem('azemaa_archive')) || [];
+        let archiveList = document.getElementById('archive-list');
+        archiveList.innerHTML = '';
+
+        if(archive.length === 0) {
+            archiveList.innerHTML = '<li style="padding: 15px; text-align: center; color: #64748b;">لا توجد مقايسات محفوظة حالياً.</li>';
+            return;
+        }
+
+        archive.forEach(item => {
+            let bgColor = generateColorFromName(item.name);
+            let firstLetter = item.name.charAt(0).toUpperCase();
+
+            let li = document.createElement('li');
+            li.className = 'archive-item';
+            
+            li.innerHTML = `
+                <div class="customer-avatar" style="background: linear-gradient(135deg, ${bgColor}, #333);">
+                    ${firstLetter}
+                </div>
+                <div class="archive-info">
+                    <strong style="color: ${bgColor};">${item.name}</strong>
+                    <span>📅 ${item.date} &nbsp;|&nbsp; 💰 ${item.total}</span>
+                </div>
+                <div class="archive-actions">
+                    <button class="btn-sm btn-edit" onclick="loadEstimate('${item.id}')">فتح</button>
+                    <button class="btn-sm btn-delete" onclick="deleteEstimate('${item.id}')">حذف</button>
+                </div>
+            `;
+            archiveList.appendChild(li);
+        });
+    }
+
+    function clearFormWithoutSaving() {
+        currentEstimateId = null;
+        document.getElementById('customer-name').value = '';
+        
+        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+
+        document.querySelectorAll('#table-body tr.static-row').forEach(row => {
+            let qtyInput = row.querySelector('.qty');
+            if(qtyInput) qtyInput.value = '';
+            
+            let itemNameSpan = row.querySelector('.item-name-text');
+            if(!itemNameSpan) return;
+            let itemName = itemNameSpan.innerText.trim();
+            
+            let customInput = row.querySelector('.custom-input');
+            
+            if (globalItemValues[itemName] !== undefined) {
+                customInput.value = globalItemValues[itemName];
+            } else {
+                if (row.classList.contains('kg-item')) {
+                    customInput.value = row.getAttribute('data-default-weight');
+                } else if (row.classList.contains('price-item')) {
+                    customInput.value = row.getAttribute('data-default-price');
+                }
+            }
+        });
+    }
+
+    function loadEstimate(id) {
+        let archive = JSON.parse(localStorage.getItem('azemaa_archive')) || [];
+        let item = archive.find(x => x.id === id);
+        
+        if (item) {
+            clearFormWithoutSaving(); 
+            
+            currentEstimateId = item.id;
+            document.getElementById('customer-name').value = item.name;
+            document.getElementById('alum-price').value = item.alumPrice;
+            document.getElementById('paint-price').value = item.paintPrice;
+            updatePrintName();
+
+            let staticRows = document.querySelectorAll('#table-body tr.static-row');
+            
+            item.quantities.forEach((qty, index) => {
+                if(staticRows[index]) {
+                    staticRows[index].querySelector('.qty').value = qty;
+                    
+                    if (staticRows[index].classList.contains('kg-item') && item.weights && item.weights[index]) {
+                        staticRows[index].querySelector('.weight-input').value = item.weights[index];
+                    }
+                    
+                    if (staticRows[index].classList.contains('price-item') && item.prices && item.prices[index]) {
+                        staticRows[index].querySelector('.price-input').value = item.prices[index];
+                    }
+                }
+            });
+
+            calculate();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function clearForm() {
+        clearFormWithoutSaving();
+        document.getElementById('alum-price').value = localStorage.getItem('azemaa_global_alum_price') || '';
+        document.getElementById('paint-price').value = localStorage.getItem('azemaa_global_paint_price') || '';
+        updatePrintName();
+        calculate();
+    }
+
+    function deleteEstimate(id) {
+        if (confirm('هل أنت متأكد من حذف هذه المقايسة؟')) {
+            let archive = JSON.parse(localStorage.getItem('azemaa_archive')) || [];
+            archive = archive.filter(item => item.id !== id);
+            localStorage.setItem('azemaa_archive', JSON.stringify(archive));
+            
+            if(currentEstimateId === id) clearForm();
+            
+            renderArchive();
+        }
+    }
+
+    /* دالة تحديث حالة الاتصال بالإنترنت */
+    function updateOnlineStatus() {
+        const statusDiv = document.getElementById('network-status');
+        const statusText = document.getElementById('status-text');
+        if (navigator.onLine) {
+            statusDiv.classList.remove('offline');
+            statusText.innerText = 'متصل';
+        } else {
+            statusDiv.classList.add('offline');
+            statusText.innerText = 'غير متصل';
+        }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    window.onload = function() {
+        /* تشغيل حالة الاتصال فور فتح الصفحة */
+        updateOnlineStatus();
+
+        let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
+        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+
+        globalSectors.forEach(sector => {
+            let valToUse = globalItemValues[sector.name] !== undefined ? globalItemValues[sector.name] : sector.defaultVal;
+            addNewRowUI(sector.name, sector.type, valToUse, "");
+        });
+
+        clearFormWithoutSaving(); 
+
+        document.getElementById('alum-price').value = localStorage.getItem('azemaa_global_alum_price') || '';
+        document.getElementById('paint-price').value = localStorage.getItem('azemaa_global_paint_price') || '';
+        
+        updatePrintName();
+        renderArchive();
+        calculate();
+    };
+</script>
+
+</body>
+</html>
