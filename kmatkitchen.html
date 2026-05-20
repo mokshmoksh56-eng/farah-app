@@ -6,7 +6,6 @@
     <title>azemaa proo - نظام الورشة</title>
     <style>
         :root {
-            /* المتغير الأساسي للون - يتغير برمجياً حسب الاسم */
             --primary-h: 222; 
             
             --primary: hsl(var(--primary-h), 70%, 45%);
@@ -451,7 +450,6 @@
     </div>
 </div>
 
-<!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getDatabase, ref, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
@@ -477,20 +475,53 @@
     window.dbRemove = remove;
     window.dbUpdate = update;
 
-    // استماع للتغيرات في قاعدة البيانات بشكل لحظي
+    // استماع لحظي لجدول الأرشيف
     window.dbOnValue(window.dbRef(window.db, 'archives'), (snapshot) => {
         const data = snapshot.val();
         let archiveArray = [];
         if (data) {
-            Object.keys(data).forEach(key => {
-                archiveArray.push(data[key]);
-            });
+            Object.keys(data).forEach(key => archiveArray.push(data[key]));
             archiveArray.sort((a, b) => b.id - a.id);
         }
         localStorage.setItem('azemaa_archive', JSON.stringify(archiveArray));
-        if (typeof renderArchive === 'function') {
-            renderArchive();
+        if (typeof renderArchive === 'function') renderArchive();
+    });
+
+    // استماع لحظي لإعدادات الجدول والأصناف الجديدة (الجديد هنا)
+    window.dbOnValue(window.dbRef(window.db, 'settings'), (snapshot) => {
+        const data = snapshot.val() || {};
+        
+        localStorage.setItem('azemaa_global_alum_price', data.defaultAlumPrice || '');
+        localStorage.setItem('azemaa_global_paint_price', data.defaultPaintPrice || '');
+        localStorage.setItem('azemaa_global_item_values', JSON.stringify(data.itemValues || {}));
+        localStorage.setItem('azemaa_global_sectors', JSON.stringify(data.customSectors || []));
+
+        // تطبيق أسعار الألومنيوم والدهان إذا لم تكن هناك مقايسة مفتوحة
+        if (!currentEstimateId) {
+            if(data.defaultAlumPrice) document.getElementById('alum-price').placeholder = data.defaultAlumPrice;
+            if(data.defaultPaintPrice) document.getElementById('paint-price').placeholder = data.defaultPaintPrice;
         }
+
+        let itemVals = data.itemValues || {};
+        
+        // تحديث قيم الأصناف الأساسية (لو متعدلة)
+        document.querySelectorAll('tr.static-row:not(.dynamic-row)').forEach(row => {
+            let name = row.querySelector('.item-name-text').innerText.trim();
+            if (itemVals[name] !== undefined && !currentEstimateId) {
+                row.querySelector('.custom-input').value = itemVals[name];
+            }
+        });
+
+        // إضافة الأصناف المخصصة (الجديدة) وتحديثها
+        let customSectors = data.customSectors || [];
+        customSectors.forEach(sector => {
+            let valToUse = itemVals[sector.name] !== undefined ? itemVals[sector.name] : sector.defaultVal;
+            if (typeof addNewRowUI === 'function') {
+                addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
+            }
+        });
+        
+        if (typeof calculate === 'function') calculate();
     });
 </script>
 
@@ -500,9 +531,7 @@
     function getHueFromName(name) {
         if (!name || name.trim() === '') return 222; 
         let hash = 0;
-        for (let i = 0; i < name.length; i++) { 
-            hash = name.charCodeAt(i) + ((hash << 5) - hash); 
-        }
+        for (let i = 0; i < name.length; i++) { hash = name.charCodeAt(i) + ((hash << 5) - hash); }
         return Math.abs(hash) % 360;
     }
 
@@ -510,23 +539,29 @@
         let name = document.getElementById('customer-name').value;
         let container = document.getElementById('customer-container');
         container.setAttribute('data-print-name', name ? name : 'عميل نقدي');
-        
         let hue = getHueFromName(name);
         document.documentElement.style.setProperty('--primary-h', hue);
     }
 
+    // تم التعديل لحذف الصنف من السيرفر لكل الأجهزة
     function removeItemRow(btn) {
         let row = btn.closest('tr');
         let itemName = row.querySelector('.item-name-text').innerText.trim();
-        if (confirm(`هل أنت متأكد من حذف "${itemName}" نهائياً من الجدول؟`)) {
+        if (confirm(`هل أنت متأكد من حذف "${itemName}" نهائياً من الجدول لجميع الأجهزة؟`)) {
             row.remove();
             let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
             let updatedSectors = globalSectors.filter(s => s.name !== itemName);
-            localStorage.setItem('azemaa_global_sectors', JSON.stringify(updatedSectors));
+            
+            if (window.db && window.dbSet && window.dbRef) {
+                window.dbSet(window.dbRef(window.db, 'settings/customSectors'), updatedSectors);
+            } else {
+                localStorage.setItem('azemaa_global_sectors', JSON.stringify(updatedSectors));
+            }
             calculate();
         }
     }
 
+    // تم التعديل لإضافة الصنف للسيرفر
     function handleAddRow() {
         let name = document.getElementById('new-item-name').value.trim();
         let category = document.getElementById('new-item-category').value;
@@ -538,23 +573,39 @@
         let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
         if(globalSectors.find(s => s.name === name)) return alert("هذا الصنف موجود بالفعل!");
 
-        globalSectors.push({ name: name, category: category, type: type, defaultVal: val });
-        localStorage.setItem('azemaa_global_sectors', JSON.stringify(globalSectors));
+        let newSector = { name: name, category: category, type: type, defaultVal: val };
+        globalSectors.push(newSector);
 
         let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
         globalItemValues[name] = val;
-        localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
 
-        addNewRowUI(name, type, val, "", category);
+        if (window.db && window.dbSet && window.dbRef) {
+            window.dbSet(window.dbRef(window.db, 'settings/customSectors'), globalSectors);
+            window.dbUpdate(window.dbRef(window.db, 'settings/itemValues'), globalItemValues);
+        } else {
+            localStorage.setItem('azemaa_global_sectors', JSON.stringify(globalSectors));
+            localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
+            addNewRowUI(name, type, val, "", category, true);
+        }
+
         document.getElementById('new-item-name').value = '';
         document.getElementById('new-item-val').value = '';
     }
 
-    function addNewRowUI(name, type, currentVal, qty, category = 'alum') {
+    // دالة إنشاء الصفوف بالواجهة
+    function addNewRowUI(name, type, currentVal, qty, category = 'alum', isDynamic = false) {
         let tbody = document.getElementById(category + '-body') || document.getElementById('alum-body'); 
-        let tr = document.createElement('tr');
-        tr.className = 'static-row ' + (type === 'kg' ? 'kg-item' : 'price-item');
+        
+        let exists = Array.from(tbody.querySelectorAll('.item-name-text')).find(el => el.innerText.trim() === name);
+        if (exists) {
+            if (!currentEstimateId && isDynamic) {
+                 exists.closest('tr').querySelector('.custom-input').value = currentVal;
+            }
+            return;
+        }
 
+        let tr = document.createElement('tr');
+        tr.className = 'static-row ' + (type === 'kg' ? 'kg-item' : 'price-item') + (isDynamic ? ' dynamic-row' : '');
         let isKg = type === 'kg';
         tr.innerHTML = `
             <td style="text-align: right; font-weight: bold;"><span class="item-name-text">${name}</span></td>
@@ -569,7 +620,9 @@
     }
 
     function calculate() {
-        let globalPrice = (parseFloat(document.getElementById('alum-price').value) || 0) + (parseFloat(document.getElementById('paint-price').value) || 0);
+        let globalPrice = (parseFloat(document.getElementById('alum-price').value) || parseFloat(document.getElementById('alum-price').placeholder) || 0) + 
+                          (parseFloat(document.getElementById('paint-price').value) || parseFloat(document.getElementById('paint-price').placeholder) || 0);
+        
         document.getElementById('total-kg-display').innerText = globalPrice.toLocaleString('ar-EG') + " ج.م";
 
         let grandTotal = 0, alumTotal = 0, woodTotal = 0, accTotal = 0;
@@ -607,18 +660,30 @@
         document.getElementById('grand-total').innerText = grandTotal > 0 ? grandTotal.toLocaleString('ar-EG') + " ج.م" : "";
     }
 
+    // تم التعديل لرفع القيم الافتراضية للسيرفر
     function saveCurrentDefaults() {
-        localStorage.setItem('azemaa_global_alum_price', document.getElementById('alum-price').value);
-        localStorage.setItem('azemaa_global_paint_price', document.getElementById('paint-price').value);
-
-        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+        let alumP = document.getElementById('alum-price').value || document.getElementById('alum-price').placeholder;
+        let paintP = document.getElementById('paint-price').value || document.getElementById('paint-price').placeholder;
+        
+        let globalItemValues = {};
         document.querySelectorAll('tr.static-row').forEach(row => {
             let name = row.querySelector('.item-name-text').innerText.trim();
             let val = parseFloat(row.querySelector('.custom-input').value) || 0;
             if(val > 0) globalItemValues[name] = val;
         });
-        localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
-        alert("✅ تم حفظ الأسعار والأوزان الحالية لتكون الافتراضية.");
+
+        if (window.db && window.dbSet && window.dbRef) {
+            window.dbUpdate(window.dbRef(window.db, 'settings'), {
+                defaultAlumPrice: alumP,
+                defaultPaintPrice: paintP,
+                itemValues: globalItemValues
+            }).then(() => alert("✅ تم حفظ الأسعار والأوزان وتزامنها كإعداد افتراضي لكل الأجهزة."));
+        } else {
+            localStorage.setItem('azemaa_global_alum_price', alumP);
+            localStorage.setItem('azemaa_global_paint_price', paintP);
+            localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
+            alert("تم الحفظ محلياً (تأكد من الاتصال بالإنترنت للمزامنة السحابية).");
+        }
     }
 
     function saveEstimate() {
@@ -642,8 +707,8 @@
             name: customerName,
             date: fullDate,
             total: document.getElementById('grand-total').innerText || "0 ج.م",
-            alumPrice: document.getElementById('alum-price').value,
-            paintPrice: document.getElementById('paint-price').value,
+            alumPrice: document.getElementById('alum-price').value || document.getElementById('alum-price').placeholder || '',
+            paintPrice: document.getElementById('paint-price').value || document.getElementById('paint-price').placeholder || '',
             structuredItems: structuredItems,
             status: currentEstimateId ? 'active' : 'active'
         };
@@ -790,6 +855,9 @@
     function clearFormWithoutSaving() {
         currentEstimateId = null;
         document.getElementById('customer-name').value = '';
+        document.getElementById('alum-price').value = '';
+        document.getElementById('paint-price').value = '';
+
         let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
 
         document.querySelectorAll('tr.static-row').forEach(row => {
@@ -839,9 +907,6 @@
     function clearForm() {
         clearFormWithoutSaving();
         highlightCurrentProject(null);
-        document.getElementById('alum-price').value = localStorage.getItem('azemaa_global_alum_price') || '';
-        document.getElementById('paint-price').value = localStorage.getItem('azemaa_global_paint_price') || '';
-        updatePrintName(); 
         calculate();
     }
 
@@ -929,17 +994,19 @@
 
     window.onload = function() {
         updateOnlineStatus();
+        
         let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
         let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
 
         globalSectors.forEach(sector => {
             let valToUse = globalItemValues[sector.name] !== undefined ? globalItemValues[sector.name] : sector.defaultVal;
-            addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum');
+            addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
         });
 
         clearFormWithoutSaving(); 
-        document.getElementById('alum-price').value = localStorage.getItem('azemaa_global_alum_price') || '';
-        document.getElementById('paint-price').value = localStorage.getItem('azemaa_global_paint_price') || '';
+        
+        document.getElementById('alum-price').placeholder = localStorage.getItem('azemaa_global_alum_price') || '0';
+        document.getElementById('paint-price').placeholder = localStorage.getItem('azemaa_global_paint_price') || '0';
         
         updatePrintName(); 
         renderArchive();
