@@ -71,10 +71,10 @@
         tr:hover { background-color: var(--primary-light); }
         
         .section-title td { background: linear-gradient(90deg, #e2e8f0, #cbd5e1, #e2e8f0); color: #0f172a; font-weight: 900; font-size: 1.1em; text-align: center; padding: 12px; border-bottom: 2px solid #94a3b8; border-top: 2px solid #94a3b8; }
-        .qty { width: 60px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; text-align: center; font-weight: bold; font-size: 1.1em; background: #fff; outline: none; }
-        .qty:focus { border-color: var(--primary); }
-        .custom-input { width: 70px; padding: 8px; border: 2px solid #bae6fd; border-radius: 5px; text-align: center; font-weight: bold; font-size: 1.1em; color: #0369a1; background: #f0f9ff; outline: none; }
-        .custom-input:focus { border-color: var(--primary); }
+        .qty { width: 60px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; text-align: center; font-weight: bold; font-size: 1.1em; background: #fff; outline: none; transition: 0.3s; }
+        .qty:focus { border-color: var(--primary); background: #f0fdf4; }
+        .custom-input { width: 70px; padding: 8px; border: 2px solid #bae6fd; border-radius: 5px; text-align: center; font-weight: bold; font-size: 1.1em; color: #0369a1; background: #f0f9ff; outline: none; transition: 0.3s; }
+        .custom-input:focus { border-color: var(--primary); background: #fff; }
         
         .row-total { font-weight: bold; color: var(--primary-dark); font-size: 1.1em; transition: color 0.4s ease; }
         .subtotal-row td { background-color: #f8fafc; border-top: 2px solid var(--border); font-size: 1.1em; }
@@ -171,6 +171,7 @@
         .status-new { background: linear-gradient(135deg, #64748b, #94a3b8); opacity: 0.9; }
         .status-active { background: linear-gradient(135deg, var(--primary), var(--primary-fade)); }
         .status-completed { background: linear-gradient(135deg, var(--success), #22c55e); }
+        .status-saving { background: linear-gradient(135deg, #f59e0b, #d97706); } /* لون جديد لحالة الحفظ */
 
         @media (max-width: 768px) {
             body { padding: 8px; }
@@ -405,7 +406,7 @@
     </div>
 
     <div class="controls no-print">
-        <button class="btn btn-save" onclick="saveEstimate()">💾 حفظ المقايسة</button>
+        <button class="btn btn-save" onclick="saveEstimate(false)">💾 حفظ المقايسة</button>
         <button class="btn btn-new" onclick="clearForm()">📝 مقايسة جديدة</button>
         <button class="btn btn-print" onclick="window.print()">🖨️ طباعة للورشة</button>
     </div>
@@ -485,26 +486,29 @@
         }
         localStorage.setItem('azemaa_archive', JSON.stringify(archiveArray));
         if (typeof renderArchive === 'function') renderArchive();
+
+        // التحديث اللحظي للأجهزة المفتوحة على نفس المقايسة (Live Collaboration)
+        if (currentEstimateId && !window.inputFocused) {
+            let activeData = archiveArray.find(x => x.id === currentEstimateId);
+            if (activeData && typeof updateUIWithoutFocusLoss === 'function') {
+                updateUIWithoutFocusLoss(activeData);
+            }
+        }
     });
 
-    // استماع لحظي لإعدادات الجدول والأصناف الجديدة (الجديد هنا)
     window.dbOnValue(window.dbRef(window.db, 'settings'), (snapshot) => {
         const data = snapshot.val() || {};
-        
         localStorage.setItem('azemaa_global_alum_price', data.defaultAlumPrice || '');
         localStorage.setItem('azemaa_global_paint_price', data.defaultPaintPrice || '');
         localStorage.setItem('azemaa_global_item_values', JSON.stringify(data.itemValues || {}));
         localStorage.setItem('azemaa_global_sectors', JSON.stringify(data.customSectors || []));
 
-        // تطبيق أسعار الألومنيوم والدهان إذا لم تكن هناك مقايسة مفتوحة
         if (!currentEstimateId) {
             if(data.defaultAlumPrice) document.getElementById('alum-price').placeholder = data.defaultAlumPrice;
             if(data.defaultPaintPrice) document.getElementById('paint-price').placeholder = data.defaultPaintPrice;
         }
 
         let itemVals = data.itemValues || {};
-        
-        // تحديث قيم الأصناف الأساسية (لو متعدلة)
         document.querySelectorAll('tr.static-row:not(.dynamic-row)').forEach(row => {
             let name = row.querySelector('.item-name-text').innerText.trim();
             if (itemVals[name] !== undefined && !currentEstimateId) {
@@ -512,7 +516,6 @@
             }
         });
 
-        // إضافة الأصناف المخصصة (الجديدة) وتحديثها
         let customSectors = data.customSectors || [];
         customSectors.forEach(sector => {
             let valToUse = itemVals[sector.name] !== undefined ? itemVals[sector.name] : sector.defaultVal;
@@ -527,6 +530,12 @@
 
 <script>
     let currentEstimateId = null;
+    let autoSaveTimer = null;
+    window.inputFocused = false;
+
+    // تتبع المؤشر لمنع الكتابة فوق المستخدم أثناء المزامنة الحية
+    document.addEventListener('focusin', e => { if(e.target.tagName === 'INPUT') window.inputFocused = true; });
+    document.addEventListener('focusout', e => { if(e.target.tagName === 'INPUT') window.inputFocused = false; });
 
     function getHueFromName(name) {
         if (!name || name.trim() === '') return 222; 
@@ -541,9 +550,11 @@
         container.setAttribute('data-print-name', name ? name : 'عميل نقدي');
         let hue = getHueFromName(name);
         document.documentElement.style.setProperty('--primary-h', hue);
+        
+        // تشغيل الحفظ التلقائي عند تغيير الاسم
+        triggerAutoSave();
     }
 
-    // تم التعديل لحذف الصنف من السيرفر لكل الأجهزة
     function removeItemRow(btn) {
         let row = btn.closest('tr');
         let itemName = row.querySelector('.item-name-text').innerText.trim();
@@ -554,14 +565,11 @@
             
             if (window.db && window.dbSet && window.dbRef) {
                 window.dbSet(window.dbRef(window.db, 'settings/customSectors'), updatedSectors);
-            } else {
-                localStorage.setItem('azemaa_global_sectors', JSON.stringify(updatedSectors));
             }
             calculate();
         }
     }
 
-    // تم التعديل لإضافة الصنف للسيرفر
     function handleAddRow() {
         let name = document.getElementById('new-item-name').value.trim();
         let category = document.getElementById('new-item-category').value;
@@ -583,8 +591,6 @@
             window.dbSet(window.dbRef(window.db, 'settings/customSectors'), globalSectors);
             window.dbUpdate(window.dbRef(window.db, 'settings/itemValues'), globalItemValues);
         } else {
-            localStorage.setItem('azemaa_global_sectors', JSON.stringify(globalSectors));
-            localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
             addNewRowUI(name, type, val, "", category, true);
         }
 
@@ -592,15 +598,12 @@
         document.getElementById('new-item-val').value = '';
     }
 
-    // دالة إنشاء الصفوف بالواجهة
     function addNewRowUI(name, type, currentVal, qty, category = 'alum', isDynamic = false) {
         let tbody = document.getElementById(category + '-body') || document.getElementById('alum-body'); 
         
         let exists = Array.from(tbody.querySelectorAll('.item-name-text')).find(el => el.innerText.trim() === name);
         if (exists) {
-            if (!currentEstimateId && isDynamic) {
-                 exists.closest('tr').querySelector('.custom-input').value = currentVal;
-            }
+            if (!currentEstimateId && isDynamic) exists.closest('tr').querySelector('.custom-input').value = currentVal;
             return;
         }
 
@@ -619,6 +622,7 @@
         calculate();
     }
 
+    // تم إضافة ميزة الحفظ التلقائي للسيرفر مع كل عملية حسابية
     function calculate() {
         let globalPrice = (parseFloat(document.getElementById('alum-price').value) || parseFloat(document.getElementById('alum-price').placeholder) || 0) + 
                           (parseFloat(document.getElementById('paint-price').value) || parseFloat(document.getElementById('paint-price').placeholder) || 0);
@@ -658,9 +662,22 @@
         document.getElementById('wood-total').innerText = woodTotal > 0 ? woodTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.م";
         document.getElementById('acc-total').innerText = accTotal > 0 ? accTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.م";
         document.getElementById('grand-total').innerText = grandTotal > 0 ? grandTotal.toLocaleString('ar-EG') + " ج.م" : "";
+
+        // الحفظ التلقائي للسيرفر أثناء الكتابة (الجدول أون لاين)
+        triggerAutoSave();
     }
 
-    // تم التعديل لرفع القيم الافتراضية للسيرفر
+    function triggerAutoSave() {
+        let customerName = document.getElementById('customer-name').value.trim();
+        if (customerName) {
+            clearTimeout(autoSaveTimer);
+            updateFloatingStatus('saving');
+            autoSaveTimer = setTimeout(() => {
+                saveEstimate(true); // true = حفظ صامت بدون رسالة تنبيه
+            }, 1000); // ينتظر ثانية بعد الانتهاء من الكتابة
+        }
+    }
+
     function saveCurrentDefaults() {
         let alumP = document.getElementById('alum-price').value || document.getElementById('alum-price').placeholder;
         let paintP = document.getElementById('paint-price').value || document.getElementById('paint-price').placeholder;
@@ -678,50 +695,56 @@
                 defaultPaintPrice: paintP,
                 itemValues: globalItemValues
             }).then(() => alert("✅ تم حفظ الأسعار والأوزان وتزامنها كإعداد افتراضي لكل الأجهزة."));
-        } else {
-            localStorage.setItem('azemaa_global_alum_price', alumP);
-            localStorage.setItem('azemaa_global_paint_price', paintP);
-            localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
-            alert("تم الحفظ محلياً (تأكد من الاتصال بالإنترنت للمزامنة السحابية).");
         }
     }
 
-    function saveEstimate() {
+    // تم تحديث الدالة لتحفظ كل تفاصيل الجدول (السعر، الوزن، إجمالي الصف، الإجماليات النهائية)
+    function saveEstimate(isSilent = false) {
         let customerName = document.getElementById('customer-name').value.trim();
-        if (!customerName) return alert("يرجى إدخال اسم الزبون!");
+        if (!customerName) {
+            if(!isSilent) alert("يرجى إدخال اسم الزبون!");
+            return;
+        }
 
         let structuredItems = [];
         document.querySelectorAll('tr.static-row').forEach(row => {
             let qty = parseFloat(row.querySelector('.qty').value) || 0;
+            let val = parseFloat(row.querySelector('.custom-input').value) || 0;
+            let rowSum = row.querySelector('.row-total').innerText || "";
             let name = row.querySelector('.item-name-text').innerText.trim();
             let cat = row.closest('tbody').id;
-            structuredItems.push({ name: name, qty: qty, category: cat });
+            
+            structuredItems.push({ name: name, qty: qty, val: val, rowSum: rowSum, category: cat });
         });
 
         let estimateId = currentEstimateId || Date.now().toString();
         let d = new Date();
         let fullDate = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')} ${d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}`;
 
+        // الآن جميع الإجماليات ترفع للسيرفر
         let estimateData = {
             id: estimateId,
             name: customerName,
             date: fullDate,
             total: document.getElementById('grand-total').innerText || "0 ج.م",
+            alumTotal: document.getElementById('alum-total').innerText,
+            woodTotal: document.getElementById('wood-total').innerText,
+            accTotal: document.getElementById('acc-total').innerText,
             alumPrice: document.getElementById('alum-price').value || document.getElementById('alum-price').placeholder || '',
             paintPrice: document.getElementById('paint-price').value || document.getElementById('paint-price').placeholder || '',
             structuredItems: structuredItems,
-            status: currentEstimateId ? 'active' : 'active'
+            status: currentEstimateId ? (JSON.parse(localStorage.getItem('azemaa_archive')).find(x=>x.id===currentEstimateId)?.status || 'active') : 'active'
         };
 
         if (window.db && window.dbSet && window.dbRef) {
             window.dbSet(window.dbRef(window.db, 'archives/' + estimateId), estimateData)
             .then(() => {
                 currentEstimateId = estimateId;
-                updateFloatingStatus('active');
-                alert("✅ تم الحفظ بنجاح وتزامن البيانات مع السيرفر");
+                updateFloatingStatus(estimateData.status);
+                if(!isSilent) alert("✅ تم الحفظ بنجاح وتزامن البيانات مع السيرفر");
             })
             .catch((error) => {
-                alert("❌ حدث خطأ أثناء الحفظ: " + error);
+                if(!isSilent) alert("❌ حدث خطأ أثناء الحفظ: " + error);
             });
         }
     }
@@ -731,9 +754,7 @@
             window.dbUpdate(window.dbRef(window.db, 'archives/' + id), {
                 status: newStatus
             }).then(() => {
-                if(currentEstimateId === id) {
-                    updateFloatingStatus(newStatus);
-                }
+                if(currentEstimateId === id) updateFloatingStatus(newStatus);
             });
         }
     }
@@ -753,6 +774,10 @@
             floatingBox.classList.add('status-completed');
             icon.innerText = '✅';
             text.innerText = 'أنت في: الأرشيف (مسلم)';
+        } else if (statusType === 'saving') {
+            floatingBox.classList.add('status-saving');
+            icon.innerText = '🔄';
+            text.innerText = 'جاري المزامنة...';
         } else if (statusType === 'active') {
             floatingBox.classList.add('status-active');
             icon.innerText = '📁';
@@ -844,11 +869,8 @@
         
         items.forEach(item => {
             let name = item.querySelector('.archive-info strong').innerText.toLowerCase();
-            if (name.includes(filter)) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
+            if (name.includes(filter)) item.style.display = 'flex';
+            else item.style.display = 'none';
         });
     }
 
@@ -865,16 +887,14 @@
             let name = row.querySelector('.item-name-text').innerText.trim();
             let cInput = row.querySelector('.custom-input');
             
-            if (globalItemValues[name] !== undefined) {
-                cInput.value = globalItemValues[name];
-            } else {
-                cInput.value = row.classList.contains('kg-item') ? row.getAttribute('data-default-weight') : row.getAttribute('data-default-price');
-            }
+            if (globalItemValues[name] !== undefined) cInput.value = globalItemValues[name];
+            else cInput.value = row.classList.contains('kg-item') ? row.getAttribute('data-default-weight') : row.getAttribute('data-default-price');
         });
         updatePrintName(); 
         updateFloatingStatus('new');
     }
 
+    // استعادة المقايسة بأوزانها وأسعارها المخصصة من السيرفر
     function loadEstimate(id) {
         let archive = JSON.parse(localStorage.getItem('azemaa_archive')) || [];
         let item = archive.find(x => x.id === id);
@@ -892,15 +912,46 @@
             
             updatePrintName();
 
-            let rows = document.querySelectorAll('tr.static-row');
             if(item.structuredItems) {
-                item.structuredItems.forEach((savedItem, index) => {
-                    if(rows[index]) rows[index].querySelector('.qty').value = savedItem.qty || '';
+                let rows = document.querySelectorAll('tr.static-row');
+                item.structuredItems.forEach(savedItem => {
+                    let row = Array.from(rows).find(r => r.querySelector('.item-name-text').innerText.trim() === savedItem.name);
+                    if (row) {
+                        row.querySelector('.qty').value = savedItem.qty > 0 ? savedItem.qty : '';
+                        if(savedItem.val) row.querySelector('.custom-input').value = savedItem.val;
+                    }
                 });
             }
 
+            // إيقاف مؤقت للحفظ التلقائي عند استدعاء مقايسة سابقة
+            clearTimeout(autoSaveTimer);
             calculate();
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    // تحديث الواجهة للأجهزة الأخرى المفتوحة على نفس المقايسة (Live Collaboration)
+    function updateUIWithoutFocusLoss(item) {
+        document.getElementById('alum-total').innerText = item.alumTotal || "0 ج.م";
+        document.getElementById('wood-total').innerText = item.woodTotal || "0 ج.م";
+        document.getElementById('acc-total').innerText = item.accTotal || "0 ج.م";
+        document.getElementById('grand-total').innerText = item.total || "0 ج.م";
+        
+        if (document.getElementById('alum-price').value != item.alumPrice) document.getElementById('alum-price').value = item.alumPrice || '';
+        if (document.getElementById('paint-price').value != item.paintPrice) document.getElementById('paint-price').value = item.paintPrice || '';
+        
+        if(item.structuredItems) {
+            let rows = document.querySelectorAll('tr.static-row');
+            item.structuredItems.forEach(savedItem => {
+                let row = Array.from(rows).find(r => r.querySelector('.item-name-text').innerText.trim() === savedItem.name);
+                if (row) {
+                    let qInput = row.querySelector('.qty');
+                    let vInput = row.querySelector('.custom-input');
+                    if(qInput.value != (savedItem.qty > 0 ? savedItem.qty : '')) qInput.value = savedItem.qty > 0 ? savedItem.qty : '';
+                    if(vInput.value != savedItem.val && savedItem.val) vInput.value = savedItem.val;
+                    if(savedItem.rowSum) row.querySelector('.row-total').innerText = savedItem.rowSum;
+                }
+            });
         }
     }
 
@@ -914,9 +965,7 @@
         if (confirm('هل أنت متأكد من حذف هذه المقايسة بشكل نهائي من جميع الأجهزة؟')) {
             if (window.db && window.dbRemove && window.dbRef) {
                 window.dbRemove(window.dbRef(window.db, 'archives/' + id))
-                .then(() => {
-                    if(currentEstimateId === id) clearForm();
-                });
+                .then(() => { if(currentEstimateId === id) clearForm(); });
             }
         }
     }
@@ -946,7 +995,6 @@
         });
 
         document.getElementById('shopping-projects-names').innerText = "العملاء: " + projectNames.join(' ، ');
-
         let container = document.getElementById('shopping-list-container');
         container.innerHTML = '';
 
@@ -966,23 +1014,13 @@
             }
         }
 
-        if(container.innerHTML === '') {
-            container.innerHTML = '<p style="text-align:center; color:#dc2626; font-weight:bold;">لا توجد خامات مسجلة في المشاريع المحددة.</p>';
-        }
-
+        if(container.innerHTML === '') container.innerHTML = '<p style="text-align:center; color:#dc2626; font-weight:bold;">لا توجد خامات مسجلة في المشاريع المحددة.</p>';
         document.getElementById('shopping-modal').style.display = 'flex';
     }
 
     function closeShoppingModal() { document.getElementById('shopping-modal').style.display = 'none'; }
-    
-    function printShoppingList() {
-        document.body.classList.add('printing-modal');
-        window.print();
-    }
-    
-    window.addEventListener('afterprint', () => {
-        document.body.classList.remove('printing-modal');
-    });
+    function printShoppingList() { document.body.classList.add('printing-modal'); window.print(); }
+    window.addEventListener('afterprint', () => document.body.classList.remove('printing-modal'));
 
     function updateOnlineStatus() {
         const s = document.getElementById('network-status');
