@@ -135,6 +135,14 @@
         .btn-aggregate { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; border: none; padding: 15px; font-weight: bold; font-size: 1.1em; width: 100%; border-radius: 0 0 8px 8px; cursor: pointer; transition: 0.3s; }
         .btn-aggregate:hover { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
 
+        /* التنسيقات الخاصة بجدول النواقص التلقائي */
+        .live-summary-container { padding: 12px; background: #fafafa; border-top: 2px dashed var(--border); }
+        .live-summary-title { font-size: 1em; font-weight: bold; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+        .live-summary-table { width: 100%; border-collapse: collapse; margin-top: 5px; background: white; font-size: 0.9em; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .live-summary-table th { padding: 8px; background: #f1f5f9; color: #475569; font-weight: bold; font-size: 0.85em; border: 1px solid var(--border); text-align: center; }
+        .live-summary-table td { padding: 8px; border: 1px solid var(--border); text-align: center; }
+        .live-cat-row { background: #f8fafc; font-weight: bold; color: var(--primary); text-align: right !important; padding-right: 12px !important; font-size: 0.9em; }
+
         .customer-avatar { width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1em; font-weight: bold; flex-shrink: 0; }
         .archive-info { flex: 1; line-height: 1.4; }
         .archive-info strong { font-size: 1.05em; display: block; }
@@ -442,7 +450,14 @@
             </label>
         </div>
         <ul class="archive-list" id="active-archive-list"></ul>
-        <button class="btn-aggregate" onclick="generateShoppingList()">🛒 تجميع خامات المشاريع المحددة</button>
+        
+        <!-- قسم ملخص النواقص المطور للمشاريع الحالية -->
+        <div class="live-summary-container">
+            <div class="live-summary-title">📊 ملخص إجمالي الخامات المطلوبة للشغل الحالي (النواقص والأسعار):</div>
+            <div id="live-summary-table-box"></div>
+        </div>
+        
+        <button class="btn-aggregate" onclick="generateShoppingList()">🛒 تجميع خامات المشاريع المحددة يدوياً</button>
     </div>
 
     <div class="archive-section no-print">
@@ -589,12 +604,10 @@
         document.documentElement.style.setProperty('--primary-h', hue);
         
         if (!currentEstimateId) {
-            // نقوم فقط بمسح حقول الأعداد (الكمية) وليس الأسعار والأوزان الافتراضية
             document.querySelectorAll('tr.static-row .qty').forEach(input => {
                 input.value = '';
             });
 
-            // التأكد من استعادة الأسعار والأسعار والوزن الثابت بدلاً من مسحه
             document.querySelectorAll('tr.static-row').forEach(row => {
                 restoreRowDefaultValue(row);
             });
@@ -716,7 +729,7 @@
         });
 
         document.getElementById('alum-total-display').innerText = "المجموع: " + (alumTotal > 0 ? alumTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.م");
-        document.getElementById('wood-total-display').innerText = "المجموع: " + (woodTotal > 0 ? woodTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.m");
+        document.getElementById('wood-total-display').innerText = "المجموع: " + (woodTotal > 0 ? woodTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.م");
         document.getElementById('acc-total-display').innerText = "المجموع: " + (accTotal > 0 ? accTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.م");
         document.getElementById('grand-total').innerText = grandTotal > 0 ? grandTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.م";
 
@@ -788,7 +801,7 @@
     function saveEstimate(isSilent = false) {
         let customerName = document.getElementById('customer-name').value.trim();
         if (!customerName) {
-            if(!isSilent) alert("يرجى إدخل اسم الزبون أولاً لحفظ الفاتورة!");
+            if(!isSilent) alert("يرجى إدخال اسم الزبون أولاً لحفظ الفاتورة!");
             return;
         }
 
@@ -879,6 +892,95 @@
         }
     }
 
+    // دالة تحديث جدول ملخص خامات المشاريع الحالية (المطور بالكميات، السعر والدهان)
+    function renderLiveActiveSummary(activeItems) {
+        let summaryBox = document.getElementById('live-summary-table-box');
+        if (activeItems.length === 0) {
+            summaryBox.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 5px 0 0 0; font-size:0.9em;">لا توجد خامات مطلوبة لعدم وجود مشاريع حالية.</p>';
+            return;
+        }
+
+        // تجميع تفصيلي لكل صنف
+        let totals = { 'alum-body': {}, 'wood-body': {}, 'acc-body': {} };
+        
+        activeItems.forEach(item => {
+            // جلب أسعار الألومنيوم الخاصة بالفاتورة نفسها لحساب السعر شامل الدهان بدقة
+            let itemAlumPrice = (parseFloat(item.alumPrice) || 0) + (parseFloat(item.paintPrice) || 0);
+            
+            if(item.structuredItems) {
+                item.structuredItems.forEach(sItem => {
+                    if(sItem.qty > 0) {
+                        if(!totals[sItem.category]) totals[sItem.category] = {};
+                        if(!totals[sItem.category][sItem.name]) {
+                            totals[sItem.category][sItem.name] = { qty: 0, cost: 0, isKg: false, unitPrice: 0 };
+                        }
+                        
+                        totals[sItem.category][sItem.name].qty += sItem.qty;
+                        
+                        // حساب تكلفة هذا الصنف بناءً على نوعه (بالوزن مضروب بالدهان أو بالقطعة)
+                        let rowCost = 0;
+                        if (sItem.category === 'alum-body' && !isNaN(sItem.val) && sItem.val > 0) {
+                            // إذا كان الصنف يحسب بالكيلو (يحتوي الوزن الافتراضي)
+                            // نحاول فحص السطر في الواجهة لمعرفة هل هو صنف وزن أم صنف سعر
+                            let rowEl = Array.from(document.querySelectorAll('tr.static-row')).find(r => r.querySelector('.item-name-text').innerText.trim() === sItem.name);
+                            if (rowEl && rowEl.classList.contains('kg-item')) {
+                                totals[sItem.category][sItem.name].isKg = true;
+                                totals[sItem.category][sItem.name].unitPrice = itemAlumPrice;
+                                rowCost = (sItem.qty * sItem.val) * itemAlumPrice;
+                            } else {
+                                totals[sItem.category][sItem.name].unitPrice = sItem.val;
+                                rowCost = sItem.qty * sItem.val;
+                            }
+                        } else {
+                            totals[sItem.category][sItem.name].unitPrice = sItem.val || 0;
+                            rowCost = sItem.qty * (sItem.val || 0);
+                        }
+                        totals[sItem.category][sItem.name].cost += rowCost;
+                    }
+                });
+            }
+        });
+
+        let catNames = { 'alum-body': '📐 قطاعات الألومنيوم', 'wood-body': '🪵 خامات الخشب', 'acc-body': '⚙️ الإكسسوارات' };
+        let hasData = false;
+        let html = `<table class="live-summary-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: right;">الصنف / الخام</th>
+                                <th style="width: 80px;">الكمية</th>
+                                <th style="width: 140px;">السعر الافتراضي / الدهان</th>
+                                <th style="width: 110px;">إجمالي السعر</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+        for (let catKey in totals) {
+            let itemsObj = totals[catKey];
+            if(Object.keys(itemsObj).length > 0) {
+                hasData = true;
+                html += `<tr><td colspan="4" class="live-cat-row">${catNames[catKey]}</td></tr>`;
+                for (let itemName in itemsObj) {
+                    let itemData = itemsObj[itemName];
+                    let priceText = itemData.isKg ? `${itemData.unitPrice.toLocaleString('ar-EG')} ج (شامل الدهان)` : `${itemData.unitPrice.toLocaleString('ar-EG')} ج`;
+                    
+                    html += `<tr>
+                                <td style="text-align: right; font-weight: bold;">${itemName}</td>
+                                <td style="font-weight: bold; color: var(--primary-dark); font-size: 1.05em;">${itemData.qty}</td>
+                                <td style="color: #475569; font-size: 0.85em;">${priceText}</td>
+                                <td style="font-weight: 900; color: var(--success); font-size: 1em;">${Math.round(itemData.cost).toLocaleString('ar-EG')} ج.م</td>
+                             </tr>`;
+                }
+            }
+        }
+        html += `</tbody></table>`;
+
+        if (!hasData) {
+            summaryBox.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 5px 0 0 0; font-size:0.9em;">لم يتم إضافة كميات في المشاريع الحالية بعد.</p>';
+        } else {
+            summaryBox.innerHTML = html;
+        }
+    }
+
     function renderArchive() {
         let archive = JSON.parse(localStorage.getItem('azemaa_archive')) || [];
         let activeList = document.getElementById('active-archive-list');
@@ -890,6 +992,9 @@
 
         let activeItems = archive.filter(item => !item.status || item.status === 'active');
         let completedItems = archive.filter(item => item.status === 'completed');
+
+        // تحديث جدول الملخص المطور فوراً
+        renderLiveActiveSummary(activeItems);
 
         if(activeItems.length === 0) {
             activeList.innerHTML = '<li style="padding: 15px; text-align: center; color: #64748b;">لا توجد مشاريع قيد التنفيذ حالياً.</li>';
