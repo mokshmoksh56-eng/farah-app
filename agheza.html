@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <title>فرح كيتشن - سحابي</title>
+    <title>Azemaa Proo - سحابي</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
@@ -17,7 +17,16 @@
         .container { max-width: 500px; margin: 0 auto; padding-bottom: 60px; }
         header { text-align: center; padding: 20px; background: var(--primary); color: var(--gold); border-radius: 15px; margin-bottom: 15px; }
         .panel { background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; font-family: inherit; }
+        
+        /* جعل صندوق الملاحظات مرن ويتمدد بسلاسة لأسفل */
+        textarea { 
+            resize: none; 
+            min-height: 80px; 
+            overflow-y: hidden; 
+            line-height: 1.5; 
+        }
+        
         .size-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .size-grid input { text-align: center; font-size: 20px; color: var(--accent); }
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; }
@@ -26,7 +35,10 @@
         .search-bar { width: 100%; padding: 12px; border: 2px solid var(--gold); border-radius: 12px; margin-bottom: 15px; box-sizing: border-box; }
         .card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 10px; border-right: 6px solid var(--gold); }
         .card-name { font-size: 18px; font-weight: bold; color: var(--primary); }
-        .card-notes { font-size: 16px; color: #555; background: #fff9e6; padding: 5px 10px; border-radius: 8px; margin: 10px 0; }
+        
+        /* كارت الملاحظات يعرض الأسطر كاملة دون اختفاء */
+        .card-notes { font-size: 16px; color: #555; background: #fff9e6; padding: 8px 12px; border-radius: 8px; margin: 10px 0; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+        
         .card-sizes { display: flex; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 10px; }
         .size-val { font-weight: bold; color: var(--accent); font-size: 24px; text-align: center; }
         .size-lbl { font-size: 12px; display: block; color: #888; }
@@ -56,7 +68,7 @@
 </head>
 <body>
     <div class="container">
-        <header><h2>فرح كيتشن FARAH</h2><p>نظام المقاسات - متزامن سحابياً ☁️</p></header>
+        <header><h2>Azemaa Proo</h2><p>نظام المقاسات - متزامن سحابياً ☁️</p></header>
         
         <div class="panel" id="mainPanel">
             <h4 id="modeTxt">إضافة مقاس جديد</h4>
@@ -67,7 +79,10 @@
                 <option>كولدير مياه 💧</option>
             </select>
             <input type="text" id="name" placeholder="الشركة والموديل">
-            <input type="text" id="notes" placeholder="ملاحظات إضافية">
+            
+            <!-- إضافة خاصية التمدد التلقائي عند الكتابة (oninput) -->
+            <textarea id="notes" placeholder="أدخل الملاحظات الإضافية بالتفصيل هنا..." oninput="autoExpand(this)"></textarea>
+            
             <div class="size-grid">
                 <div><label style="font-size:12px; font-weight:bold;">عرض</label><input type="text" id="w" placeholder="0" inputmode="decimal"></div>
                 <div><label style="font-size:12px; font-weight:bold;">ارتفاع</label><input type="text" id="h" placeholder="0" inputmode="decimal"></div>
@@ -84,7 +99,7 @@
     <div id="toast">✅ تم الحفظ والمزامنة سحابياً</div>
 
     <script>
-        // إعدادات Firebase الخاصة بك
+        // إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -106,12 +121,17 @@
         }
 
         const fdb = firebase.database();
-        const devicesRef = fdb.ref('farah_agheza_sizes');
+        const devicesRef = fdb.ref('farah_agheza_sizes'); 
 
         let devicesData = {};
         let editKey = null;
 
-        // دالة لإظهار إشعار المزامنة
+        // دالة التمدد التلقائي للملاحظات لأسفل دون ظهور شريط تمرير جانبي
+        function autoExpand(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
         function showToast(message) {
             const t = document.getElementById('toast');
             t.innerText = message;
@@ -187,7 +207,10 @@
             const d = devicesData[id];
             document.getElementById('cat').value = d.cat;
             document.getElementById('name').value = d.name;
-            document.getElementById('notes').value = d.notes;
+            
+            const notesField = document.getElementById('notes');
+            notesField.value = d.notes || '';
+            
             document.getElementById('w').value = d.w;
             document.getElementById('h').value = d.h;
             document.getElementById('d').value = d.d;
@@ -195,6 +218,9 @@
             document.getElementById('modeTxt').innerText = "تعديل المقاس";
             document.getElementById('btnAdd').style.display = 'none';
             document.getElementById('btnUpd').style.display = 'block';
+            
+            // تشغيل التمدد التلقائي فوراً عند جلب النص القديم في وضع التعديل
+            autoExpand(notesField);
             window.scrollTo(0,0);
         }
 
@@ -229,6 +255,8 @@
 
         function clear() { 
             ['name','notes','w','h','d'].forEach(id => document.getElementById(id).value = ''); 
+            // إعادة ضبط حجم حقل الملاحظات للحجم الافتراضي بعد المسح
+            document.getElementById('notes').style.height = '80px';
         }
 
         if ('serviceWorker' in navigator) {
