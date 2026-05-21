@@ -932,95 +932,116 @@
             return;
         }
 
-        let totals = { 'alum-body': {}, 'wood-body': {}, 'acc-body': {} };
-        let sectionCosts = { 'alum-body': 0, 'wood-body': 0, 'acc-body': 0 };
+        let catNames = { 'alum-body': '📐 قطاعات الألومنيوم', 'wood-body': '🪵 خامات الخشب', 'acc-body': '⚙️ الإكسسوارات' };
+        let hasAnyData = false;
+        let html = '';
         let totalLiveCost = 0;
-        
+
         activeItems.forEach(item => {
             let itemAlumPrice = (parseFloat(item.alumPrice) || 0) + (parseFloat(item.paintPrice) || 0);
             
+            let customerTotals = { 'alum-body': [], 'wood-body': [], 'acc-body': [] };
+            let customerTotalCost = 0;
+            let hasCustomerData = false;
+
             if(item.structuredItems) {
                 item.structuredItems.forEach(sItem => {
                     if(sItem.qty > 0) {
-                        if(!totals[sItem.category]) totals[sItem.category] = {};
-                        if(!totals[sItem.category][sItem.name]) {
-                            totals[sItem.category][sItem.name] = { qty: 0, cost: 0, isKg: false, unitPrice: 0 };
-                        }
-                        
-                        totals[sItem.category][sItem.name].qty += sItem.qty;
+                        hasCustomerData = true;
+                        hasAnyData = true;
                         
                         let rowCost = 0;
-                        if (sItem.category === 'alum-body' && !isNaN(sItem.val) && sItem.val > 0) {
+                        let unitPrice = 0;
+                        let isKg = false;
+                        
+                        let actualCategory = sItem.category ? sItem.category.replace('-body', '') + '-body' : 'alum-body';
+                        if(!customerTotals[actualCategory]) customerTotals[actualCategory] = [];
+
+                        if (actualCategory === 'alum-body' && !isNaN(sItem.val) && sItem.val > 0) {
                             let rowEl = Array.from(document.querySelectorAll('tr.static-row')).find(r => r.querySelector('.item-name-text').innerText.trim() === sItem.name);
                             if (rowEl && rowEl.classList.contains('kg-item')) {
-                                totals[sItem.category][sItem.name].isKg = true;
-                                totals[sItem.category][sItem.name].unitPrice = itemAlumPrice;
+                                isKg = true;
+                                unitPrice = itemAlumPrice;
                                 rowCost = (sItem.qty * sItem.val) * itemAlumPrice;
                             } else {
-                                totals[sItem.category][sItem.name].unitPrice = sItem.val;
+                                unitPrice = sItem.val;
                                 rowCost = sItem.qty * sItem.val;
                             }
                         } else {
-                            totals[sItem.category][sItem.name].unitPrice = sItem.val || 0;
+                            unitPrice = sItem.val || 0;
                             rowCost = sItem.qty * (sItem.val || 0);
                         }
-                        totals[sItem.category][sItem.name].cost += rowCost;
-                        sectionCosts[sItem.category] += rowCost;
+                        
+                        customerTotalCost += rowCost;
                         totalLiveCost += rowCost;
+
+                        customerTotals[actualCategory].push({
+                            name: sItem.name,
+                            qty: sItem.qty,
+                            unitPrice: unitPrice,
+                            isKg: isKg,
+                            cost: rowCost
+                        });
                     }
                 });
             }
+
+            if (hasCustomerData) {
+                let hue = getHueFromName(item.name);
+                // إضافة ID للجدول للنزول إليه عند اختيار المشروع
+                html += `<div id="customer-summary-${item.id}" style="margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <div style="background: linear-gradient(135deg, hsl(${hue}, 70%, 45%), hsl(${hue}, 70%, 30%)); color: white; padding: 10px 15px; font-weight: bold; font-size: 1.05em; display: flex; justify-content: space-between; align-items: center;">
+                                <span>👤 زبون: ${item.name}</span>
+                                <span style="font-size: 0.85em; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 5px;">${item.date.split(' ')[0]}</span>
+                            </div>
+                            <div class="table-responsive" style="border-radius: 0;">
+                                <table class="live-summary-table" style="margin-top: 0; box-shadow: none; min-width: 480px;">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align: right;">الصنف / الخام</th>
+                                            <th style="width: 80px;">الكمية</th>
+                                            <th style="width: 140px;">السعر الافتراضي</th>
+                                            <th style="width: 110px;">إجمالي السعر</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                
+                for (let catKey in customerTotals) {
+                    let itemsArray = customerTotals[catKey];
+                    if(itemsArray && itemsArray.length > 0) {
+                        html += `<tr><td colspan="4" class="live-cat-row" style="background-color: #f1f5f9;">${catNames[catKey]}</td></tr>`;
+                        itemsArray.forEach(itemData => {
+                            let priceText = itemData.isKg ? `${itemData.unitPrice.toLocaleString('ar-EG')} ج (بالدهان)` : `${itemData.unitPrice.toLocaleString('ar-EG')} ج`;
+                            
+                            html += `<tr>
+                                        <td style="text-align: right; font-weight: bold;">${itemData.name}</td>
+                                        <td style="font-weight: bold; color: var(--primary-dark); font-size: 1.05em;">${itemData.qty}</td>
+                                        <td style="color: #475569; font-size: 0.85em;">${priceText}</td>
+                                        <td style="font-weight: 900; color: var(--success); font-size: 1em;">${Math.round(itemData.cost).toLocaleString('ar-EG')} ج.م</td>
+                                     </tr>`;
+                        });
+                    }
+                }
+                
+                html += `           <tr class="live-summary-subtotal">
+                                        <td colspan="3" style="text-align: left; font-weight: bold; padding-left: 15px; color: var(--text);">إجمالي حساب الزبون (${item.name}):</td>
+                                        <td style="font-weight: 900; color: var(--primary-dark); font-size: 1.05em;">${Math.round(customerTotalCost).toLocaleString('ar-EG')} ج.م</td>
+                                     </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                         </div>`;
+            }
         });
 
-        let catNames = { 'alum-body': '📐 قطاعات الألومنيوم', 'wood-body': '🪵 خامات الخشب', 'acc-body': '⚙️ الإكسسوارات' };
-        let hasData = false;
-        let html = `<table class="live-summary-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: right;">الصنف / الخام</th>
-                                <th style="width: 80px;">الكمية</th>
-                                <th style="width: 140px;">السعر الافتراضي / الدهان</th>
-                                <th style="width: 110px;">إجمالي السعر</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-
-        for (let catKey in totals) {
-            let itemsObj = totals[catKey];
-            if(Object.keys(itemsObj).length > 0) {
-                hasData = true;
-                html += `<tr><td colspan="4" class="live-cat-row">${catNames[catKey]}</td></tr>`;
-                for (let itemName in itemsObj) {
-                    let itemData = itemsObj[itemName];
-                    let priceText = itemData.isKg ? `${itemData.unitPrice.toLocaleString('ar-EG')} ج (شامل الدهان)` : `${itemData.unitPrice.toLocaleString('ar-EG')} ج`;
-                    
-                    html += `<tr>
-                                <td style="text-align: right; font-weight: bold;">${itemName}</td>
-                                <td style="font-weight: bold; color: var(--primary-dark); font-size: 1.05em;">${itemData.qty}</td>
-                                <td style="color: #475569; font-size: 0.85em;">${priceText}</td>
-                                <td style="font-weight: 900; color: var(--success); font-size: 1em;">${Math.round(itemData.cost).toLocaleString('ar-EG')} ج.م</td>
-                             </tr>`;
-                }
-                html += `<tr class="live-summary-subtotal">
-                            <td colspan="3" style="text-align: left; font-weight: bold; padding-left: 15px;">إجمالي مالي قسم (${catNames[catKey].split(' ')[1]}):</td>
-                            <td style="font-weight: 900; color: var(--primary-dark); font-size: 1.05em;">${Math.round(sectionCosts[catKey]).toLocaleString('ar-EG')} ج.م</td>
-                         </tr>`;
-            }
-        }
-        
-        if (hasData) {
-            html += `<tr style="background: linear-gradient(135deg, #e2e8f0, #cbd5e1); font-weight: 900; font-size: 1.1em; border-top: 2px solid var(--text);">
-                        <td colspan="3" style="text-align: left; padding-left: 15px; color: var(--text);">💰 إجمالي الميزانية المطلوبة لكل المشتريات الحالية:</td>
-                        <td style="color: var(--danger); font-size: 1.15em;">${Math.round(totalLiveCost).toLocaleString('ar-EG')} ج.م</td>
-                     </tr>`;
-        }
-        
-        html += `</tbody></table>`;
-
-        if (!hasData) {
-            summaryBox.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 5px 0 0 0; font-size:0.9em;">لم يتم إضافة كميات في المشاريع الحالية بعد.</p>';
-        } else {
+        if (hasAnyData) {
+            html += `<div style="background: linear-gradient(135deg, #e2e8f0, #cbd5e1); font-weight: 900; font-size: 1.1em; padding: 15px; border-radius: 8px; text-align: left; margin-top: 15px; color: var(--text); border: 2px solid #94a3b8; display:flex; justify-content:space-between; flex-wrap: wrap; gap: 10px;">
+                        <span>💰 إجمالي تكلفة كل المشاريع الحالية معاً:</span>
+                        <span style="color: var(--danger); font-size: 1.2em;">${Math.round(totalLiveCost).toLocaleString('ar-EG')} ج.م</span>
+                     </div>`;
             summaryBox.innerHTML = html;
+        } else {
+            summaryBox.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 5px 0 0 0; font-size:0.9em;">لم يتم إضافة كميات في المشاريع الحالية بعد.</p>';
         }
     }
 
@@ -1170,7 +1191,15 @@
 
             clearTimeout(autoSaveTimer);
             calculate();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // --- تم التعديل هنا: منع الصعود لأعلى والنزول لجدول الزبون في الملخص تحت ---
+            setTimeout(() => {
+                let summaryBox = document.getElementById('customer-summary-' + id);
+                if (summaryBox) {
+                    summaryBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+            // -------------------------------------------------------------------------
         }
     }
 
@@ -1224,9 +1253,10 @@
                 if(est.structuredItems) {
                     est.structuredItems.forEach(item => {
                         if(item.qty > 0) {
-                            if(!totals[item.category]) totals[item.category] = {};
-                            if(!totals[item.category][item.name]) totals[item.category][item.name] = 0;
-                            totals[item.category][item.name] += item.qty;
+                            let actualCategory = item.category ? item.category.replace('-body', '') + '-body' : 'alum-body';
+                            if(!totals[actualCategory]) totals[actualCategory] = {};
+                            if(!totals[actualCategory][item.name]) totals[actualCategory][item.name] = 0;
+                            totals[actualCategory][item.name] += item.qty;
                         }
                     });
                 }
