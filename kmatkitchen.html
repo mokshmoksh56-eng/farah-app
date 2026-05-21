@@ -102,7 +102,6 @@
         .btn-delete-row { background: transparent; border: none; color: #ef4444; font-size: 1.3em; cursor: pointer; padding: 5px; border-radius: 5px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; }
         .btn-delete-row:hover { background: #fee2e2; transform: scale(1.15); }
 
-        /* إضافة تنسيق زر التعديل */
         .btn-edit-row { background: transparent; border: none; color: #f59e0b; font-size: 1.25em; cursor: pointer; padding: 5px; border-radius: 5px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; margin-left: 2px; }
         .btn-edit-row:hover { background: #fef3c7; transform: scale(1.15); }
 
@@ -726,7 +725,6 @@
         }
     }
 
-    // --- دالة التعديل الجديدة ---
     function editItemRow(btn) {
         let row = btn.closest('tr');
         let nameSpan = row.querySelector('.item-name-text');
@@ -1443,6 +1441,24 @@
         let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
         let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
         let deletedItems = JSON.parse(localStorage.getItem('azemaa_deleted_items')) || [];
+
+        // كود المسح التلقائي الإجباري لصنف "hpl" من قاعدة البيانات
+        if (globalItemValues['hpl'] !== undefined) {
+            delete globalItemValues['hpl']; 
+            localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
+            
+            if (!deletedItems.includes('hpl')) {
+                deletedItems.push('hpl');
+                localStorage.setItem('azemaa_deleted_items', JSON.stringify(deletedItems));
+            }
+
+            if (window.db && window.dbUpdate && window.dbRef) {
+                window.dbUpdate(window.dbRef(window.db, 'settings'), {
+                    itemValues: globalItemValues,
+                    deletedItems: deletedItems
+                });
+            }
+        }
 
         globalSectors.forEach(sector => {
             if (!deletedItems.includes(sector.name)) {
