@@ -581,32 +581,56 @@
         localStorage.setItem('azemaa_global_paint_price', data.defaultPaintPrice || '');
         localStorage.setItem('azemaa_global_item_values', JSON.stringify(data.itemValues || {}));
         localStorage.setItem('azemaa_global_sectors', JSON.stringify(data.customSectors || []));
+        
+        let deletedItems = data.deletedItems || [];
+        localStorage.setItem('azemaa_deleted_items', JSON.stringify(deletedItems));
 
-        if (!currentEstimateId) {
+        if (!currentEstimateId && !window.inputFocused) {
             if(data.defaultAlumPrice) document.getElementById('alum-price').value = data.defaultAlumPrice;
             if(data.defaultPaintPrice) document.getElementById('paint-price').value = data.defaultPaintPrice;
         }
 
-        document.querySelectorAll('tr.static-row:not(.dynamic-row)').forEach(row => {
+        let itemVals = data.itemValues || {};
+
+        document.querySelectorAll('tr.static-row').forEach(row => {
             let name = row.querySelector('.item-name-text').innerText.trim();
-            let itemVals = data.itemValues || {};
-            if (itemVals[name] !== undefined && !currentEstimateId) {
+            if (itemVals[name] !== undefined && !currentEstimateId && !window.inputFocused) {
                 row.querySelector('.custom-input').value = itemVals[name];
             }
         });
 
-        document.querySelectorAll('.dynamic-row').forEach(row => row.remove());
-
         let customSectors = data.customSectors || [];
-        customSectors.forEach(sector => {
-            let itemVals = data.itemValues || {};
-            let valToUse = itemVals[sector.name] !== undefined ? itemVals[sector.name] : sector.defaultVal;
-            if (typeof addNewRowUI === 'function') {
-                addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
+        
+        // منع إضافة أو مسح الأصناف العامة لو إحنا فاتحين مقايسة زبون قديم عشان ما تبوظش
+        if (!currentEstimateId) {
+            customSectors.forEach(sector => {
+                let tbody = document.getElementById((sector.category || 'alum') + '-body');
+                if (tbody) {
+                    let exists = Array.from(tbody.querySelectorAll('.item-name-text')).find(el => el.innerText.trim() === sector.name);
+                    if (!exists && !deletedItems.includes(sector.name)) {
+                        let valToUse = itemVals[sector.name] !== undefined ? itemVals[sector.name] : sector.defaultVal;
+                        if (typeof addNewRowUI === 'function') {
+                            addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
+                        }
+                    }
+                }
+            });
+
+            document.querySelectorAll('tr.dynamic-row').forEach(row => {
+                let name = row.querySelector('.item-name-text').innerText.trim();
+                if (!customSectors.find(s => s.name === name)) row.remove();
+            });
+        }
+
+        // تطبيق فلتر الحذف النهائي على أي صنف في الجداول (حتى لو أساسي)
+        document.querySelectorAll('tr.static-row').forEach(row => {
+            let name = row.querySelector('.item-name-text').innerText.trim();
+            if (deletedItems.includes(name)) {
+                row.remove();
             }
         });
         
-        if (typeof calculate === 'function') calculate();
+        if (typeof calculate === 'function' && !window.inputFocused) calculate();
     });
 </script>
 
@@ -614,7 +638,6 @@
     let currentEstimateId = null;
     let autoSaveTimer = null;
     window.inputFocused = false;
-    window.priceSaveTimer = null;
 
     document.addEventListener('focusin', e => { if(e.target.tagName === 'INPUT') window.inputFocused = true; });
     document.addEventListener('focusout', e => { if(e.target.tagName === 'INPUT') window.inputFocused = false; });
@@ -654,16 +677,31 @@
         triggerAutoSave();
     }
 
+    // --- تحديث دالة الحذف عشان تسجل أي صنف محذوف للابد ---
     function removeItemRow(btn) {
         let row = btn.closest('tr');
         let itemName = row.querySelector('.item-name-text').innerText.trim();
         if (confirm(`هل أنت متأكد من حذف "${itemName}" نهائياً من الجدول لجميع الأجهزة؟`)) {
             row.remove();
+            
             let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
             let updatedSectors = globalSectors.filter(s => s.name !== itemName);
+
+            let deletedItems = JSON.parse(localStorage.getItem('azemaa_deleted_items')) || [];
+            if (!deletedItems.includes(itemName)) {
+                deletedItems.push(itemName);
+            }
             
-            if (window.db && window.dbSet && window.dbRef) {
-                window.dbSet(window.dbRef(window.db, 'settings/customSectors'), updatedSectors);
+            if (window.db && window.dbUpdate && window.dbRef) {
+                window.dbUpdate(window.dbRef(window.db, 'settings'), {
+                    customSectors: updatedSectors,
+                    deletedItems: deletedItems
+                }).then(() => {
+                    if (currentEstimateId) triggerAutoSave();
+                });
+            } else {
+                localStorage.setItem('azemaa_global_sectors', JSON.stringify(updatedSectors));
+                localStorage.setItem('azemaa_deleted_items', JSON.stringify(deletedItems));
             }
             calculate();
         }
@@ -680,18 +718,32 @@
 
         if (!name || isNaN(val) || val <= 0) return alert("يرجى إدخل اسم الصنف والقيمة الافتراضية بشكل صحيح!");
 
+        let deletedItems = JSON.parse(localStorage.getItem('azemaa_deleted_items')) || [];
         let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
-        if(globalSectors.find(s => s.name === name)) return alert("هذا الصنف موجود بالفعل في القائمة!");
+        
+        if(globalSectors.find(s => s.name === name) && !deletedItems.includes(name)) {
+            return alert("هذا الصنف موجود بالفعل في القائمة!");
+        }
+
+        // لو الصنف كان محذوف قبل كده، رجعه من قائمة الحذف
+        if (deletedItems.includes(name)) {
+            deletedItems = deletedItems.filter(item => item !== name);
+            localStorage.setItem('azemaa_deleted_items', JSON.stringify(deletedItems));
+        }
 
         let newSector = { name: name, category: category, type: type, defaultVal: val };
+        globalSectors = globalSectors.filter(s => s.name !== name); // عشان لو بنسترجعه نحدث قيمته
         globalSectors.push(newSector);
 
         let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
         globalItemValues[name] = val;
 
-        if (window.db && window.dbSet && window.dbRef) {
-            window.dbSet(window.dbRef(window.db, 'settings/customSectors'), globalSectors);
-            window.dbUpdate(window.dbRef(window.db, 'settings/itemValues'), globalItemValues);
+        if (window.db && window.dbUpdate && window.dbRef) {
+            window.dbUpdate(window.dbRef(window.db, 'settings'), {
+                customSectors: globalSectors,
+                itemValues: globalItemValues,
+                deletedItems: deletedItems
+            });
         } else {
             addNewRowUI(name, type, val, "", category, true);
         }
@@ -722,24 +774,6 @@
         `;
         tbody.appendChild(tr);
         calculate();
-    }
-
-    function saveAllPricesSilently() {
-        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
-        document.querySelectorAll('tr.static-row').forEach(row => {
-            let name = row.querySelector('.item-name-text').innerText.trim();
-            let val = parseFloat(row.querySelector('.custom-input').value) || 0;
-            if(val > 0) globalItemValues[name] = val;
-        });
-
-        if (window.db && window.dbUpdate && window.dbRef) {
-            window.dbUpdate(window.dbRef(window.db, 'settings'), {
-                itemValues: globalItemValues,
-                defaultAlumPrice: document.getElementById('alum-price').value,
-                defaultPaintPrice: document.getElementById('paint-price').value
-            });
-        }
-        localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
     }
 
     function calculate() {
@@ -783,13 +817,6 @@
         document.getElementById('grand-total').innerText = grandTotal > 0 ? grandTotal.toLocaleString('ar-EG') + " ج.م" : "0 ج.م";
 
         triggerAutoSave();
-
-        if (window.inputFocused) {
-            clearTimeout(window.priceSaveTimer);
-            window.priceSaveTimer = setTimeout(() => {
-                saveAllPricesSilently();
-            }, 1000);
-        }
     }
 
     function triggerAutoSave() {
@@ -804,13 +831,13 @@
     }
 
     function saveSectionDefaults(bodyId) {
-        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
         let sectionName = "";
-
         if(bodyId === 'alum-body') sectionName = "قطاعات الألومنيوم";
         if(bodyId === 'wood-body') sectionName = "خامات الخشب";
         if(bodyId === 'acc-body') sectionName = "الإكسسوارات";
 
+        let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+        
         document.querySelectorAll(`#${bodyId} tr.static-row`).forEach(row => {
             let name = row.querySelector('.item-name-text').innerText.trim();
             let val = parseFloat(row.querySelector('.custom-input').value) || 0;
@@ -819,16 +846,17 @@
 
         let updateData = { itemValues: globalItemValues };
         if(bodyId === 'alum-body') {
-            updateData.defaultAlumPrice = document.getElementById('alum-price').value;
-            updateData.defaultPaintPrice = document.getElementById('paint-price').value;
+            updateData.defaultAlumPrice = document.getElementById('alum-price').value || '';
+            updateData.defaultPaintPrice = document.getElementById('paint-price').value || '';
         }
 
         if (window.db && window.dbUpdate && window.dbRef) {
             window.dbUpdate(window.dbRef(window.db, 'settings'), updateData)
-            .then(() => alert(`✅ تم حفظ وتثبيت أسعار وأوزان قسم (${sectionName}) كإعداد افتراضي لجميع الأجهزة.`));
+            .then(() => alert(`✅ تم الحفظ النهائي لأسعار قسم (${sectionName}) بنجاح لجميع الأجهزة.`))
+            .catch(err => alert("❌ حدث خطأ أثناء الحفظ: " + err));
         } else {
             localStorage.setItem('azemaa_global_item_values', JSON.stringify(globalItemValues));
-            alert(`✅ تم حفظ قسم (${sectionName}) محلياً بنجاح.`);
+            alert(`✅ تم حفظ قسم (${sectionName}) محلياً فقط لعدم وجود إنترنت.`);
         }
     }
 
@@ -843,12 +871,13 @@
             if(val > 0) globalItemValues[name] = val;
         });
 
-        if (window.db && window.dbSet && window.dbRef) {
+        if (window.db && window.dbUpdate && window.dbRef) {
             window.dbUpdate(window.dbRef(window.db, 'settings'), {
-                defaultAlumPrice: alumP,
-                defaultPaintPrice: paintP,
+                defaultAlumPrice: alumP || '',
+                defaultPaintPrice: paintP || '',
                 itemValues: globalItemValues
-            }).then(() => alert("✅ تم تثبيت سعر الكيلو والدهان كإعداد افتراضي لكل الأجهزة بنجاح."));
+            }).then(() => alert("✅ تم تثبيت الأسعار بشكل نهائي لجميع الأجهزة."))
+            .catch(err => alert("❌ حدث خطأ أثناء الحفظ: " + err));
         }
     }
 
@@ -890,7 +919,7 @@
             .then(() => {
                 currentEstimateId = estimateId;
                 updateFloatingStatus(estimateData.status);
-                if(!isSilent) alert("✅ تم الحفظ بنجاح وتزامن البيانات مع السيرفر");
+                if(!isSilent) alert("✅ تم حفظ المقايسة بنجاح في الأرشيف.");
             })
             .catch((error) => {
                 if(!isSilent) alert("❌ حدث خطأ أثناء الحفظ: " + error);
@@ -1157,9 +1186,21 @@
 
         let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
         let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+        let deletedItems = JSON.parse(localStorage.getItem('azemaa_deleted_items')) || [];
+
         globalSectors.forEach(sector => {
-            let valToUse = globalItemValues[sector.name] !== undefined ? globalItemValues[sector.name] : sector.defaultVal;
-            addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
+            if (!deletedItems.includes(sector.name)) {
+                let valToUse = globalItemValues[sector.name] !== undefined ? globalItemValues[sector.name] : sector.defaultVal;
+                addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
+            }
+        });
+
+        // تنظيف الأصناف الأساسية اللي اتحذفت نهائياً
+        document.querySelectorAll('tr.static-row').forEach(row => {
+            let name = row.querySelector('.item-name-text').innerText.trim();
+            if (deletedItems.includes(name)) {
+                row.remove();
+            }
         });
 
         updatePrintName(); 
@@ -1322,10 +1363,18 @@
         
         let globalSectors = JSON.parse(localStorage.getItem('azemaa_global_sectors')) || [];
         let globalItemValues = JSON.parse(localStorage.getItem('azemaa_global_item_values')) || {};
+        let deletedItems = JSON.parse(localStorage.getItem('azemaa_deleted_items')) || [];
 
         globalSectors.forEach(sector => {
-            let valToUse = globalItemValues[sector.name] !== undefined ? globalItemValues[sector.name] : sector.defaultVal;
-            addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
+            if (!deletedItems.includes(sector.name)) {
+                let valToUse = globalItemValues[sector.name] !== undefined ? globalItemValues[sector.name] : sector.defaultVal;
+                addNewRowUI(sector.name, sector.type, valToUse, "", sector.category || 'alum', true);
+            }
+        });
+
+        document.querySelectorAll('tr.static-row').forEach(row => {
+            let name = row.querySelector('.item-name-text').innerText.trim();
+            if (deletedItems.includes(name)) row.remove();
         });
 
         clearFormWithoutSaving(); 
