@@ -14,7 +14,7 @@
             overflow-x: hidden; color: #111827; padding-bottom: 40px;
         }
 
-        /* واجهة انتظار للتحقق من هوية المشتري السحابية */
+        /* واجهة انتظار لحين فحص صلاحيات المشتري */
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg);
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -146,14 +146,14 @@
         window.fbRemove = remove;
         window.fbGet = get;
 
-        // التحقق من هوية العميل لربط الملاحظات بحسابه المعزول
+        // التحقق من تفعيل الجلسة للعميل الحالي لربط ملاحظاته
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 window.currentUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
-                window.loadNotes(); // تشغيل جلب كروت الملاحظات
+                window.loadNotes();
             } else {
-                document.getElementById('auth-loader').innerText = "⚠️ خطأ أمني: يرجى فتح واجهة تسجيل الدخول الرئيسية أولاً!";
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى فتح واجهة تسجيل الدخول الرئيسية أولاً!";
             }
         });
     </script>
@@ -230,7 +230,6 @@
         return str;
     }
 
-    // تعديل دالة الحفظ لتتحرك تلقائياً داخل فولدر الـ UID المخصص للمشتري
     function handleSave() {
         if(!window.currentUid) return;
         const text = document.getElementById('noteInput').value;
@@ -264,7 +263,6 @@
         alert("تم الحفظ بنجاح ✅");
     }
 
-    // جلب ومراقبة البيانات من المجلد الفرعي الجديد للمستخدم
     window.loadNotes = function() {
         if(!window.currentUid || !window.fbDB) return;
         let term = document.getElementById('searchBox').value.toLowerCase();
