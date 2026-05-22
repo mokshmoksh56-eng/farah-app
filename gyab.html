@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AZEMAA PRO | النظام المتكامل</title>
+    <title>AZEMAA PRO | لوحة شؤون العمال الذكية</title>
     <style>
         :root {
             --whatsapp-green: #25D366; --dark-green: #075E54; --teal: #128C7E;
@@ -11,8 +11,15 @@
             --warning: #f57c00;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-gray); margin: 0; padding: 0; font-weight: 600; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-gray); margin: 0; padding: 0; font-weight: 600; padding-bottom: 100px; }
         
+        /* واجهة انتظار للتحقق من الهوية السحابية للمشتري */
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-gray);
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 16px; color: var(--dark-green); font-weight: bold;
+        }
+
         header { 
             background: linear-gradient(135deg, var(--dark-green), var(--teal)); 
             color: var(--white); padding: 15px 10px; text-align: center; 
@@ -26,7 +33,7 @@
         .dash-card { background: rgba(255, 255, 255, 0.15); padding: 8px 2px; border-radius: 12px; }
         .dash-card strong { font-size: 15px; display: block; }
 
-        .main-container { padding: 12px; padding-bottom: 100px; }
+        .main-container { padding: 12px; }
         .config-box { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
         .date-selectors { display: flex; gap: 5px; margin-top: 10px; }
@@ -36,6 +43,7 @@
         }
 
         #cardsList { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        @media (max-width: 550px) { #cardsList { grid-template-columns: 1fr; } }
         .worker-card { background: var(--white); border-radius: 15px; padding: 12px; border-top: 5px solid var(--teal); box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative; }
 
         .card-name { font-size: 14px; color: var(--dark-green); text-align: center; margin-bottom: 8px; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
@@ -58,8 +66,7 @@
         .note-input { 
             width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; 
             border: 1.5px solid #ccc; font-size: 12px; background: #fffef2; 
-            box-sizing: border-box; font-weight: 900; font-family: inherit;
-            resize: none;
+            box-sizing: border-box; font-weight: 900; font-family: inherit; resize: none;
         }
 
         .card-footer { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ddd; font-size: 11px; font-weight: 900; }
@@ -70,18 +77,15 @@
         .archive-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; background: white; border-radius: 8px; overflow: hidden; }
         .archive-table th { background: #eee; padding: 8px; border: 1px solid #ddd; }
         .archive-table td { padding: 8px; border: 1px solid #ddd; text-align: center; }
-        .row-absent { background-color: #ffebee !important; color: #c62828 !important; font-weight: bold; }
-        .row-half { background-color: #fff3e0 !important; }
 
-        .footer-nav { position: fixed; bottom: 0; width: 100%; background: white; padding: 12px; display: flex; box-sizing: border-box; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 2000; }
+        .footer-nav { position: fixed; bottom: 0; left:0; width: 100%; background: white; padding: 12px; display: flex; box-sizing: border-box; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 2000; }
     </style>
 
-    <!-- تضمين مكتبات Firebase الرسمية للمتصفح -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // إعدادات Firebase الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -93,11 +97,10 @@
             measurementId: "G-R28J7010TH"
         };
 
-        // تهيئة Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app);
 
-        // ربط الدوال بـ window لتصبح متاحة في كود الـ HTML التقليدي
         window.fbDB = db;
         window.fbRef = ref;
         window.fbSet = set;
@@ -105,14 +108,24 @@
         window.fbChild = child;
         window.fbUpdate = update;
 
-        // تشغيل النظام بعد التحميل والاتصال بقاعدة البيانات
-        initSystem();
+        // التحقق من هوية المشتري المسجل بالصفحة الرئيسية
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUid = user.uid; // حفظ الـ UID في نطاق نافذة المتصفح
+                document.getElementById('auth-loader').style.display = 'none';
+                initSystem();
+            } else {
+                document.getElementById('auth-loader').innerText = "⚠️ خطأ في التفعيل: يرجى تسجيل الدخول من الواجهة الماستر أولاً!";
+            }
+        });
     </script>
 </head>
 <body>
 
+<div id="auth-loader">⏳ جاري تحميل ومزامنة كشوف رواتب العمال...</div>
+
 <header>
-    <div class="header-title">AZEMAA PRO</div>
+    <div class="header-title">AZEMAA PRO | الحضور والرواتب</div>
     <div id="weekRangeDisplay">...</div>
     <div class="dashboard">
         <div class="dash-card"><span>رواتب</span><strong id="stat-sal">0</strong></div>
@@ -137,10 +150,10 @@
         <input type="hidden" id="datePicker" onchange="handleDateChange()">
         
         <details style="margin-top: 15px;">
-            <summary style="font-weight: 900; color: var(--teal); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 10px;">⚙️ الإعدادات</summary>
+            <summary style="font-weight: 900; color: var(--teal); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 10px;">⚙️ الإعدادات وإضافة العمال</summary>
             <div style="display:flex; gap:5px; margin-top:10px;">
-                <input type="text" id="workerNameInp" style="flex:2; border: 1px solid #ddd; padding: 8px; border-radius: 8px;" placeholder="اسم جديد">
-                <button onclick="addNewWorker()" style="background:var(--teal); color:white; border:none; padding:0 15px; border-radius:8px;">إضافة</button>
+                <input type="text" id="workerNameInp" style="flex:2; border: 1px solid #ddd; padding: 8px; border-radius: 8px;" placeholder="اسم عامل جديد">
+                <button onclick="addNewWorker()" style="background:var(--teal); color:white; border:none; padding:0 15px; border-radius:8px; font-weight: 900;">إضافة</button>
             </div>
             <div id="workerListEditor" style="margin-top:10px;"></div>
         </details>
@@ -156,7 +169,7 @@
 </div>
 
 <div class="footer-nav">
-    <button onclick="saveWeek()" style="width:100%; padding:15px; background:var(--dark-green); color:white; border:none; border-radius:12px; font-weight:900; cursor:pointer;">💾 حفظ الأسبوع الحالي</button>
+    <button onclick="saveWeek()" style="width:100%; padding:15px; background:var(--dark-green); color:white; border:none; border-radius:12px; font-weight:900; cursor:pointer; font-size:16px;">💾 حفظ الأسبوع الحالي بالسحابة</button>
 </div>
 
 <script>
@@ -165,9 +178,8 @@
     let masterWorkers = [];
     let currentWeekDates = [];
     let currentWeekID = "";
-    let allArchiveData = {}; // لتخزين الأرشيف السحابي وسرعة البحث المباشر
+    let allArchiveData = {};
 
-    // دالة تبدأ بمجرد تحميل مكتبة الفايربيز
     function initSystem() {
         initDateSelectors();
         loadMasterWorkers();
@@ -215,26 +227,62 @@
         loadWeekData();
     }
 
-    // جلب قائمة العمال من Firebase
+    // جلب قائمة العمال من المسار السحابي الآمن للـ UID
     function loadMasterWorkers() {
-        if(!window.fbDB) return;
-        window.fbGet(window.fbRef(window.fbDB, 'masterWorkers')).then((snapshot) => {
-            if (snapshot.exists()) {
-                masterWorkers = snapshot.val();
-            } else {
-                masterWorkers = [];
-            }
+        if(!window.fbDB || !window.currentUid) return;
+        window.fbGet(window.fbRef(window.fbDB, `backups/workers_master/${window.currentUid}`)).then((snapshot) => {
+            masterWorkers = snapshot.exists() ? snapshot.val() : [];
             updateWorkerEditor();
             updateArchiveDropdown();
             loadWeekData();
-            preloadAllArchive(); // جلب بيانات الأرشيف بالكامل في الخلفية لضمان عمل الفلتر
+            preloadAllArchive();
         }).catch((error) => console.error("Error loading workers:", error));
     }
 
-    // جلب بيانات الأسبوع الحالي من Firebase
+    function addNewWorker() {
+        const name = document.getElementById('workerNameInp').value.trim();
+        if(!name) return;
+        masterWorkers.push({ name: name, inst_weekly: 0 });
+        document.getElementById('workerNameInp').value = "";
+        saveMasterWorkers();
+    }
+
+    function removeWorker(idx) {
+        if(confirm("هل تريد حذف هذا العامل من النظام نهائياً؟")) {
+            masterWorkers.splice(idx, 1);
+            saveMasterWorkers();
+        }
+    }
+
+    function saveMasterWorkers() {
+        if(!window.fbDB || !window.currentUid) return;
+        window.fbSet(window.fbRef(window.fbDB, `backups/workers_master/${window.currentUid}`), masterWorkers).then(() => {
+            updateWorkerEditor();
+            updateArchiveDropdown();
+            loadWeekData();
+        });
+    }
+
+    function updateWorkerEditor() {
+        const box = document.getElementById('workerListEditor');
+        box.innerHTML = masterWorkers.map((w, idx) => `
+            <div style="display:flex; justify-content:space-between; background:#f5f6fa; padding:5px 10px; border-radius:8px; margin-bottom:4px; align-items:center; font-size:13px;">
+                <span>👷 ${w.name}</span>
+                <button onclick="removeWorker(${idx})" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
+            </div>
+        `).join('');
+    }
+
+    function updateArchiveDropdown() {
+        const dropdown = document.getElementById('archiveSearch');
+        dropdown.innerHTML = '<option value="">-- اختر اسم العامل لعرض أرشيفه --</option>' + 
+            masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+    }
+
+    // جلب بيانات الأسبوع الحالي من المسار التجاري المنفصل
     function loadWeekData() {
-        if(!window.fbDB || masterWorkers.length === 0) return;
-        window.fbGet(window.fbRef(window.fbDB, 'weeks/' + currentWeekID)).then((snapshot) => {
+        if(!window.fbDB || !window.currentUid || masterWorkers.length === 0) return;
+        window.fbGet(window.fbRef(window.fbDB, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`)).then((snapshot) => {
             const saved = snapshot.exists() ? snapshot.val() : [];
             const container = document.getElementById('cardsList');
             container.innerHTML = masterWorkers.map((worker, idx) => {
@@ -259,12 +307,12 @@
                                 </div>
                             `).join('')}
                         </div>
-                        <textarea class="note-input" placeholder="ملاحظات العمال..." rows="2">${d.note || ''}</textarea>
+                        <textarea class="note-input" placeholder="ملاحظات عمال ومسحوبات..." rows="2">${d.note || ''}</textarea>
                         <div class="card-footer">
                             <div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>قسط: <span class="sum-inst">0</span></span></div>
-                            <div class="footer-line" style="font-size:14px; color:var(--dark-green);"><span>الصافي:</span> <span class="sum-n">0</span></div>
+                            <div class="footer-line" style="font-size:14px; color:var(--dark-green);"><span>الصافي لتقبيله:</span> <span class="sum-n">0</span></div>
                         </div>
-                        <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال واتساب 🟢</button>
+                        <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال كشف واتساب 🟢</button>
                     </div>`;
             }).join('');
             masterWorkers.forEach((_, i) => recalc(i));
@@ -294,9 +342,9 @@
         document.getElementById('stat-sal').innerText = gS; document.getElementById('stat-loan').innerText = gL; document.getElementById('stat-net').innerText = gN;
     }
 
-    // حفظ أسبوع الحضور في Firebase سحابياً
+    // حفظ كشوف حضور الأسبوع الجاري في مسار العميل الآمن
     function saveWeek() {
-        if(!window.fbDB) return;
+        if(!window.fbDB || !window.currentUid) return;
         const data = Array.from(document.querySelectorAll('.worker-card')).map((c, idx) => ({
             name: c.querySelector('.card-name').innerText.trim(), 
             sal: c.querySelector('.salary-input').value,
@@ -307,18 +355,17 @@
             fullDates: currentWeekDates 
         }));
         
-        window.fbSet(window.fbRef(window.fbDB, 'weeks/' + currentWeekID), data).then(() => {
-            alert("✔️ تم الحفظ سحابياً في Firebase بنجاح");
+        window.fbSet(window.fbRef(window.fbDB, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`), data).then(() => {
+            alert("✔️ تم حفظ الأسبوع ومزامنة رواتب العمال سحابياً بنجاح ✅");
             preloadAllArchive();
-        }).catch((error) => alert("خطأ أثناء الحفظ: " + error));
+        }).catch((error) => alert("خطأ أثناء الحفظ المأمن: " + error));
     }
 
-    // جلب مسبق لكافة الأسابيع لبناء الأرشيف بشكل فوري عند الفلترة
     function preloadAllArchive() {
-        window.fbGet(window.fbRef(window.fbDB, 'weeks')).then((snapshot) => {
-            if(snapshot.exists()) {
-                allArchiveData = snapshot.val();
-            }
+        if(!window.fbDB || !window.currentUid) return;
+        window.fbGet(window.fbRef(window.fbDB, `backups/workers_weeks/${window.currentUid}`)).then((snapshot) => {
+            if(snapshot.exists()) { allArchiveData = snapshot.val(); }
+            buildArchiveHistory();
         });
     }
 
@@ -326,101 +373,60 @@
         const selectedName = document.getElementById('archiveSearch').value.trim();
         const display = document.getElementById('archiveContent');
         if(!selectedName) { display.innerHTML = ""; return; }
-        let html = "";
         
+        let html = `<table class="archive-table"><thead><tr><th>تاريخ الأسبوع</th><th>الراتب</th><th>الأيام والغياب</th><th>سلفيات</th><th>الصافي</th></tr></thead><tbody>`;
+        let hasRecords = false;
         let keys = Object.keys(allArchiveData).sort((a,b) => b.localeCompare(a));
         
         keys.forEach(key => {
             const dataArr = allArchiveData[key];
             const d = dataArr.find(r => r.name.trim() === selectedName);
             if(d) {
-                let loansArr = d.loans || [0,0,0,0,0,0];
-                let attArr = d.att || [1,1,1,1,1,1];
-                let fDates = d.fullDates || ["","","","","",""];
-                let tL = loansArr.reduce((a, b) => a + (parseFloat(b) || 0), 0);
-                let attSum = attArr.reduce((a, b) => a + parseFloat(b), 0);
-                let net = Math.max(0, Math.round(((parseFloat(d.sal)/6)*attSum)-tL-(d.instPaid||0)));
-
-                let tableRows = "";
-                for(let i=0; i<6; i++) {
-                    let status = attArr[i] == 1 ? "حاضر" : (attArr[i] == 0.5 ? "نصف يوم" : "غائب");
-                    let rowClass = attArr[i] == 0 ? "row-absent" : (attArr[i] == 0.5 ? "row-half" : "");
-                    tableRows += `<tr class="${rowClass}">
-                        <td style="font-size:10px;">${weekdays[i]}<br>${fDates[i]}</td>
-                        <td>${status}</td>
-                        <td>${loansArr[i] || '-'}</td>
-                    </tr>`;
-                }
-
-                html += `<div style="margin-bottom:25px; border:2px solid #ddd; border-radius:10px; overflow:hidden;">
-                    <div style="background:#f8f9fa; padding:10px; border-bottom:1px solid #ddd;">
-                        <div style="font-weight:900; color:var(--dark-green);">📅 أسبوع: ${fDates[0]}</div>
-                        <div style="font-size:11px;">الراتب الأساسي: ${d.sal} | قسط: ${d.instPaid} | <b>الصافي: ${net}</b></div>
-                    </div>
-                    <table class="archive-table">
-                        <thead><tr><th>اليوم</th><th>الحالة</th><th>سلف</th></tr></thead>
-                        <tbody>${tableRows}</tbody>
-                    </table>
-                    ${d.note ? `<div style="padding:10px; font-size:12px; font-weight:900; background:#fffdef; border-top:1px solid #eee;">📝 ملاحظة: ${d.note}</div>` : ''}
-                </div>`;
+                hasRecords = true;
+                let loansSum = 0; if(d.loans) d.loans.forEach(l => loansSum += parseFloat(l || 0));
+                let attSum = 0; if(d.att) d.att.forEach(a => attSum += parseFloat(a || 0));
+                
+                html += `<tr>
+                    <td style="font-size:11px;">${key}</td>
+                    <td>${d.sal || 0}</td>
+                    <td>حضر: ${attSum} أيام</td>
+                    <td style="color:red;">${loansSum} ج.م</td>
+                    <td style="font-weight:900; color:green;">${Math.round(((parseFloat(d.sal||0)/6)*attSum)-loansSum-(d.instPaid||0))}</td>
+                </tr>`;
             }
         });
-        display.innerHTML = html || "<center>لا توجد بيانات لهذا الاسم</center>";
+        
+        html += `</tbody></table>`;
+        display.innerHTML = hasRecords ? html : "<p style='text-align:center; color:#777; font-size:13px;'>لا توجد سجلات مؤرشفة سابقة لهذا العامل.</p>";
     }
 
     function shareToWhatsApp(idx) {
-        const c = document.getElementById(`card-${idx}`);
-        const workerName = c.querySelector('.card-name').innerText;
-        const baseSalary = c.querySelector('.salary-input').value || 0;
-        const totalLoans = c.querySelector('.sum-l').innerText;
-        const installment = c.querySelector('.sum-inst').innerText;
-        const netAmount = c.querySelector('.sum-n').innerText;
-        const notes = c.querySelector('.note-input').value;
-        let att = 0, half = 0;
-        c.querySelectorAll('.btn-tgl.active').forEach(b => { if(b.dataset.v=="1") att++; else if(b.dataset.v=="0.5") half++; });
-        const totalAtt = att + (half*0.5);
-        const msg = `*📊 تقرير راتب - AZEMAA PRO*\n👤 *العامل:* ${workerName}\n📅 *الأسبوع:* ${currentWeekDates[0]}\n-------------------\n💰 *الراتب:* ${baseSalary}\n✅ *الحضور:* ${totalAtt} أيام\n💸 *سلف:* ${totalLoans}\n💳 *قسط:* ${installment}\n💵 *الصافي النهائي:* ${netAmount}\n-------------------\n${notes ? `📝 *ملاحظة:* ${notes}` : ''}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-    }
-
-    function addNewWorker() { 
-        let name = document.getElementById('workerNameInp').value.trim(); 
-        if(name) { 
-            masterWorkers.push({id: Date.now(), name: name, inst_weekly: ''}); 
-            saveMaster(true); 
-            document.getElementById('workerNameInp').value = ""; 
-        } 
-    }
-    
-    function updateInst(idx, val) { 
-        masterWorkers[idx].inst_weekly = val; 
-        saveMaster(false); 
-    }
-    
-    function saveMaster(refreshUI = false) { 
-        if(!window.fbDB) return;
-        window.fbSet(window.fbRef(window.fbDB, 'masterWorkers'), masterWorkers).then(() => {
-            if(refreshUI) { 
-                updateWorkerEditor(); 
-                updateArchiveDropdown(); 
-                loadWeekData(); 
-            } 
+        const c = document.getElementById(`card-${idx}`); if(!c) return;
+        const name = c.querySelector('.card-name').innerText;
+        const sal = c.querySelector('.salary-input').value || 0;
+        const net = c.querySelector('.sum-n').innerText;
+        const note = c.querySelector('.note-input').value || "لا توجد ملاحظات";
+        
+        let details = "";
+        c.querySelectorAll('.day-row').forEach((row, i) => {
+            const day = row.querySelector('.day-name').innerText;
+            const status = row.querySelector('.btn-tgl.active').innerText;
+            const loan = row.querySelector('.loan-input').value || 0;
+            details += `━ ${day}: [${status}] ${loan > 0 ? `| سلفة: ${loan} ج.م` : ''}\n`;
         });
-    }
-    
-    function updateWorkerEditor() { 
-        document.getElementById('workerListEditor').innerHTML = masterWorkers.map((w, i) => `<div style="padding:10px; border:1px solid #ddd; background:#fff; margin-bottom:8px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;"><b>${w.name}</b><div style="display:flex; gap:5px;"><input type="number" placeholder="قسط" style="width:60px; padding:5px" value="${w.inst_weekly || ''}" oninput="updateInst(${i}, this.value)"><button onclick="removeWorker(${i})" style="color:red; border:none; background:none;">🗑️</button></div></div>`).join(''); 
-    }
-    
-    function removeWorker(i) { 
-        if(confirm("حذف العامل؟")) { 
-            masterWorkers.splice(i,1); 
-            saveMaster(true); 
-        } 
-    }
-    
-    function updateArchiveDropdown() { 
-        document.getElementById('archiveSearch').innerHTML = '<option value="">-- اختر اسم العامل --</option>' + masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join(''); 
+
+        const msg = `*كشف حساب وعمال الورشة* 👷🪚\n` +
+                    `*العامل:* ${name}\n` +
+                    `*الفترة:* من ${currentWeekDates[0]} إلى ${currentWeekDates[5]}\n` +
+                    `━━━━━━━━━━━━━━━\n` +
+                    `💰 *الراتب الأسبوعي الأساسي:* ${sal} ج.م\n\n` +
+                    `📋 *بيان الحضور اليومي والسلف:*\n${details}\n` +
+                    `📝 *ملاحظات:* ${note}\n` +
+                    `━━━━━━━━━━━━━━━\n` +
+                    `💵 *الصافي المستحق للتقبيل:* *${net} ج.م*\n\n` +
+                    `شكراً لجهودكم معنا 🙏✨`;
+                    
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
 </script>
 </body>
