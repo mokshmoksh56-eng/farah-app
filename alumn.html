@@ -8,6 +8,12 @@
     <style>
         body { font-family: Arial, sans-serif; background-color: #e9ecef; padding: 0 0 10px 0; margin: 0; color: #333; }
         
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #e9ecef;
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 16px; color: #003366; font-weight: bold; font-family: 'Cairo', sans-serif;
+        }
+
         .app-header { background: linear-gradient(135deg, #003366 0%, #00509e 100%); color: #ffffff; padding: 15px 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); margin-bottom: 12px; border-bottom: 4px solid #ffc107; }
         .app-header h1 { margin: 0; font-family: 'Cairo', sans-serif; font-size: 1.6rem; }
         .brand-name { font-size: 0.9rem; color: #ffc107; font-family: 'Roboto', sans-serif; margin-top: 3px; }
@@ -30,9 +36,8 @@
         th { background: linear-gradient(180deg, #4d90fe 0%, #357ae8 100%); color: white; font-size: 1rem; border-top: 1px solid #dee2e6; }
         th:last-child, td:last-child { border-right: 1px solid #dee2e6; }
 
-        table th:nth-child(1), table td:nth-child(1) { position: sticky; right: 0; z-index: 2; width: 34%; }
-        table th:nth-child(1) { background: #357ae8 !important; }
-        table td:nth-child(1) { background: #ffffff !important; }
+        table th:nth-child(1), table td:nth-child(1) { position: sticky; right: 0; z-index: 2; width: 34%; background: #357ae8 !important; color: white; }
+        table td:nth-child(1) { background: #ffffff !important; color: black !important; }
         table th:nth-child(2), table td:nth-child(2) { width: 11%; }
         table th:nth-child(3), table td:nth-child(3) { width: 13%; }
         table th:nth-child(4), table td:nth-child(4) { width: 14%; }
@@ -56,10 +61,11 @@
         .archive-items-list { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dotted #ccc; font-size: 1.05rem; }
         .archive-badge { background: #e9ecef; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 1.05rem !important; }
         .action-container { display: flex; gap: 6px; margin-top: 8px; }
-        h3 { font-size: 1.2rem !important; margin-top: 15px; }
     </style>
 </head>
 <body>
+
+    <div id="auth-loader">⏳ جاري مزامنة مقايسات الألومنيوم سحابياً...</div>
 
     <a href="kmatkitchen.html" style="position: fixed; top: 15px; left: 15px; z-index: 9999; background: #2d3436; color: white; padding: 8px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: 'Cairo', sans-serif; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🔙 رجوع</a>
 
@@ -97,13 +103,11 @@
         <div id="archiveList" class="archive-list-container"></div>
     </div>
 
-    <!-- استدعاء Firebase كـ Module -->
     <script type="module">
-        // 1. استيراد دوال Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, set, get, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getDatabase, ref, set, get, remove, onValue, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-        // 2. إعدادات قاعدة البيانات الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -111,20 +115,28 @@
             projectId: "azemaa-proo",
             storageBucket: "azemaa-proo.firebasestorage.app",
             messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210",
-            measurementId: "G-R28J7010TH"
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
         };
 
-        // تهيئة Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app);
 
-        // متغيرات عامة
+        window.currentUid = null;
         let cachedInvoices = {};
         let priceTimeout;
         let itemsTimeout;
 
-        // الدوال المساعدة
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                startSync();
+            } else {
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
+            }
+        });
+
         function formatNum(n) { return parseFloat(n).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1'); }
         function getEnglishDateTime() { let n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; }
         
@@ -163,11 +175,11 @@
             }
         }
 
-        // الحفظ في السحابة مع تأخير (Debounce) لعدم استهلاك قاعدة البيانات أثناء الكتابة
         function saveGlobalPrices() {
+            if(!window.currentUid) return;
             clearTimeout(priceTimeout);
             priceTimeout = setTimeout(() => {
-                set(ref(db, 'settings/globalPrices'), {
+                set(ref(db, `backups/settings_alum/${window.currentUid}/globalPrices`), {
                     alumPrice: document.getElementById('globalAlumPrice').value,
                     paintPrice: document.getElementById('globalPaintPrice').value
                 });
@@ -175,7 +187,7 @@
         }
 
         async function loadGlobalPrices() {
-            const snapshot = await get(ref(db, 'settings/globalPrices'));
+            const snapshot = await get(ref(db, `backups/settings_alum/${window.currentUid}/globalPrices`));
             if(snapshot.exists()) {
                 let data = snapshot.val();
                 document.getElementById('globalAlumPrice').value = data.alumPrice || "";
@@ -184,29 +196,26 @@
         }
 
         function saveDefaultItems() {
+            if(!window.currentUid) return;
             clearTimeout(itemsTimeout);
             itemsTimeout = setTimeout(() => {
                 let rows = []; 
                 document.querySelectorAll('#alumTable tbody tr').forEach(r => { 
                     rows.push({
-                        name: r.querySelector('.item-name').value, 
-                        weight: r.querySelector('.weight').value, 
-                        itemPrice: r.querySelector('.item-price').value
+                        name: r.querySelector('.item-name').value, weight: r.querySelector('.weight').value, itemPrice: r.querySelector('.item-price').value
                     });
                 }); 
-                set(ref(db, 'settings/defaultItems'), rows);
+                set(ref(db, `backups/settings_alum/${window.currentUid}/defaultItems`), rows);
             }, 1500);
         }
 
         async function loadDefaultItems() { 
-            const snapshot = await get(ref(db, 'settings/defaultItems'));
+            const snapshot = await get(ref(db, `backups/settings_alum/${window.currentUid}/defaultItems`));
             if(snapshot.exists()) {
                 let rows = snapshot.val();
                 document.querySelector("#alumTable tbody").innerHTML = "";
                 rows.forEach(r => addRow(r.name, "", r.weight, r.itemPrice)); 
-            } else { 
-                addRow(); 
-            } 
+            } else { addRow(); } 
         }
 
         function calculateLiveGrandTotal() { 
@@ -217,80 +226,56 @@
         }
 
         async function saveAll() {
-            let name = document.getElementById('custName').value;
+            if(!window.currentUid) return;
+            let name = document.getElementById('custName').value.trim();
             if(!name) return alert("اكتب اسم الزبون");
             
             let items = []; 
             document.querySelectorAll('#alumTable tbody tr').forEach(r => { 
                 if(r.querySelector('.item-name').value) {
                     items.push({
-                        name: r.querySelector('.item-name').value, 
-                        qty: r.querySelector('.qty').value, 
-                        weight: r.querySelector('.weight').value, 
-                        itemPrice: r.querySelector('.item-price').value
+                        name: r.querySelector('.item-name').value, qty: r.querySelector('.qty').value, weight: r.querySelector('.weight').value, itemPrice: r.querySelector('.item-price').value
                     });
                 }
             });
             
             const invoiceData = {
-                code: document.getElementById('custCode').value, 
-                alumPrice: document.getElementById('globalAlumPrice').value, 
-                paintPrice: document.getElementById('globalPaintPrice').value, 
-                date: getEnglishDateTime(), 
-                grandTotal: calculateLiveGrandTotal(), 
-                items: items
+                code: document.getElementById('custCode').value, alumPrice: document.getElementById('globalAlumPrice').value, paintPrice: document.getElementById('globalPaintPrice').value, date: getEnglishDateTime(), grandTotal: calculateLiveGrandTotal(), items: items
             };
 
             try {
-                await set(ref(db, 'invoices/' + name), invoiceData);
+                await set(ref(db, `backups/invoices_alum/${window.currentUid}/` + name), invoiceData);
                 alert("تم الحفظ بنجاح!"); 
                 document.getElementById('custName').value=""; 
                 document.getElementById('custCode').value=""; 
                 document.querySelectorAll('.qty').forEach(i=>i.value=""); 
                 calculateLiveGrandTotal();
-            } catch(error) {
-                console.error("خطأ:", error);
-                alert("حدث خطأ أثناء الحفظ تأكد من اتصالك بالإنترنت.");
-            }
+            } catch(error) { alert("حدث خطأ أثناء الحفظ."); }
         }
 
-        // مراقبة الأرشيف وتحديثه لحظياً
-        onValue(ref(db, 'invoices'), (snapshot) => {
-            let list = document.getElementById("archiveList"); 
-            list.innerHTML = "";
-            cachedInvoices = {};
-            
-            if(snapshot.exists()) {
-                cachedInvoices = snapshot.val();
-                for(let n in cachedInvoices) {
-                    let d = cachedInvoices[n];
-                    let itemsHtml = (d.items || []).map(it => `<div class="archive-items-list"><strong>${it.name}</strong> <span class="archive-badge">${it.qty}</span></div>`).join('');
-                    let div = document.createElement("div"); 
-                    div.className = "archive-item"; 
-                    div.setAttribute("data-name", n.toLowerCase()); 
-                    div.innerHTML = `
-                        <button class="accordion-btn" onclick="this.nextElementSibling.style.display=(this.nextElementSibling.style.display=='block'?'none':'block')">
-                            <strong>${n}</strong><span class="en-num">${d.grandTotal} EGP</span>
-                        </button>
-                        <div class="accordion-content">
-                            ${itemsHtml}
-                            <div class="action-container">
-                                <button class="btn btn-edit" onclick="loadArchiveToTable('${n}')">تعديل</button>
-                                <button class="btn btn-del" onclick="deleteArchiveItem('${n}')">حذف</button>
-                            </div>
-                        </div>`;
-                    list.appendChild(div);
+        function startSync() {
+            onValue(ref(db, `backups/invoices_alum/${window.currentUid}`), (snapshot) => {
+                let list = document.getElementById("archiveList"); list.innerHTML = "";
+                cachedInvoices = {};
+                if(snapshot.exists()) {
+                    cachedInvoices = snapshot.val();
+                    for(let n in cachedInvoices) {
+                        let d = cachedInvoices[n];
+                        let itemsHtml = (d.items || []).map(it => `<div class="archive-items-list"><strong>${it.name}</strong> <span class="archive-badge">${it.qty}</span></div>`).join('');
+                        let div = document.createElement("div"); div.className = "archive-item"; div.setAttribute("data-name", n.toLowerCase()); 
+                        div.innerHTML = `<button class="accordion-btn" onclick="this.nextElementSibling.style.display=(this.nextElementSibling.style.display=='block'?'none':'block')"><strong>${n}</strong><span class="en-num">${d.grandTotal} EGP</span></button><div class="accordion-content">${itemsHtml}<div class="action-container"><button class="btn btn-edit" onclick="loadArchiveToTable('${n}')">تعديل</button><button class="btn btn-del" onclick="deleteArchiveItem('${n}')">حذف</button></div></div>`;
+                        list.appendChild(div);
+                    }
                 }
-            }
-        });
+            });
+            loadGlobalPrices();
+            loadDefaultItems();
+        }
 
         async function deleteArchiveItem(customerName) {
-            if (confirm(`هل أنت متأكد من حذف مقايسة الزبون "${customerName}" نهائياً؟`)) {
-                try {
-                    await remove(ref(db, 'invoices/' + customerName));
-                } catch(error) {
-                    alert("حدث خطأ أثناء الحذف.");
-                }
+            if(!window.currentUid) return;
+            if (confirm(`هل أنت متأكد من حذف مقايسة "${customerName}"؟`)) {
+                try { await remove(ref(db, `backups/invoices_alum/${window.currentUid}/` + customerName)); } catch(error) { alert("حدث خطأ."); }
             }
         }
 
@@ -300,44 +285,19 @@
         }
 
         function loadArchiveToTable(n) { 
-            if(!n) return alert("اكتب اسم الزبون للبحث عنه");
             let d = cachedInvoices[n];
             if(!d) return alert("هذا الاسم غير موجود في الأرشيف");
-            
             document.getElementById('custName').value = n; 
             document.getElementById('custCode').value = d.code || ""; 
             document.getElementById('globalAlumPrice').value = d.alumPrice || ""; 
             document.getElementById('globalPaintPrice').value = d.paintPrice || ""; 
             document.querySelector("#alumTable tbody").innerHTML = ""; 
-            
-            if(d.items && d.items.length > 0) {
-                d.items.forEach(i => addRow(i.name, i.qty, i.weight, i.itemPrice)); 
-            } else {
-                addRow();
-            }
+            if(d.items && d.items.length > 0) { d.items.forEach(i => addRow(i.name, i.qty, i.weight, i.itemPrice)); } else { addRow(); }
             calculateLiveGrandTotal(); 
             window.scrollTo(0,0); 
         }
 
-        // ربط الدوال بنافذة المتصفح لتعمل مع أحداث HTML
-        window.updateAll = updateAll;
-        window.updateRow = updateRow;
-        window.addRow = addRow;
-        window.deleteRow = deleteRow;
-        window.saveGlobalPrices = saveGlobalPrices;
-        window.saveDefaultItems = saveDefaultItems;
-        window.saveAll = saveAll;
-        window.deleteArchiveItem = deleteArchiveItem;
-        window.filterArchive = filterArchive;
-        window.loadArchiveToTable = loadArchiveToTable;
-
-        // تهيئة البيانات عند فتح الصفحة
-        async function initializeAppCustom() {
-            await loadGlobalPrices();
-            await loadDefaultItems();
-        }
-        initializeAppCustom();
-
+        window.updateAll = updateAll; window.updateRow = updateRow; window.addRow = addRow; window.deleteRow = deleteRow; window.saveGlobalPrices = saveGlobalPrices; window.saveDefaultItems = saveDefaultItems; window.saveAll = saveAll; window.deleteArchiveItem = deleteArchiveItem; window.filterArchive = filterArchive; window.loadArchiveToTable = loadArchiveToTable;
     </script>
 </body>
 </html>
