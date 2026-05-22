@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام التسليمات السحابي - AZEMAA PRO v10</title>
-    <!-- استدعاء مكتبات Firebase المتوافقة -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+    <title>نظام التسليمات السحابي - AZEMAA PRO v10 للبيع</title>
     
     <style>
         :root { 
@@ -23,6 +19,13 @@
         * { box-sizing: border-box; font-weight: 900 !important; transition: background 0.15s, color 0.15s; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; padding-bottom: 40px; }
         
+        /* واجهة انتظار للتحقق من هوية المشترك */
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main);
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 16px; color: var(--primary); font-weight: bold;
+        }
+
         header { background: var(--primary); color: white; padding: 12px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .nav-container { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
         
@@ -77,14 +80,8 @@
         .name-input:focus { background: rgba(52, 152, 219, 0.2); outline: none; }
         #sync-status { font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; }
 
-        /* 📐 إعدادات دقيقة لالتصاق التاريخ بالخط الرأسي تماماً وبدون أي مسافات */
         .col-date { width: 140px; } 
-        .cell-date-container { 
-            padding-right: 0px !important;  
-            padding-left: 0px !important;   
-            text-align: center;
-            white-space: nowrap; 
-        }
+        .cell-date-container { padding-right: 0px !important; padding-left: 0px !important; text-align: center; white-space: nowrap; }
         .col-client { width: 25%; min-width: 110px; max-width: 150px; }
         .col-status { width: 70px; }
 
@@ -93,8 +90,47 @@
             th { top: 55px; }
         }
     </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210",
+            measurementId: "G-R28J7010TH"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const auth = getAuth(app);
+
+        window.currentUid = null;
+        window.fbDB = db;
+        window.fbRef = ref;
+        window.fbUpdate = update;
+
+        // التحقق من تفعيل الجلسة للمشتري الحالي قبل إرسال كشوف التواريخ لقاعدة البيانات
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                loadData(); // استدعاء دالة جلب البيانات بعد ربط المعرف الفريد للزبون
+            } else {
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من لوحة التحكم الرئيسية أولاً!";
+            }
+        });
+    </script>
 </head>
 <body>
+
+<div id="auth-loader">⏳ جاري تحميل ومزامنة تقويم كشوفات التسليم...</div>
 
 <header>
     <div class="nav-container">
@@ -127,7 +163,6 @@
     </div>
 </div>
 
-<!-- زر التذكير العائمة في الجنب للمتأخرات الفعلية فقط -->
 <button class="floating-overdue-btn" id="floatingOverdueBtn" onclick="scrollToNextOverdue()" style="display: none;">
     🚨 <span class="floating-badge" id="floatingOverdueCount">0</span>
 </button>
@@ -147,21 +182,6 @@
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-        authDomain: "azemaa-proo.firebaseapp.com",
-        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-        projectId: "azemaa-proo",
-        storageBucket: "azemaa-proo.firebasestorage.app",
-        messagingSenderId: "787350492977",
-        appId: "1:787350492977:web:84061dcf31622fcb07c210",
-        measurementId: "G-R28J7010TH"
-    };
-    
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    if(typeof firebase.analytics === 'function') firebase.analytics();
-
     const daysOfWeek = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
     const monthsAr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     
@@ -192,7 +212,6 @@
         let indexCounter = 0;
 
         for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
-            
             const monthHeader = document.createElement('tr');
             monthHeader.className = 'month-header-row';
             monthHeader.innerHTML = `<td colspan="4">🌟 شهر ${monthsAr[monthIdx]} (${selectedYear}) 🌟</td>`;
@@ -239,17 +258,23 @@
         element.style.height = (element.scrollHeight) + "px";
     }
 
+    // تعديل دالة الحفظ ليتم توجيه المدخلات إلى فولدر العميل الفريد UID بالسحابة
     function save(id, field, val) {
+        if(!window.currentUid || !window.fbDB) return;
         document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
-        db.ref('azemaa_v5/deliveries/' + id).update({ [field]: val }).then(() => {
+        
+        window.fbUpdate(window.fbRef(window.fbDB, `backups/deliveries_users/${window.currentUid}/${id}`), { [field]: val }).then(() => {
             document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
             updateRowStyle(id);
             updateFloatingBadge();
         });
     }
 
+    // جلب البيانات من المجلد الفرعي الجديد للمستخدم
     function loadData() {
-        db.ref('azemaa_v5/deliveries').on('value', snap => {
+        if(!window.currentUid || !window.fbDB) return;
+        
+        onValue(window.fbRef(window.fbDB, `backups/deliveries_users/${window.currentUid}`), snap => {
             globalData = snap.val() || {};
             applyDataToDOM();
             document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
@@ -266,18 +291,14 @@
             
             if(c1 && activeElId !== id+'-c1') { c1.value = globalData[id].c1 || ''; autoGrow(c1); }
             if(c2 && activeElId !== id+'-c2') { c2.value = globalData[id].c2 || ''; autoGrow(c2); }
-            if(s) {
-                s.value = globalData[id].s || 'pending';
-            }
+            if(s) { s.value = globalData[id].s || 'pending'; }
             updateRowStyle(id);
         }
         
         const allSelects = document.querySelectorAll('#tableBody select');
         allSelects.forEach(s => {
             const id = s.id.replace('-s', '');
-            if (!globalData[id]) {
-                updateRowStyle(id);
-            }
+            if (!globalData[id]) { updateRowStyle(id); }
         });
 
         filterTable();
@@ -294,7 +315,6 @@
             const isPast = tr.getAttribute('data-past') === 'true';
             const badge = document.getElementById(id+'-overdue');
             const status = el.value;
-
             const hasNames = c1.value.trim() !== "" || c2.value.trim() !== "";
 
             tr.classList.remove('row-done', 'row-overdue');
@@ -328,16 +348,12 @@
         const overdueRows = document.querySelectorAll('.row-overdue');
         if(overdueRows.length === 0) return;
         
-        if(currentOverdueTrackIndex >= overdueRows.length) {
-            currentOverdueTrackIndex = 0;
-        }
-        
+        if(currentOverdueTrackIndex >= overdueRows.length) { currentOverdueTrackIndex = 0; }
         overdueRows[currentOverdueTrackIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
         
         const tr = overdueRows[currentOverdueTrackIndex];
         tr.style.outline = "4px solid #f1c40f";
         setTimeout(() => { tr.style.outline = "none"; }, 1500);
-
         currentOverdueTrackIndex++;
     }
 
@@ -355,11 +371,8 @@
             const matchesSearch = c1Val.includes(query) || c2Val.includes(query);
             const matchesFilter = filter === 'all' || status === filter;
 
-            if(matchesSearch && matchesFilter) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            if(matchesSearch && matchesFilter) { row.style.display = ''; } 
+            else { row.style.display = 'none'; }
         });
     }
 
@@ -424,7 +437,6 @@
     if(localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     initSelectors();
     renderWholeYear();
-    loadData();
 </script>
 </body>
 </html>
