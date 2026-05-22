@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.firebaseinit.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; connect-src https://*.firebaseio.com https://*.googleapis.com identitytoolkit.googleapis.com;">
-    <title>azemaa pro - Mobile Edition</title>
+    <title>azemaa pro - Mobile Edition السحابي</title>
     <style>
         :root { 
             --bg-main: #eef2f7; 
@@ -30,7 +29,7 @@
             -webkit-tap-highlight-color: transparent; 
         }
         
-        /* واجهة تسجيل الدخول الاحترافية للمشترين */
+        /* واجهة تسجيل الدخول والربط السحابي */
         #login-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg-main); z-index: 100000; display: flex;
@@ -47,9 +46,6 @@
         .login-box button {
             width: 100%; padding: 12px; background: #6e8efb; border: none;
             color: #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
-        }
-        .logout-link {
-            display: block; margin-top: 15px; color: #e74c3c; font-size: 13px; text-decoration: none; cursor: pointer;
         }
 
         header { 
@@ -149,11 +145,11 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h3>🔐 تسجيل الدخول | azemaa pro</h3>
-        <p style="font-size: 13px; color: #7f8c8d;">أدخل بيانات الحساب الممنوحة لك لتفعيل النظام</p>
-        <input type="email" id="sys-email" placeholder="البريد الإلكتروني">
-        <input type="password" id="sys-password" placeholder="كلمة المرور">
-        <button id="login-btn">تسجيل الدخول والتفعيل</button>
+        <h3>🔐 سحابة إدارة azemaa pro</h3>
+        <p style="font-size: 13px; color: #7f8c8d;">سجل دخول بحساب العميل لتفعيل المزامنة</p>
+        <input type="email" id="sys-email" placeholder="البريد الإلكتروني للعميل">
+        <input type="password" id="sys-password" placeholder="كلمة المرور السحابية">
+        <button id="login-btn">تفعيل النظام والمزامنة</button>
     </div>
 </div>
 
@@ -200,37 +196,37 @@
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#ff7675;"><span>👤 القسم الرئيسي</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="zbon.html" referrerpolicy="same-origin"></iframe>
+        <iframe src="zbon.html"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#00cec9;"><span>💸 الخزينة</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="yom.html" referrerpolicy="same-origin"></iframe>
+        <iframe src="yom.html"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#6c5ce7;"><span>👷 العمال</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="gyab.html" referrerpolicy="same-origin"></iframe>
+        <iframe src="gyab.html"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#e17055;"><span>📅 التسليم</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="tslem.html" referrerpolicy="same-origin"></iframe>
+        <iframe src="tslem.html"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#fbc531;"><span>📝 الملاحظات</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="notmop.html" referrerpolicy="same-origin"></iframe>
+        <iframe src="notmop.html"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#0984e3;"><span>📊 التقارير</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="takarer.html" referrerpolicy="same-origin"></iframe>
+        <iframe src="takarer.html"></iframe>
     </div>
 </div>
 
@@ -364,120 +360,93 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // مراقبة المستخدم الحالي وتحديد مسار بياناته الفريد
+    // مراقبة حالة جلسة المشتري وربط وتحديث الـ iframes تلقائياً عند تغيير الحساب
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('login-overlay').style.display = 'none';
+            // إعادة تحميل الـ iframes لتكتسب الـ Token الأمني الجديد من المتصفح
+            document.querySelectorAll('iframe').forEach(f => f.src = f.src);
         } else {
             document.getElementById('login-overlay').style.display = 'flex';
         }
     });
 
-    // زر تسجيل الدخول للعميل المشتري
+    // تنفيذ تسجيل الدخول المشفر
     document.getElementById('login-btn').addEventListener('click', async () => {
         const email = document.getElementById('sys-email').value;
         const password = document.getElementById('sys-password').value;
         const loginBtn = document.getElementById('login-btn');
 
         if(!email || !password) {
-            alert("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور المسجلين!");
+            alert("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور!");
             return;
         }
 
         try {
-            loginBtn.innerText = "⏳ جاري التحقق من التفعيل...";
+            loginBtn.innerText = "⏳ جاري التحقق والربط...";
             loginBtn.disabled = true;
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
-            alert("❌ فشل التفعيل: الحساب غير صحيح أو غير مفعل بالسيرفر.");
+            alert("❌ خطأ في التفعيل: بيانات حساب العميل غير صحيحة.");
         } finally {
-            loginBtn.innerText = "تسجيل الدخول والتفعيل";
+            loginBtn.innerText = "تفعيل النظام والمزامنة";
             loginBtn.disabled = false;
         }
     });
 
-    // زر تسجيل الخروج
+    // تسجيل الخروج
     document.getElementById('logout-btn').addEventListener('click', () => {
-        if(confirm("هل تريد تسجيل الخروج من هذا الجهاز؟")) {
+        if(confirm("هل تريد تسجيل الخروج من هذا الجهاز وقفل المنظومة؟")) {
             signOut(auth).then(() => {
-                localStorage.clear(); // مسح البيانات المحلية لضمان الخصوصية
+                localStorage.clear();
                 window.location.reload();
             });
         }
     });
 
-    // حفظ البيانات في فولدر مخصص لكل مستخدم بناءً على الـ UID الخاص به
+    // بقاء أزرار الحفظ الماستر لنسخ الـ localStorage احتياطياً
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
         if(!auth.currentUser) return;
+        if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت حالياً!"); return; }
 
-        if(!navigator.onLine) {
-            alert("⚠️ أنت غير متصل بالإنترنت!");
-            return;
-        }
-
-        let data = {}; 
-        let hasData = false;
-        
+        let data = {}; let hasData = false;
         for (let i = 0; i < localStorage.length; i++) { 
             let k = localStorage.key(i); 
-            if (k !== 'theme') { 
-                data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); 
-                hasData = true;
-            } 
+            if (k !== 'theme') { data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); hasData = true; } 
         }
-
-        if (!hasData) {
-            alert("⚠️ لا توجد بيانات لحفظها!");
-            return;
-        }
+        if (!hasData) { alert("⚠️ لا توجد بيانات مسجلة لحفظها!"); return; }
 
         try {
-            const btn = document.getElementById('cloud-save-btn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ جاري المزامنة...";
-
-            // هنا يتم الحفظ داخل مسار فريد للمستخدم الحالي فقط backups/users/UID
+            document.getElementById('cloud-save-btn').innerHTML = "⏳ جاري الحفظ...";
             await set(ref(db, `backups/users/${auth.currentUser.uid}`), data); 
-            alert("تم حفظ النسخة الاحتياطية سحابياً بنجاح ✅"); 
-            btn.innerHTML = originalText;
+            alert("تم الحفظ فى السحابة بنجاح ✅"); 
         } catch (error) {
-            alert("❌ فشل الحفظ السحابي: " + error.message);
+            alert("❌ فشل الحفظ: " + error.message);
+        } finally {
+            document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ";
         }
     });
 
-    // استرجاع البيانات الخاصة بالمستخدم الحالي فقط
     document.getElementById('cloud-load-btn').addEventListener('click', async () => {
         if(!auth.currentUser) return;
-
-        if(!navigator.onLine) {
-            alert("⚠️ أنت غير متصل بالإنترنت حالياً!");
-            return;
-        }
-
-        const isConfirmed = confirm("هل أنت متأكد من استرجاع بياناتك؟ (سيتم تعويض البيانات الحالية بنسختك السحابية)");
-        if (!isConfirmed) return;
+        if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت حالياً!"); return; }
+        if (!confirm("هل أنت متأكد من استرجاع البيانات الكلية؟")) return;
 
         try {
-            const btn = document.getElementById('cloud-load-btn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ جاري التحميل...";
-
+            document.getElementById('cloud-load-btn').innerHTML = "⏳ استرجاع...";
             const snapshot = await get(child(ref(db), `backups/users/${auth.currentUser.uid}`));
-            if (snapshot.exists() && snapshot.val() !== null) { 
+            if (snapshot.exists()) { 
                 const d = snapshot.val(); 
-                for (let k in d) {
-                    if (d.hasOwnProperty(k)) {
-                        localStorage.setItem(k, d[k]); 
-                    }
-                }
-                alert("🔄 تم استيراد بياناتك بنجاح! جاري تحديث التطبيق...");
+                for (let k in d) { localStorage.setItem(k, d[k]); }
+                alert("🔄 تم استرجاع البيانات بنجاح!");
                 window.location.reload();
             } else {
-                alert("❓ لا توجد نسخة احتياطية محفوظة لهذا الحساب.");
-                btn.innerHTML = originalText;
+                alert("❓ لم يتم العثور على نسخة احتياطية كبرى لهذا المستخدم.");
             }
         } catch (error) {
             alert("❌ فشل الاسترجاع: " + error.message);
+        } finally {
+            document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع";
         }
     });
 </script>
