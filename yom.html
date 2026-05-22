@@ -3,19 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">يومية الورشة 2026 - تحديث فوري (سريع)</title>
+    <title id="page-title">يومية الورشة - تحديث فوري آمن للبيع</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght=600;700;800;900&display=swap" rel="stylesheet">
     
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-
     <style>
         :root {
             --primary: #1e40af; --success: #059669; --danger: #dc2626;
             --whatsapp: #25d366; --bg: #f8fafc; --card-bg: #ffffff; --text-main: #1e293b;
         }
         * { box-sizing: border-box; }
-        /* استخدام خطوط النظام لسرعة العرض */
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; padding: 8px; line-height: 1.3; font-weight: 700; }
+        body { font-family: 'Cairo', sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; padding: 8px; line-height: 1.3; font-weight: 700; padding-bottom: 60px; }
+        
+        /* واجهة انتظار للتحقق من الهوية السحابية للمشتري */
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg);
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 16px; color: var(--primary); font-weight: bold;
+        }
+
         .container { max-width: 1100px; margin: auto; background: white; padding: 10px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         header { text-align: center; background: linear-gradient(135deg, var(--primary), #3b82f6); color: white; padding: 10px; border-radius: 10px; margin-bottom: 12px; }
         header h1 { margin: 0; font-size: 1.2rem; font-weight: 900; }
@@ -30,7 +35,7 @@
         @media (min-width: 480px) { .form-section { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 768px) { .form-section { grid-template-columns: repeat(3, 1fr); } }
         
-        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 14px; font-weight: 700; outline: none; background-color: #fff; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: 'Cairo'; font-size: 14px; font-weight: 700; outline: none; background-color: #fff; }
         
         #entry-out { border: 2px solid var(--danger); background-color: #fef2f2; color: var(--danger); font-weight: 900; }
         #entry-out::placeholder { color: #f87171; font-weight: normal; }
@@ -65,9 +70,11 @@
 </head>
 <body>
 
+<div id="auth-loader">⏳ جاري مزامنة حسابات اليومية والخزينة سحابياً...</div>
+
 <div class="container">
-    <header><h1>حسابات الورشة 2026</h1></header>
-    <div id="sync-status">⏳ جاري فحص الاتصال بالخادم...</div>
+    <header><h1>حسابات الورشة والخزينة</h1></header>
+    <div id="sync-status">⏳ جاري فحص الاتصال بالخادم السحابي...</div>
 
     <div class="dashboard">
         <div class="card"><h3>اليوم</h3><div class="value" id="day-total" style="color:var(--success)">0</div></div>
@@ -120,7 +127,11 @@
     </div>
 </div>
 
-<script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, child, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
@@ -128,35 +139,51 @@
         projectId: "azemaa-proo",
         storageBucket: "azemaa-proo.firebasestorage.app",
         messagingSenderId: "787350492977",
-        appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        appId: "1:787350492977:web:84061dcf31622fcb07c210",
+        measurementId: "G-R28J7010TH"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const dbRef = db.ref('azemaa_v5/yomya_2026_clean');
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    let currentUid = null;
+    let dbRef = null;
+    let localData = {};
     const currentYear = 2026;
 
-    let localData = {};
+    // مراقبة حالة المشتري الحالي للتعرف على كود تفعيله الفريد (UID)
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUid = user.uid;
+            // توجيه مسار الحسابات إلى مجلد العميل الفريد المتواجد داخل السحابة بدلاً من المسار الثابت القديم
+            dbRef = ref(db, `backups/yomya_users/${currentUid}`);
+            
+            document.getElementById('auth-loader').style.display = 'none';
+            initApp();
+        } else {
+            document.getElementById('auth-loader').innerText = "⚠️ خطأ في الصلاحيات: يرجى فتح واجهة التفعيل الرئيسية أولاً.";
+        }
+    });
 
     function initApp() {
-        dbRef.on('value', (snapshot) => {
+        onValue(dbRef, (snapshot) => {
             const cloudData = snapshot.val() || {};
-            localData = Object.assign({}, localData, cloudData);
+            localData = Object.assign({}, cloudData);
             renderTable();
             document.getElementById('sync-status').innerText = "🟢 متصل بالسحابة بشكل آمن ومستقر";
             document.getElementById('sync-status').style.color = "var(--success)";
-            
             restoreScrollPosition();
         }, (error) => {
             console.error(error);
-            document.getElementById('sync-status').innerText = "🔴 خطأ في الصلاحيات! يرجى مراجعة تفعيل الـ Rules في الفايربيز";
+            document.getElementById('sync-status').innerText = "🔴 خطأ اتصال: السيرفر يرفض صلاحيات العرض الحالية.";
             document.getElementById('sync-status').style.color = "var(--danger)";
         });
 
         if(!document.getElementById('entry-date').value) setActualTime();
         
         window.addEventListener('scroll', () => {
-            localStorage.setItem('yomScrollPosition', window.scrollY);
+            localStorage.setItem('scrollPosition_yom', window.scrollY);
         });
     }
 
@@ -167,13 +194,14 @@
     }
 
     function restoreScrollPosition() {
-        const savedPosition = localStorage.getItem('yomScrollPosition');
+        const savedPosition = localStorage.getItem('scrollPosition_yom');
         if (savedPosition) {
             window.scrollTo({ top: parseInt(savedPosition), behavior: 'smooth' });
         }
     }
 
     function processEntry() {
+        if (!currentUid) return;
         const shop = document.getElementById('entry-shop').value;
         const customer = document.getElementById('entry-customer').value.trim() || "-";
         const date = document.getElementById('entry-date').value || new Date().toISOString().slice(0, 16);
@@ -187,15 +215,13 @@
         const uniqueId = editId || 'id_' + Date.now();
         const entryData = { id: uniqueId, shop, customer, date, desc, inVal, outVal };
 
-        // تحديث محلي فوري
         localData[uniqueId] = entryData;
         renderTable(); 
 
-        // الإرسال للسحابة
-        dbRef.child(uniqueId).set(entryData).then(() => {
+        set(child(dbRef, uniqueId), entryData).then(() => {
             resetForm();
         }).catch(err => {
-            alert("فشل الحفظ في السحابة: " + err.message);
+            alert("فشل المزامنة السحابية: " + err.message);
         });
     }
 
@@ -323,11 +349,17 @@
     }
 
     function deleteItem(id) {
+        if (!currentUid) return;
         if(confirm("هل تريد حذف هذه العملية نهائياً؟")) {
             delete localData[id];
             renderTable();
-            dbRef.child(id).remove().catch(err => alert("فشل الحذف من السحابة: " + err.message));
+            remove(child(dbRef, id)).catch(err => alert("فشل الحذف من السحابة: " + err.message));
         }
+    }
+
+    function deleteCard(id) {
+        // متوافق مع الاستدعاءات المحتملة الأخرى للهيكل
+        deleteItem(id);
     }
 
     function resetForm() {
@@ -342,8 +374,6 @@
 
     document.getElementById('btn-main').onclick = processEntry;
     document.getElementById('searchBox').onkeyup = renderTable;
-
-    window.onload = initApp;
 </script>
 </body>
 </html>
