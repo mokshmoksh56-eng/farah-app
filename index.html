@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; connect-src https://*.firebaseio.com https://*.googleapis.com;">
     <title>azemaa pro - Mobile Edition</title>
     <style>
         :root { 
@@ -29,6 +30,25 @@
             -webkit-tap-highlight-color: transparent; 
         }
         
+        /* واجهة تسجيل الدخول لحماية التطبيق */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: var(--bg-main); z-index: 100000; display: flex;
+            justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;
+        }
+        .login-box {
+            background: var(--card-bg); padding: 30px; border-radius: var(--card-radius);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center;
+        }
+        .login-box input {
+            width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd;
+            border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: center;
+        }
+        .login-box button {
+            width: 100%; padding: 12px; background: #6e8efb; border: none;
+            color: #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
+        }
+
         header { 
             position: relative; 
             background: var(--header-grad); 
@@ -93,10 +113,6 @@
         .btn-whatsapp { background: var(--whatsapp-green); }
         .btn-cloud { background: var(--cloud-blue); }
         .btn-device { background: #a29bfe; }
-        
-        .sync-group-center {
-            justify-content: center;
-        }
 
         .main-container { display: flex; flex-direction: column; gap: 15px; }
         
@@ -127,6 +143,15 @@
     </style>
 </head>
 <body>
+
+<div id="login-overlay">
+    <div class="login-box">
+        <h3>🔐 نظام إدارة azemaa pro</h3>
+        <p style="font-size: 13px; color: #7f8c8d;">يرجى إدخال كلمة مرور النظام للمتابعة</p>
+        <input type="password" id="sys-password" placeholder="كلمة المرور">
+        <button onclick="checkAppAccess()">دخول</button>
+    </div>
+</div>
 
 <header>
     <div>
@@ -168,41 +193,61 @@
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#ff7675;"><span>👤 القسم الرئيسي</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="zbon.html"></iframe>
+        <iframe src="zbon.html" referrerpolicy="same-origin"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#00cec9;"><span>💸 الخزينة</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="yom.html"></iframe>
+        <iframe src="yom.html" referrerpolicy="same-origin"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#6c5ce7;"><span>👷 العمال</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="gyab.html"></iframe>
+        <iframe src="gyab.html" referrerpolicy="same-origin"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#e17055;"><span>📅 التسليم</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="tslem.html"></iframe>
+        <iframe src="tslem.html" referrerpolicy="same-origin"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#fbc531;"><span>📝 الملاحظات</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="notmop.html"></iframe>
+        <iframe src="notmop.html" referrerpolicy="same-origin"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#0984e3;"><span>📊 التقارير</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="takarer.html"></iframe>
+        <iframe src="takarer.html" referrerpolicy="same-origin"></iframe>
     </div>
 </div>
 
 <script>
+    // نظام حماية محلي بسيط لمنع الدخول المباشر بدون كلمة مرور
+    // يفضل استبداله بـ Firebase Auth لاحقاً إذا كان النظام مشترك بين عدة مستخدمين
+    const SECURE_KEY = "azemaa_session_v1";
+    
+    function checkAppAccess() {
+        const pass = document.getElementById('sys-password').value;
+        // قم بتغيير "123456" إلى كلمة المرور القوية الخاصة بك
+        if(pass === "123456") { 
+            sessionStorage.setItem(SECURE_KEY, "authenticated");
+            document.getElementById('login-overlay').style.display = 'none';
+        } else {
+            alert("⚠️ كلمة المرور غير صحيحة!");
+        }
+    }
+
+    // التحقق من الجلسة عند تحميل الصفحة
+    if(sessionStorage.getItem(SECURE_KEY) === "authenticated") {
+        document.getElementById('login-overlay').style.display = 'none';
+    }
+
     function toggleZoom(card, event) {
         if(event) event.stopPropagation();
         if (card.classList.contains('fullscreen')) {
@@ -333,6 +378,9 @@
     const db = getDatabase(app);
 
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
+        // التحقق من حماية الواجهة قبل الحفظ
+        if(sessionStorage.getItem("azemaa_session_v1") !== "authenticated") return;
+
         if(!navigator.onLine) {
             alert("⚠️ أنت غير متصل بالإنترنت حالياً!");
             return;
@@ -360,21 +408,23 @@
             btn.innerHTML = "⏳ جاري الحفظ...";
 
             await set(ref(db, 'backups/azemaa_main'), data); 
-            alert("تم الحفظ فى السحابة"); 
+            alert("تم الحفظ فى السحابة بنجاح ✅"); 
             btn.innerHTML = originalText;
         } catch (error) {
-            alert("❌ فشل الحفظ: " + error.message);
+            alert("❌ فشل الحفظ (تأكد من صلاحيات الخادم): " + error.message);
             document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ";
         }
     });
 
     document.getElementById('cloud-load-btn').addEventListener('click', async () => {
+        if(sessionStorage.getItem("azemaa_session_v1") !== "authenticated") return;
+
         if(!navigator.onLine) {
             alert("⚠️ أنت غير متصل بالإنترنت حالياً!");
             return;
         }
 
-        const isConfirmed = confirm("هل أنت متأكد من استرجاع البيانات؟ (سيتم مسح البيانات الحالية)");
+        const isConfirmed = confirm("هل أنت متأكد من استرجاع البيانات؟ (سيتم مسح البيانات الحالية وتعويضها بنسخة السحابة)");
         if (!isConfirmed) return;
 
         try {
@@ -390,10 +440,10 @@
                         localStorage.setItem(k, d[k]); 
                     }
                 }
-                alert("🔄 تم استرجاع البيانات بنجاح! سيتم تحديث النظام...");
+                alert("🔄 تم استرجاع البيانات بنجاح! سيتم إعادة تشغيل النظام الآن...");
                 window.location.reload();
             } else {
-                alert("❓ لم يتم العثور على أي نسخة احتياطية سابقة.");
+                alert("❓ لم يتم العثور على أي نسخة احتياطية سابقة في السحابة.");
                 btn.innerHTML = originalText;
             }
         } catch (error) {
