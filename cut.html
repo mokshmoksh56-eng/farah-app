@@ -3,18 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa proo تقطيع - نسخة المحمول (سحابي)</title>
+    <title>azemaa proo تقطيع - نسخة المحمول السحابية للبيع</title>
     <style>
-        /* إعدادات عامة مرنة للمحمول */
         *, *::before, *::after { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #7f8c8d; padding: 10px; margin: 0; font-size: 15px; }
+        
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #7f8c8d;
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 17px; color: white; font-weight: bold;
+        }
+
         .container { max-width: 1100px; margin: auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         h1 { font-size: 24px; margin-top: 10px; text-align: center; color: #2c3e50; }
         
-        /* حالة الحفظ السحابي */
         #syncStatus { text-align: center; font-size: 12px; color: #27ae60; font-weight: bold; margin-bottom: 10px; height: 15px; }
 
-        /* لوحة التحكم العلوية */
         .sticky-panel { position: sticky; top: 0; background: #fff; padding: 12px; z-index: 1000; border-bottom: 4px solid #000; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 4px; }
         .setup-panel { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
         .input-group { display: flex; flex-direction: column; flex: 1; min-width: 100px; }
@@ -23,14 +27,12 @@
         
         .required-boards input { background-color: #f1c40f; font-weight: bold; color: #000; border: 2px solid #000; }
         
-        /* تنسيق جدول المقاسات وحمايته من التداخل في المحمول */
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; min-width: 550px; }
         th, td { padding: 8px; text-align: center; border-bottom: 1px solid #ddd; }
         th { background: #000; color: white; font-size: 14px; }
         td input { padding: 6px; height: 36px; font-size: 14px; }
         
-        /* الأزرار وتكبير حجمها للمس */
         .btn-calc { background-color: #27ae60; color: white; width: 100%; padding: 14px; border: none; border-radius: 4px; font-size: 18px; cursor: pointer; margin-top: 10px; font-weight: bold; }
         .btn-add { background-color: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; margin-top: 10px; font-size: 15px; width: 100%; font-weight: bold; }
         
@@ -49,16 +51,46 @@
             .action-buttons { flex-direction: column; }
             .sticky-panel { position: relative; }
         }
-
-        @media print {
-            body { background-color: #fff; padding: 0; }
-            .sticky-panel, .btn-add, .action-buttons, #syncStatus, th:last-child, td:last-child { display: none !important; }
-            .container { box-shadow: none; padding: 0; max-width: 100%; }
-            canvas { border: none; }
-        }
     </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const auth = getAuth(app);
+
+        window.currentUid = null;
+        window.fbDB = db;
+        window.fbRef = ref;
+        window.fbSet = set;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                window.loadData();
+            } else {
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
+            }
+        });
+    </script>
 </head>
 <body>
+
+<div id="auth-loader">⏳ جاري تحميل ومزامنة أبعاد الألواح ومخطط التتقطيع...</div>
 
 <div class="container">
     <h1>azemaa proo تقطيع</h1>
@@ -91,9 +123,7 @@
                     <th style="width: 50px;">حذف</th>
                 </tr>
             </thead>
-            <tbody id="piecesBody">
-                <!-- سيتم ملء البيانات سحابياً هنا -->
-            </tbody>
+            <tbody id="piecesBody"></tbody>
         </table>
     </div>
     <button class="btn-add" onclick="addRow()">+ إضافة مقاس جديد</button>
@@ -107,79 +137,36 @@
     <canvas id="boardCanvas"></canvas>
 </div>
 
-<!-- استخدام type="module" لاستيراد أدوات Firebase -->
-<script type="module">
-    // 1. استيراد مكتبات Firebase من الـ CDN
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-
-    // 2. إعدادات Firebase الخاصة بك
-    const firebaseConfig = {
-      apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-      authDomain: "azemaa-proo.firebaseapp.com",
-      databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-      projectId: "azemaa-proo",
-      storageBucket: "azemaa-proo.firebasestorage.app",
-      messagingSenderId: "787350492977",
-      appId: "1:787350492977:web:84061dcf31622fcb07c210",
-      measurementId: "G-R28J7010TH"
-    };
-
-    // 3. تهيئة التطبيق وقاعدة البيانات
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getDatabase(app);
-
-    const syncStatus = document.getElementById('syncStatus');
-
-    // ==========================================
-    // دوال الحفظ والتحميل السحابي
-    // ==========================================
-
+<script>
     let saveTimeout;
+    const syncStatus = document.getElementById('syncStatus');
     
-    // دالة الحفظ السحابي (مؤجلة بثانية واحدة لمنع الضغط على السيرفر)
     window.saveData = function() {
+        if(!window.currentUid) return;
         syncStatus.innerText = "جاري الحفظ...";
-        syncStatus.style.color = "#f39c12"; // لون برتقالي أثناء الحفظ
+        syncStatus.style.color = "#f39c12";
 
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
             const data = {
-                boardType: document.getElementById('boardType').value,
-                boardL: document.getElementById('boardL').value,
-                boardW: document.getElementById('boardW').value,
-                kerf: document.getElementById('kerf').value,
-                pieces: []
+                boardType: document.getElementById('boardType').value, boardL: document.getElementById('boardL').value, boardW: document.getElementById('boardW').value, kerf: document.getElementById('kerf').value, pieces: []
             };
             document.querySelectorAll('#piecesBody tr').forEach(row => {
                 data.pieces.push({
-                    name: row.querySelector('.p-name').value,
-                    len: row.querySelector('.p-len').value,
-                    wid: row.querySelector('.p-wid').value,
-                    qty: row.querySelector('.p-qty').value
+                    name: row.querySelector('.p-name').value, len: row.querySelector('.p-len').value, wid: row.querySelector('.p-wid').value, qty: row.querySelector('.p-qty').value
                 });
             });
 
-            // حفظ في مسار 'currentProject' في قاعدة البيانات
-            set(ref(db, 'currentProject'), data)
-                .then(() => {
-                    syncStatus.innerText = "✔️ تم الحفظ سحابياً بنجاح";
-                    syncStatus.style.color = "#27ae60"; // لون أخضر
-                })
-                .catch((error) => {
-                    console.error("خطأ في الحفظ:", error);
-                    syncStatus.innerText = "❌ خطأ في الاتصال بالسحابة";
-                    syncStatus.style.color = "#e74c3c";
-                });
-        }, 1000); // تأخير ثانية واحدة
+            window.fbSet(window.fbRef(window.fbDB, `backups/cut_projects/${window.currentUid}`), data)
+                .then(() => { syncStatus.innerText = "✔️ تم الحفظ سحابياً بنجاح"; syncStatus.style.color = "#27ae60"; })
+                .catch(() => { syncStatus.innerText = "❌ خطأ في الاتصال بالخادم"; syncStatus.style.color = "#e74c3c"; });
+        }, 1000);
     };
 
-    // دالة تحميل البيانات من السحابة عند فتح التطبيق
     window.loadData = function() {
-        const dbRef = ref(db);
-        get(child(dbRef, `currentProject`)).then((snapshot) => {
+        if(!window.currentUid) return;
+        const dbRef = window.fbRef(window.fbDB);
+        get(child(dbRef, `backups/cut_projects/${window.currentUid}`)).then((snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 document.getElementById('boardType').value = data.boardType || 'wood';
@@ -187,9 +174,7 @@
                 document.getElementById('boardW').value = data.boardW || 122;
                 if(data.kerf) document.getElementById('kerf').value = data.kerf;
 
-                const tbody = document.getElementById('piecesBody');
-                tbody.innerHTML = '';
-                
+                const tbody = document.getElementById('piecesBody'); tbody.innerHTML = '';
                 if(data.pieces && data.pieces.length > 0) {
                     data.pieces.forEach((p, i) => {
                         const tr = document.createElement('tr');
@@ -201,26 +186,11 @@
                         <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>`;
                         tbody.appendChild(tr);
                     });
-                } else {
-                    window.addRow(); // إضافة صف فارغ إذا كانت البيانات فارغة
-                }
-                syncStatus.innerText = "✔️ تم تحميل البيانات السحابية";
-                syncStatus.style.color = "#27ae60";
-            } else {
-                syncStatus.innerText = "لا توجد بيانات سابقة. مشروع جديد.";
-                window.addRow(); // إضافة صف فارغ
-            }
-        }).catch((error) => {
-            console.error("خطأ في جلب البيانات:", error);
-            syncStatus.innerText = "❌ فشل تحميل البيانات السحابية";
-            syncStatus.style.color = "#e74c3c";
-            window.addRow();
-        });
+                } else { window.addRow(); }
+                syncStatus.innerText = "✔️ تم تحميل البيانات السحابية"; syncStatus.style.color = "#27ae60";
+            } else { syncStatus.innerText = "مشروع جديد."; window.addRow(); }
+        }).catch(() => { syncStatus.innerText = "❌ فشل التحميل"; syncStatus.style.color = "#e74c3c"; window.addRow(); });
     };
-
-    // ==========================================
-    // ربط الدوال بواجهة المستخدم
-    // ==========================================
 
     window.updateBoardDimensions = function() {
         const type = document.getElementById('boardType').value;
@@ -230,166 +200,62 @@
     };
 
     window.addRow = function() {
-        const tbody = document.getElementById('piecesBody');
-        const count = tbody.children.length + 1;
-        const tr = document.createElement('tr');
+        const tbody = document.getElementById('piecesBody'); const count = tbody.children.length + 1; const tr = document.createElement('tr');
         tr.innerHTML = `<td class="row-num">${count}</td>
         <td><input type="text" class="p-name" value="قطعة ${count}" oninput="saveData()"></td>
         <td><input type="number" class="p-len" oninput="saveData()"></td>
         <td><input type="number" class="p-wid" oninput="saveData()"></td>
         <td><input type="number" class="p-qty" oninput="saveData()"></td>
         <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>`;
-        tbody.appendChild(tr);
-        window.updateRowNumbers();
-        window.saveData();
+        tbody.appendChild(tr); window.updateRowNumbers(); window.saveData();
     };
 
-    window.deleteRow = function(btn) { 
-        btn.closest('tr').remove(); 
-        window.updateRowNumbers(); 
-        window.saveData(); 
-    };
-
-    window.updateRowNumbers = function() { 
-        document.querySelectorAll('.row-num').forEach((td, i) => td.innerText = i + 1); 
-    };
-
-    // ==========================================
-    // خوارزمية التقطيع والرسم (بدون تغيير)
-    // ==========================================
+    window.deleteRow = function(btn) { btn.closest('tr').remove(); window.updateRowNumbers(); window.saveData(); };
+    window.updateRowNumbers = function() { document.querySelectorAll('.row-num').forEach((td, i) => td.innerText = i + 1); };
 
     class MaxRectsPacker {
-        constructor(width, height, kerf) {
-            this.width = width; this.height = height; this.kerf = kerf;
-            this.usedRects = [];
-            this.freeRects = [{ x: 0, y: 0, w: width, h: height }];
-        }
-        insert(w, h, name) {
-            let bestRect = this.findBestRect(w, h);
-            if (!bestRect) return null;
-            bestRect.name = name;
-            this.splitFreeRects(bestRect);
-            this.cleanFreeRects();
-            this.usedRects.push(bestRect);
-            return bestRect;
-        }
-        findBestRect(w, h) {
-            let bestRect = null; let minShortSideFit = Infinity;
-            const orientations = [{w: w, h: h}, {w: h, h: w}];
-            for (let orbit of orientations) {
-                for (let free of this.freeRects) {
-                    if (free.w >= orbit.w && free.h >= orbit.h) {
-                        let shortSideFit = Math.min(free.w - orbit.w, free.h - orbit.h);
-                        if (shortSideFit < minShortSideFit) {
-                            bestRect = { x: free.x, y: free.y, w: orbit.w, h: orbit.h };
-                            minShortSideFit = shortSideFit;
-                        }
-                    }
-                }
-            }
-            return bestRect;
-        }
-        splitFreeRects(used) {
-            let n = this.freeRects.length; let k = this.kerf;
-            for (let i = 0; i < n; i++) {
-                if (this.intersect(this.freeRects[i], used)) {
-                    let f = this.freeRects.splice(i, 1)[0];
-                    if (used.x > f.x) this.freeRects.push({x: f.x, y: f.y, w: used.x - f.x - k, h: f.h});
-                    if (used.x + used.w < f.x + f.w) this.freeRects.push({x: used.x + used.w + k, y: f.y, w: f.x + f.w - (used.x + used.w) - k, h: f.h});
-                    if (used.y > f.y) this.freeRects.push({x: f.x, y: f.y, w: f.w, h: used.y - f.y - k});
-                    if (used.y + used.h < f.y + f.h) this.freeRects.push({x: f.x, y: used.y + used.h + k, w: f.w, h: f.y + f.h - (used.y + used.h) - k});
-                    i--; n--;
-                }
-            }
-        }
+        constructor(width, height, kerf) { this.width = width; this.height = height; this.kerf = kerf; this.usedRects = []; this.freeRects = [{ x: 0, y: 0, w: width, h: height }]; }
+        insert(w, h, name) { let bestRect = this.findBestRect(w, h); if (!bestRect) return null; bestRect.name = name; this.splitFreeRects(bestRect); this.cleanFreeRects(); this.usedRects.push(bestRect); return bestRect; }
+        findBestRect(w, h) { let bestRect = null; let minShortSideFit = Infinity; const orientations = [{w: w, h: h}, {w: h, h: w}]; for (let orbit of orientations) { for (let free of this.freeRects) { if (free.w >= orbit.w && free.h >= orbit.h) { let shortSideFit = Math.min(free.w - orbit.w, free.h - orbit.h); if (shortSideFit < minShortSideFit) { bestRect = { x: free.x, y: free.y, w: orbit.w, h: orbit.h }; minShortSideFit = shortSideFit; } } } } return bestRect; }
+        splitFreeRects(used) { let n = this.freeRects.length; let k = this.kerf; for (let i = 0; i < n; i++) { if (this.intersect(this.freeRects[i], used)) { let f = this.freeRects.splice(i, 1)[0]; if (used.x > f.x) this.freeRects.push({x: f.x, y: f.y, w: used.x - f.x - k, h: f.h}); if (used.x + used.w < f.x + f.w) this.freeRects.push({x: used.x + used.w + k, y: f.y, w: f.x + f.w - (used.x + used.w) - k, h: f.h}); if (used.y > f.y) this.freeRects.push({x: f.x, y: f.y, w: f.w, h: used.y - f.y - k}); if (used.y + used.h < f.y + f.h) this.freeRects.push({x: f.x, y: used.y + used.h + k, w: f.w, h: f.y + f.h - (used.y + used.h) - k}); i--; n--; } } }
         intersect(a, b) { return !(b.x >= a.x + a.w || b.x + b.w <= a.x || b.y >= a.y + a.h || b.y + b.h <= a.y); }
-        cleanFreeRects() {
-            for (let i = 0; i < this.freeRects.length; i++) {
-                for (let j = i + 1; j < this.freeRects.length; j++) {
-                    if (this.isContained(this.freeRects[i], this.freeRects[j])) { this.freeRects.splice(i, 1); i--; break; }
-                    if (this.isContained(this.freeRects[j], this.freeRects[i])) { this.freeRects.splice(j, 1); j--; }
-                }
-            }
-            this.freeRects = this.freeRects.filter(r => r.w > 0.1 && r.h > 0.1);
-        }
+        cleanFreeRects() { for (let i = 0; i < this.freeRects.length; i++) { for (let j = i + 1; j < this.freeRects.length; j++) { if (this.isContained(this.freeRects[i], this.freeRects[j])) { this.freeRects.splice(i, 1); i--; break; } if (this.isContained(this.freeRects[j], this.freeRects[i])) { this.freeRects.splice(j, 1); j--; } } } this.freeRects = this.freeRects.filter(r => r.w > 0.1 && r.h > 0.1); }
         isContained(a, b) { return a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h; }
     }
 
     window.calculateAndDraw = function() {
-        const bL = parseFloat(document.getElementById('boardL').value);
-        const bW = parseFloat(document.getElementById('boardW').value);
-        const kerf = parseFloat(document.getElementById('kerf').value);
-        let blocks = [];
+        const bL = parseFloat(document.getElementById('boardL').value); const bW = parseFloat(document.getElementById('boardW').value); const kerf = parseFloat(document.getElementById('kerf').value); let blocks = [];
         document.querySelectorAll('#piecesBody tr').forEach((row) => {
-            let name = row.querySelector('.p-name').value;
-            let l = parseFloat(row.querySelector('.p-len').value);
-            let w = parseFloat(row.querySelector('.p-wid').value);
-            let q = parseInt(row.querySelector('.p-qty').value);
+            let name = row.querySelector('.p-name').value; let l = parseFloat(row.querySelector('.p-len').value); let w = parseFloat(row.querySelector('.p-wid').value); let q = parseInt(row.querySelector('.p-qty').value);
             if (l > 0 && w > 0 && q > 0) { for(let i=0; i<q; i++) blocks.push({name: name, w: Math.max(l,w), h: Math.min(l,w)}); }
         });
-
         if(blocks.length === 0) { alert("الرجاء إدخال أبعاد القطع أولاً"); return; }
-
-        blocks.sort((a, b) => (b.w * b.h) - (a.w * a.h));
-        let boards = []; let remaining = [...blocks];
-
+        blocks.sort((a, b) => (b.w * b.h) - (a.w * a.h)); let boards = []; let remaining = [...blocks];
         while (remaining.length > 0) {
-            let packer = new MaxRectsPacker(bL, bW, kerf);
-            let anyPlaced = false;
-            for (let i = 0; i < remaining.length; i++) {
-                let fit = packer.insert(remaining[i].w, remaining[i].h, remaining[i].name);
-                if (fit) { anyPlaced = true; remaining.splice(i, 1); i--; }
-            }
+            let packer = new MaxRectsPacker(bL, bW, kerf); let anyPlaced = false;
+            for (let i = 0; i < remaining.length; i++) { let fit = packer.insert(remaining[i].w, remaining[i].h, remaining[i].name); if (fit) { anyPlaced = true; remaining.splice(i, 1); i--; } }
             if (!anyPlaced) { alert("تنبيه: القطعة '" + remaining[0].name + "' أكبر من مقاس اللوح!"); break; }
             boards.push(packer);
         }
         document.getElementById('totalBoardsNeeded').value = boards.length;
-        document.getElementById('resultStats').innerText = "تم حساب التقطيع بنجاح! عدد الألواح المطلوبة: " + boards.length;
+        document.getElementById('resultStats').innerText = "عدد الألواح المطلوبة: " + boards.length;
         draw(bL, bW, boards);
     };
 
     function draw(boardW, boardH, boards) {
-        const canvas = document.getElementById('boardCanvas'); const ctx = canvas.getContext('2d');
-        const padding = 80; canvas.width = 1100;
-        const scale = (canvas.width - padding * 2) / boardW; const drawH = boardH * scale;
-        canvas.height = (drawH + padding * 2) * boards.length;
-        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+        const canvas = document.getElementById('boardCanvas'); const ctx = canvas.getContext('2d'); const padding = 80; canvas.width = 1100; const scale = (canvas.width - padding * 2) / boardW; const drawH = boardH * scale; canvas.height = (drawH + padding * 2) * boards.length; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         boards.forEach((packer, bIdx) => {
-            let offset = bIdx * (drawH + padding * 2);
-            ctx.fillStyle = "#f5f5f5"; ctx.fillRect(padding, offset + padding, boardW * scale, drawH);
-            ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeRect(padding, offset + padding, boardW * scale, drawH);
-            
-            ctx.fillStyle = "#000"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center";
-            ctx.fillText(boardW + " سم", padding + (boardW * scale) / 2, offset + padding / 2);
-            ctx.save(); ctx.translate(padding/2, offset + padding + drawH/2); ctx.rotate(-Math.PI/2);
-            ctx.fillText(boardH + " سم", 0, 0); ctx.restore();
-
+            let offset = bIdx * (drawH + padding * 2); ctx.fillStyle = "#f5f5f5"; ctx.fillRect(padding, offset + padding, boardW * scale, drawH); ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeRect(padding, offset + padding, boardW * scale, drawH);
+            ctx.fillStyle = "#000"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center"; ctx.fillText(boardW + " سم", padding + (boardW * scale) / 2, offset + padding / 2);
+            ctx.save(); ctx.translate(padding/2, offset + padding + drawH/2); ctx.rotate(-Math.PI/2); ctx.fillText(boardH + " سم", 0, 0); ctx.restore();
             packer.usedRects.forEach(r => {
-                const rx = padding + r.x * scale; const ry = offset + padding + r.y * scale;
-                const rw = r.w * scale; const rh = r.h * scale;
-                ctx.fillStyle = "#f1c40f"; ctx.fillRect(rx, ry, rw, rh);
-                ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rw, rh);
-
-                if (rw > 55 && rh > 55) {
-                    ctx.fillStyle = "#000"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center";
-                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 12);
-                    ctx.font = "bold 20px Arial"; ctx.fillText(r.w + " سم", rx + rw / 2, ry + rh - 10);
-                    ctx.save(); ctx.translate(rx + 25, ry + rh / 2 + 15); ctx.rotate(-Math.PI / 2);
-                    ctx.fillText(r.h + " سم", 0, 0); ctx.restore();
-                } else {
-                    ctx.fillStyle = "#000"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
-                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 + 5);
-                }
+                const rx = padding + r.x * scale; const ry = offset + padding + r.y * scale; const rw = r.w * scale; const rh = r.h * scale; ctx.fillStyle = "#f1c40f"; ctx.fillRect(rx, ry, rw, rh); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rw, rh);
+                if (rw > 55 && rh > 55) { ctx.fillStyle = "#000"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center"; ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 12); ctx.font = "bold 20px Arial"; ctx.fillText(r.w + " سم", rx + rw / 2, ry + rh - 10); ctx.save(); ctx.translate(rx + 25, ry + rh / 2 + 15); ctx.rotate(-Math.PI / 2); ctx.fillText(r.h + " سم", 0, 0); ctx.restore(); } 
+                else { ctx.fillStyle = "#000"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center"; ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 + 5); }
             });
-            ctx.fillStyle = "#000"; ctx.font = "bold 26px Arial"; ctx.textAlign = "right";
-            ctx.fillText("اللوح رقم " + (bIdx + 1), padding + (boardW * scale), offset + padding - 20);
+            ctx.fillStyle = "#000"; ctx.font = "bold 26px Arial"; ctx.textAlign = "right"; ctx.fillText("اللوح رقم " + (bIdx + 1), padding + (boardW * scale), offset + padding - 20);
         });
     }
-
-    // بدء تشغيل استرجاع البيانات السحابية
-    window.loadData();
-
 </script>
 </body>
 </html>
