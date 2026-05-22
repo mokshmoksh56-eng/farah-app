@@ -8,7 +8,6 @@
     <style>
         body { font-family: Arial, sans-serif; background-color: #e9ecef; padding: 0 0 10px 0; margin: 0; color: #333; }
         
-        /* تعديل الهيدر ليحاكي مظهر عروق الخشب الطبيعي مع إضافة أيقونة */
         .app-header { 
             background: radial-gradient(circle at 20% 50%, #6f4e37 0%, #5c3a21 40%, #4a2e1b 100%); 
             color: #ffffff; 
@@ -100,73 +99,189 @@
         <button class="btn btn-add" onclick="addRow()">إضافة صنف</button>
         <button class="btn btn-save-all" onclick="saveAll()">حفظ المقايسة</button>
 
-        <h3>📋 أرشيف المقايسات</h3>
+        <h3>📋 أرشيف المقايسات (سحابي)</h3>
         <input type="text" id="archiveSearchInput" class="search-archive-box" placeholder="بحث في الأرشيف..." oninput="filterArchive()">
-        <div id="archiveList" class="archive-list-container"></div>
+        <div id="archiveList" class="archive-list-container">
+            </div>
     </div>
 
-    <script>
-        function formatNum(n) { return parseFloat(n).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1'); }
-        function getEnglishDateTime() { let n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; }
-        function updateAll() { document.querySelectorAll('.qty').forEach(input => updateRow(input)); }
-        function updateRow(e) {
+    <script type="module">
+        // 1. استيراد خدمات Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, set, get, child, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // 2. إعدادات قاعدة البيانات الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210",
+            measurementId: "G-R28J7010TH"
+        };
+
+        // 3. تهيئة Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // =====================================
+        // دوال المساعدة للواجهة
+        // =====================================
+        window.formatNum = function(n) { return parseFloat(n).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1'); }
+        window.getEnglishDateTime = function() { let n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; }
+
+        window.updateRow = function(e) {
             let r = e.closest('tr');
             let q = parseFloat(r.querySelector('.qty').value) || 0;
             let p = parseFloat(r.querySelector('.price').value) || 0;
             let t = q * p;
-            r.querySelector('.row-total').value = t > 0 ? formatNum(t) : "-";
-            calculateLiveGrandTotal(); saveDefaultItems();
+            r.querySelector('.row-total').value = t > 0 ? window.formatNum(t) : "-";
+            window.calculateLiveGrandTotal(); 
+            window.saveDefaultItems();
         }
-        function addRow(n="", q="", p="") {
+
+        window.addRow = function(n="", q="", p="") {
             let r = document.querySelector("#woodTable tbody").insertRow();
             r.innerHTML = `<td><input type="text" class="item-name" value="${n}" oninput="saveDefaultItems()"></td><td><input type="number" inputmode="numeric" class="qty" value="${q}" oninput="updateRow(this)"></td><td><input type="number" step="any" inputmode="decimal" class="price" value="${p}" oninput="updateRow(this)"></td><td><input type="text" class="row-total en-num" readonly></td><td><button class="btn btn-del" onclick="deleteRow(this)">حذف</button></td>`;
-            updateRow(r.querySelector('.qty'));
+            window.updateRow(r.querySelector('.qty'));
         }
-        function deleteRow(button) {
+
+        window.deleteRow = function(button) {
             if (confirm("هل أنت متأكد من حذف هذا الصنف؟")) {
                 button.closest('tr').remove();
-                calculateLiveGrandTotal();
-                saveDefaultItems();
+                window.calculateLiveGrandTotal();
+                window.saveDefaultItems();
             }
         }
-        function saveDefaultItems() { let rows = []; document.querySelectorAll('#woodTable tbody tr').forEach(r => rows.push({name: r.querySelector('.item-name').value, price: r.querySelector('.price').value})); localStorage.setItem('azemaa_pro_wood_default_items', JSON.stringify(rows)); }
-        function loadDefaultItems() { let s = localStorage.getItem('azemaa_pro_wood_default_items'); if(s) { JSON.parse(s).forEach(r => addRow(r.name, "", r.price)); } else { addRow(); } }
-        function calculateLiveGrandTotal() { let t = 0; document.querySelectorAll('.row-total').forEach(r => t += parseFloat(r.value) || 0); document.getElementById('liveGrandTotal').innerText = formatNum(t); return formatNum(t); }
-        function saveAll() {
-            let name = document.getElementById('custName').value;
-            if(!name) return alert("اكتب اسم الزبون");
-            let items = []; document.querySelectorAll('#woodTable tbody tr').forEach(r => { if(r.querySelector('.item-name').value) items.push({name: r.querySelector('.item-name').value, qty: r.querySelector('.qty').value, price: r.querySelector('.price').value})});
-            localStorage.setItem("invoice_"+name, JSON.stringify({code: document.getElementById('custCode').value, date: getEnglishDateTime(), grandTotal: calculateLiveGrandTotal(), items: items}));
-            alert("تم الحفظ!"); document.getElementById('custName').value=""; document.getElementById('custCode').value=""; document.querySelectorAll('.qty').forEach(i=>i.value=""); calculateLiveGrandTotal(); renderArchive();
+
+        window.calculateLiveGrandTotal = function() { 
+            let t = 0; 
+            document.querySelectorAll('.row-total').forEach(r => t += parseFloat(r.value) || 0); 
+            document.getElementById('liveGrandTotal').innerText = window.formatNum(t); 
+            return window.formatNum(t); 
         }
-        function renderArchive() {
-            let list = document.getElementById("archiveList"); list.innerHTML = "";
-            for(let i=0; i<localStorage.length; i++) {
-                let key = localStorage.key(i);
-                if(key.startsWith("invoice_")) {
-                    let d = JSON.parse(localStorage.getItem(key)); let n = key.replace("invoice_", "");
-                    let itemsHtml = d.items.map(it => `<div class="archive-items-list"><strong>${it.name}</strong> <span class="archive-badge">${it.qty}</span></div>`).join('');
-                    let div = document.createElement("div"); div.className = "archive-item"; div.setAttribute("data-name", n.toLowerCase()); 
-                    div.innerHTML = `<button class="accordion-btn" onclick="this.nextElementSibling.style.display=(this.nextElementSibling.style.display=='block'?'none':'block')"><strong>${n}</strong><span class="en-num">${d.grandTotal} EGP</span></button><div class="accordion-content">${itemsHtml}<div class="action-container"><button class="btn btn-edit" onclick="loadArchiveToTable('${n}')">تعديل</button><button class="btn btn-del" onclick="deleteArchiveItem('${key}')">حذف</button></div></div>`;
-                    list.appendChild(div);
+
+        // حفظ الأسماء الافتراضية محلياً لتسريع الإدخال
+        window.saveDefaultItems = function() { let rows = []; document.querySelectorAll('#woodTable tbody tr').forEach(r => rows.push({name: r.querySelector('.item-name').value, price: r.querySelector('.price').value})); localStorage.setItem('azemaa_pro_wood_default_items', JSON.stringify(rows)); }
+        window.loadDefaultItems = function() { let s = localStorage.getItem('azemaa_pro_wood_default_items'); if(s) { JSON.parse(s).forEach(r => window.addRow(r.name, "", r.price)); } else { window.addRow(); } }
+
+        window.filterArchive = function() { 
+            let q = document.getElementById("archiveSearchInput").value.toLowerCase(); 
+            document.querySelectorAll(".archive-item").forEach(i => {
+                i.style.display = i.getAttribute("data-name").includes(q) ? "" : "none";
+            }); 
+        }
+
+        // =====================================
+        // دوال Firebase السحابية
+        // =====================================
+
+        window.saveAll = async function() {
+            let name = document.getElementById('custName').value.trim();
+            if(!name) return alert("اكتب اسم الزبون");
+            
+            let items = []; 
+            document.querySelectorAll('#woodTable tbody tr').forEach(r => { 
+                let itemName = r.querySelector('.item-name').value;
+                if(itemName) {
+                    items.push({
+                        name: itemName, 
+                        qty: r.querySelector('.qty').value || 0, 
+                        price: r.querySelector('.price').value || 0
+                    });
+                }
+            });
+
+            if(items.length === 0) return alert("لا يوجد أصناف لحفظها!");
+
+            const invoiceData = {
+                code: document.getElementById('custCode').value, 
+                date: window.getEnglishDateTime(), 
+                grandTotal: window.calculateLiveGrandTotal(), 
+                items: items
+            };
+
+            try {
+                // حفظ البيانات في السحابة
+                await set(ref(db, 'invoices_wood/' + name), invoiceData);
+                alert("تم حفظ المقايسة بنجاح!"); 
+                document.getElementById('custName').value=""; 
+                document.getElementById('custCode').value=""; 
+                document.querySelectorAll('.qty').forEach(i=>i.value=""); 
+                window.calculateLiveGrandTotal(); 
+            } catch (error) {
+                alert("حدث خطأ أثناء الحفظ. تأكد من اتصالك بالإنترنت.");
+                console.error(error);
+            }
+        }
+
+        window.loadArchiveToTable = async function(name) { 
+            if(!name) return alert("اكتب اسم الزبون للبحث عنه");
+            
+            try {
+                const snapshot = await get(child(ref(db), `invoices_wood/${name}`));
+                if (snapshot.exists()) {
+                    let d = snapshot.val(); 
+                    document.getElementById('custName').value = name; 
+                    document.getElementById('custCode').value = d.code || ""; 
+                    document.querySelector("#woodTable tbody").innerHTML = ""; 
+                    
+                    if(d.items) {
+                        d.items.forEach(i => window.addRow(i.name, i.qty, i.price)); 
+                    }
+                    window.calculateLiveGrandTotal(); 
+                    window.scrollTo(0,0); 
+                } else {
+                    alert("هذا الاسم غير موجود في الأرشيف");
+                }
+            } catch (error) {
+                alert("حدث خطأ في الاتصال بقاعدة البيانات.");
+                console.error(error);
+            }
+        }
+
+        window.deleteArchiveItem = async function(name) {
+            if (confirm(`هل أنت متأكد من حذف مقايسة الزبون "${name}" نهائياً من قاعدة البيانات؟`)) {
+                try {
+                    await remove(ref(db, `invoices_wood/${name}`));
+                    // التحديث سيتم تلقائياً بفضل onValue
+                } catch (error) {
+                    alert("حدث خطأ أثناء الحذف.");
+                    console.error(error);
                 }
             }
         }
-        function deleteArchiveItem(key) {
-            let customerName = key.replace("invoice_", "");
-            if (confirm(`هل أنت متأكد من حذف مقايسة الزبون "${customerName}" نهائياً؟`)) {
-                localStorage.removeItem(key);
-                renderArchive();
+
+        // مراقب (Listener) لجلب بيانات الأرشيف تلقائياً
+        const invoicesRef = ref(db, 'invoices_wood');
+        onValue(invoicesRef, (snapshot) => {
+            let list = document.getElementById("archiveList"); 
+            list.innerHTML = "";
+            
+            if (snapshot.exists()) {
+                snapshot.forEach((childSnapshot) => {
+                    let customerName = childSnapshot.key;
+                    let d = childSnapshot.val();
+                    
+                    let itemsHtml = d.items ? d.items.map(it => `<div class="archive-items-list"><strong>${it.name}</strong> <span class="archive-badge">${it.qty}</span></div>`).join('') : "";
+                    
+                    let div = document.createElement("div"); 
+                    div.className = "archive-item"; 
+                    div.setAttribute("data-name", customerName.toLowerCase()); 
+                    div.innerHTML = `<button class="accordion-btn" onclick="this.nextElementSibling.style.display=(this.nextElementSibling.style.display=='block'?'none':'block')"><strong>${customerName}</strong><span class="en-num">${d.grandTotal} EGP</span></button><div class="accordion-content">${itemsHtml}<div class="action-container"><button class="btn btn-edit" onclick="loadArchiveToTable('${customerName}')">تعديل</button><button class="btn btn-del" onclick="deleteArchiveItem('${customerName}')">حذف</button></div></div>`;
+                    
+                    list.appendChild(div);
+                });
+            } else {
+                list.innerHTML = "<p style='text-align:center; padding:10px;'>لا يوجد مقايسات محفوظة حتى الآن.</p>";
             }
-        }
-        function filterArchive() { let q = document.getElementById("archiveSearchInput").value.toLowerCase(); document.querySelectorAll(".archive-item").forEach(i => i.style.display = i.getAttribute("data-name").includes(q) ? "" : "none"); }
-        function loadArchiveToTable(n) { 
-            if(!n) return alert("اكتب اسم الزبون للبحث عنه");
-            let data = localStorage.getItem("invoice_"+n);
-            if(!data) return alert("هذا الاسم غير موجود في الأرشيف");
-            let d = JSON.parse(data); document.getElementById('custName').value=n; document.getElementById('custCode').value=d.code; document.querySelector("#woodTable tbody").innerHTML=""; d.items.forEach(i=>addRow(i.name, i.qty, i.price)); calculateLiveGrandTotal(); window.scrollTo(0,0); 
-        }
-        loadDefaultItems(); renderArchive();
+        });
+
+        // تهيئة مبدئية للصفوف
+        window.loadDefaultItems();
+
     </script>
 </body>
 </html>
