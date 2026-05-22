@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>azemaa proo تقطيع - نسخة المحمول</title>
+    <title>azemaa proo تقطيع - نسخة المحمول (سحابي)</title>
     <style>
         /* إعدادات عامة مرنة للمحمول */
         *, *::before, *::after { box-sizing: border-box; }
@@ -11,6 +11,9 @@
         .container { max-width: 1100px; margin: auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         h1 { font-size: 24px; margin-top: 10px; text-align: center; color: #2c3e50; }
         
+        /* حالة الحفظ السحابي */
+        #syncStatus { text-align: center; font-size: 12px; color: #27ae60; font-weight: bold; margin-bottom: 10px; height: 15px; }
+
         /* لوحة التحكم العلوية */
         .sticky-panel { position: sticky; top: 0; background: #fff; padding: 12px; z-index: 1000; border-bottom: 4px solid #000; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 4px; }
         .setup-panel { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
@@ -22,7 +25,7 @@
         
         /* تنسيق جدول المقاسات وحمايته من التداخل في المحمول */
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px; }
-        table { width: 100%; border-collapse: collapse; min-width: 550px; } /* يضمن عدم انضغاط الحقول */
+        table { width: 100%; border-collapse: collapse; min-width: 550px; }
         th, td { padding: 8px; text-align: center; border-bottom: 1px solid #ddd; }
         th { background: #000; color: white; font-size: 14px; }
         td input { padding: 6px; height: 36px; font-size: 14px; }
@@ -33,25 +36,23 @@
         
         .action-buttons { display: flex; margin-top: 15px; gap: 10px; }
         .btn-print { background-color: #34495e; color: white; border: none; padding: 14px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
-        .btn-back-menu { background-color: #2f3640; color: white; border: none; padding: 14px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; text-decoration: none; text-align: center; width: 100%; }
+        .btn-back-menu { background-color: #2f3640; color: white; border: none; padding: 14px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; text-decoration: none; text-align: center; width: 100%; display: block; }
         
         canvas { display: block; width: 100%; margin-top: 20px; border: 2px solid #000; background: #fff; }
         .results { text-align: center; margin-top: 15px; font-weight: bold; font-size: 18px; color: #000; background: #f9f9f9; padding: 10px; border-radius: 4px; }
 
-        /* شاشات الهواتف (أصغر من 600 بكسل) */
         @media (max-width: 600px) {
             body { padding: 5px; }
             .container { padding: 10px; }
             h1 { font-size: 20px; }
             .setup-panel { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
             .action-buttons { flex-direction: column; }
-            .sticky-panel { position: relative; } /* إلغاء التثبيت في المحمول لتوفير مساحة الرؤية */
+            .sticky-panel { position: relative; }
         }
 
-        /* إعدادات خاصة بالطباعة */
         @media print {
             body { background-color: #fff; padding: 0; }
-            .sticky-panel, .btn-add, .action-buttons, th:last-child, td:last-child { display: none !important; }
+            .sticky-panel, .btn-add, .action-buttons, #syncStatus, th:last-child, td:last-child { display: none !important; }
             .container { box-shadow: none; padding: 0; max-width: 100%; }
             canvas { border: none; }
         }
@@ -61,6 +62,7 @@
 
 <div class="container">
     <h1>azemaa proo تقطيع</h1>
+    <div id="syncStatus">جاري الاتصال بالسحابة...</div>
     
     <div class="sticky-panel">
         <div class="setup-panel">
@@ -90,14 +92,7 @@
                 </tr>
             </thead>
             <tbody id="piecesBody">
-                <tr>
-                    <td class="row-num">1</td>
-                    <td><input type="text" class="p-name" value="قطعة 1" oninput="saveData()"></td>
-                    <td><input type="number" class="p-len" value="" oninput="saveData()"></td>
-                    <td><input type="number" class="p-wid" value="" oninput="saveData()"></td>
-                    <td><input type="number" class="p-qty" value="" oninput="saveData()"></td>
-                    <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>
-                </tr>
+                <!-- سيتم ملء البيانات سحابياً هنا -->
             </tbody>
         </table>
     </div>
@@ -112,17 +107,129 @@
     <canvas id="boardCanvas"></canvas>
 </div>
 
-<script>
-    window.onload = function() { loadData(); };
+<!-- استخدام type="module" لاستيراد أدوات Firebase -->
+<script type="module">
+    // 1. استيراد مكتبات Firebase من الـ CDN
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-    function updateBoardDimensions() {
+    // 2. إعدادات Firebase الخاصة بك
+    const firebaseConfig = {
+      apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+      authDomain: "azemaa-proo.firebaseapp.com",
+      databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+      projectId: "azemaa-proo",
+      storageBucket: "azemaa-proo.firebasestorage.app",
+      messagingSenderId: "787350492977",
+      appId: "1:787350492977:web:84061dcf31622fcb07c210",
+      measurementId: "G-R28J7010TH"
+    };
+
+    // 3. تهيئة التطبيق وقاعدة البيانات
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getDatabase(app);
+
+    const syncStatus = document.getElementById('syncStatus');
+
+    // ==========================================
+    // دوال الحفظ والتحميل السحابي
+    // ==========================================
+
+    let saveTimeout;
+    
+    // دالة الحفظ السحابي (مؤجلة بثانية واحدة لمنع الضغط على السيرفر)
+    window.saveData = function() {
+        syncStatus.innerText = "جاري الحفظ...";
+        syncStatus.style.color = "#f39c12"; // لون برتقالي أثناء الحفظ
+
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            const data = {
+                boardType: document.getElementById('boardType').value,
+                boardL: document.getElementById('boardL').value,
+                boardW: document.getElementById('boardW').value,
+                kerf: document.getElementById('kerf').value,
+                pieces: []
+            };
+            document.querySelectorAll('#piecesBody tr').forEach(row => {
+                data.pieces.push({
+                    name: row.querySelector('.p-name').value,
+                    len: row.querySelector('.p-len').value,
+                    wid: row.querySelector('.p-wid').value,
+                    qty: row.querySelector('.p-qty').value
+                });
+            });
+
+            // حفظ في مسار 'currentProject' في قاعدة البيانات
+            set(ref(db, 'currentProject'), data)
+                .then(() => {
+                    syncStatus.innerText = "✔️ تم الحفظ سحابياً بنجاح";
+                    syncStatus.style.color = "#27ae60"; // لون أخضر
+                })
+                .catch((error) => {
+                    console.error("خطأ في الحفظ:", error);
+                    syncStatus.innerText = "❌ خطأ في الاتصال بالسحابة";
+                    syncStatus.style.color = "#e74c3c";
+                });
+        }, 1000); // تأخير ثانية واحدة
+    };
+
+    // دالة تحميل البيانات من السحابة عند فتح التطبيق
+    window.loadData = function() {
+        const dbRef = ref(db);
+        get(child(dbRef, `currentProject`)).then((snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                document.getElementById('boardType').value = data.boardType || 'wood';
+                document.getElementById('boardL').value = data.boardL || 244;
+                document.getElementById('boardW').value = data.boardW || 122;
+                if(data.kerf) document.getElementById('kerf').value = data.kerf;
+
+                const tbody = document.getElementById('piecesBody');
+                tbody.innerHTML = '';
+                
+                if(data.pieces && data.pieces.length > 0) {
+                    data.pieces.forEach((p, i) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td class="row-num">${i+1}</td>
+                        <td><input type="text" class="p-name" value="${p.name}" oninput="saveData()"></td>
+                        <td><input type="number" class="p-len" value="${p.len}" oninput="saveData()"></td>
+                        <td><input type="number" class="p-wid" value="${p.wid}" oninput="saveData()"></td>
+                        <td><input type="number" class="p-qty" value="${p.qty}" oninput="saveData()"></td>
+                        <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>`;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    window.addRow(); // إضافة صف فارغ إذا كانت البيانات فارغة
+                }
+                syncStatus.innerText = "✔️ تم تحميل البيانات السحابية";
+                syncStatus.style.color = "#27ae60";
+            } else {
+                syncStatus.innerText = "لا توجد بيانات سابقة. مشروع جديد.";
+                window.addRow(); // إضافة صف فارغ
+            }
+        }).catch((error) => {
+            console.error("خطأ في جلب البيانات:", error);
+            syncStatus.innerText = "❌ فشل تحميل البيانات السحابية";
+            syncStatus.style.color = "#e74c3c";
+            window.addRow();
+        });
+    };
+
+    // ==========================================
+    // ربط الدوال بواجهة المستخدم
+    // ==========================================
+
+    window.updateBoardDimensions = function() {
         const type = document.getElementById('boardType').value;
         if (type === 'fiber') { document.getElementById('boardL').value = 280; document.getElementById('boardW').value = 130; }
         else { document.getElementById('boardL').value = 244; document.getElementById('boardW').value = 122; }
-        saveData();
-    }
+        window.saveData();
+    };
 
-    function addRow() {
+    window.addRow = function() {
         const tbody = document.getElementById('piecesBody');
         const count = tbody.children.length + 1;
         const tr = document.createElement('tr');
@@ -133,54 +240,23 @@
         <td><input type="number" class="p-qty" oninput="saveData()"></td>
         <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>`;
         tbody.appendChild(tr);
-        updateRowNumbers();
-        saveData();
-    }
+        window.updateRowNumbers();
+        window.saveData();
+    };
 
-    function deleteRow(btn) { btn.closest('tr').remove(); updateRowNumbers(); saveData(); }
-    function updateRowNumbers() { document.querySelectorAll('.row-num').forEach((td, i) => td.innerText = i + 1); }
+    window.deleteRow = function(btn) { 
+        btn.closest('tr').remove(); 
+        window.updateRowNumbers(); 
+        window.saveData(); 
+    };
 
-    function saveData() {
-        const data = {
-            boardType: document.getElementById('boardType').value,
-            boardL: document.getElementById('boardL').value,
-            boardW: document.getElementById('boardW').value,
-            kerf: document.getElementById('kerf').value,
-            pieces: []
-        };
-        document.querySelectorAll('#piecesBody tr').forEach(row => {
-            data.pieces.push({
-                name: row.querySelector('.p-name').value,
-                len: row.querySelector('.p-len').value,
-                wid: row.querySelector('.p-wid').value,
-                qty: row.querySelector('.p-qty').value
-            });
-        });
-        localStorage.setItem('cutTableData', JSON.stringify(data));
-    }
+    window.updateRowNumbers = function() { 
+        document.querySelectorAll('.row-num').forEach((td, i) => td.innerText = i + 1); 
+    };
 
-    function loadData() {
-        const saved = localStorage.getItem('cutTableData');
-        if (!saved) return;
-        const data = JSON.parse(saved);
-        document.getElementById('boardType').value = data.boardType;
-        document.getElementById('boardL').value = data.boardL;
-        document.getElementById('boardW').value = data.boardW;
-        if(data.kerf) document.getElementById('kerf').value = data.kerf;
-
-        const tbody = document.getElementById('piecesBody');
-        tbody.innerHTML = '';
-        data.pieces.forEach((p, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="row-num">${i+1}</td>
-            <td><input type="text" class="p-name" value="${p.name}" oninput="saveData()"></td>
-            <td><input type="number" class="p-len" value="${p.len}" oninput="saveData()"></td>
-            <td><input type="number" class="p-wid" value="${p.wid}" oninput="saveData()"></td>
-            <td><input type="number" class="p-qty" value="${p.qty}" oninput="saveData()"></td>
-            <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>`;
-            tbody.appendChild(tr);
-        });
-    }
+    // ==========================================
+    // خوارزمية التقطيع والرسم (بدون تغيير)
+    // ==========================================
 
     class MaxRectsPacker {
         constructor(width, height, kerf) {
@@ -239,7 +315,7 @@
         isContained(a, b) { return a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h; }
     }
 
-    function calculateAndDraw() {
+    window.calculateAndDraw = function() {
         const bL = parseFloat(document.getElementById('boardL').value);
         const bW = parseFloat(document.getElementById('boardW').value);
         const kerf = parseFloat(document.getElementById('kerf').value);
@@ -251,6 +327,8 @@
             let q = parseInt(row.querySelector('.p-qty').value);
             if (l > 0 && w > 0 && q > 0) { for(let i=0; i<q; i++) blocks.push({name: name, w: Math.max(l,w), h: Math.min(l,w)}); }
         });
+
+        if(blocks.length === 0) { alert("الرجاء إدخال أبعاد القطع أولاً"); return; }
 
         blocks.sort((a, b) => (b.w * b.h) - (a.w * a.h));
         let boards = []; let remaining = [...blocks];
@@ -268,7 +346,7 @@
         document.getElementById('totalBoardsNeeded').value = boards.length;
         document.getElementById('resultStats').innerText = "تم حساب التقطيع بنجاح! عدد الألواح المطلوبة: " + boards.length;
         draw(bL, bW, boards);
-    }
+    };
 
     function draw(boardW, boardH, boards) {
         const canvas = document.getElementById('boardCanvas'); const ctx = canvas.getContext('2d');
@@ -308,6 +386,10 @@
             ctx.fillText("اللوح رقم " + (bIdx + 1), padding + (boardW * scale), offset + padding - 20);
         });
     }
+
+    // بدء تشغيل استرجاع البيانات السحابية
+    window.loadData();
+
 </script>
 </body>
 </html>
