@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام التسليمات السحابي - AZEMAA PRO v10</title>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics-compat.js"></script>
     
     <style>
         :root { 
@@ -53,7 +56,6 @@
             font-size: 26px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             z-index: 9999; animation: bounce-float 2s infinite alternate;
-            display: none;
         }
         .floating-badge {
             position: absolute; top: -5px; right: -5px;
@@ -74,8 +76,14 @@
         .name-input:focus { background: rgba(52, 152, 219, 0.2); outline: none; }
         #sync-status { font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; }
 
+        /* 📐 إعدادات دقيقة لالتصاق التاريخ بالخط الرأسي تماماً وبدون أي مسافات */
         .col-date { width: 140px; } 
-        .cell-date-container { padding-right: 0px !important; padding-left: 0px !important; text-align: center; white-space: nowrap; }
+        .cell-date-container { 
+            padding-right: 0px !important;  
+            padding-left: 0px !important;   
+            text-align: center;
+            white-space: nowrap; 
+        }
         .col-client { width: 25%; min-width: 110px; max-width: 150px; }
         .col-status { width: 70px; }
 
@@ -84,41 +92,13 @@
             th { top: 55px; }
         }
     </style>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-            authDomain: "azemaa-proo.firebaseapp.com",
-            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-            projectId: "azemaa-proo",
-            storageBucket: "azemaa-proo.firebasestorage.app",
-            messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        window.fbDB = db;
-        window.fbRef = ref;
-        window.fbUpdate = update;
-        window.fbOnValue = onValue;
-
-        // تحميل البيانات فوراً بدون انتظار تسجيل دخول
-        window.onload = () => {
-            loadData();
-        };
-    </script>
 </head>
 <body>
 
 <header>
     <div class="nav-container">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <h2 style="margin:0; font-size: 18px;">📦 جدول التسليمات</h2>
+            <h2 style="margin:0; font-size: 18px;">📦 AZEMAA PRO v10</h2>
             <span id="sync-status">🔄 جاري المزامنة...</span>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
@@ -141,12 +121,12 @@
     </select>
 
     <div class="stats-badge">
-        <span>⏳ معلق: <b id="stat-pending">0</b></span> | 
-        <span>✅ تم: <b id="stat-done">0</b></span>
+        <span>⏳ معلق بالسنة: <b id="stat-pending">0</b></span> | 
+        <span>✅ تم بالسنة: <b id="stat-done">0</b></span>
     </div>
 </div>
 
-<button class="floating-overdue-btn" id="floatingOverdueBtn" onclick="scrollToNextOverdue()">
+<button class="floating-overdue-btn" id="floatingOverdueBtn" onclick="scrollToNextOverdue()" style="display: none;">
     🚨 <span class="floating-badge" id="floatingOverdueCount">0</span>
 </button>
 
@@ -165,6 +145,21 @@
 </div>
 
 <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210",
+        measurementId: "G-R28J7010TH"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    if(typeof firebase.analytics === 'function') firebase.analytics();
+
     const daysOfWeek = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
     const monthsAr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     
@@ -195,6 +190,7 @@
         let indexCounter = 0;
 
         for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
+            
             const monthHeader = document.createElement('tr');
             monthHeader.className = 'month-header-row';
             monthHeader.innerHTML = `<td colspan="4">🌟 شهر ${monthsAr[monthIdx]} (${selectedYear}) 🌟</td>`;
@@ -242,10 +238,8 @@
     }
 
     function save(id, field, val) {
-        if(!window.fbDB) return;
-        document.getElementById('sync-status').innerText = "⚡ جاري الحفظ...";
-        
-        window.fbUpdate(window.fbRef(window.fbDB, `deliveries/${id}`), { [field]: val }).then(() => {
+        document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
+        db.ref('azemaa_v5/deliveries/' + id).update({ [field]: val }).then(() => {
             document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
             updateRowStyle(id);
             updateFloatingBadge();
@@ -253,9 +247,7 @@
     }
 
     function loadData() {
-        if(!window.fbDB) return;
-        
-        window.fbOnValue(window.fbRef(window.fbDB, `deliveries`), snap => {
+        db.ref('azemaa_v5/deliveries').on('value', snap => {
             globalData = snap.val() || {};
             applyDataToDOM();
             document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
@@ -272,14 +264,18 @@
             
             if(c1 && activeElId !== id+'-c1') { c1.value = globalData[id].c1 || ''; autoGrow(c1); }
             if(c2 && activeElId !== id+'-c2') { c2.value = globalData[id].c2 || ''; autoGrow(c2); }
-            if(s) { s.value = globalData[id].s || 'pending'; }
+            if(s) {
+                s.value = globalData[id].s || 'pending';
+            }
             updateRowStyle(id);
         }
         
         const allSelects = document.querySelectorAll('#tableBody select');
         allSelects.forEach(s => {
             const id = s.id.replace('-s', '');
-            if (!globalData[id]) { updateRowStyle(id); }
+            if (!globalData[id]) {
+                updateRowStyle(id);
+            }
         });
 
         filterTable();
@@ -296,6 +292,7 @@
             const isPast = tr.getAttribute('data-past') === 'true';
             const badge = document.getElementById(id+'-overdue');
             const status = el.value;
+
             const hasNames = c1.value.trim() !== "" || c2.value.trim() !== "";
 
             tr.classList.remove('row-done', 'row-overdue');
@@ -329,12 +326,16 @@
         const overdueRows = document.querySelectorAll('.row-overdue');
         if(overdueRows.length === 0) return;
         
-        if(currentOverdueTrackIndex >= overdueRows.length) { currentOverdueTrackIndex = 0; }
+        if(currentOverdueTrackIndex >= overdueRows.length) {
+            currentOverdueTrackIndex = 0;
+        }
+        
         overdueRows[currentOverdueTrackIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
         
         const tr = overdueRows[currentOverdueTrackIndex];
         tr.style.outline = "4px solid #f1c40f";
         setTimeout(() => { tr.style.outline = "none"; }, 1500);
+
         currentOverdueTrackIndex++;
     }
 
@@ -352,8 +353,11 @@
             const matchesSearch = c1Val.includes(query) || c2Val.includes(query);
             const matchesFilter = filter === 'all' || status === filter;
 
-            if(matchesSearch && matchesFilter) { row.style.display = ''; } 
-            else { row.style.display = 'none'; }
+            if(matchesSearch && matchesFilter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         });
     }
 
@@ -418,6 +422,7 @@
     if(localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     initSelectors();
     renderWholeYear();
+    loadData();
 </script>
 </body>
 </html>
