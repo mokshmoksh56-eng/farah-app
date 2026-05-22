@@ -29,7 +29,7 @@
             -webkit-tap-highlight-color: transparent; 
         }
         
-        /* واجهة تسجيل الدخول والربط السحابي */
+        /* شاشة تسجيل الدخول وحماية المشتركين */
         #login-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg-main); z-index: 100000; display: flex;
@@ -145,11 +145,11 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h3>🔐 سحابة إدارة azemaa pro</h3>
-        <p style="font-size: 13px; color: #7f8c8d;">سجل دخول بحساب العميل لتفعيل المزامنة</p>
+        <h3>🔐 لوحة تفعيل azemaa pro</h3>
+        <p style="font-size: 13px; color: #7f8c8d;">سجل دخول بحساب العميل لتنشيط السحابة</p>
         <input type="email" id="sys-email" placeholder="البريد الإلكتروني للعميل">
         <input type="password" id="sys-password" placeholder="كلمة المرور السحابية">
-        <button id="login-btn">تفعيل النظام والمزامنة</button>
+        <button id="login-btn">تفعيل النظام الآمن</button>
     </div>
 </div>
 
@@ -327,7 +327,9 @@
     function toggleHolidaysDropdown(event) {
         if(event) event.stopPropagation();
         const drop = document.getElementById('holidaysDropdown');
+        
         drop.classList.toggle('show');
+        
         if(drop.classList.contains('show')) {
             drop.innerHTML = holidays.map(h => `<div class="holiday-item"><span>${h.name}</span><span>${new Date(h.date).toLocaleDateString('ar-EG')}</span></div>`).join('');
         }
@@ -360,18 +362,16 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // مراقبة حالة جلسة المشتري وربط وتحديث الـ iframes تلقائياً عند تغيير الحساب
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('login-overlay').style.display = 'none';
-            // إعادة تحميل الـ iframes لتكتسب الـ Token الأمني الجديد من المتصفح
+            // إعادة تنشيط الـ iframes وإمدادها بـ Token الجلسة البرمجي الجديد
             document.querySelectorAll('iframe').forEach(f => f.src = f.src);
         } else {
             document.getElementById('login-overlay').style.display = 'flex';
         }
     });
 
-    // تنفيذ تسجيل الدخول المشفر
     document.getElementById('login-btn').addEventListener('click', async () => {
         const email = document.getElementById('sys-email').value;
         const password = document.getElementById('sys-password').value;
@@ -383,20 +383,19 @@
         }
 
         try {
-            loginBtn.innerText = "⏳ جاري التحقق والربط...";
+            loginBtn.innerText = "⏳ جاري تفعيل المزامنة...";
             loginBtn.disabled = true;
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
-            alert("❌ خطأ في التفعيل: بيانات حساب العميل غير صحيحة.");
+            alert("❌ خطأ في التفعيل: بيانات حساب العميل غير مطابقة للسيرفر.");
         } finally {
             loginBtn.innerText = "تفعيل النظام والمزامنة";
             loginBtn.disabled = false;
         }
     });
 
-    // تسجيل الخروج
     document.getElementById('logout-btn').addEventListener('click', () => {
-        if(confirm("هل تريد تسجيل الخروج من هذا الجهاز وقفل المنظومة؟")) {
+        if(confirm("هل تريد تسجيل الخروج وقفل المنظومة؟")) {
             signOut(auth).then(() => {
                 localStorage.clear();
                 window.location.reload();
@@ -404,10 +403,9 @@
         }
     });
 
-    // بقاء أزرار الحفظ الماستر لنسخ الـ localStorage احتياطياً
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
         if(!auth.currentUser) return;
-        if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت حالياً!"); return; }
+        if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت!"); return; }
 
         let data = {}; let hasData = false;
         for (let i = 0; i < localStorage.length; i++) { 
@@ -419,7 +417,7 @@
         try {
             document.getElementById('cloud-save-btn').innerHTML = "⏳ جاري الحفظ...";
             await set(ref(db, `backups/users/${auth.currentUser.uid}`), data); 
-            alert("تم الحفظ فى السحابة بنجاح ✅"); 
+            alert("تم حفظ النسخة الاحتياطية الكلية بنجاح ✅"); 
         } catch (error) {
             alert("❌ فشل الحفظ: " + error.message);
         } finally {
@@ -430,18 +428,18 @@
     document.getElementById('cloud-load-btn').addEventListener('click', async () => {
         if(!auth.currentUser) return;
         if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت حالياً!"); return; }
-        if (!confirm("هل أنت متأكد من استرجاع البيانات الكلية؟")) return;
+        if (!confirm("هل تريد استرجاع نسخة الـ localStorage الاحتياطية؟")) return;
 
         try {
-            document.getElementById('cloud-load-btn').innerHTML = "⏳ استرجاع...";
+            document.getElementById('cloud-load-btn').innerHTML = "⏳ جاري التحميل...";
             const snapshot = await get(child(ref(db), `backups/users/${auth.currentUser.uid}`));
             if (snapshot.exists()) { 
                 const d = snapshot.val(); 
                 for (let k in d) { localStorage.setItem(k, d[k]); }
-                alert("🔄 تم استرجاع البيانات بنجاح!");
+                alert("🔄 تم استيراد البيانات الكلية وجاري تحديث اللوحة...");
                 window.location.reload();
             } else {
-                alert("❓ لم يتم العثور على نسخة احتياطية كبرى لهذا المستخدم.");
+                alert("❓ لم يتم العثور على أي نسخة كبرى مخزنة.");
             }
         } catch (error) {
             alert("❌ فشل الاسترجاع: " + error.message);
