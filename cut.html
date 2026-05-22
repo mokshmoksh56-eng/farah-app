@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>azemaa proo تقطيع</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #7f8c8d; padding: 20px; margin: 0; }
+        .container { max-width: 1100px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .sticky-panel { position: sticky; top: 0; background: #fff; padding: 15px; z-index: 1000; border-bottom: 4px solid #000; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .setup-panel { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .input-group { display: flex; flex-direction: column; }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-size: 15px; width: 110px; }
+        .required-boards input { background-color: #f1c40f; font-weight: bold; color: #000; width: 80px; border: 2px solid #000; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #ddd; }
+        th { background: #000; color: white; }
+        .btn-calc { background-color: #27ae60; color: white; width: 100%; padding: 12px; border: none; border-radius: 4px; font-size: 18px; cursor: pointer; margin-top: 10px; font-weight: bold; }
+        .btn-add { background-color: #3498db; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        
+        .action-buttons { display: flex; margin-top: 15px; gap: 10px; }
+        .btn-print { background-color: #34495e; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
+        .btn-back-menu { background-color: #7f8c8d; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; text-decoration: none; text-align: center; width: 300px; }
+        
+        canvas { display: block; width: 100%; margin-top: 20px; border: 3px solid #000; background: #fff; }
+        .results { text-align: center; margin-top: 15px; font-weight: bold; font-size: 18px; color: #000; }
+
+        @media print {
+            body { background-color: #fff; padding: 0; }
+            .sticky-panel, .btn-add, .action-buttons, th:last-child, td:last-child { display: none !important; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; }
+            canvas { border: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>azemaa proo تقطيع</h1>
+    
+    <div class="sticky-panel">
+        <div class="setup-panel">
+            <div class="input-group"><label>نوع اللوح</label>
+                <select id="boardType" onchange="updateBoardDimensions()">
+                    <option value="wood">خشب (244 × 122)</option>
+                    <option value="fiber">فيبر (280 × 130)</option>
+                </select></div>
+            <div class="input-group"><label>طول اللوح</label><input type="number" id="boardL" value="244" oninput="saveData()"></div>
+            <div class="input-group"><label>عرض اللوح</label><input type="number" id="boardW" value="122" oninput="saveData()"></div>
+            <div class="input-group"><label>حز المنشار</label><input type="number" id="kerf" value="0.3" step="0.1" oninput="saveData()"></div>
+            <div class="input-group required-boards"><label>الألواح</label><input type="text" id="totalBoardsNeeded" readonly value="0"></div>
+        </div>
+        <button class="btn-calc" onclick="calculateAndDraw()">بدء التقطيع وتوفير الهالك</button>
+    </div>
+
+    <table id="piecesTable">
+        <thead>
+            <tr>
+                <th>م</th>
+                <th>اسم القطعة</th>
+                <th>الطول (سم)</th>
+                <th>عرض (سم)</th>
+                <th>العدد</th>
+                <th>حذف</th>
+            </tr>
+        </thead>
+        <tbody id="piecesBody">
+            <tr>
+                <td class="row-num">1</td>
+                <td><input type="text" class="p-name" value="قطعة 1" oninput="saveData()"></td>
+                <td><input type="number" class="p-len" value="" oninput="saveData()"></td>
+                <td><input type="number" class="p-wid" value="" oninput="saveData()"></td>
+                <td><input type="number" class="p-qty" value="" oninput="saveData()"></td>
+                <td><button onclick="deleteRow(this)">X</button></td>
+            </tr>
+        </tbody>
+    </table>
+    <button class="btn-add" onclick="addRow()">+ إضافة مقاس</button>
+
+    <div class="action-buttons">
+        <button class="btn-print" onclick="window.print()">🖨️ طباعة المخطط</button>
+        <a href="kmatkitchen.html" class="btn-back-menu">⬅️ العودة لقائمة الخامات</a>
+    </div>
+
+    <div id="resultStats" class="results"></div>
+    <canvas id="boardCanvas"></canvas>
+</div>
+
+<script>
+    window.onload = function() {
+        loadData();
+    };
+
+    function updateBoardDimensions() {
+        const type = document.getElementById('boardType').value;
+        if (type === 'fiber') { document.getElementById('boardL').value = 280; document.getElementById('boardW').value = 130; }
+        else { document.getElementById('boardL').value = 244; document.getElementById('boardW').value = 122; }
+        saveData();
+    }
+
+    function addRow() {
+        const tbody = document.getElementById('piecesBody');
+        const count = tbody.children.length + 1;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="row-num">${count}</td><td><input type="text" class="p-name" value="قطعة ${count}" oninput="saveData()"></td><td><input type="number" class="p-len" oninput="saveData()"></td><td><input type="number" class="p-wid" oninput="saveData()"></td><td><input type="number" class="p-qty" oninput="saveData()"></td><td><button onclick="deleteRow(this)">X</button></td>`;
+        tbody.appendChild(tr);
+        updateRowNumbers();
+        saveData();
+    }
+
+    function deleteRow(btn) { 
+        btn.closest('tr').remove(); 
+        updateRowNumbers(); 
+        saveData();
+    }
+    
+    function updateRowNumbers() { document.querySelectorAll('.row-num').forEach((td, i) => td.innerText = i + 1); }
+
+    function saveData() {
+        const data = {
+            boardType: document.getElementById('boardType').value,
+            boardL: document.getElementById('boardL').value,
+            boardW: document.getElementById('boardW').value,
+            kerf: document.getElementById('kerf').value,
+            pieces: []
+        };
+        document.querySelectorAll('#piecesBody tr').forEach(row => {
+            data.pieces.push({
+                name: row.querySelector('.p-name').value,
+                len: row.querySelector('.p-len').value,
+                wid: row.querySelector('.p-wid').value,
+                qty: row.querySelector('.p-qty').value
+            });
+        });
+        localStorage.setItem('cutTableData', JSON.stringify(data));
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem('cutTableData');
+        if (!saved) return;
+        const data = JSON.parse(saved);
+        document.getElementById('boardType').value = data.boardType;
+        document.getElementById('boardL').value = data.boardL;
+        document.getElementById('boardW').value = data.boardW;
+        document.getElementById('kerf').value = data.boardf || 0.3;
+        if(data.kerf) document.getElementById('kerf').value = data.kerf;
+
+        const tbody = document.getElementById('piecesBody');
+        tbody.innerHTML = '';
+        data.pieces.forEach((p, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="row-num">${i+1}</td><td><input type="text" class="p-name" value="${p.name}" oninput="saveData()"></td><td><input type="number" class="p-len" value="${p.len}" oninput="saveData()"></td><td><input type="number" class="p-wid" value="${p.wid}" oninput="saveData()"></td><td><input type="number" class="p-qty" value="${p.qty}" oninput="saveData()"></td><td><button onclick="deleteRow(this)">X</button></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    class MaxRectsPacker {
+        constructor(width, height, kerf) {
+            this.width = width; this.height = height; this.kerf = kerf;
+            this.usedRects = [];
+            this.freeRects = [{ x: 0, y: 0, w: width, h: height }];
+        }
+
+        insert(w, h, name) {
+            let bestRect = this.findBestRect(w, h);
+            if (!bestRect) return null;
+            bestRect.name = name;
+            this.splitFreeRects(bestRect);
+            this.cleanFreeRects();
+            this.usedRects.push(bestRect);
+            return bestRect;
+        }
+
+        findBestRect(w, h) {
+            let bestRect = null;
+            let minShortSideFit = Infinity;
+            const orientations = [{w: w, h: h}, {w: h, h: w}];
+            for (let orbit of orientations) {
+                for (let free of this.freeRects) {
+                    if (free.w >= orbit.w && free.h >= orbit.h) {
+                        let shortSideFit = Math.min(free.w - orbit.w, free.h - orbit.h);
+                        if (shortSideFit < minShortSideFit) {
+                            bestRect = { x: free.x, y: free.y, w: orbit.w, h: orbit.h };
+                            minShortSideFit = shortSideFit;
+                        }
+                    }
+                }
+            }
+            return bestRect;
+        }
+
+        splitFreeRects(used) {
+            let n = this.freeRects.length;
+            let k = this.kerf;
+            for (let i = 0; i < n; i++) {
+                if (this.intersect(this.freeRects[i], used)) {
+                    let f = this.freeRects.splice(i, 1)[0];
+                    if (used.x > f.x) this.freeRects.push({x: f.x, y: f.y, w: used.x - f.x - k, h: f.h});
+                    if (used.x + used.w < f.x + f.w) this.freeRects.push({x: used.x + used.w + k, y: f.y, w: f.x + f.w - (used.x + used.w) - k, h: f.h});
+                    if (used.y > f.y) this.freeRects.push({x: f.x, y: f.y, w: f.w, h: used.y - f.y - k});
+                    if (used.y + used.h < f.y + f.h) this.freeRects.push({x: f.x, y: used.y + used.h + k, w: f.w, h: f.y + f.h - (used.y + used.h) - k});
+                    i--; n--;
+                }
+            }
+        }
+
+        intersect(a, b) { return !(b.x >= a.x + a.w || b.x + b.w <= a.x || b.y >= a.y + a.h || b.y + b.h <= a.y); }
+        cleanFreeRects() {
+            for (let i = 0; i < this.freeRects.length; i++) {
+                for (let j = i + 1; j < this.freeRects.length; j++) {
+                    if (this.isContained(this.freeRects[i], this.freeRects[j])) { this.freeRects.splice(i, 1); i--; break; }
+                    if (this.isContained(this.freeRects[j], this.freeRects[i])) { this.freeRects.splice(j, 1); j--; }
+                }
+            }
+            this.freeRects = this.freeRects.filter(r => r.w > 0.1 && r.h > 0.1);
+        }
+        isContained(a, b) { return a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h; }
+    }
+
+    function calculateAndDraw() {
+        const bL = parseFloat(document.getElementById('boardL').value);
+        const bW = parseFloat(document.getElementById('boardW').value);
+        const kerf = parseFloat(document.getElementById('kerf').value);
+        let blocks = [];
+        document.querySelectorAll('#piecesBody tr').forEach((row) => {
+            let name = row.querySelector('.p-name').value;
+            let l = parseFloat(row.querySelector('.p-len').value);
+            let w = parseFloat(row.querySelector('.p-wid').value);
+            let q = parseInt(row.querySelector('.p-qty').value);
+            if (l > 0 && w > 0 && q > 0) { for(let i=0; i<q; i++) blocks.push({name: name, w: Math.max(l,w), h: Math.min(l,w)}); }
+        });
+
+        blocks.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+
+        let boards = [];
+        let remaining = [...blocks];
+
+        while (remaining.length > 0) {
+            let packer = new MaxRectsPacker(bL, bW, kerf);
+            let anyPlaced = false;
+            for (let i = 0; i < remaining.length; i++) {
+                let fit = packer.insert(remaining[i].w, remaining[i].h, remaining[i].name);
+                if (fit) { 
+                    anyPlaced = true; 
+                    remaining.splice(i, 1); 
+                    i--; 
+                }
+            }
+            if (!anyPlaced) {
+                alert("تنبيه: القطعة '" + remaining[0].name + "' أكبر من مقاس اللوح!");
+                break;
+            }
+            boards.push(packer);
+        }
+
+        document.getElementById('totalBoardsNeeded').value = boards.length;
+        draw(bL, bW, boards);
+    }
+
+    function draw(boardW, boardH, boards) {
+        const canvas = document.getElementById('boardCanvas');
+        const ctx = canvas.getContext('2d');
+        const padding = 80;
+        canvas.width = 1100;
+        const scale = (canvas.width - padding * 2) / boardW;
+        const drawH = boardH * scale;
+        canvas.height = (drawH + padding * 2) * boards.length;
+
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        boards.forEach((packer, bIdx) => {
+            let offset = bIdx * (drawH + padding * 2);
+            ctx.fillStyle = "#f5f5f5"; ctx.fillRect(padding, offset + padding, boardW * scale, drawH);
+            ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeRect(padding, offset + padding, boardW * scale, drawH);
+            
+            ctx.fillStyle = "#000"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center";
+            ctx.fillText(boardW + " سم", padding + (boardW * scale) / 2, offset + padding / 2);
+            ctx.save(); ctx.translate(padding/2, offset + padding + drawH/2); ctx.rotate(-Math.PI/2);
+            ctx.fillText(boardH + " سم", 0, 0); ctx.restore();
+
+            packer.usedRects.forEach(r => {
+                const rx = padding + r.x * scale;
+                const ry = offset + padding + r.y * scale;
+                const rw = r.w * scale;
+                const rh = r.h * scale;
+
+                ctx.fillStyle = "#f1c40f"; ctx.fillRect(rx, ry, rw, rh);
+                ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rw, rh);
+
+                if (rw > 55 && rh > 55) {
+                    ctx.fillStyle = "#000"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center";
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 12);
+
+                    ctx.font = "bold 20px Arial"; 
+                    ctx.fillText(r.w + " سم", rx + rw / 2, ry + rh - 10);
+                    
+                    ctx.save(); 
+                    ctx.translate(rx + 25, ry + rh / 2 + 15); 
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillText(r.h + " سم", 0, 0); 
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = "#000"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 + 5);
+                }
+            });
+            
+            ctx.fillStyle = "#000"; ctx.font = "bold 26px Arial"; ctx.textAlign = "right";
+            ctx.fillText("اللوح رقم " + (bIdx + 1), padding + (boardW * scale), offset + padding - 20);
+        });
+    }
+</script>
+</body>
+</html>
