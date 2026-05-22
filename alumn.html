@@ -97,10 +97,39 @@
         <div id="archiveList" class="archive-list-container"></div>
     </div>
 
-    <script>
+    <!-- استدعاء Firebase كـ Module -->
+    <script type="module">
+        // 1. استيراد دوال Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, set, get, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // 2. إعدادات قاعدة البيانات الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210",
+            measurementId: "G-R28J7010TH"
+        };
+
+        // تهيئة Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // متغيرات عامة
+        let cachedInvoices = {};
+        let priceTimeout;
+        let itemsTimeout;
+
+        // الدوال المساعدة
         function formatNum(n) { return parseFloat(n).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1'); }
         function getEnglishDateTime() { let n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; }
+        
         function updateAll() { document.querySelectorAll('.qty').forEach(input => updateRow(input)); }
+        
         function updateRow(e) {
             let r = e.closest('tr');
             let q = parseFloat(r.querySelector('.qty').value) || 0;
@@ -110,13 +139,22 @@
             let pa = parseFloat(document.getElementById('globalPaintPrice').value) || 0;
             let t = p > 0 ? (q * p) : ((q * w) * (al + pa));
             r.querySelector('.row-total').value = t > 0 ? formatNum(t) : "-";
-            calculateLiveGrandTotal(); saveDefaultItems();
+            calculateLiveGrandTotal(); 
+            saveDefaultItems();
         }
+
         function addRow(n="", q="", w="", p="") {
             let r = document.querySelector("#alumTable tbody").insertRow();
-            r.innerHTML = `<td><input type="text" class="item-name" value="${n}" oninput="saveDefaultItems()"></td><td><input type="number" inputmode="numeric" class="qty" value="${q}" oninput="updateRow(this)"></td><td><input type="number" step="any" inputmode="decimal" class="weight" value="${w}" oninput="updateRow(this)"></td><td><input type="number" step="any" inputmode="decimal" class="item-price" value="${p}" oninput="updateRow(this)"></td><td><input type="text" class="row-total en-num" readonly></td><td><button class="btn btn-del" onclick="deleteRow(this)">حذف</button></td>`;
+            r.innerHTML = `
+                <td><input type="text" class="item-name" value="${n}" oninput="saveDefaultItems()"></td>
+                <td><input type="number" inputmode="numeric" class="qty" value="${q}" oninput="updateRow(this)"></td>
+                <td><input type="number" step="any" inputmode="decimal" class="weight" value="${w}" oninput="updateRow(this)"></td>
+                <td><input type="number" step="any" inputmode="decimal" class="item-price" value="${p}" oninput="updateRow(this)"></td>
+                <td><input type="text" class="row-total en-num" readonly></td>
+                <td><button class="btn btn-del" onclick="deleteRow(this)">حذف</button></td>`;
             updateRow(r.querySelector('.qty'));
         }
+
         function deleteRow(button) {
             if (confirm("هل أنت متأكد من حذف هذا الصنف؟")) {
                 button.closest('tr').remove();
@@ -124,46 +162,182 @@
                 saveDefaultItems();
             }
         }
-        function saveGlobalPrices() { localStorage.setItem('azemaa_pro_alum_price', document.getElementById('globalAlumPrice').value); localStorage.setItem('azemaa_pro_paint_price', document.getElementById('globalPaintPrice').value); }
-        function loadGlobalPrices() { if(localStorage.getItem('azemaa_pro_alum_price')) document.getElementById('globalAlumPrice').value = localStorage.getItem('azemaa_pro_alum_price'); if(localStorage.getItem('azemaa_pro_paint_price')) document.getElementById('globalPaintPrice').value = localStorage.getItem('azemaa_pro_paint_price'); }
-        function saveDefaultItems() { let rows = []; document.querySelectorAll('#alumTable tbody tr').forEach(r => rows.push({name: r.querySelector('.item-name').value, weight: r.querySelector('.weight').value, itemPrice: r.querySelector('.item-price').value})); localStorage.setItem('azemaa_pro_default_items', JSON.stringify(rows)); }
-        function loadDefaultItems() { let s = localStorage.getItem('azemaa_pro_default_items'); if(s) { JSON.parse(s).forEach(r => addRow(r.name, "", r.weight, r.itemPrice)); } else { addRow(); } }
-        function calculateLiveGrandTotal() { let t = 0; document.querySelectorAll('.row-total').forEach(r => t += parseFloat(r.value) || 0); document.getElementById('liveGrandTotal').innerText = formatNum(t); return formatNum(t); }
-        function saveAll() {
+
+        // الحفظ في السحابة مع تأخير (Debounce) لعدم استهلاك قاعدة البيانات أثناء الكتابة
+        function saveGlobalPrices() {
+            clearTimeout(priceTimeout);
+            priceTimeout = setTimeout(() => {
+                set(ref(db, 'settings/globalPrices'), {
+                    alumPrice: document.getElementById('globalAlumPrice').value,
+                    paintPrice: document.getElementById('globalPaintPrice').value
+                });
+            }, 1000); 
+        }
+
+        async function loadGlobalPrices() {
+            const snapshot = await get(ref(db, 'settings/globalPrices'));
+            if(snapshot.exists()) {
+                let data = snapshot.val();
+                document.getElementById('globalAlumPrice').value = data.alumPrice || "";
+                document.getElementById('globalPaintPrice').value = data.paintPrice || "";
+            }
+        }
+
+        function saveDefaultItems() {
+            clearTimeout(itemsTimeout);
+            itemsTimeout = setTimeout(() => {
+                let rows = []; 
+                document.querySelectorAll('#alumTable tbody tr').forEach(r => { 
+                    rows.push({
+                        name: r.querySelector('.item-name').value, 
+                        weight: r.querySelector('.weight').value, 
+                        itemPrice: r.querySelector('.item-price').value
+                    });
+                }); 
+                set(ref(db, 'settings/defaultItems'), rows);
+            }, 1500);
+        }
+
+        async function loadDefaultItems() { 
+            const snapshot = await get(ref(db, 'settings/defaultItems'));
+            if(snapshot.exists()) {
+                let rows = snapshot.val();
+                document.querySelector("#alumTable tbody").innerHTML = "";
+                rows.forEach(r => addRow(r.name, "", r.weight, r.itemPrice)); 
+            } else { 
+                addRow(); 
+            } 
+        }
+
+        function calculateLiveGrandTotal() { 
+            let t = 0; 
+            document.querySelectorAll('.row-total').forEach(r => t += parseFloat(r.value) || 0); 
+            document.getElementById('liveGrandTotal').innerText = formatNum(t); 
+            return formatNum(t); 
+        }
+
+        async function saveAll() {
             let name = document.getElementById('custName').value;
             if(!name) return alert("اكتب اسم الزبون");
-            let items = []; document.querySelectorAll('#alumTable tbody tr').forEach(r => { if(r.querySelector('.item-name').value) items.push({name: r.querySelector('.item-name').value, qty: r.querySelector('.qty').value, weight: r.querySelector('.weight').value, itemPrice: r.querySelector('.item-price').value})});
-            localStorage.setItem("invoice_"+name, JSON.stringify({code: document.getElementById('custCode').value, alumPrice: document.getElementById('globalAlumPrice').value, paintPrice: document.getElementById('globalPaintPrice').value, date: getEnglishDateTime(), grandTotal: calculateLiveGrandTotal(), items: items}));
-            alert("تم الحفظ!"); document.getElementById('custName').value=""; document.getElementById('custCode').value=""; document.querySelectorAll('.qty').forEach(i=>i.value=""); calculateLiveGrandTotal(); renderArchive();
+            
+            let items = []; 
+            document.querySelectorAll('#alumTable tbody tr').forEach(r => { 
+                if(r.querySelector('.item-name').value) {
+                    items.push({
+                        name: r.querySelector('.item-name').value, 
+                        qty: r.querySelector('.qty').value, 
+                        weight: r.querySelector('.weight').value, 
+                        itemPrice: r.querySelector('.item-price').value
+                    });
+                }
+            });
+            
+            const invoiceData = {
+                code: document.getElementById('custCode').value, 
+                alumPrice: document.getElementById('globalAlumPrice').value, 
+                paintPrice: document.getElementById('globalPaintPrice').value, 
+                date: getEnglishDateTime(), 
+                grandTotal: calculateLiveGrandTotal(), 
+                items: items
+            };
+
+            try {
+                await set(ref(db, 'invoices/' + name), invoiceData);
+                alert("تم الحفظ بنجاح!"); 
+                document.getElementById('custName').value=""; 
+                document.getElementById('custCode').value=""; 
+                document.querySelectorAll('.qty').forEach(i=>i.value=""); 
+                calculateLiveGrandTotal();
+            } catch(error) {
+                console.error("خطأ:", error);
+                alert("حدث خطأ أثناء الحفظ تأكد من اتصالك بالإنترنت.");
+            }
         }
-        function renderArchive() {
-            let list = document.getElementById("archiveList"); list.innerHTML = "";
-            for(let i=0; i<localStorage.length; i++) {
-                let key = localStorage.key(i);
-                if(key.startsWith("invoice_")) {
-                    let d = JSON.parse(localStorage.getItem(key)); let n = key.replace("invoice_", "");
-                    let itemsHtml = d.items.map(it => `<div class="archive-items-list"><strong>${it.name}</strong> <span class="archive-badge">${it.qty}</span></div>`).join('');
-                    let div = document.createElement("div"); div.className = "archive-item"; div.setAttribute("data-name", n.toLowerCase()); 
-                    div.innerHTML = `<button class="accordion-btn" onclick="this.nextElementSibling.style.display=(this.nextElementSibling.style.display=='block'?'none':'block')"><strong>${n}</strong><span class="en-num">${d.grandTotal} EGP</span></button><div class="accordion-content">${itemsHtml}<div class="action-container"><button class="btn btn-edit" onclick="loadArchiveToTable('${n}')">تعديل</button><button class="btn btn-del" onclick="deleteArchiveItem('${key}')">حذف</button></div></div>`;
+
+        // مراقبة الأرشيف وتحديثه لحظياً
+        onValue(ref(db, 'invoices'), (snapshot) => {
+            let list = document.getElementById("archiveList"); 
+            list.innerHTML = "";
+            cachedInvoices = {};
+            
+            if(snapshot.exists()) {
+                cachedInvoices = snapshot.val();
+                for(let n in cachedInvoices) {
+                    let d = cachedInvoices[n];
+                    let itemsHtml = (d.items || []).map(it => `<div class="archive-items-list"><strong>${it.name}</strong> <span class="archive-badge">${it.qty}</span></div>`).join('');
+                    let div = document.createElement("div"); 
+                    div.className = "archive-item"; 
+                    div.setAttribute("data-name", n.toLowerCase()); 
+                    div.innerHTML = `
+                        <button class="accordion-btn" onclick="this.nextElementSibling.style.display=(this.nextElementSibling.style.display=='block'?'none':'block')">
+                            <strong>${n}</strong><span class="en-num">${d.grandTotal} EGP</span>
+                        </button>
+                        <div class="accordion-content">
+                            ${itemsHtml}
+                            <div class="action-container">
+                                <button class="btn btn-edit" onclick="loadArchiveToTable('${n}')">تعديل</button>
+                                <button class="btn btn-del" onclick="deleteArchiveItem('${n}')">حذف</button>
+                            </div>
+                        </div>`;
                     list.appendChild(div);
                 }
             }
-        }
-        function deleteArchiveItem(key) {
-            let customerName = key.replace("invoice_", "");
+        });
+
+        async function deleteArchiveItem(customerName) {
             if (confirm(`هل أنت متأكد من حذف مقايسة الزبون "${customerName}" نهائياً؟`)) {
-                localStorage.removeItem(key);
-                renderArchive();
+                try {
+                    await remove(ref(db, 'invoices/' + customerName));
+                } catch(error) {
+                    alert("حدث خطأ أثناء الحذف.");
+                }
             }
         }
-        function filterArchive() { let q = document.getElementById("archiveSearchInput").value.toLowerCase(); document.querySelectorAll(".archive-item").forEach(i => i.style.display = i.getAttribute("data-name").includes(q) ? "" : "none"); }
+
+        function filterArchive() { 
+            let q = document.getElementById("archiveSearchInput").value.toLowerCase(); 
+            document.querySelectorAll(".archive-item").forEach(i => i.style.display = i.getAttribute("data-name").includes(q) ? "" : "none"); 
+        }
+
         function loadArchiveToTable(n) { 
             if(!n) return alert("اكتب اسم الزبون للبحث عنه");
-            let data = localStorage.getItem("invoice_"+n);
-            if(!data) return alert("هذا الاسم غير موجود في الأرشيف");
-            let d = JSON.parse(data); document.getElementById('custName').value=n; document.getElementById('custCode').value=d.code; document.getElementById('globalAlumPrice').value=d.alumPrice; document.getElementById('globalPaintPrice').value=d.paintPrice; document.querySelector("#alumTable tbody").innerHTML=""; d.items.forEach(i=>addRow(i.name, i.qty, i.weight, i.itemPrice)); calculateLiveGrandTotal(); window.scrollTo(0,0); 
+            let d = cachedInvoices[n];
+            if(!d) return alert("هذا الاسم غير موجود في الأرشيف");
+            
+            document.getElementById('custName').value = n; 
+            document.getElementById('custCode').value = d.code || ""; 
+            document.getElementById('globalAlumPrice').value = d.alumPrice || ""; 
+            document.getElementById('globalPaintPrice').value = d.paintPrice || ""; 
+            document.querySelector("#alumTable tbody").innerHTML = ""; 
+            
+            if(d.items && d.items.length > 0) {
+                d.items.forEach(i => addRow(i.name, i.qty, i.weight, i.itemPrice)); 
+            } else {
+                addRow();
+            }
+            calculateLiveGrandTotal(); 
+            window.scrollTo(0,0); 
         }
-        loadGlobalPrices(); loadDefaultItems(); renderArchive();
+
+        // ربط الدوال بنافذة المتصفح لتعمل مع أحداث HTML
+        window.updateAll = updateAll;
+        window.updateRow = updateRow;
+        window.addRow = addRow;
+        window.deleteRow = deleteRow;
+        window.saveGlobalPrices = saveGlobalPrices;
+        window.saveDefaultItems = saveDefaultItems;
+        window.saveAll = saveAll;
+        window.deleteArchiveItem = deleteArchiveItem;
+        window.filterArchive = filterArchive;
+        window.loadArchiveToTable = loadArchiveToTable;
+
+        // تهيئة البيانات عند فتح الصفحة
+        async function initializeAppCustom() {
+            await loadGlobalPrices();
+            await loadDefaultItems();
+        }
+        initializeAppCustom();
+
     </script>
 </body>
 </html>
