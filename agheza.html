@@ -5,17 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <title>Azemaa Proo - سحابي</title>
+    <title>Azemaa Proo - المقاسات</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics-compat.js"></script>
 
     <style>
         :root { --primary: #0f172a; --gold: #d4af37; --accent: #2563eb; --bg: #e0e0e0; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; }
         .container { max-width: 500px; margin: 0 auto; padding-bottom: 60px; }
         header { text-align: center; padding: 20px; background: var(--primary); color: var(--gold); border-radius: 15px; margin-bottom: 15px; }
+        
+        /* واجهة انتظار للتحقق من الهوية السحابية */
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg);
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 16px; color: var(--primary); font-weight: bold; text-align: center; padding: 20px;
+        }
+
         .panel { background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         input, select, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; font-family: inherit; }
         
@@ -23,7 +31,7 @@
         
         .size-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .size-grid input { text-align: center; font-size: 20px; color: var(--accent); }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; }
         .btn-add { background: var(--primary); }
         .btn-update { background: var(--gold); display: none; }
         .search-bar { width: 100%; padding: 12px; border: 2px solid var(--gold); border-radius: 12px; margin-bottom: 15px; box-sizing: border-box; }
@@ -44,9 +52,15 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <header><h2>Azemaa Proo</h2><p>نظام المقاسات - متزامن سحابياً ☁️</p></header>
-        
+
+    <div id="auth-loader">⏳ جاري التحقق من الصلاحيات والمزامنة...</div>
+
+    <div class="container" id="app-screen" style="display:none;">
+        <header>
+            <h2>Azemaa Proo</h2>
+            <p>نظام المقاسات - متزامن سحابياً ☁️</p>
+        </header>
+
         <div class="panel" id="mainPanel">
             <h4 id="modeTxt">إضافة مقاس جديد</h4>
             <select id="cat">
@@ -82,17 +96,37 @@
             projectId: "azemaa-proo",
             storageBucket: "azemaa-proo.firebasestorage.app",
             messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210",
-            measurementId: "G-R28J7010TH"
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
         };
 
         firebase.initializeApp(firebaseConfig);
 
+        const auth = firebase.auth();
         const fdb = firebase.database();
-        const devicesRef = fdb.ref('farah_agheza_sizes'); 
-
+        let devicesRef = null; 
         let devicesData = {};
         let editKey = null;
+
+        // مراقبة حالة تسجيل الدخول القادمة من صفحة الـ index
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // إخفاء شاشة الانتظار وإظهار التطبيق
+                document.getElementById('auth-loader').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                
+                // توجيه قاعدة البيانات للمجلد الخاص بهذا المستخدم فقط!
+                devicesRef = fdb.ref('farah_agheza_sizes/' + user.uid);
+                
+                // جلب بيانات هذا المستخدم فقط
+                devicesRef.on('value', (snapshot) => {
+                    devicesData = snapshot.val() || {};
+                    render();
+                });
+            } else {
+                // في حالة الدخول بدون تسجيل من الصفحة الرئيسية
+                document.getElementById('auth-loader').innerText = "⚠️ خطأ في الصلاحيات: يرجى تسجيل الدخول من الصفحة الرئيسية أولاً.";
+            }
+        });
 
         function autoExpand(textarea) {
             textarea.style.height = 'auto';
@@ -114,11 +148,6 @@
             for(let i=0; i<10; i++) r = r.replace(ar[i], en[i]);
             return r.replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
         }
-
-        devicesRef.on('value', (snapshot) => {
-            devicesData = snapshot.val() || {};
-            render();
-        });
 
         function render() {
             const container = document.getElementById('list');
@@ -221,15 +250,6 @@
         function clear() { 
             ['name','notes','w','h','d'].forEach(id => document.getElementById(id).value = ''); 
             document.getElementById('notes').style.height = '80px';
-        }
-
-        // كود تنظيف المتصفح من الكاش القديم (مهم جداً)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
-            });
         }
     </script>
 </body>
