@@ -388,6 +388,15 @@
         if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
     }
 
+    // تعديل دالة حفظ إعدادات اسم الشركة في السحابة
+    function saveSettings() { 
+        const cName = document.getElementById('companyNameInput').value;
+        localStorage.setItem('azemaa_company_name', cName); // حفظ محلي احتياطي
+        if (currentUid) {
+            db.ref(`backups/users/${currentUid}/settings`).update({ companyName: cName }); // الحفظ الدائم في السحابة
+        }
+    }
+
     function saveToCloud(id) {
         if(!currentUid) return;
         const card = document.getElementById(`card-${id}`);
@@ -455,9 +464,6 @@
     });
 
     function startSyncingData() {
-        const savedCo = localStorage.getItem('azemaa_company_name');
-        if(savedCo) document.getElementById('companyNameInput').value = savedCo;
-        
         if (localStorage.getItem('azemaa_dark_mode') === 'enabled') {
             document.body.classList.add('dark-theme');
             document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
@@ -466,8 +472,16 @@
         db.ref(`backups/users/${currentUid}`).on('value', (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
+                // جلب اسم الشركة من السحابة وعرضه
+                if (allData.settings && allData.settings.companyName) {
+                    document.getElementById('companyNameInput').value = allData.settings.companyName;
+                }
+
                 visibleCards = [];
                 for (let id in allData) {
+                    // تخطي إعدادات الشركة حتى لا تعتبر كارت زبون
+                    if (id === 'settings') continue;
+
                     const d = allData[id];
                     const card = document.getElementById(`card-${id}`);
                     if (card) {
@@ -478,9 +492,6 @@
                             visibleCards.push(parseInt(id));
                         }
                         
-                        // 🌟 التعديل الجوهري لحماية الكتابة:
-                        // لا نحدث الخانات من السحابة إلا إذا كان الكارت مقفولاً 
-                        // حتى لا تمسح السحابة مجهودك قبل الحفظ
                         if (card.classList.contains('locked-mode')) {
                             card.querySelector('.c-name').value = d.n || '';
                             card.querySelector('.c-phone').value = d.p || '';
@@ -507,11 +518,8 @@
         for (let i = 1; i <= 50; i++) {
             const card = document.getElementById(`card-${i}`);
             if (!card.classList.contains('visible')) {
-                // نظهر الكارت أولاً
                 card.classList.add('visible');
-                // نسجل ظهوره في السحابة
                 db.ref(`backups/users/${currentUid}/${i}`).update({ isArchived: false }).then(() => {
-                    // نفتح القفل تلقائياً لتبدأ الكتابة بدون مشاكل
                     if (card.classList.contains('locked-mode')) {
                         toggleCardLock(i);
                     }
@@ -597,7 +605,9 @@
             if (!data) return;
 
             let clientsArr = [];
-            Object.keys(data).forEach(id => clientsArr.push({id, ...data[id]}));
+            Object.keys(data).forEach(id => {
+                if (id !== 'settings') clientsArr.push({id, ...data[id]});
+            });
 
             clientsArr.sort((a, b) => {
                 const dateA = new Date(a.dy || 2000, (a.dm || 1) - 1, a.dd || 1);
@@ -687,8 +697,6 @@
         let rows = document.querySelectorAll('#archive-body tr');
         rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none"; });
     }
-
-    function saveSettings() { localStorage.setItem('azemaa_company_name', document.getElementById('companyNameInput').value); }
     
     function toggleDarkMode() {
         const isDark = document.body.classList.toggle('dark-theme');
