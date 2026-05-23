@@ -53,7 +53,8 @@
 
         #boardsRenderContainer { margin-top: 15px; }
         .print-page { margin-bottom: 40px; }
-        .board-detail-container { margin-bottom: 15px; border: 2px solid #2c3e50; border-radius: 6px; overflow: hidden; page-break-inside: avoid; }
+        /* تم إزالة overflow: hidden لحل مشكلة قص الجدول */
+        .board-detail-container { margin-bottom: 15px; border: 2px solid #2c3e50; border-radius: 6px; page-break-inside: avoid; }
         .board-title { background: #2c3e50; color: white; padding: 12px; margin: 0; text-align: center; font-size: 18px; font-weight: bold; }
         
         .board-table { width: 100%; border-collapse: collapse; text-align: center; background: #fff; }
@@ -212,7 +213,6 @@
 
     <div id="resultStats" class="results">المخطط يظهر هنا بعد الحساب</div>
     
-    <!-- لوحة التحكم في التكبير -->
     <div id="zoomControls">
         <button class="btn-zoom-out" onclick="zoomOutBoard()">➖ تصغير</button>
         <button class="btn-zoom-reset" onclick="resetZoomBoard()">🔄 الحجم الطبيعي</button>
@@ -488,7 +488,7 @@
                     tr.innerHTML = `<td class="row-num" style="font-weight:bold;">${count}</td>
                     <td><input type="text" class="p-name" value="${name}" oninput="saveData()"></td>
                     <td><input type="number" class="p-len" value="${len}" oninput="saveData()"></td>
-                    <td><input type="number" class="p-wid" value="${wid}" oninput="saveData()"></td>
+                    <td><input type="number" class="p-wid" value="${w}" oninput="saveData()"></td>
                     <td><input type="number" class="p-qty" value="${qty}" oninput="saveData()"></td>
                     <td class="rot-col"><input type="checkbox" class="p-rot" onchange="saveData()"></td>
                     <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">X</button></td>`;
@@ -566,7 +566,7 @@
         const container = document.getElementById('boardsRenderContainer');
         container.innerHTML = '';
 
-        let topText = boardW; // تم إزالة كلمة سم هنا
+        let topText = boardW; 
         if (isGrain) { topText += "   ( ↔️ اتجاه السمرة بالطول ↔️ )"; }
 
         boards.forEach((packer, index) => {
@@ -607,7 +607,7 @@
             ctx.fillStyle = "#000";
             ctx.save(); ctx.translate(padding/2, padding + drawH/2); ctx.rotate(-Math.PI/2); 
             ctx.font = "bold 32px Arial"; 
-            ctx.fillText(boardH, 0, 0); // تم إزالة كلمة سم هنا
+            ctx.fillText(boardH, 0, 0); 
             ctx.restore();
             
             packer.usedRects.forEach(r => {
@@ -732,8 +732,10 @@
             const tableWrapper = document.createElement('div');
             tableWrapper.className = 'board-detail-container';
             
+            // تم إضافة الـ div الداخلي بخاصية overflow-x: auto لمنع اختفاء العرض والعدد على الموبايل
             let html = `
                 <h3 class="board-title">تفاصيل مقاسات اللوح رقم ${index + 1}</h3>
+                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
                 <table class="board-table">
                     <thead>
                         <tr>
@@ -755,7 +757,7 @@
                         <td>${p.qty}</td>
                     </tr>`;
             }
-            html += `</tbody></table>`;
+            html += `</tbody></table></div>`;
             tableWrapper.innerHTML = html;
             
             pageWrapper.appendChild(tableWrapper);
