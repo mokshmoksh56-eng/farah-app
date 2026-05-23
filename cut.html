@@ -46,8 +46,9 @@
         /* أزرار الحفظ والأرشيف */
         .archive-controls { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         .input-project-name { flex: 2; min-width: 200px; padding: 10px; border: 2px solid #2980b9; border-radius: 4px; font-size: 15px; font-weight: bold; text-align: right; }
-        .btn-save-archive { flex: 1; min-width: 120px; background-color: #2980b9; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .btn-open-archive { flex: 1; min-width: 120px; background-color: #8e44ad; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-save-archive { flex: 1; min-width: 100px; background-color: #2980b9; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-open-archive { flex: 1; min-width: 100px; background-color: #8e44ad; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-new-project { flex: 1; min-width: 100px; background-color: #f39c12; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
         /* نافذة الأرشيف المنبثقة */
         #archiveModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100000; justify-content: center; align-items: center; }
@@ -106,6 +107,7 @@
         window.fbRemove = remove;
         window.fbOnValue = onValue;
         window.currentProjectId = null;
+        window.loadedProjectName = null; // لمراقبة تغيير اسم المشروع
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -162,6 +164,7 @@
         <input type="text" id="projectName" class="input-project-name" placeholder="اسم المشروع (مثال: مطبخ أ/ أحمد)">
         <button class="btn-save-archive" onclick="saveToArchive()">💾 حفظ المشروع</button>
         <button class="btn-open-archive" onclick="openArchive()">📂 الأرشيف</button>
+        <button class="btn-new-project" onclick="startNewProject()">🆕 مشروع جديد</button>
     </div>
 
     <div class="action-buttons">
@@ -189,6 +192,26 @@
     let saveTimeout;
     const syncStatus = document.getElementById('syncStatus');
     
+    // بدء مشروع جديد كلياً
+    window.startNewProject = function() {
+        if(confirm("هل تريد إفراغ الشاشة وبدء مشروع (زبون) جديد؟")) {
+            window.currentProjectId = null;
+            window.loadedProjectName = null;
+            document.getElementById('projectName').value = "";
+            document.getElementById('piecesBody').innerHTML = "";
+            window.addRow();
+            document.getElementById('totalBoardsNeeded').value = "0";
+            document.getElementById('resultStats').innerText = "المخطط يظهر هنا بعد الحساب";
+            const canvas = document.getElementById('boardCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.height = 0;
+            window.saveData(); 
+            syncStatus.innerText = "✨ تم بدء مشروع جديد";
+            syncStatus.style.color = "#27ae60";
+        }
+    };
+
     // الحفظ التلقائي للمسودة (طوارئ)
     window.saveData = function() {
         if(!window.currentUid) return;
@@ -260,6 +283,11 @@
             return;
         }
 
+        // إذا كان المستخدم يعمل على مشروع محفوظ، وقام بتغيير اسمه، سيقوم النظام بإنشاء ملف جديد للزبون الجديد
+        if (window.currentProjectId && window.loadedProjectName && window.loadedProjectName !== projectName) {
+            window.currentProjectId = null;
+        }
+
         syncStatus.innerText = "جاري الحفظ في الأرشيف...";
         syncStatus.style.color = "#f39c12";
 
@@ -282,7 +310,6 @@
             });
         });
 
-        // إنشاء أو تحديث مرجع الأرشيف
         const targetPath = window.currentProjectId 
             ? `backups/cut_archive/${window.currentUid}/${window.currentProjectId}` 
             : null;
@@ -293,14 +320,14 @@
 
         window.fbSet(targetRef, data).then(() => {
             window.currentProjectId = targetRef.key;
+            window.loadedProjectName = projectName; // تحديث اسم الزبون الحالي
             syncStatus.innerText = "✔️ تم حفظ المشروع في الأرشيف بنجاح";
             syncStatus.style.color = "#27ae60";
             alert("✅ تم حفظ مشروع (" + projectName + ") في الأرشيف بنجاح!");
         }).catch((err) => {
-            syncStatus.innerText = "❌ خطأ في الحفظ (راجع قواعد أمان فايربيس)";
+            syncStatus.innerText = "❌ خطأ في الحفظ";
             syncStatus.style.color = "#e74c3c";
             console.error("Archive Save Error:", err);
-            alert("❌ لم يتم الحفظ. يرجى التأكد من أن قواعد Firebase Realtime Database تسمح بالكتابة (Rules).");
         });
     };
 
@@ -365,6 +392,7 @@
         if (!proj) return;
 
         window.currentProjectId = id;
+        window.loadedProjectName = proj.projectName || "";
         document.getElementById('projectName').value = proj.projectName || "";
         document.getElementById('boardType').value = proj.boardType || 'wood';
         document.getElementById('boardL').value = proj.boardL || 244;
@@ -387,11 +415,10 @@
         } else { window.addRow(); }
         
         closeArchive();
-        window.saveData(); // تحديث المسودة بالبيانات المستدعاة
+        window.saveData(); 
         syncStatus.innerText = "✔️ تم استدعاء المشروع بنجاح";
         syncStatus.style.color = "#27ae60";
 
-        // ++ حساب ورسم التقطيع تلقائياً بعد الاستدعاء ++
         setTimeout(() => {
             window.calculateAndDraw();
         }, 100);
@@ -404,6 +431,7 @@
                 openArchive(); 
                 if (window.currentProjectId === id) {
                     window.currentProjectId = null;
+                    window.loadedProjectName = null;
                     document.getElementById('projectName').value = "";
                     window.saveData();
                 }
