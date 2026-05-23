@@ -80,7 +80,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, set, get, child, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getDatabase, ref, set, get, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -101,6 +101,7 @@
         window.fbDB = db;
         window.fbRef = ref;
         window.fbSet = set;
+        window.fbGet = get;
         window.fbPush = push;
         window.fbRemove = remove;
         window.fbOnValue = onValue;
@@ -110,7 +111,7 @@
             if (user) {
                 window.currentUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
-                window.loadData(); // تحميل المسودة التلقائية إن وجدت
+                window.loadData();
             } else {
                 document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
             }
@@ -206,17 +207,21 @@
                 });
             });
 
-            window.fbSet(window.fbRef(window.fbDB, `backups/cut_projects/${window.currentUid}`), data)
+            const dbRefStr = `backups/cut_projects/${window.currentUid}`;
+            window.fbSet(window.fbRef(window.fbDB, dbRefStr), data)
                 .then(() => { syncStatus.innerText = "✔️ تم حفظ المسودة تلقائياً"; syncStatus.style.color = "#27ae60"; })
-                .catch(() => { syncStatus.innerText = "❌ خطأ في الاتصال بالخادم"; syncStatus.style.color = "#e74c3c"; });
+                .catch((err) => { 
+                    syncStatus.innerText = "❌ خطأ في الاتصال بالخادم"; syncStatus.style.color = "#e74c3c"; 
+                    console.error("Draft Save Error:", err);
+                });
         }, 1000);
     };
 
     // تحميل المسودة التلقائية عند فتح الصفحة
     window.loadData = function() {
         if(!window.currentUid) return;
-        const dbRef = window.fbRef(window.fbDB);
-        get(child(dbRef, `backups/cut_projects/${window.currentUid}`)).then((snapshot) => {
+        const dbRefStr = `backups/cut_projects/${window.currentUid}`;
+        window.fbGet(window.fbRef(window.fbDB, dbRefStr)).then((snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 document.getElementById('projectName').value = data.projectName || '';
@@ -240,7 +245,10 @@
                 } else { window.addRow(); }
                 syncStatus.innerText = "✔️ تم استرجاع مسودة العمل"; syncStatus.style.color = "#27ae60";
             } else { syncStatus.innerText = "مشروع جديد."; window.addRow(); }
-        }).catch(() => { syncStatus.innerText = "❌ فشل التحميل"; syncStatus.style.color = "#e74c3c"; window.addRow(); });
+        }).catch((err) => { 
+            syncStatus.innerText = "❌ فشل التحميل"; syncStatus.style.color = "#e74c3c"; window.addRow(); 
+            console.error("Draft Load Error:", err);
+        });
     };
 
     // ================= دوال الأرشيف =================
@@ -274,8 +282,14 @@
             });
         });
 
-        const archiveRef = window.fbRef(window.fbDB, `backups/cut_archive/${window.currentUid}`);
-        const targetRef = window.currentProjectId ? child(archiveRef, window.currentProjectId) : window.fbPush(archiveRef);
+        // إنشاء أو تحديث مرجع الأرشيف
+        const targetPath = window.currentProjectId 
+            ? `backups/cut_archive/${window.currentUid}/${window.currentProjectId}` 
+            : null;
+            
+        const targetRef = targetPath 
+            ? window.fbRef(window.fbDB, targetPath) 
+            : window.fbPush(window.fbRef(window.fbDB, `backups/cut_archive/${window.currentUid}`));
 
         window.fbSet(targetRef, data).then(() => {
             window.currentProjectId = targetRef.key;
@@ -283,9 +297,10 @@
             syncStatus.style.color = "#27ae60";
             alert("✅ تم حفظ مشروع (" + projectName + ") في الأرشيف بنجاح!");
         }).catch((err) => {
-            syncStatus.innerText = "❌ خطأ في الحفظ";
+            syncStatus.innerText = "❌ خطأ في الحفظ (راجع قواعد أمان فايربيس)";
             syncStatus.style.color = "#e74c3c";
-            console.error(err);
+            console.error("Archive Save Error:", err);
+            alert("❌ لم يتم الحفظ. يرجى التأكد من أن قواعد Firebase Realtime Database تسمح بالكتابة (Rules).");
         });
     };
 
@@ -379,8 +394,8 @@
 
     window.deleteArchivedProject = function(id) {
         if(confirm("هل أنت متأكد من حذف هذا المشروع نهائياً من الأرشيف؟")) {
-            const refToDelete = window.fbRef(window.fbDB, `backups/cut_archive/${window.currentUid}/${id}`);
-            window.fbRemove(refToDelete).then(() => {
+            const targetPath = `backups/cut_archive/${window.currentUid}/${id}`;
+            window.fbRemove(window.fbRef(window.fbDB, targetPath)).then(() => {
                 openArchive(); 
                 if (window.currentProjectId === id) {
                     window.currentProjectId = null;
