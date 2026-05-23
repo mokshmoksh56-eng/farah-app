@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>azemaa pro - Mobile Edition</title>
+    <title>azemaa pro - Mobile Edition السحابي</title>
     <style>
         :root { 
             --bg-main: #eef2f7; 
@@ -29,6 +29,25 @@
             -webkit-tap-highlight-color: transparent; 
         }
         
+        /* شاشة تسجيل الدخول وحماية المشتركين */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: var(--bg-main); z-index: 100000; display: flex;
+            justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;
+        }
+        .login-box {
+            background: var(--card-bg); padding: 30px; border-radius: var(--card-radius);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center;
+        }
+        .login-box input {
+            width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd;
+            border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: center;
+        }
+        .login-box button {
+            width: 100%; padding: 12px; background: #6e8efb; border: none;
+            color: #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
+        }
+
         header { 
             position: relative; 
             background: var(--header-grad); 
@@ -93,10 +112,6 @@
         .btn-whatsapp { background: var(--whatsapp-green); }
         .btn-cloud { background: var(--cloud-blue); }
         .btn-device { background: #a29bfe; }
-        
-        .sync-group-center {
-            justify-content: center;
-        }
 
         .main-container { display: flex; flex-direction: column; gap: 15px; }
         
@@ -128,6 +143,16 @@
 </head>
 <body>
 
+<div id="login-overlay">
+    <div class="login-box">
+        <h3>🔐 لوحة تفعيل azemaa pro</h3>
+        <p style="font-size: 13px; color: #7f8c8d;">سجل دخول بحساب العميل لتنشيط السحابة</p>
+        <input type="email" id="sys-email" placeholder="البريد الإلكتروني للعميل">
+        <input type="password" id="sys-password" placeholder="كلمة المرور السحابية">
+        <button id="login-btn">تفعيل النظام الآمن</button>
+    </div>
+</div>
+
 <header>
     <div>
         <div class="time-date-container">
@@ -137,7 +162,10 @@
         <div id="countdown" onclick="toggleHolidaysDropdown(event)" style="font-size: 0.75rem; cursor: pointer; padding-top: 4px;">جاري التحميل...</div>
     </div>
 
-    <button onclick="toggleTheme()" style="background:none; border:none; color:white; cursor:pointer; font-size: 1.4rem; padding: 5px;">🌙</button>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <button onclick="toggleTheme()" style="background:none; border:none; color:white; cursor:pointer; font-size: 1.4rem; padding: 5px;">🌙</button>
+        <button id="logout-btn" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 5px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;">خروج 🚪</button>
+    </div>
 
     <div class="header-center network-status" id="network-status">
         <span class="status-dot"></span>
@@ -318,6 +346,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
@@ -331,73 +360,90 @@
     
     const app = initializeApp(firebaseConfig); 
     const db = getDatabase(app);
+    const auth = getAuth(app);
 
-    document.getElementById('cloud-save-btn').addEventListener('click', async () => {
-        if(!navigator.onLine) {
-            alert("⚠️ أنت غير متصل بالإنترنت حالياً!");
-            return;
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('login-overlay').style.display = 'none';
+            // إعادة تنشيط الـ iframes وإمدادها بـ Token الجلسة البرمجي الجديد
+            document.querySelectorAll('iframe').forEach(f => f.src = f.src);
+        } else {
+            document.getElementById('login-overlay').style.display = 'flex';
         }
+    });
 
-        let data = {}; 
-        let hasData = false;
-        
-        for (let i = 0; i < localStorage.length; i++) { 
-            let k = localStorage.key(i); 
-            if (k !== 'theme') { 
-                data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); 
-                hasData = true;
-            } 
-        }
+    document.getElementById('login-btn').addEventListener('click', async () => {
+        const email = document.getElementById('sys-email').value;
+        const password = document.getElementById('sys-password').value;
+        const loginBtn = document.getElementById('login-btn');
 
-        if (!hasData) {
-            alert("⚠️ لا توجد بيانات مسجلة لحفظها!");
+        if(!email || !password) {
+            alert("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور!");
             return;
         }
 
         try {
-            const btn = document.getElementById('cloud-save-btn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ جاري الحفظ...";
+            loginBtn.innerText = "⏳ جاري تفعيل المزامنة...";
+            loginBtn.disabled = true;
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            alert("❌ خطأ في التفعيل: بيانات حساب العميل غير مطابقة للسيرفر.");
+        } finally {
+            loginBtn.innerText = "تفعيل النظام والمزامنة";
+            loginBtn.disabled = false;
+        }
+    });
 
-            await set(ref(db, 'backups/azemaa_main'), data); 
-            alert("تم الحفظ فى السحابة"); 
-            btn.innerHTML = originalText;
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        if(confirm("هل تريد تسجيل الخروج وقفل المنظومة؟")) {
+            signOut(auth).then(() => {
+                localStorage.clear();
+                window.location.reload();
+            });
+        }
+    });
+
+    document.getElementById('cloud-save-btn').addEventListener('click', async () => {
+        if(!auth.currentUser) return;
+        if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت!"); return; }
+
+        let data = {}; let hasData = false;
+        for (let i = 0; i < localStorage.length; i++) { 
+            let k = localStorage.key(i); 
+            if (k !== 'theme') { data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); hasData = true; } 
+        }
+        if (!hasData) { alert("⚠️ لا توجد بيانات مسجلة لحفظها!"); return; }
+
+        try {
+            document.getElementById('cloud-save-btn').innerHTML = "⏳ جاري الحفظ...";
+            await set(ref(db, `backups/users/${auth.currentUser.uid}`), data); 
+            alert("تم حفظ النسخة الاحتياطية الكلية بنجاح ✅"); 
         } catch (error) {
             alert("❌ فشل الحفظ: " + error.message);
+        } finally {
             document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ";
         }
     });
 
     document.getElementById('cloud-load-btn').addEventListener('click', async () => {
-        if(!navigator.onLine) {
-            alert("⚠️ أنت غير متصل بالإنترنت حالياً!");
-            return;
-        }
-
-        const isConfirmed = confirm("هل أنت متأكد من استرجاع البيانات؟ (سيتم مسح البيانات الحالية)");
-        if (!isConfirmed) return;
+        if(!auth.currentUser) return;
+        if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت حالياً!"); return; }
+        if (!confirm("هل تريد استرجاع نسخة الـ localStorage الاحتياطية؟")) return;
 
         try {
-            const btn = document.getElementById('cloud-load-btn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ استرجاع...";
-
-            const snapshot = await get(child(ref(db), 'backups/azemaa_main'));
-            if (snapshot.exists() && snapshot.val() !== null) { 
+            document.getElementById('cloud-load-btn').innerHTML = "⏳ جاري التحميل...";
+            const snapshot = await get(child(ref(db), `backups/users/${auth.currentUser.uid}`));
+            if (snapshot.exists()) { 
                 const d = snapshot.val(); 
-                for (let k in d) {
-                    if (d.hasOwnProperty(k)) {
-                        localStorage.setItem(k, d[k]); 
-                    }
-                }
-                alert("🔄 تم استرجاع البيانات بنجاح! سيتم تحديث النظام...");
+                for (let k in d) { localStorage.setItem(k, d[k]); }
+                alert("🔄 تم استيراد البيانات الكلية وجاري تحديث اللوحة...");
                 window.location.reload();
             } else {
-                alert("❓ لم يتم العثور على أي نسخة احتياطية سابقة.");
-                btn.innerHTML = originalText;
+                alert("❓ لم يتم العثور على أي نسخة كبرى مخزنة.");
             }
         } catch (error) {
             alert("❌ فشل الاسترجاع: " + error.message);
+        } finally {
             document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع";
         }
     });
