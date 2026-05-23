@@ -43,6 +43,28 @@
         canvas { display: block; width: 100%; margin-top: 20px; border: 2px solid #000; background: #fff; }
         .results { text-align: center; margin-top: 15px; font-weight: bold; font-size: 18px; color: #000; background: #f9f9f9; padding: 10px; border-radius: 4px; }
 
+        /* أزرار الحفظ والأرشيف */
+        .archive-controls { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .input-project-name { flex: 2; min-width: 200px; padding: 10px; border: 2px solid #2980b9; border-radius: 4px; font-size: 15px; font-weight: bold; text-align: right; }
+        .btn-save-archive { flex: 1; min-width: 120px; background-color: #2980b9; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-open-archive { flex: 1; min-width: 120px; background-color: #8e44ad; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+        /* نافذة الأرشيف المنبثقة */
+        #archiveModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100000; justify-content: center; align-items: center; }
+        .archive-content { background: #fff; width: 95%; max-width: 600px; padding: 20px; border-radius: 8px; max-height: 80vh; overflow-y: auto; direction: rtl; }
+        .archive-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .archive-header h2 { margin: 0; color: #2c3e50; font-size: 20px; }
+        .close-modal { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #searchArchive { width: 100%; padding: 12px; border: 2px solid #ccc; border-radius: 4px; margin-bottom: 15px; font-size: 15px; }
+        .archive-item { background: #f8f9fa; border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .archive-item-info { flex: 1; min-width: 150px; }
+        .archive-item-info strong { color: #2980b9; display: block; font-size: 16px; margin-bottom: 4px; }
+        .archive-item-info span { color: #7f8c8d; font-size: 13px; }
+        .archive-item-actions { display: flex; gap: 5px; }
+        .archive-item-actions button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-load { background: #27ae60; }
+        .btn-delete { background: #e74c3c; }
+
         @media (max-width: 600px) {
             body { padding: 5px; }
             .container { padding: 10px; }
@@ -50,12 +72,15 @@
             .setup-panel { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
             .action-buttons { flex-direction: column; }
             .sticky-panel { position: relative; }
+            .archive-item { flex-direction: column; align-items: flex-start; }
+            .archive-item-actions { width: 100%; justify-content: space-between; }
+            .archive-item-actions button { flex: 1; }
         }
     </style>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getDatabase, ref, set, get, child, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -76,12 +101,16 @@
         window.fbDB = db;
         window.fbRef = ref;
         window.fbSet = set;
+        window.fbPush = push;
+        window.fbRemove = remove;
+        window.fbOnValue = onValue;
+        window.currentProjectId = null;
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 window.currentUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
-                window.loadData();
+                window.loadData(); // تحميل المسودة التلقائية إن وجدت
             } else {
                 document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
             }
@@ -128,6 +157,12 @@
     </div>
     <button class="btn-add" onclick="addRow()">+ إضافة مقاس جديد</button>
 
+    <div class="archive-controls">
+        <input type="text" id="projectName" class="input-project-name" placeholder="اسم المشروع (مثال: مطبخ أ/ أحمد)">
+        <button class="btn-save-archive" onclick="saveToArchive()">💾 حفظ المشروع</button>
+        <button class="btn-open-archive" onclick="openArchive()">📂 الأرشيف</button>
+    </div>
+
     <div class="action-buttons">
         <button class="btn-print" onclick="window.print()">🖨️ طباعة المخطط</button>
         <a href="kmatkitchen.html" class="btn-back-menu">⬅️ قائمة الخامات الرئيسية</a>
@@ -137,18 +172,32 @@
     <canvas id="boardCanvas"></canvas>
 </div>
 
+<div id="archiveModal">
+    <div class="archive-content">
+        <div class="archive-header">
+            <h2>📂 أرشيف التقطيع</h2>
+            <button class="close-modal" onclick="closeArchive()">إغلاق ❌</button>
+        </div>
+        <input type="text" id="searchArchive" placeholder="🔍 ابحث عن اسم المشروع..." onkeyup="filterArchive()">
+        <div id="archiveList">
+            </div>
+    </div>
+</div>
+
 <script>
     let saveTimeout;
     const syncStatus = document.getElementById('syncStatus');
     
+    // الحفظ التلقائي للمسودة (طوارئ)
     window.saveData = function() {
         if(!window.currentUid) return;
-        syncStatus.innerText = "جاري الحفظ...";
+        syncStatus.innerText = "جاري حفظ المسودة...";
         syncStatus.style.color = "#f39c12";
 
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
             const data = {
+                projectName: document.getElementById('projectName').value,
                 boardType: document.getElementById('boardType').value, boardL: document.getElementById('boardL').value, boardW: document.getElementById('boardW').value, kerf: document.getElementById('kerf').value, pieces: []
             };
             document.querySelectorAll('#piecesBody tr').forEach(row => {
@@ -158,17 +207,19 @@
             });
 
             window.fbSet(window.fbRef(window.fbDB, `backups/cut_projects/${window.currentUid}`), data)
-                .then(() => { syncStatus.innerText = "✔️ تم الحفظ سحابياً بنجاح"; syncStatus.style.color = "#27ae60"; })
+                .then(() => { syncStatus.innerText = "✔️ تم حفظ المسودة تلقائياً"; syncStatus.style.color = "#27ae60"; })
                 .catch(() => { syncStatus.innerText = "❌ خطأ في الاتصال بالخادم"; syncStatus.style.color = "#e74c3c"; });
         }, 1000);
     };
 
+    // تحميل المسودة التلقائية عند فتح الصفحة
     window.loadData = function() {
         if(!window.currentUid) return;
         const dbRef = window.fbRef(window.fbDB);
         get(child(dbRef, `backups/cut_projects/${window.currentUid}`)).then((snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
+                document.getElementById('projectName').value = data.projectName || '';
                 document.getElementById('boardType').value = data.boardType || 'wood';
                 document.getElementById('boardL').value = data.boardL || 244;
                 document.getElementById('boardW').value = data.boardW || 122;
@@ -187,10 +238,160 @@
                         tbody.appendChild(tr);
                     });
                 } else { window.addRow(); }
-                syncStatus.innerText = "✔️ تم تحميل البيانات السحابية"; syncStatus.style.color = "#27ae60";
+                syncStatus.innerText = "✔️ تم استرجاع مسودة العمل"; syncStatus.style.color = "#27ae60";
             } else { syncStatus.innerText = "مشروع جديد."; window.addRow(); }
         }).catch(() => { syncStatus.innerText = "❌ فشل التحميل"; syncStatus.style.color = "#e74c3c"; window.addRow(); });
     };
+
+    // ================= دوال الأرشيف =================
+    window.saveToArchive = function() {
+        if(!window.currentUid) return;
+        const projectName = document.getElementById('projectName').value.trim();
+        if(!projectName) {
+            alert("⚠️ يرجى كتابة اسم المشروع أولاً في المربع المخصص للحفظ في الأرشيف.");
+            return;
+        }
+
+        syncStatus.innerText = "جاري الحفظ في الأرشيف...";
+        syncStatus.style.color = "#f39c12";
+
+        const data = {
+            projectName: projectName,
+            date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            boardType: document.getElementById('boardType').value,
+            boardL: document.getElementById('boardL').value,
+            boardW: document.getElementById('boardW').value,
+            kerf: document.getElementById('kerf').value,
+            pieces: []
+        };
+
+        document.querySelectorAll('#piecesBody tr').forEach(row => {
+            data.pieces.push({
+                name: row.querySelector('.p-name').value,
+                len: row.querySelector('.p-len').value,
+                wid: row.querySelector('.p-wid').value,
+                qty: row.querySelector('.p-qty').value
+            });
+        });
+
+        const archiveRef = window.fbRef(window.fbDB, `backups/cut_archive/${window.currentUid}`);
+        const targetRef = window.currentProjectId ? child(archiveRef, window.currentProjectId) : window.fbPush(archiveRef);
+
+        window.fbSet(targetRef, data).then(() => {
+            window.currentProjectId = targetRef.key;
+            syncStatus.innerText = "✔️ تم حفظ المشروع في الأرشيف بنجاح";
+            syncStatus.style.color = "#27ae60";
+            alert("✅ تم حفظ مشروع (" + projectName + ") في الأرشيف بنجاح!");
+        }).catch((err) => {
+            syncStatus.innerText = "❌ خطأ في الحفظ";
+            syncStatus.style.color = "#e74c3c";
+            console.error(err);
+        });
+    };
+
+    window.openArchive = function() {
+        document.getElementById('archiveModal').style.display = 'flex';
+        const archiveList = document.getElementById('archiveList');
+        archiveList.innerHTML = "<p style='text-align:center;'>⏳ جاري تحميل الأرشيف...</p>";
+
+        const archiveRef = window.fbRef(window.fbDB, `backups/cut_archive/${window.currentUid}`);
+        window.fbOnValue(archiveRef, (snapshot) => {
+            archiveList.innerHTML = "";
+            if (snapshot.exists()) {
+                const projects = snapshot.val();
+                window.allArchiveProjects = projects; 
+                renderArchive(projects);
+            } else {
+                archiveList.innerHTML = "<p style='text-align:center; color:#e74c3c;'>لا توجد مشاريع محفوظة حالياً في الأرشيف.</p>";
+                window.allArchiveProjects = {};
+            }
+        }, { onlyOnce: true });
+    };
+
+    window.closeArchive = function() { document.getElementById('archiveModal').style.display = 'none'; };
+
+    window.renderArchive = function(projectsMap) {
+        const archiveList = document.getElementById('archiveList');
+        archiveList.innerHTML = "";
+        const sortedProjects = Object.keys(projectsMap).map(key => ({ id: key, ...projectsMap[key] })).reverse();
+
+        sortedProjects.forEach(proj => {
+            const div = document.createElement('div');
+            div.className = 'archive-item';
+            div.innerHTML = `
+                <div class="archive-item-info">
+                    <strong>${proj.projectName || 'مشروع بدون اسم'}</strong>
+                    <span>📅 ${proj.date || '-'} | 📐 عدد القطع: ${proj.pieces ? proj.pieces.length : 0}</span>
+                </div>
+                <div class="archive-item-actions">
+                    <button class="btn-load" onclick="loadArchivedProject('${proj.id}')">⬇️ استدعاء</button>
+                    <button class="btn-delete" onclick="deleteArchivedProject('${proj.id}')">🗑️ حذف</button>
+                </div>
+            `;
+            archiveList.appendChild(div);
+        });
+    };
+
+    window.filterArchive = function() {
+        const searchTerm = document.getElementById('searchArchive').value.toLowerCase();
+        if (!window.allArchiveProjects) return;
+        const filtered = {};
+        for (const key in window.allArchiveProjects) {
+            const proj = window.allArchiveProjects[key];
+            if ((proj.projectName || "").toLowerCase().includes(searchTerm)) {
+                filtered[key] = proj;
+            }
+        }
+        renderArchive(filtered);
+    };
+
+    window.loadArchivedProject = function(id) {
+        const proj = window.allArchiveProjects[id];
+        if (!proj) return;
+
+        window.currentProjectId = id;
+        document.getElementById('projectName').value = proj.projectName || "";
+        document.getElementById('boardType').value = proj.boardType || 'wood';
+        document.getElementById('boardL').value = proj.boardL || 244;
+        document.getElementById('boardW').value = proj.boardW || 122;
+        if(proj.kerf) document.getElementById('kerf').value = proj.kerf;
+
+        const tbody = document.getElementById('piecesBody');
+        tbody.innerHTML = '';
+        if(proj.pieces && proj.pieces.length > 0) {
+            proj.pieces.forEach((p, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="row-num">${i+1}</td>
+                <td><input type="text" class="p-name" value="${p.name}" oninput="saveData()"></td>
+                <td><input type="number" class="p-len" value="${p.len}" oninput="saveData()"></td>
+                <td><input type="number" class="p-wid" value="${p.wid}" oninput="saveData()"></td>
+                <td><input type="number" class="p-qty" value="${p.qty}" oninput="saveData()"></td>
+                <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>`;
+                tbody.appendChild(tr);
+            });
+        } else { window.addRow(); }
+        
+        closeArchive();
+        window.saveData(); // تحديث المسودة بالبيانات المستدعاة
+        syncStatus.innerText = "✔️ تم استدعاء المشروع بنجاح";
+        syncStatus.style.color = "#27ae60";
+    };
+
+    window.deleteArchivedProject = function(id) {
+        if(confirm("هل أنت متأكد من حذف هذا المشروع نهائياً من الأرشيف؟")) {
+            const refToDelete = window.fbRef(window.fbDB, `backups/cut_archive/${window.currentUid}/${id}`);
+            window.fbRemove(refToDelete).then(() => {
+                openArchive(); 
+                if (window.currentProjectId === id) {
+                    window.currentProjectId = null;
+                    document.getElementById('projectName').value = "";
+                    window.saveData();
+                }
+            });
+        }
+    };
+
+    // ===============================================
 
     window.updateBoardDimensions = function() {
         const type = document.getElementById('boardType').value;
