@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AZEMAA PRO | الحضور اللحظي</title>
+    <title>AZEMAA PRO | نظام الحضور المطور</title>
     <style>
         :root {
             --whatsapp-green: #25D366; --dark-green: #075E54; --teal: #128C7E;
@@ -26,7 +26,10 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
-        .sync-indicator { font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; margin-bottom: 5px; display: inline-block; }
+        .sync-indicator { font-size: 11px; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; margin-bottom: 8px; display: inline-block; transition: all 0.3s; }
+        .syncing { background: var(--warning); color: white; }
+        .synced { background: var(--whatsapp-green); color: white; }
+
         .header-title { font-size: 1.2rem; font-weight: 900; }
         #weekRangeDisplay { font-size: 13px; margin-top: 5px; background: rgba(0,0,0,0.1); display: inline-block; padding: 2px 10px; border-radius: 10px; }
 
@@ -40,50 +43,51 @@
         .date-selectors { display: flex; gap: 5px; margin-top: 10px; }
         .date-selectors select { 
             flex: 1; padding: 12px 5px; border-radius: 10px; border: 2px solid var(--teal); 
-            font-weight: 900; background: #f9f9f9; cursor: pointer; text-align: center;
+            font-weight: 900; background: #f9f9f9; text-align: center;
         }
 
         #cardsList { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         @media (max-width: 550px) { #cardsList { grid-template-columns: 1fr; } }
-        .worker-card { background: var(--white); border-radius: 15px; padding: 12px; border-top: 5px solid var(--teal); box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative; }
-
-        .card-name { font-size: 14px; color: var(--dark-green); text-align: center; margin-bottom: 8px; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
-        .salary-input { width: 100%; padding: 8px; border-radius: 8px; border: 1.5px solid #ddd; font-weight: 900; text-align: center; background: #fffcf0; box-sizing: border-box; margin-bottom: 10px;}
-
-        .days-grid { display: grid; grid-template-columns: 1fr; gap: 5px; }
-        .day-row { display: flex; align-items: center; background: #fdfdfd; border: 1px solid #eee; border-radius: 8px; padding: 4px; gap: 4px; }
-        .day-info { flex: 1; text-align: right; }
-        .day-name { font-size: 11px; color: var(--dark-green); display: block; line-height: 1; }
         
-        .att-btns { display: flex; gap: 2px; flex: 1.5; }
-        .btn-tgl { flex: 1; border: 1px solid #ccc; background: #fff; font-size: 10px; font-weight: 900; padding: 6px 0; border-radius: 4px; cursor: pointer; }
+        .worker-card { background: var(--white); border-radius: 15px; padding: 12px; border-top: 5px solid var(--teal); box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative; }
+        .card-name { font-size: 16px; color: var(--dark-green); text-align: center; margin-bottom: 10px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
+        
+        .salary-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; background: #fffcf0; padding: 5px; border-radius: 8px; }
+        .salary-row label { font-size: 12px; }
+        .salary-input { width: 80px; padding: 5px; border-radius: 5px; border: 1.5px solid #ddd; font-weight: 900; text-align: center; }
+
+        .days-grid { display: grid; grid-template-columns: 1fr; gap: 4px; }
+        .day-row { display: flex; align-items: center; background: #fdfdfd; border: 1px solid #eee; border-radius: 8px; padding: 5px; gap: 4px; }
+        .day-info { flex: 1; }
+        .day-name { font-size: 12px; color: var(--dark-green); font-weight: 900; }
+        .day-date { font-size: 9px; color: #888; display: block; }
+        
+        .att-btns { display: flex; gap: 2px; flex: 2; }
+        .btn-tgl { flex: 1; border: 1px solid #ccc; background: #fff; font-size: 11px; font-weight: 900; padding: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; }
         .btn-tgl.active[data-v="1"] { background: var(--whatsapp-green); color: white; border-color: var(--whatsapp-green); }
         .btn-tgl.active[data-v="0.5"] { background: var(--warning); color: white; border-color: var(--warning); }
         .btn-tgl.active[data-v="0"] { background: var(--danger); color: white; border-color: var(--danger); }
 
-        .loan-input { width: 50px; border: 1px solid #ddd; border-radius: 5px; padding: 5px 0; text-align: center; font-weight: 900; color: var(--danger); font-size: 12px; background: #fff; }
+        .loan-input { width: 60px; border: 1px solid #ddd; border-radius: 5px; padding: 8px 0; text-align: center; font-weight: 900; color: var(--danger); background: #fff; }
 
         .note-input { 
-            width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; 
-            border: 1.5px solid #ccc; font-size: 12px; background: #fffef2; 
-            box-sizing: border-box; font-weight: 900; font-family: inherit; resize: none;
+            width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px; 
+            border: 1.5px solid #ccc; font-size: 13px; background: #fffef2; 
+            box-sizing: border-box; font-weight: 700; resize: none;
         }
 
-        .card-footer { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ddd; font-size: 11px; font-weight: 900; }
-        .footer-line { display: flex; justify-content: space-between; margin-bottom: 3px; }
+        .card-footer { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #ddd; font-size: 13px; font-weight: 900; }
+        .footer-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
 
-        .btn-share { width: 100%; background: var(--whatsapp-green); color: white; border: none; padding: 10px; border-radius: 10px; margin-top: 10px; font-weight: 900; cursor: pointer; }
-        
-        .archive-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; background: white; border-radius: 8px; overflow: hidden; }
-        .archive-table th { background: #eee; padding: 8px; border: 1px solid #ddd; }
-        .archive-table td { padding: 8px; border: 1px solid #ddd; text-align: center; }
+        .btn-share { width: 100%; background: var(--whatsapp-green); color: white; border: none; padding: 12px; border-radius: 12px; margin-top: 10px; font-weight: 900; cursor: pointer; font-size: 14px; }
     </style>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, get, child, update, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+        // إعدادات المشروع الخاص بك
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -91,14 +95,14 @@
             projectId: "azemaa-proo",
             storageBucket: "azemaa-proo.firebasestorage.app",
             messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210",
-            measurementId: "G-R28J7010TH"
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const auth = getAuth(app);
 
+        // جعل الأدوات متاحة للوظائف الخارجية
         window.db = db; window.ref = ref; window.update = update; window.get = get;
 
         onAuthStateChanged(auth, (user) => {
@@ -107,23 +111,23 @@
                 document.getElementById('auth-loader').style.display = 'none';
                 initSystem();
             } else {
-                document.getElementById('auth-loader').innerText = "⚠️ يرجى تسجيل الدخول أولاً";
+                document.getElementById('auth-loader').innerText = "⚠️ يرجى تسجيل الدخول";
             }
         });
     </script>
 </head>
 <body>
 
-<div id="auth-loader">⏳ جاري ربط المزامنة اللحظية...</div>
+<div id="auth-loader">⏳ جاري تهيئة التزامن اللحظي...</div>
 
 <header>
-    <div class="sync-indicator" id="syncStatus">✅ متصل ومؤمن</div>
-    <div class="header-title">AZEMAA PRO | لوحة الحضور الذكية</div>
+    <div class="sync-indicator" id="syncStatus">✅ متصل</div>
+    <div class="header-title">AZEMAA PRO | لوحة إدارة العمال</div>
     <div id="weekRangeDisplay">...</div>
     <div class="dashboard">
-        <div class="dash-card"><span>رواتب</span><strong id="stat-sal">0</strong></div>
-        <div class="dash-card"><span>خصومات</span><strong id="stat-loan">0</strong></div>
-        <div class="dash-card"><span>الصافي</span><strong id="stat-net">0</strong></div>
+        <div class="dash-card"><span>إجمالي رواتب</span><strong id="stat-sal">0</strong></div>
+        <div class="dash-card"><span>إجمالي سلف</span><strong id="stat-loan">0</strong></div>
+        <div class="dash-card"><span>صافي دفع</span><strong id="stat-net">0</strong></div>
     </div>
 </header>
 
@@ -143,12 +147,6 @@
     </div>
 
     <div id="cardsList"></div>
-
-    <div style="background: white; border-radius: 15px; padding: 15px; margin-top: 20px; border: 2px solid var(--teal); margin-bottom: 20px;">
-        <h3 style="text-align:center; color: var(--dark-green); margin:0 0 10px 0;">📂 أرشيف رواتب العامل</h3>
-        <select id="archiveSearch" oninput="buildArchiveHistory()" style="width:100%; padding:12px; border-radius:10px; font-weight:900; border:2px solid var(--teal);"></select>
-        <div id="archiveContent" style="margin-top:15px;"></div>
-    </div>
 </div>
 
 <script>
@@ -182,48 +180,52 @@
 
     function handleDateChange() {
         const pickedDate = new Date(document.getElementById('datePicker').value);
-        let dayOfWeek = pickedDate.getDay();
+        let dayOfWeek = pickedDate.getDay(); 
         let diffToSaturday = (dayOfWeek === 6) ? 0 : (dayOfWeek + 1);
         let saturday = new Date(pickedDate);
         saturday.setDate(pickedDate.getDate() - diffToSaturday);
         currentWeekID = saturday.toISOString().split('T')[0];
+        
         currentWeekDates = [];
         for(let i=0; i<6; i++) {
             let d = new Date(saturday); d.setDate(saturday.getDate() + i);
-            currentWeekDates.push(d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear());
+            currentWeekDates.push(d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0'));
         }
-        document.getElementById('weekRangeDisplay').innerText = `أسبوع السبت ${currentWeekDates[0]}`;
+        document.getElementById('weekRangeDisplay').innerText = `أسبوع يبدأ من ${currentWeekDates[0]}`;
         loadWeekData();
     }
 
     async function loadMasterWorkers() {
         const snap = await window.get(window.ref(window.db, `backups/workers_master/${window.currentUid}`));
         masterWorkers = snap.exists() ? snap.val() : [];
-        updateArchiveDropdown();
         loadWeekData();
     }
 
-    function updateArchiveDropdown() {
-        const dropdown = document.getElementById('archiveSearch');
-        dropdown.innerHTML = '<option value="">-- اختر العامل --</option>' + masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
-    }
-
     async function loadWeekData() {
-        if(!window.currentUid || masterWorkers.length === 0) return;
+        if(!window.currentUid) return;
         const snap = await window.get(window.ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`));
         const saved = snap.exists() ? snap.val() : {};
         
         const container = document.getElementById('cardsList');
         container.innerHTML = masterWorkers.map((worker, idx) => {
             let d = saved[idx] || {sal:'', loans:['','','','','',''], att:[1,1,1,1,1,1], note:''};
+            if(!d.att) d.att = [1,1,1,1,1,1];
+            if(!d.loans) d.loans = ['','','','','',''];
+
             return `
                 <div class="worker-card" id="card-${idx}">
                     <div class="card-name">${worker.name}</div>
-                    <input type="number" class="salary-input" value="${d.sal}" placeholder="الراتب" onchange="syncData(${idx}, 'sal', this.value)">
+                    <div class="salary-row">
+                        <label>الراتب الأسبوعي:</label>
+                        <input type="number" class="salary-input" value="${d.sal}" onchange="syncData(${idx}, 'sal', this.value)">
+                    </div>
                     <div class="days-grid">
                         ${[0,1,2,3,4,5].map(di => `
                             <div class="day-row">
-                                <div class="day-info"><span class="day-name">${weekdays[di]}</span></div>
+                                <div class="day-info">
+                                    <span class="day-name">${weekdays[di]}</span>
+                                    <span class="day-date">${currentWeekDates[di]}</span>
+                                </div>
                                 <div class="att-btns">
                                     <button class="btn-tgl ${d.att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx},${di})">ح</button>
                                     <button class="btn-tgl ${d.att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx},${di})">½</button>
@@ -233,11 +235,15 @@
                             </div>
                         `).join('')}
                     </div>
-                    <textarea class="note-input" placeholder="ملاحظات..." onblur="syncData(${idx}, 'note', this.value)">${d.note || ''}</textarea>
+                    <textarea class="note-input" placeholder="ملاحظات العامل..." onblur="syncData(${idx}, 'note', this.value)">${d.note || ''}</textarea>
                     <div class="card-footer">
-                        <div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>الصافي: <span class="sum-n" style="color:var(--dark-green)">0</span></span></div>
+                        <div class="footer-line"><span>إجمالي سلف: <span class="sum-l">0</span></span> <span>أيام حضور: <span class="sum-a">0</span></span></div>
+                        <div class="footer-line" style="border-top:1px solid #eee; padding-top:5px; margin-top:5px;">
+                            <span>صافي المستحق:</span> 
+                            <span class="sum-n" style="color:var(--dark-green); font-size:16px;">0</span>
+                        </div>
                     </div>
-                    <button class="btn-share" onclick="shareToWhatsApp(${idx})">واتساب 🟢</button>
+                    <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال الكشف للعامل 🟢</button>
                 </div>`;
         }).join('');
         masterWorkers.forEach((_, i) => recalc(i));
@@ -246,34 +252,38 @@
     function toggleAtt(btn, workerIdx, dayIdx) {
         Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const val = btn.dataset.v;
-        syncArrayData(workerIdx, 'att', dayIdx, val);
-        recalc(workerIdx);
+        syncArrayData(workerIdx, 'att', dayIdx, btn.dataset.v);
     }
 
-    // وظائف المزامنة اللحظية
+    // محرك المزامنة اللحظية
     function syncData(workerIdx, field, value) {
-        setSyncing(true);
+        setSyncStatus(true);
         const path = `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${workerIdx}`;
         window.update(window.ref(window.db, path), { [field]: value, name: masterWorkers[workerIdx].name }).then(() => {
-            setSyncing(false);
+            setSyncStatus(false);
             recalc(workerIdx);
         });
     }
 
     function syncArrayData(workerIdx, arrayField, dayIdx, value) {
-        setSyncing(true);
+        setSyncStatus(true);
         const path = `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${workerIdx}/${arrayField}`;
         window.update(window.ref(window.db, path), { [dayIdx]: value }).then(() => {
-            setSyncing(false);
+            setSyncStatus(false);
             recalc(workerIdx);
         });
     }
 
-    function setSyncing(status) {
+    function setSyncStatus(isSyncing) {
         const el = document.getElementById('syncStatus');
-        el.innerText = status ? "⏳ جاري الحفظ..." : "✅ تم الحفظ سحابياً";
-        el.style.background = status ? "var(--warning)" : "rgba(255,255,255,0.2)";
+        if(isSyncing) {
+            el.innerText = "⏳ جاري التحديث...";
+            el.className = "sync-indicator syncing";
+        } else {
+            el.innerText = "✅ تم الحفظ بالسحابة";
+            el.className = "sync-indicator synced";
+            setTimeout(() => { el.innerText = "✅ متصل"; el.className = "sync-indicator"; }, 2000);
+        }
     }
 
     function recalc(idx) {
@@ -281,9 +291,11 @@
         let sal = parseFloat(c.querySelector('.salary-input').value) || 0;
         let lTotal = 0; c.querySelectorAll('.loan-input').forEach(i => lTotal += parseFloat(i.value) || 0);
         let aTotal = 0; c.querySelectorAll('.btn-tgl.active').forEach(b => aTotal += parseFloat(b.dataset.v));
+        
         let net = Math.round(((sal / 6) * aTotal) - lTotal);
         c.querySelector('.sum-l').innerText = lTotal; 
-        c.querySelector('.sum-n').innerText = net > 0 ? net : 0;
+        c.querySelector('.sum-a').innerText = aTotal;
+        c.querySelector('.sum-n').innerText = (net > 0 ? net : 0) + " ج.م";
         refreshStats();
     }
 
@@ -294,16 +306,27 @@
             gN += parseFloat(c.querySelector('.sum-n').innerText) || 0; 
             gS += parseFloat(c.querySelector('.salary-input').value) || 0;
         });
-        document.getElementById('stat-sal').innerText = gS; 
-        document.getElementById('stat-loan').innerText = gL; 
-        document.getElementById('stat-net').innerText = gN;
+        document.getElementById('stat-sal').innerText = gS + " ج.م"; 
+        document.getElementById('stat-loan').innerText = gL + " ج.م"; 
+        document.getElementById('stat-net').innerText = gN + " ج.م";
     }
 
     function shareToWhatsApp(idx) {
         const c = document.getElementById(`card-${idx}`);
         const name = masterWorkers[idx].name;
+        const sal = c.querySelector('.salary-input').value || 0;
         const net = c.querySelector('.sum-n').innerText;
-        const msg = `*كشف حساب عامل* 👷\n*الاسم:* ${name}\n*أسبوع:* ${currentWeekID}\n*الصافي المستحق:* ${net} ج.م\nتم التحديث عبر AZEMAA PRO`;
+        const note = c.querySelector('.note-input').value || "لا توجد";
+        
+        let details = "";
+        c.querySelectorAll('.day-row').forEach((row, i) => {
+            const day = row.querySelector('.day-name').innerText;
+            const status = row.querySelector('.btn-tgl.active').innerText;
+            const loan = row.querySelector('.loan-input').value || 0;
+            details += `━ ${day}: [${status}] ${loan > 0 ? `| سلفة: ${loan}` : ''}\n`;
+        });
+
+        const msg = `*كشف حساب عامل* 👷\n*الاسم:* ${name}\n*الفترة:* أسبوع ${currentWeekID}\n*الراتب:* ${sal}\n*التفاصيل:*\n${details}*الملاحظات:* ${note}\n━━━━━━━━━━━━━━━\n*صافي المستحق للقبض:* *${net}*`;
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
 </script>
