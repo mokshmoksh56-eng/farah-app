@@ -148,6 +148,7 @@
 </div>
 
 <script>
+    // منع الوميض وحجب الدخول فوراً لو انتهت المدة
     if (localStorage.getItem('_az_sys_lock_v1') === 'true' && localStorage.getItem('_az_sys_logged_in') !== 'true') {
         document.getElementById('login-overlay').style.display = 'flex';
         document.getElementById('lock-msg').style.display = 'block';
@@ -277,26 +278,37 @@
 
     let trialInterval;
     const TOTAL_TRIAL_MS = 15 * 60 * 1000; 
-    
-    // الحل المبتكر: تحديث الـ iframes وإرسال توكن تجريبي مؤقت لتفادي أخطاء الصلاحيات
-    function updateIFramesWithTrialPermission(hasPermission) {
-        document.querySelectorAll('iframe').forEach(iframe => {
-            try {
-                const srcUrl = new URL(iframe.src, window.location.href);
-                if (hasPermission) {
-                    // نمرر صلاحية مؤقتة للـ iframe ليعلم أنه بداخل الـ 15 دقيقة
-                    srcUrl.searchParams.set('trial_auth', 'active_granted_session');
-                } else {
-                    srcUrl.searchParams.delete('trial_auth');
-                }
-                if (iframe.src !== srcUrl.toString()) {
-                    iframe.src = srcUrl.toString();
-                }
-            } catch(e) {
-                // إعادة تحميل تقليدية في حال تعذر قراءة الـ URL
-                iframe.src = iframe.src; 
+
+    // ==========================================================
+    // حقن قيم التفعيل الوهمية لخداع حماية الـ iFrames الداخلية 
+    // ==========================================================
+    function setTrialBypassTokens(isActive) {
+        if (isActive) {
+            // نزرع بيانات مستخدم نشط وهمية ليتخطى كود الأمان الداخلي للصفحات
+            localStorage.setItem('_az_sys_logged_in', 'true');
+            localStorage.setItem('trial_auth', 'active_granted_session');
+            
+            // محاكاة مفتاح Firebase Auth لتشغيل السكربتات الداخلية بدون أخطاء صلاحيات
+            const fakeAuthKey = "firebase:authUser:" + firebaseConfig.apiKey + ":[DEFAULT]";
+            if (!localStorage.getItem(fakeAuthKey)) {
+                const fakeUserData = {
+                    uid: "trial_temporary_user_id",
+                    email: "trial@azemaapro.com",
+                    emailVerified: true,
+                    isAnonymous: false,
+                    stsTokenManager: { accessToken: "temp_trial_token", refreshToken: "temp_trial_refresh" }
+                };
+                localStorage.setItem(fakeAuthKey, JSON.stringify(fakeUserData));
             }
-        });
+        } else {
+            // مسح قيم الباياباس وإغلاق الأقسام
+            localStorage.removeItem('_az_sys_logged_in');
+            localStorage.removeItem('trial_auth');
+            const fakeAuthKey = "firebase:authUser:" + firebaseConfig.apiKey + ":[DEFAULT]";
+            if (localStorage.getItem(fakeAuthKey) && localStorage.getItem(fakeAuthKey).includes("trial_temporary_user_id")) {
+                localStorage.removeItem(fakeAuthKey);
+            }
+        }
     }
 
     function initTrialTimer() {
@@ -322,7 +334,13 @@
             enforceLockScreen();
         } else {
             headerTimerBox.style.display = 'block';
-            updateIFramesWithTrialPermission(true); // تفعيل الصلاحية للأقسام الداخلية
+            
+            // حقن توكنات العبور التجريبية للأقسام
+            setTrialBypassTokens(true);
+            
+            // تنشيط وتحميل الـ iFrames بالتوكن الجديد لتعمل فوراً
+            document.querySelectorAll('iframe').forEach(f => f.src = f.src);
+            
             runCountdown(parseInt(startTime));
         }
     }
@@ -354,23 +372,33 @@
 
     function enforceLockScreen() {
         if (trialInterval) clearInterval(trialInterval);
-        updateIFramesWithTrialPermission(false); // سحب الصلاحيات من الأقسام الداخلية فوراً
+        
+        // إبطال الصلاحيات التجريبية
+        setTrialBypassTokens(false);
+        
         document.getElementById('header-timer').style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex';
         document.getElementById('lock-msg').style.display = 'block';
         document.getElementById('login-desc').style.display = 'none';
+        
+        // إعادة تحميلهم لإظهار صفحة الحظر الأصلية
+        document.querySelectorAll('iframe').forEach(f => f.src = f.src);
     }
 
+    // مراقبة الدخول الحقيقي من Firebase
     onAuthStateChanged(auth, (user) => {
-        if (user) {
+        if (user && !user.uid.includes("trial_temporary_user_id")) {
+            // العميل سجل دخول حقيقي ومدفوع
             localStorage.setItem('_az_sys_logged_in', 'true');
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('header-timer').style.display = 'none';
             if(trialInterval) clearInterval(trialInterval);
             document.querySelectorAll('iframe').forEach(f => f.src = f.src);
         } else {
-            localStorage.removeItem('_az_sys_logged_in');
-            initTrialTimer(); 
+            // في حالة عدم وجود مستخدم حقيقي -> تشغيل المحرك التجريبي والحقن التلقائي
+            if(!user) {
+                initTrialTimer();
+            }
         }
     });
 
@@ -384,9 +412,17 @@
         try {
             loginBtn.innerText = "⏳ جاري التفعيل...";
             loginBtn.disabled = true;
+            
+            // تنظيف أي بيانات توكن تجريبية قديمة قبل التسجيل الحقيقي
+            setTrialBypassTokens(false);
+            
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
             alert("❌ خطأ: البيانات غير صحيحة أو غير مسجلة.");
+            // إعادة تفعيل التوكن التجريبي في حال فشل تسجيل الدخول والوقت لم ينتهِ
+            if(localStorage.getItem('_az_sys_lock_v1') !== 'true') {
+                setTrialBypassTokens(true);
+            }
         } finally {
             loginBtn.innerText = "تسجيل الدخول والتفعيل";
             loginBtn.disabled = false;
@@ -396,25 +432,26 @@
     document.getElementById('logout-btn').addEventListener('click', () => {
         if(confirm("هل تريد تسجيل الخروج وقفل المنظومة؟")) {
             signOut(auth).then(() => {
-                localStorage.removeItem('_az_sys_logged_in');
+                localStorage.clear(); // مسح كامل للتنظيف الآمن عند الخروج
                 window.location.reload();
             });
         }
     });
 
+    // الحفظ والاسترجاع السحابي
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
-        if(!auth.currentUser) return;
+        if(!auth.currentUser || auth.currentUser.uid.includes("trial_temporary_user_id")) { alert("❌ عذراً، الحفظ السحابي متاح للنسخ المدفوعة فقط بعد التفعيل!"); return; }
         let data = {}; let hasData = false;
         for (let i = 0; i < localStorage.length; i++) { 
             let k = localStorage.key(i); 
-            if (k !== 'theme' && !k.startsWith('_az_sys_')) { data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); hasData = true; } 
+            if (k !== 'theme' && !k.startsWith('_az_sys_') && !k.includes("firebase:authUser")) { data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); hasData = true; } 
         }
         if (!hasData) return;
         try { await set(ref(db, `backups/users/${auth.currentUser.uid}`), data); alert("تم حفظ النسخة بنجاح ✅"); } catch (e) {}
     });
 
     document.getElementById('cloud-load-btn').addEventListener('click', async () => {
-        if(!auth.currentUser) return;
+        if(!auth.currentUser || auth.currentUser.uid.includes("trial_temporary_user_id")) { alert("❌ عذراً، الاسترجاع السحابي متاح للنسخ المدفوعة فقط!"); return; }
         try {
             const snapshot = await get(child(ref(db), `backups/users/${auth.currentUser.uid}`));
             if (snapshot.exists()) { 
@@ -424,5 +461,3 @@
         } catch (e) {}
     });
 </script>
-</body>
-</html>
