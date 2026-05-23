@@ -1,271 +1,246 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <title>Azemaa Proo - سحابي</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-analytics-compat.js"></script>
+<script type="module">
+    // 1. استدعاء مكتبات فايربيز (الإصدار 10 الحديث)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, child, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    <style>
-        :root { --primary: #0f172a; --gold: #d4af37; --accent: #2563eb; --bg: #e0e0e0; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; }
-        .container { max-width: 500px; margin: 0 auto; padding-bottom: 60px; }
-        header { text-align: center; padding: 20px; background: var(--primary); color: var(--gold); border-radius: 15px; margin-bottom: 15px; }
-        .panel { background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; font-family: inherit; }
-        
-        /* جعل صندوق الملاحظات مرن ويتمدد بسلاسة لأسفل */
-        textarea { 
-            resize: none; 
-            min-height: 80px; 
-            overflow-y: hidden; 
-            line-height: 1.5; 
-        }
-        
-        .size-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .size-grid input { text-align: center; font-size: 20px; color: var(--accent); }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; }
-        .btn-add { background: var(--primary); }
-        .btn-update { background: var(--gold); display: none; }
-        .search-bar { width: 100%; padding: 12px; border: 2px solid var(--gold); border-radius: 12px; margin-bottom: 15px; box-sizing: border-box; }
-        .card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 10px; border-right: 6px solid var(--gold); }
-        .card-name { font-size: 18px; font-weight: bold; color: var(--primary); }
-        
-        /* كارت الملاحظات يعرض الأسطر كاملة دون اختفاء */
-        .card-notes { font-size: 16px; color: #555; background: #fff9e6; padding: 8px 12px; border-radius: 8px; margin: 10px 0; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
-        
-        .card-sizes { display: flex; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 10px; }
-        .size-val { font-weight: bold; color: var(--accent); font-size: 24px; text-align: center; }
-        .size-lbl { font-size: 12px; display: block; color: #888; }
-        .actions { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-act { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .edit { background: #e8f5e9; color: #2e7d32; }
-        .del { background: #ffebee; color: #c62828; }
-        
-        /* إشعار المزامنة (Toast) */
-        #toast {
-            position: fixed; 
-            bottom: 20px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            background: #1abc9c; 
-            color: white; 
-            padding: 12px 25px; 
-            border-radius: 30px; 
-            display: none; 
-            z-index: 1000;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            text-align: center;
-            width: max-content;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header><h2>Azemaa Proo</h2><p>نظام المقاسات - متزامن سحابياً ☁️</p></header>
-        
-        <div class="panel" id="mainPanel">
-            <h4 id="modeTxt">إضافة مقاس جديد</h4>
-            <select id="cat">
-                <option>ثلاجة ❄️</option><option>ميكروويف ⚡</option><option>ديب فريزر 🧊</option>
-                <option>بوتاجاز 🔥</option><option>غسالة 🧺</option><option>غسالة أطباق 🍽️</option>
-                <option>فرن ♨️</option><option>سخان غاز 🛁</option><option>سخان كهرباء 💧</option>
-                <option>كولدير مياه 💧</option>
-            </select>
-            <input type="text" id="name" placeholder="الشركة والموديل">
+    // 2. إعدادات الاتصال بقاعدة البيانات
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210",
+        measurementId: "G-R28J7010TH"
+    };
+
+    // 3. تهيئة التطبيق
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    // متغيرات عامة
+    let currentUid = null;
+    let dbRef = null;
+    let localData = {};
+    const currentYear = new Date().getFullYear();
+
+    // 4. التحقق من الهوية وتحديد مسار العميل السحابي
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUid = user.uid;
+            dbRef = ref(db, `backups/yomya_users/${currentUid}`);
             
-            <!-- إضافة خاصية التمدد التلقائي عند الكتابة (oninput) -->
-            <textarea id="notes" placeholder="أدخل الملاحظات الإضافية بالتفصيل هنا..." oninput="autoExpand(this)"></textarea>
+            document.getElementById('auth-loader').style.display = 'none';
+            initApp();
+        } else {
+            document.getElementById('auth-loader').innerText = "⚠️ خطأ في الصلاحيات: يرجى فتح واجهة التفعيل الرئيسية أولاً.";
+        }
+    });
+
+    // 5. المزامنة اللحظية (جلب البيانات)
+    function initApp() {
+        onValue(dbRef, (snapshot) => {
+            const cloudData = snapshot.val() || {};
+            localData = Object.assign({}, cloudData);
+            renderTable();
             
-            <div class="size-grid">
-                <div><label style="font-size:12px; font-weight:bold;">عرض</label><input type="text" id="w" placeholder="0" inputmode="decimal"></div>
-                <div><label style="font-size:12px; font-weight:bold;">ارتفاع</label><input type="text" id="h" placeholder="0" inputmode="decimal"></div>
-                <div><label style="font-size:12px; font-weight:bold;">عمق</label><input type="text" id="d" placeholder="0" inputmode="decimal"></div>
-            </div>
-            <button class="btn btn-add" id="btnAdd" onclick="add()">حفظ ومزامنة ✅</button>
-            <button class="btn btn-update" id="btnUpd" onclick="update()">تحديث البيانات 🔄</button>
-        </div>
-        
-        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الشركة..." onkeyup="render()">
-        <div id="list"></div>
-    </div>
-
-    <div id="toast">✅ تم الحفظ والمزامنة سحابياً</div>
-
-    <script>
-        // إعدادات Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-            authDomain: "azemaa-proo.firebaseapp.com",
-            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-            projectId: "azemaa-proo",
-            storageBucket: "azemaa-proo.firebasestorage.app",
-            messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210",
-            measurementId: "G-R28J7010TH"
-        };
-
-        // تهيئة فايربيز 
-        firebase.initializeApp(firebaseConfig);
-
-        if (typeof firebase.analytics === "function") {
-            firebase.analytics.isSupported().then((supported) => {
-                if (supported) { const analytics = firebase.analytics(); }
-            }).catch((err) => console.log("Analytics not supported or blocked", err));
-        }
-
-        const fdb = firebase.database();
-        const devicesRef = fdb.ref('farah_agheza_sizes'); 
-
-        let devicesData = {};
-        let editKey = null;
-
-        // دالة التمدد التلقائي للملاحظات لأسفل دون ظهور شريط تمرير جانبي
-        function autoExpand(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = textarea.scrollHeight + 'px';
-        }
-
-        function showToast(message) {
-            const t = document.getElementById('toast');
-            t.innerText = message;
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2500);
-        }
-
-        function norm(t) {
-            if(!t) return "";
-            const ar = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
-            const en = ['0','1','2','3','4','5','6','7','8','9'];
-            let r = t.toString().toLowerCase();
-            for(let i=0; i<10; i++) r = r.replace(ar[i], en[i]);
-            return r.replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
-        }
-
-        // جلب البيانات لحظياً
-        devicesRef.on('value', (snapshot) => {
-            devicesData = snapshot.val() || {};
-            render();
+            document.getElementById('sync-status').innerText = "🟢 متصل بالسحابة بشكل آمن ومستقر";
+            document.getElementById('sync-status').style.color = "var(--success)";
+            restoreScrollPosition();
+        }, (error) => {
+            console.error(error);
+            document.getElementById('sync-status').innerText = "🔴 خطأ اتصال: السيرفر يرفض صلاحيات العرض الحالية.";
+            document.getElementById('sync-status').style.color = "var(--danger)";
         });
 
-        function render() {
-            const container = document.getElementById('list');
-            const q = norm(document.getElementById('search').value);
+        if(!document.getElementById('entry-date').value) setActualTime();
+        
+        // حفظ مكان التمرير في الصفحة
+        window.addEventListener('scroll', () => {
+            localStorage.setItem('scrollPosition_yom', window.scrollY);
+        });
+    }
+
+    // 6. إضافة أو تعديل عملية
+    window.processEntry = function() {
+        if (!currentUid) return;
+        const shop = document.getElementById('entry-shop').value;
+        const customer = document.getElementById('entry-customer').value.trim() || "-";
+        const date = document.getElementById('entry-date').value || new Date().toISOString().slice(0, 16);
+        const desc = document.getElementById('entry-desc').value.trim() || "-";
+        const inVal = parseFloat(document.getElementById('entry-in').value) || 0;
+        const outVal = parseFloat(document.getElementById('entry-out').value) || 0;
+        const editId = document.getElementById('edit-id').value;
+
+        if (inVal === 0 && outVal === 0) { alert("يرجى كتابة مبلغ أولاً"); return; }
+
+        const uniqueId = editId || 'id_' + Date.now();
+        const entryData = { id: uniqueId, shop, customer, date, desc, inVal, outVal };
+
+        localData[uniqueId] = entryData;
+        renderTable(); 
+
+        set(child(dbRef, uniqueId), entryData).then(() => {
+            resetForm();
+        }).catch(err => {
+            alert("فشل المزامنة السحابية: " + err.message);
+        });
+    }
+
+    // 7. عرض البيانات في الجدول
+    window.renderTable = function() {
+        const tableBody = document.getElementById('table-body');
+        if(!tableBody) return;
+        
+        const searchVal = document.getElementById('searchBox').value.toLowerCase();
+        tableBody.innerHTML = "";
+        
+        let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
+        const now = new Date();
+
+        const validItems = Object.values(localData).filter(item => item && item.date);
+        const sorted = validItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        sorted.forEach(item => {
+            const rowDate = new Date(item.date);
+            const itemNet = (item.inVal || 0) - (item.outVal || 0);
             
-            const itemsArray = Object.keys(devicesData).map(key => ({
-                id: key,
-                ...devicesData[key]
-            })).reverse();
+            if (rowDate.toDateString() === now.toDateString()) totals.day += itemNet;
+            if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) totals.month += itemNet;
+            if (rowDate.getFullYear() === currentYear) { 
+                totals.yearOut += (item.outVal || 0); 
+                totals.yearNet += itemNet; 
+            }
 
-            container.innerHTML = itemsArray.map(item => {
-                const searchStr = norm(item.cat + " " + item.name + " " + (item.notes || ""));
-                if (q && !searchStr.includes(q)) return '';
+            const customerStr = (item.customer || "-").toString().toLowerCase();
+            const descStr = (item.desc || "-").toString().toLowerCase();
+            const shopStr = (item.shop || "-").toString().toLowerCase();
+            const searchPool = `${customerStr} ${descStr} ${shopStr}`;
 
-                return `
-                <div class="card">
-                    <div style="font-size:12px; color:var(--gold); font-weight:bold;">${item.cat}</div>
-                    <div class="card-name">${item.name}</div>
-                    <div class="card-notes">${item.notes || 'لا يوجد ملاحظات'}</div>
-                    <div class="card-sizes">
-                        <div><span class="size-lbl">عـرض</span><span class="size-val">${item.w}</span></div>
-                        <div><span class="size-lbl">ارتفـاع</span><span class="size-val">${item.h}</span></div>
-                        <div><span class="size-lbl">عمـق</span><span class="size-val">${item.d}</span></div>
-                    </div>
-                    <div class="actions">
-                        <button class="btn-act edit" onclick="startEdit('${item.id}')">تعديل ✏️</button>
-                        <button class="btn-act del" onclick="del('${item.id}')">حذف 🗑️</button>
-                    </div>
-                </div>`;
-            }).join('');
+            if (searchPool.includes(searchVal)) {
+                const tr = document.createElement('tr');
+                
+                let cleanDate = "-";
+                if(typeof item.date === 'string'){
+                    const dParts = item.date.split('T');
+                    if(dParts.length === 2) {
+                        const dateNum = dParts[0].substring(5); 
+                        cleanDate = `${dateNum} ${dParts[1]}`; 
+                    } else {
+                        cleanDate = item.date;
+                    }
+                }
+
+                const displayOut = item.outVal && item.outVal !== 0 ? item.outVal : '-';
+                const displayIn = item.inVal && item.inVal !== 0 ? item.inVal : '-';
+
+                tr.innerHTML = `
+                    <td style="font-size:10px; color:#64748b;">${cleanDate}</td>
+                    <td><span class="badge">${item.shop || '-'}</span></td>
+                    <td style="max-width: 80px; overflow: hidden; text-overflow: ellipsis;">${item.customer || '-'}</td>
+                    <td style="max-width: 90px; overflow: hidden; text-overflow: ellipsis;">${item.desc || '-'}</td>
+                    <td class="${item.outVal ? 'td-out' : ''}">${displayOut}</td>
+                    <td class="${item.inVal ? 'td-in' : ''}">${displayIn}</td>
+                    <td>
+                        <button class="btn-action btn-wa" onclick="sendWhatsApp('${item.id}')" title="مشاركة واتساب">🟢</button>
+                        <button class="btn-action btn-edit" onclick="startEdit('${item.id}')" title="تعديل">📝</button>
+                        <button class="btn-action btn-del" onclick="deleteItem('${item.id}')" title="حذف">🗑️</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            }
+        });
+
+        document.getElementById('day-total').innerText = Math.round(totals.day).toLocaleString();
+        document.getElementById('month-total').innerText = Math.round(totals.month).toLocaleString();
+        document.getElementById('year-out').innerText = Math.round(totals.yearOut).toLocaleString();
+        document.getElementById('year-net').innerText = Math.round(totals.yearNet).toLocaleString();
+    }
+
+    // 8. تجهيز واجهة التعديل
+    window.startEdit = function(id) {
+        const item = localData[id];
+        if(!item) return;
+        document.getElementById('entry-shop').value = item.shop;
+        document.getElementById('entry-customer').value = item.customer === '-' ? '' : item.customer;
+        document.getElementById('entry-date').value = item.date;
+        document.getElementById('entry-desc').value = item.desc === '-' ? '' : item.desc;
+        document.getElementById('entry-in').value = item.inVal || "";
+        document.getElementById('entry-out').value = item.outVal || "";
+        document.getElementById('edit-id').value = id;
+        document.getElementById('btn-main').innerText = "تعديل العملية بالسحابة";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 9. الحذف من السحابة
+    window.deleteItem = function(id) {
+        if (!currentUid) return;
+        if(confirm("هل تريد حذف هذه العملية نهائياً؟")) {
+            delete localData[id];
+            renderTable();
+            remove(child(dbRef, id)).catch(err => alert("فشل الحذف من السحابة: " + err.message));
+        }
+    }
+
+    // 10. إرسال واتساب
+    window.sendWhatsApp = function(id) {
+        const item = localData[id];
+        if(!item) return;
+
+        let statusStr = "";
+        let directionStr = "";
+
+        if (item.inVal > 0) {
+            statusStr = `💰✨ *تـم دخـول مـبـلـغ:* *[ ${item.inVal} ]*`;
+            directionStr = `📥 *مـن:* *${item.customer || '-'}*`;
+        } else {
+            statusStr = `💸💥 *تـم خـروج مـبـلـغ:* *[ ${item.outVal} ]*`;
+            directionStr = `📤 *إلـى:* *${item.customer || '-'}*`;
         }
 
-        function add() {
-            const item = { 
-                cat: document.getElementById('cat').value, 
-                name: document.getElementById('name').value, 
-                notes: document.getElementById('notes').value, 
-                w: norm(document.getElementById('w').value), 
-                h: norm(document.getElementById('h').value), 
-                d: norm(document.getElementById('d').value) 
-            };
-            if(!item.name || !item.w) return alert("يرجى إكمال البيانات الأساسية (الشركة والعرض على الأقل)");
-            
-            devicesRef.push(item).then(() => {
-                clear();
-                showToast("✅ تم إضافة المقاس والمزامنة سحابياً");
-            }).catch(err => alert("حدث خطأ في الاتصال: " + err));
-        }
+        const cleanDate = typeof item.date === 'string' ? item.date.replace('T', ' ') : item.date;
 
-        function startEdit(id) {
-            editKey = id;
-            const d = devicesData[id];
-            document.getElementById('cat').value = d.cat;
-            document.getElementById('name').value = d.name;
-            
-            const notesField = document.getElementById('notes');
-            notesField.value = d.notes || '';
-            
-            document.getElementById('w').value = d.w;
-            document.getElementById('h').value = d.h;
-            document.getElementById('d').value = d.d;
-            
-            document.getElementById('modeTxt').innerText = "تعديل المقاس";
-            document.getElementById('btnAdd').style.display = 'none';
-            document.getElementById('btnUpd').style.display = 'block';
-            
-            // تشغيل التمدد التلقائي فوراً عند جلب النص القديم في وضع التعديل
-            autoExpand(notesField);
-            window.scrollTo(0,0);
-        }
+        const message = `=========================\n` +
+                        `${statusStr}\n` +
+                        `=========================\n` +
+                        `${directionStr}\n` +
+                        `⚙️ *الـقـسـم:* *${item.shop || '-'}*\n` +
+                        `📝 *الـبـيـان:* *${item.desc || '-'}*\n` +
+                        `📅 *التوقيت:* *${cleanDate}*\n` +
+                        `=========================`;
 
-        function update() {
-            if (!editKey) return;
-            const item = { 
-                cat: document.getElementById('cat').value, 
-                name: document.getElementById('name').value, 
-                notes: document.getElementById('notes').value, 
-                w: norm(document.getElementById('w').value), 
-                h: norm(document.getElementById('h').value), 
-                d: norm(document.getElementById('d').value) 
-            };
-            
-            devicesRef.child(editKey).update(item).then(() => {
-                editKey = null;
-                document.getElementById('modeTxt').innerText = "إضافة مقاس جديد";
-                document.getElementById('btnAdd').style.display = 'block';
-                document.getElementById('btnUpd').style.display = 'none';
-                clear();
-                showToast("🔄 تم تعديل المقاس والمزامنة سحابياً");
-            });
-        }
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    }
 
-        function del(id) { 
-            if(confirm("هل أنت متأكد من حذف هذا المقاس نهائياً؟")) { 
-                devicesRef.child(id).remove().then(() => {
-                    showToast("🗑️ تم الحذف من قاعدة البيانات");
-                });
-            } 
-        }
+    // دوال مساعدة
+    function setActualTime() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
+    }
 
-        function clear() { 
-            ['name','notes','w','h','d'].forEach(id => document.getElementById(id).value = ''); 
-            // إعادة ضبط حجم حقل الملاحظات للحجم الافتراضي بعد المسح
-            document.getElementById('notes').style.height = '80px';
+    function restoreScrollPosition() {
+        const savedPosition = localStorage.getItem('scrollPosition_yom');
+        if (savedPosition) {
+            window.scrollTo({ top: parseInt(savedPosition), behavior: 'smooth' });
         }
+    }
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register(URL.createObjectURL(new Blob([`
-                const c = 'f1';
-                self.addEventListener('install', e => e.waitUntil(caches.open(c).then(ca => ca.addAll(['./']))));
-                self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
-            `], {type:'text/javascript'})));
-        }
-    </script>
-</body>
-</html>
+    function resetForm() {
+        document.getElementById('entry-customer').value = ""; 
+        document.getElementById('entry-desc').value = ""; 
+        document.getElementById('entry-in').value = ""; 
+        document.getElementById('entry-out').value = ""; 
+        document.getElementById('edit-id').value = ""; 
+        document.getElementById('btn-main').innerText = "حفظ العملية بالسحابة"; 
+        setActualTime();
+    }
+
+    // ربط الأحداث بالأزرار
+    document.getElementById('btn-main').onclick = processEntry;
+    document.getElementById('searchBox').onkeyup = renderTable;
+</script>
