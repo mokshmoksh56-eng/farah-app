@@ -63,9 +63,28 @@
         .btn-tgl.active[data-v="0"] { background: var(--danger); color: white; border-color: var(--danger); }
         .loan-input { width: 55px; border: 1px solid #ddd; border-radius: 5px; padding: 8px 0; text-align: center; font-weight: 900; color: var(--danger); background: #fff; }
 
-        .note-input { width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px; border: 1.5px solid #ccc; font-size: 13px; background: #fffef2; box-sizing: border-box; resize: none; font-weight:700;}
+        /* تعديل الملاحظات لتتمدد تلقائياً */
+        .note-input { 
+            width: 100%; 
+            margin-top: 10px; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: 1.5px solid #ccc; 
+            font-size: 13px; 
+            background: #fffef2; 
+            box-sizing: border-box; 
+            resize: none; 
+            min-height: 70px; 
+            font-weight: 700;
+            overflow: hidden;
+            transition: height 0.2s ease;
+        }
+        
         .card-footer { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ddd; font-size: 13px; font-weight: 900; }
-        .btn-share { width: 100%; background: var(--whatsapp-green); color: white; border: none; padding: 12px; border-radius: 12px; margin-top: 10px; font-weight: 900; cursor: pointer; }
+        
+        .card-buttons { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-share { flex: 1; background: var(--whatsapp-green); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; }
+        .btn-save-manual { flex: 1; background: var(--teal); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; }
 
         .archive-box { background: white; border-radius: 15px; padding: 15px; margin-top: 20px; border: 2px solid var(--teal); margin-bottom: 20px; }
         .archive-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; background: white; border-radius: 8px; overflow: hidden; }
@@ -201,7 +220,6 @@
         loadWeekData();
     }
 
-    // تم إرجاع هذه الوظيفة لتطابق الكود الأول تماماً لمنع التداخل
     function loadMasterWorkers() {
         if(!window.db || !window.currentUid) return;
         get(ref(window.db, `backups/workers_master/${window.currentUid}`)).then((snapshot) => {
@@ -215,7 +233,6 @@
         }).catch((error) => console.error("Error loading workers:", error));
     }
 
-    // وظيفة إضافة العامل من الكود الأول مع ميزة النزول للأسفل
     function addNewWorker() {
         const name = document.getElementById('workerNameInp').value.trim();
         if(!name) return;
@@ -223,7 +240,6 @@
         document.getElementById('workerNameInp').value = "";
         saveMasterWorkers();
         
-        // التمرير التلقائي لأسفل لرؤية كارت العامل الجديد
         setTimeout(() => {
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }, 300);
@@ -241,7 +257,7 @@
         set(ref(window.db, `backups/workers_master/${window.currentUid}`), masterWorkers).then(() => {
             updateWorkerEditor();
             updateArchiveDropdown();
-            loadWeekData(); // يتم استدعاء بناء الجداول فوراً
+            loadWeekData(); 
         });
     }
 
@@ -255,7 +271,6 @@
         `).join('');
     }
 
-    // تحميل وبناء كروت الأسبوع (تعمل بالمزامنة اللحظية)
     async function loadWeekData() {
         if(!window.currentUid || masterWorkers.length === 0) {
             document.getElementById('cardsList').innerHTML = "";
@@ -294,7 +309,8 @@
                             </div>
                         `).join('')}
                     </div>
-                    <textarea class="note-input" placeholder="ملاحظات ومسحوبات أخرى..." onblur="syncData(${idx}, 'note', this.value)">${note}</textarea>
+                    <textarea class="note-input" placeholder="ملاحظات ومسحوبات أخرى..." onblur="syncData(${idx}, 'note', this.value)" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';">${note}</textarea>
+                    
                     <div class="card-footer">
                         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                             <span>أيام الحضور: <span class="sum-a">0</span></span>
@@ -305,10 +321,21 @@
                             <span class="sum-n" style="color:var(--whatsapp-green); font-size:16px;">0</span>
                         </div>
                     </div>
-                    <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال كشف الحساب 🟢</button>
+                    <div class="card-buttons">
+                        <button class="btn-save-manual" onclick="manualSaveWorker(${idx})">حفظ 💾</button>
+                        <button class="btn-share" onclick="shareToWhatsApp(${idx})">واتساب 🟢</button>
+                    </div>
                 </div>`;
         }).join('');
         
+        // ضبط الارتفاع للملاحظات المحملة مسبقاً
+        document.querySelectorAll('.note-input').forEach(textarea => {
+            if (textarea.value) {
+                textarea.style.height = 'auto';
+                textarea.style.height = (textarea.scrollHeight) + 'px';
+            }
+        });
+
         masterWorkers.forEach((_, i) => recalc(i));
     }
 
@@ -328,6 +355,47 @@
         setSyncStatus(true);
         update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}/${field}`), { [dIdx]: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
         recalc(wIdx);
+    }
+
+    function manualSaveWorker(idx) {
+        const card = document.getElementById(`card-${idx}`);
+        if (!card) return;
+
+        let sal = parseFloat(card.querySelector('.salary-input').value) || '';
+        let note = card.querySelector('.note-input').value || '';
+        
+        let loans = [];
+        card.querySelectorAll('.loan-input').forEach(input => {
+            loans.push(input.value || '');
+        });
+
+        let att = [];
+        card.querySelectorAll('.att-btns').forEach(group => {
+            let activeBtn = group.querySelector('.btn-tgl.active');
+            att.push(activeBtn ? activeBtn.dataset.v : "1");
+        });
+
+        setSyncStatus(true);
+        const path = `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${idx}`;
+        
+        update(ref(window.db, path), {
+            sal: sal,
+            note: note,
+            loans: loans,
+            att: att,
+            name: masterWorkers[idx].name
+        }).then(() => {
+            setSyncStatus(false);
+            recalc(idx);
+            const saveBtn = card.querySelector('.btn-save-manual');
+            const originalText = saveBtn.innerText;
+            saveBtn.innerText = "تم الحفظ ✔️";
+            saveBtn.style.background = "var(--whatsapp-green)";
+            setTimeout(() => {
+                saveBtn.innerText = originalText;
+                saveBtn.style.background = "var(--teal)";
+            }, 1500);
+        });
     }
 
     function setSyncStatus(isSyncing) {
