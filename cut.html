@@ -29,10 +29,12 @@
         
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        
         th, td { padding: 8px; text-align: center; border-bottom: 1px solid #ddd; font-weight: bold; }
-        th { background: #000; color: white; font-size: 15px; font-weight: bold; }
-        td input[type="text"], td input[type="number"] { padding: 6px; height: 36px; font-size: 16px; font-weight: bold; color: #000; }
-        td input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
+        th { background: #000; color: white; font-size: 16px; font-weight: bold; }
+        td { font-size: 18px; } /* تم تصغير الأرقام هنا */
+        td input[type="text"], td input[type="number"] { padding: 6px; height: 40px; font-size: 18px; font-weight: bold; color: #000; text-align: center; } /* تم تصغير أرقام مربعات الإدخال */
+        td input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
         
         .btn-calc { background-color: #27ae60; color: white; width: 100%; padding: 14px; border: none; border-radius: 4px; font-size: 18px; cursor: pointer; margin-top: 10px; font-weight: bold; }
         .btn-add { background-color: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 15px; width: 100%; font-weight: bold; }
@@ -43,14 +45,20 @@
         
         .results { text-align: center; margin-top: 15px; font-weight: bold; font-size: 18px; color: #000; background: #f9f9f9; padding: 10px; border-radius: 4px; }
 
-        /* تنسيقات صفحات الطباعة والألواح */
-        #boardsRenderContainer { margin-top: 25px; }
+        #zoomControls { display: none; justify-content: center; gap: 10px; margin-top: 15px; background: #2c3e50; padding: 12px; border-radius: 6px; flex-wrap: wrap; }
+        #zoomControls button { flex: 1; min-width: 100px; padding: 10px; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-zoom-in { background-color: #27ae60; color: white; }
+        .btn-zoom-out { background-color: #e74c3c; color: white; }
+        .btn-zoom-reset { background-color: #ecf0f1; color: #2c3e50; }
+
+        #boardsRenderContainer { margin-top: 15px; }
         .print-page { margin-bottom: 40px; }
         .board-detail-container { margin-bottom: 15px; border: 2px solid #2c3e50; border-radius: 6px; overflow: hidden; page-break-inside: avoid; }
         .board-title { background: #2c3e50; color: white; padding: 12px; margin: 0; text-align: center; font-size: 18px; font-weight: bold; }
+        
         .board-table { width: 100%; border-collapse: collapse; text-align: center; background: #fff; }
-        .board-table th { background: #ecf0f1; color: #2c3e50; padding: 10px; font-weight: bold; border-bottom: 2px solid #bdc3c7; font-size: 15px; }
-        .board-table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 16px; font-weight: bold; color: #000; }
+        .board-table th { background: #ecf0f1; color: #2c3e50; padding: 10px; font-weight: bold; border-bottom: 2px solid #bdc3c7; font-size: 16px; }
+        .board-table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 18px; font-weight: bold; color: #000; } /* تم التصغير هنا أيضاً */
         .board-table tr:last-child td { border-bottom: none; }
         .board-table tr:nth-child(even) { background-color: #f9f9f9; }
 
@@ -92,10 +100,10 @@
         @media print {
             body { background-color: #fff; padding: 0; }
             .container { box-shadow: none; border: none; padding: 0; margin: 0; max-width: 100%; }
-            .sticky-panel, .table-responsive, #addButtonsDiv, .archive-controls, .action-buttons, #syncStatus, h1, #resultStats, .board-detail-container { display: none !important; }
+            .sticky-panel, .table-responsive, #addButtonsDiv, .archive-controls, .action-buttons, #syncStatus, h1, #resultStats, #zoomControls, .board-detail-container { display: none !important; }
             .print-page { page-break-after: always; break-after: page; display: block; margin-bottom: 0; }
             .print-page:last-child { page-break-after: auto; break-after: auto; }
-            canvas { border: 2px solid #000 !important; margin-bottom: 15px; max-height: 95vh !important; width: auto !important; max-width: 100% !important; display: block; margin-left: auto; margin-right: auto; }
+            canvas { border: 2px solid #000 !important; margin-bottom: 15px; max-height: 95vh !important; width: 100% !important; max-width: 100% !important; display: block; margin-left: auto; margin-right: auto; }
         }
     </style>
 
@@ -204,6 +212,13 @@
 
     <div id="resultStats" class="results">المخطط يظهر هنا بعد الحساب</div>
     
+    <!-- لوحة التحكم في التكبير -->
+    <div id="zoomControls">
+        <button class="btn-zoom-out" onclick="zoomOutBoard()">➖ تصغير</button>
+        <button class="btn-zoom-reset" onclick="resetZoomBoard()">🔄 الحجم الطبيعي</button>
+        <button class="btn-zoom-in" onclick="zoomInBoard()">➕ تكبير</button>
+    </div>
+    
     <div id="boardsRenderContainer"></div>
 </div>
 
@@ -234,11 +249,20 @@
     let saveTimeout;
     const syncStatus = document.getElementById('syncStatus');
     
+    window.currentCanvasWidth = 100;
+    
+    window.zoomInBoard = function() { window.currentCanvasWidth += 50; applyZoom(); };
+    window.zoomOutBoard = function() { if (window.currentCanvasWidth > 100) { window.currentCanvasWidth -= 50; applyZoom(); } };
+    window.resetZoomBoard = function() { window.currentCanvasWidth = 100; applyZoom(); };
+
+    window.applyZoom = function() {
+        const canvases = document.querySelectorAll('#boardsRenderContainer canvas');
+        canvases.forEach(canvas => { canvas.style.width = window.currentCanvasWidth + '%'; });
+    };
+
     window.togglePattern = function() {
         const isGrain = document.getElementById('woodPattern').value === 'grain';
-        if (isGrain) {
-            document.querySelectorAll('.p-rot').forEach(cb => { cb.checked = false; });
-        }
+        if (isGrain) { document.querySelectorAll('.p-rot').forEach(cb => { cb.checked = false; }); }
         window.saveData();
     };
 
@@ -249,6 +273,7 @@
             window.addRow(); document.getElementById('totalBoardsNeeded').value = "0";
             document.getElementById('kerf').value = "0.4"; 
             document.getElementById('resultStats').innerText = "المخطط يظهر هنا بعد الحساب";
+            document.getElementById('zoomControls').style.display = "none";
             document.getElementById('boardsRenderContainer').innerHTML = "";
             window.saveData(); syncStatus.innerText = "✨ تم بدء مشروع جديد"; syncStatus.style.color = "#27ae60";
         }
@@ -495,6 +520,8 @@
     }
 
     window.calculateAndDraw = function() {
+        window.currentCanvasWidth = 100; 
+        
         const bL = parseFloat(document.getElementById('boardL').value); 
         const bW = parseFloat(document.getElementById('boardW').value); 
         const kerf = parseFloat(document.getElementById('kerf').value); 
@@ -530,6 +557,8 @@
         document.getElementById('totalBoardsNeeded').value = boards.length;
         document.getElementById('resultStats').innerText = "عدد الألواح المطلوبة: " + boards.length;
         
+        document.getElementById('zoomControls').style.display = 'flex';
+        
         renderBoardsAndTables(bL, bW, boards, isGrain);
     };
 
@@ -543,10 +572,15 @@
         boards.forEach((packer, index) => {
             const pageWrapper = document.createElement('div');
             pageWrapper.className = 'print-page';
+            
+            const scrollWrapper = document.createElement('div');
+            scrollWrapper.style.width = '100%';
+            scrollWrapper.style.overflowX = 'auto';
+            scrollWrapper.style.marginBottom = '15px';
 
             const canvas = document.createElement('canvas');
-            canvas.style.width = '100%';
-            canvas.style.marginTop = '20px';
+            canvas.style.width = window.currentCanvasWidth + '%';
+            canvas.style.marginTop = '10px';
             canvas.style.border = '2px solid #000';
             canvas.style.background = '#fff';
             
@@ -567,12 +601,12 @@
             ctx.strokeRect(padding, padding, boardW * scale, drawH);
             
             ctx.fillStyle = isGrain ? "#c0392b" : "#000"; 
-            ctx.font = "bold 26px Arial"; ctx.textAlign = "center"; 
+            ctx.font = "bold 32px Arial"; ctx.textAlign = "center"; 
             ctx.fillText(topText, padding + (boardW * scale) / 2, padding / 2 + 10);
             
             ctx.fillStyle = "#000";
             ctx.save(); ctx.translate(padding/2, padding + drawH/2); ctx.rotate(-Math.PI/2); 
-            ctx.font = "bold 26px Arial"; 
+            ctx.font = "bold 32px Arial"; 
             ctx.fillText(boardH + " سم", 0, 0); 
             ctx.restore();
             
@@ -606,8 +640,8 @@
 
                 ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rw, rh);
                 
-                let nameFontSize = Math.max(9, Math.min(18, rw / 4, rh / 4));
-                let dimFontSize = Math.max(9, Math.min(22, rw / 4.5, rh / 4.5));
+                let nameFontSize = Math.max(14, Math.min(24, rw / 3.5, rh / 3.5));
+                let dimFontSize = Math.max(14, Math.min(28, rw / 3, rh / 3));
 
                 ctx.fillStyle = "#000"; 
                 ctx.textAlign = "center";
@@ -615,40 +649,33 @@
                 let exactW = Number(r.w.toFixed(2));
                 let exactH = Number(r.h.toFixed(2));
 
-                if (rw > 60 && rh > 60) { 
+                if (rw > 70 && rh > 70) { 
                     ctx.font = "bold " + nameFontSize + "px Arial"; 
-                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 10); 
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 15); 
                     ctx.font = "bold " + dimFontSize + "px Arial"; 
-                    ctx.fillText(exactW + " سم", rx + rw / 2, ry + rh - 8); 
-                    ctx.save(); ctx.translate(rx + 20, ry + rh / 2 + 15); ctx.rotate(-Math.PI / 2); 
-                    ctx.fillText(exactH + " سم", 0, 0); ctx.restore(); 
-                } else if (rw > 35 && rh > 35) {
+                    ctx.fillText(exactW, rx + rw / 2, ry + rh - 12); 
+                    ctx.save(); ctx.translate(rx + 25, ry + rh / 2 + 20); ctx.rotate(-Math.PI / 2); 
+                    ctx.fillText(exactH, 0, 0); ctx.restore(); 
+                } else if (rw > 40 && rh > 40) {
                     ctx.font = "bold " + nameFontSize + "px Arial"; 
-                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 6); 
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 8); 
                     ctx.font = "bold " + dimFontSize + "px Arial"; 
-                    ctx.fillText(exactW, rx + rw / 2, ry + rh - 5); 
-                    ctx.save(); ctx.translate(rx + 12, ry + rh / 2 + 10); ctx.rotate(-Math.PI / 2); 
+                    ctx.fillText(exactW, rx + rw / 2, ry + rh - 8); 
+                    ctx.save(); ctx.translate(rx + 16, ry + rh / 2 + 15); ctx.rotate(-Math.PI / 2); 
                     ctx.fillText(exactH, 0, 0); ctx.restore(); 
                 } else { 
-                    let tinyFont = Math.max(8, Math.min(13, rw / 2.5, rh / 2.5));
+                    let tinyFont = Math.max(11, Math.min(16, rw / 2, rh / 2));
                     ctx.font = "bold " + tinyFont + "px Arial"; 
-                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 2); 
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 4); 
                     ctx.fillText(exactW + "x" + exactH, rx + rw / 2, ry + rh / 2 + tinyFont); 
                 }
             });
 
-            // ----------------------------------------------------
-            // إضافة كود رسم مقاسات الفضلة (الهدر)
-            // ----------------------------------------------------
             let offcuts = [];
-            // ترتيب المساحات الفارغة من الأكبر للأصغر
             let sortedFree = [...packer.freeRects].sort((a, b) => (b.w * b.h) - (a.w * a.h));
             
             sortedFree.forEach(f => {
-                // تجاهل القطع الصغيرة جداً التي تقل عن 10 سم (هدر ناتج عن حز المنشار أو شريط صغير)
-                if (f.w < 10 || f.h < 10) return;
-                
-                // التأكد من عدم التداخل مع فضلات تم تسجيلها مسبقاً لرسمها بشكل مستقل ونظيف
+                if (f.w < 10 || f.h < 10) return; 
                 let overlap = offcuts.some(o => packer.intersect(f, o));
                 if (!overlap) {
                     offcuts.push(f);
@@ -661,14 +688,14 @@
                 const rw = r.w * scale; 
                 const rh = r.h * scale; 
                 
-                ctx.fillStyle = "rgba(189, 195, 199, 0.4)"; // خلفية الفضلة
+                ctx.fillStyle = "rgba(189, 195, 199, 0.4)"; 
                 ctx.fillRect(rx, ry, rw, rh); 
                 
-                ctx.strokeStyle = "#7f8c8d"; // إطار متقطع للفضلة
+                ctx.strokeStyle = "#7f8c8d"; 
                 ctx.lineWidth = 2; 
                 ctx.setLineDash([6, 6]); 
                 ctx.strokeRect(rx, ry, rw, rh);
-                ctx.setLineDash([]); // إعادة الخط ليكون متصلاً لبقية الرسومات
+                ctx.setLineDash([]); 
                 
                 let exactW = Number(r.w.toFixed(1));
                 let exactH = Number(r.h.toFixed(1));
@@ -676,22 +703,22 @@
                 ctx.fillStyle = "#2c3e50"; 
                 ctx.textAlign = "center";
                 
-                let fontSize = Math.max(10, Math.min(18, rw / 4, rh / 4));
+                let fontSize = Math.max(14, Math.min(26, rw / 3, rh / 3));
                 ctx.font = "bold " + fontSize + "px Arial"; 
                 
-                if (rw > 50 && rh > 50) { 
-                    ctx.fillText("فضلة", rx + rw / 2, ry + rh / 2 - 10); 
-                    ctx.fillText(exactW + " × " + exactH, rx + rw / 2, ry + rh / 2 + 10); 
+                if (rw > 60 && rh > 60) { 
+                    ctx.fillText("فضلة", rx + rw / 2, ry + rh / 2 - 12); 
+                    ctx.fillText(exactW + " × " + exactH, rx + rw / 2, ry + rh / 2 + 15); 
                 } else {
                     ctx.fillText(exactW + "×" + exactH, rx + rw / 2, ry + rh / 2 + (fontSize/3));
                 }
             });
-            // ----------------------------------------------------
 
-            ctx.fillStyle = "#000"; ctx.font = "bold 28px Arial"; ctx.textAlign = "right"; 
+            ctx.fillStyle = "#000"; ctx.font = "bold 34px Arial"; ctx.textAlign = "right"; 
             ctx.fillText("اللوح رقم " + (index + 1), padding + (boardW * scale), padding - 20);
 
-            pageWrapper.appendChild(canvas);
+            scrollWrapper.appendChild(canvas);
+            pageWrapper.appendChild(scrollWrapper);
 
             let piecesMap = {};
             packer.usedRects.forEach(r => {
