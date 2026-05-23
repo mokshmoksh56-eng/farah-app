@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>azemaa proo تقطيع - نسخة المحمول السحابية للبيع</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -75,6 +75,8 @@
         .btn-load { background: #27ae60; }
         .btn-delete { background: #e74c3c; }
 
+        canvas { touch-action: pinch-zoom pan-x pan-y; }
+
         @media (max-width: 600px) {
             body { padding: 5px; }
             .container { padding: 10px; }
@@ -87,7 +89,6 @@
             .archive-item-actions button { flex: 1; }
         }
 
-        /* إعدادات الطباعة لفصل كل لوح في صفحة وإخفاء التفاصيل والمقاسات */
         @media print {
             body { background-color: #fff; padding: 0; }
             .container { box-shadow: none; border: none; padding: 0; margin: 0; max-width: 100%; }
@@ -161,7 +162,6 @@
                 </select></div>
             <div class="input-group"><label>طول اللوح</label><input type="number" id="boardL" value="244" oninput="saveData()"></div>
             <div class="input-group"><label>عرض اللوح</label><input type="number" id="boardW" value="122" oninput="saveData()"></div>
-            <!-- تم التعديل هنا: القيمة الافتراضية أصبحت 0.4 -->
             <div class="input-group"><label>حز المنشار</label><input type="number" id="kerf" value="0.4" step="0.1" oninput="saveData()"></div>
             <div class="input-group required-boards"><label>الألواح المطلوبة</label><input type="text" id="totalBoardsNeeded" readonly value="0"></div>
         </div>
@@ -247,10 +247,7 @@
             window.currentProjectId = null; window.loadedProjectName = null;
             document.getElementById('projectName').value = ""; document.getElementById('piecesBody').innerHTML = "";
             window.addRow(); document.getElementById('totalBoardsNeeded').value = "0";
-            
-            // تم التعديل هنا لضمان عودة حز المنشار لـ 0.4 مع كل مشروع جديد
             document.getElementById('kerf').value = "0.4"; 
-            
             document.getElementById('resultStats').innerText = "المخطط يظهر هنا بعد الحساب";
             document.getElementById('boardsRenderContainer').innerHTML = "";
             window.saveData(); syncStatus.innerText = "✨ تم بدء مشروع جديد"; syncStatus.style.color = "#27ae60";
@@ -289,8 +286,6 @@
                 document.getElementById('boardType').value = data.boardType || 'wood';
                 document.getElementById('woodPattern').value = data.woodPattern || 'grain';
                 document.getElementById('boardL').value = data.boardL || 244; document.getElementById('boardW').value = data.boardW || 122;
-                
-                // التعديل هنا لضمان قراءة الـ 0.4 كقيمة افتراضية إذا لم تكن مخزنة
                 document.getElementById('kerf').value = data.kerf !== undefined ? data.kerf : 0.4;
 
                 const tbody = document.getElementById('piecesBody'); tbody.innerHTML = '';
@@ -375,8 +370,6 @@
         document.getElementById('woodPattern').value = proj.woodPattern || 'grain';
         document.getElementById('boardL').value = proj.boardL || 244;
         document.getElementById('boardW').value = proj.boardW || 122;
-        
-        // التعديل هنا لضمان قراءة الـ 0.4 كقيمة افتراضية
         document.getElementById('kerf').value = proj.kerf !== undefined ? proj.kerf : 0.4;
 
         const tbody = document.getElementById('piecesBody'); tbody.innerHTML = '';
@@ -613,18 +606,88 @@
 
                 ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rw, rh);
                 
-                if (rw > 55 && rh > 55) { 
-                    ctx.fillStyle = "#000"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center"; 
-                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 12); 
-                    ctx.font = "bold 22px Arial"; 
-                    ctx.fillText(Math.round(r.w) + " سم", rx + rw / 2, ry + rh - 10); 
-                    ctx.save(); ctx.translate(rx + 25, ry + rh / 2 + 15); ctx.rotate(-Math.PI / 2); 
-                    ctx.fillText(Math.round(r.h) + " سم", 0, 0); ctx.restore(); 
+                let nameFontSize = Math.max(9, Math.min(18, rw / 4, rh / 4));
+                let dimFontSize = Math.max(9, Math.min(22, rw / 4.5, rh / 4.5));
+
+                ctx.fillStyle = "#000"; 
+                ctx.textAlign = "center";
+
+                let exactW = Number(r.w.toFixed(2));
+                let exactH = Number(r.h.toFixed(2));
+
+                if (rw > 60 && rh > 60) { 
+                    ctx.font = "bold " + nameFontSize + "px Arial"; 
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 10); 
+                    ctx.font = "bold " + dimFontSize + "px Arial"; 
+                    ctx.fillText(exactW + " سم", rx + rw / 2, ry + rh - 8); 
+                    ctx.save(); ctx.translate(rx + 20, ry + rh / 2 + 15); ctx.rotate(-Math.PI / 2); 
+                    ctx.fillText(exactH + " سم", 0, 0); ctx.restore(); 
+                } else if (rw > 35 && rh > 35) {
+                    ctx.font = "bold " + nameFontSize + "px Arial"; 
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 6); 
+                    ctx.font = "bold " + dimFontSize + "px Arial"; 
+                    ctx.fillText(exactW, rx + rw / 2, ry + rh - 5); 
+                    ctx.save(); ctx.translate(rx + 12, ry + rh / 2 + 10); ctx.rotate(-Math.PI / 2); 
+                    ctx.fillText(exactH, 0, 0); ctx.restore(); 
                 } else { 
-                    ctx.fillStyle = "#000"; ctx.font = "bold 16px Arial"; ctx.textAlign = "center"; 
-                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 + 5); 
+                    let tinyFont = Math.max(8, Math.min(13, rw / 2.5, rh / 2.5));
+                    ctx.font = "bold " + tinyFont + "px Arial"; 
+                    ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 - 2); 
+                    ctx.fillText(exactW + "x" + exactH, rx + rw / 2, ry + rh / 2 + tinyFont); 
                 }
             });
+
+            // ----------------------------------------------------
+            // إضافة كود رسم مقاسات الفضلة (الهدر)
+            // ----------------------------------------------------
+            let offcuts = [];
+            // ترتيب المساحات الفارغة من الأكبر للأصغر
+            let sortedFree = [...packer.freeRects].sort((a, b) => (b.w * b.h) - (a.w * a.h));
+            
+            sortedFree.forEach(f => {
+                // تجاهل القطع الصغيرة جداً التي تقل عن 10 سم (هدر ناتج عن حز المنشار أو شريط صغير)
+                if (f.w < 10 || f.h < 10) return;
+                
+                // التأكد من عدم التداخل مع فضلات تم تسجيلها مسبقاً لرسمها بشكل مستقل ونظيف
+                let overlap = offcuts.some(o => packer.intersect(f, o));
+                if (!overlap) {
+                    offcuts.push(f);
+                }
+            });
+
+            offcuts.forEach(r => {
+                const rx = padding + r.x * scale; 
+                const ry = padding + r.y * scale; 
+                const rw = r.w * scale; 
+                const rh = r.h * scale; 
+                
+                ctx.fillStyle = "rgba(189, 195, 199, 0.4)"; // خلفية الفضلة
+                ctx.fillRect(rx, ry, rw, rh); 
+                
+                ctx.strokeStyle = "#7f8c8d"; // إطار متقطع للفضلة
+                ctx.lineWidth = 2; 
+                ctx.setLineDash([6, 6]); 
+                ctx.strokeRect(rx, ry, rw, rh);
+                ctx.setLineDash([]); // إعادة الخط ليكون متصلاً لبقية الرسومات
+                
+                let exactW = Number(r.w.toFixed(1));
+                let exactH = Number(r.h.toFixed(1));
+
+                ctx.fillStyle = "#2c3e50"; 
+                ctx.textAlign = "center";
+                
+                let fontSize = Math.max(10, Math.min(18, rw / 4, rh / 4));
+                ctx.font = "bold " + fontSize + "px Arial"; 
+                
+                if (rw > 50 && rh > 50) { 
+                    ctx.fillText("فضلة", rx + rw / 2, ry + rh / 2 - 10); 
+                    ctx.fillText(exactW + " × " + exactH, rx + rw / 2, ry + rh / 2 + 10); 
+                } else {
+                    ctx.fillText(exactW + "×" + exactH, rx + rw / 2, ry + rh / 2 + (fontSize/3));
+                }
+            });
+            // ----------------------------------------------------
+
             ctx.fillStyle = "#000"; ctx.font = "bold 28px Arial"; ctx.textAlign = "right"; 
             ctx.fillText("اللوح رقم " + (index + 1), padding + (boardW * scale), padding - 20);
 
@@ -632,10 +695,10 @@
 
             let piecesMap = {};
             packer.usedRects.forEach(r => {
-                let w = Math.round(r.w);
-                let h = Math.round(r.h);
-                let key = `${r.name}_${w}_${h}`;
-                if(!piecesMap[key]) { piecesMap[key] = { name: r.name, w: w, h: h, qty: 0 }; }
+                let exactW = Number(r.w.toFixed(2));
+                let exactH = Number(r.h.toFixed(2));
+                let key = `${r.name}_${exactW}_${exactH}`;
+                if(!piecesMap[key]) { piecesMap[key] = { name: r.name, w: exactW, h: exactH, qty: 0 }; }
                 piecesMap[key].qty++;
             });
 
