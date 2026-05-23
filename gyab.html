@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AZEMAA PRO | لوحة شؤون العمال الذكية</title>
+    <title>AZEMAA PRO | الحضور اللحظي</title>
     <style>
         :root {
             --whatsapp-green: #25D366; --dark-green: #075E54; --teal: #128C7E;
@@ -11,9 +11,8 @@
             --warning: #f57c00;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-gray); margin: 0; padding: 0; font-weight: 600; padding-bottom: 100px; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-gray); margin: 0; padding: 0; font-weight: 600; padding-bottom: 50px; }
         
-        /* واجهة انتظار للتحقق من الهوية السحابية للمشتري */
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-gray);
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -24,8 +23,10 @@
             background: linear-gradient(135deg, var(--dark-green), var(--teal)); 
             color: var(--white); padding: 15px 10px; text-align: center; 
             border-radius: 0 0 25px 25px; position: sticky; top: 0; z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
+        .sync-indicator { font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; margin-bottom: 5px; display: inline-block; }
         .header-title { font-size: 1.2rem; font-weight: 900; }
         #weekRangeDisplay { font-size: 13px; margin-top: 5px; background: rgba(0,0,0,0.1); display: inline-block; padding: 2px 10px; border-radius: 10px; }
 
@@ -53,7 +54,6 @@
         .day-row { display: flex; align-items: center; background: #fdfdfd; border: 1px solid #eee; border-radius: 8px; padding: 4px; gap: 4px; }
         .day-info { flex: 1; text-align: right; }
         .day-name { font-size: 11px; color: var(--dark-green); display: block; line-height: 1; }
-        .day-num { font-size: 10px; color: #777; font-weight: 900; }
         
         .att-btns { display: flex; gap: 2px; flex: 1.5; }
         .btn-tgl { flex: 1; border: 1px solid #ccc; background: #fff; font-size: 10px; font-weight: 900; padding: 6px 0; border-radius: 4px; cursor: pointer; }
@@ -77,13 +77,11 @@
         .archive-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; background: white; border-radius: 8px; overflow: hidden; }
         .archive-table th { background: #eee; padding: 8px; border: 1px solid #ddd; }
         .archive-table td { padding: 8px; border: 1px solid #ddd; text-align: center; }
-
-        .footer-nav { position: fixed; bottom: 0; left:0; width: 100%; background: white; padding: 12px; display: flex; box-sizing: border-box; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 2000; }
     </style>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, get, child, update, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -101,31 +99,26 @@
         const db = getDatabase(app);
         const auth = getAuth(app);
 
-        window.fbDB = db;
-        window.fbRef = ref;
-        window.fbSet = set;
-        window.fbGet = get;
-        window.fbChild = child;
-        window.fbUpdate = update;
+        window.db = db; window.ref = ref; window.update = update; window.get = get;
 
-        // التحقق من هوية المشتري المسجل بالصفحة الرئيسية
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                window.currentUid = user.uid; // حفظ الـ UID في نطاق نافذة المتصفح
+                window.currentUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
                 initSystem();
             } else {
-                document.getElementById('auth-loader').innerText = "⚠️ خطأ في التفعيل: يرجى تسجيل الدخول من الواجهة الماستر أولاً!";
+                document.getElementById('auth-loader').innerText = "⚠️ يرجى تسجيل الدخول أولاً";
             }
         });
     </script>
 </head>
 <body>
 
-<div id="auth-loader">⏳ جاري تحميل ومزامنة كشوف رواتب العمال...</div>
+<div id="auth-loader">⏳ جاري ربط المزامنة اللحظية...</div>
 
 <header>
-    <div class="header-title">AZEMAA PRO | الحضور والرواتب</div>
+    <div class="sync-indicator" id="syncStatus">✅ متصل ومؤمن</div>
+    <div class="header-title">AZEMAA PRO | لوحة الحضور الذكية</div>
     <div id="weekRangeDisplay">...</div>
     <div class="dashboard">
         <div class="dash-card"><span>رواتب</span><strong id="stat-sal">0</strong></div>
@@ -136,49 +129,33 @@
 
 <div class="main-container">
     <div class="config-box">
-        <div style="font-size: 13px; color: var(--teal); text-align: center; font-weight: 900;">📅 اختيار تاريخ السبت:</div>
         <div class="date-selectors">
             <select id="dayPicker" onchange="updateDateFromSelectors()"></select>
             <select id="monthPicker" onchange="updateDateFromSelectors()">
-                <option value="0">01</option><option value="1">02</option><option value="2">03</option>
-                <option value="3">04</option><option value="4">05</option><option value="5">06</option>
-                <option value="6">07</option><option value="7">08</option><option value="8">09</option>
-                <option value="9">10</option><option value="10">11</option><option value="11">12</option>
+                <option value="0">يناير</option><option value="1">فبراير</option><option value="2">مارس</option>
+                <option value="3">أبريل</option><option value="4">مايو</option><option value="5">يونيو</option>
+                <option value="6">يوليو</option><option value="7">أغسطس</option><option value="8">سبتمبر</option>
+                <option value="9">أكتوبر</option><option value="10">نوفمبر</option><option value="11">ديسمبر</option>
             </select>
             <select id="yearPicker" onchange="updateDateFromSelectors()"></select>
         </div>
-        <input type="hidden" id="datePicker" onchange="handleDateChange()">
-        
-        <details style="margin-top: 15px;">
-            <summary style="font-weight: 900; color: var(--teal); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 10px;">⚙️ الإعدادات وإضافة العمال</summary>
-            <div style="display:flex; gap:5px; margin-top:10px;">
-                <input type="text" id="workerNameInp" style="flex:2; border: 1px solid #ddd; padding: 8px; border-radius: 8px;" placeholder="اسم عامل جديد">
-                <button onclick="addNewWorker()" style="background:var(--teal); color:white; border:none; padding:0 15px; border-radius:8px; font-weight: 900;">إضافة</button>
-            </div>
-            <div id="workerListEditor" style="margin-top:10px;"></div>
-        </details>
+        <input type="hidden" id="datePicker">
     </div>
 
     <div id="cardsList"></div>
 
-    <div style="background: white; border-radius: 15px; padding: 15px; margin-top: 20px; border: 2px solid var(--teal); margin-bottom: 80px;">
-        <h3 style="text-align:center; color: var(--dark-green); margin:0 0 10px 0;">📂 الأرشيف التفصيلي</h3>
+    <div style="background: white; border-radius: 15px; padding: 15px; margin-top: 20px; border: 2px solid var(--teal); margin-bottom: 20px;">
+        <h3 style="text-align:center; color: var(--dark-green); margin:0 0 10px 0;">📂 أرشيف رواتب العامل</h3>
         <select id="archiveSearch" oninput="buildArchiveHistory()" style="width:100%; padding:12px; border-radius:10px; font-weight:900; border:2px solid var(--teal);"></select>
         <div id="archiveContent" style="margin-top:15px;"></div>
     </div>
 </div>
 
-<div class="footer-nav">
-    <button onclick="saveWeek()" style="width:100%; padding:15px; background:var(--dark-green); color:white; border:none; border-radius:12px; font-weight:900; cursor:pointer; font-size:16px;">💾 حفظ الأسبوع الحالي بالسحابة</button>
-</div>
-
 <script>
     const weekdays = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
-    
     let masterWorkers = [];
     let currentWeekDates = [];
     let currentWeekID = "";
-    let allArchiveData = {};
 
     function initSystem() {
         initDateSelectors();
@@ -189,15 +166,8 @@
         const dSel = document.getElementById('dayPicker');
         const ySel = document.getElementById('yearPicker');
         const now = new Date();
-        
-        for(let i=1; i<=31; i++) { dSel.add(new Option(i, i, i === now.getDate(), i === now.getDate())); }
-        
-        const startYear = 2024;
-        const endYear = startYear + 50;
-        for(let i = startYear; i <= endYear; i++) { 
-            ySel.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear())); 
-        }
-        
+        for(let i=1; i<=31; i++) dSel.add(new Option(i, i, i === now.getDate(), i === now.getDate()));
+        for(let i = 2024; i <= 2030; i++) ySel.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear()));
         document.getElementById('monthPicker').value = now.getMonth();
         updateDateFromSelectors();
     }
@@ -212,7 +182,6 @@
 
     function handleDateChange() {
         const pickedDate = new Date(document.getElementById('datePicker').value);
-        if (isNaN(pickedDate)) return;
         let dayOfWeek = pickedDate.getDay();
         let diffToSaturday = (dayOfWeek === 6) ? 0 : (dayOfWeek + 1);
         let saturday = new Date(pickedDate);
@@ -223,209 +192,118 @@
             let d = new Date(saturday); d.setDate(saturday.getDate() + i);
             currentWeekDates.push(d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear());
         }
-        document.getElementById('weekRangeDisplay').innerText = `من السبت ${currentWeekDates[0]} إلى الخميس ${currentWeekDates[5]}`;
+        document.getElementById('weekRangeDisplay').innerText = `أسبوع السبت ${currentWeekDates[0]}`;
         loadWeekData();
     }
 
-    // جلب قائمة العمال من المسار السحابي الآمن للـ UID
-    function loadMasterWorkers() {
-        if(!window.fbDB || !window.currentUid) return;
-        window.fbGet(window.fbRef(window.fbDB, `backups/workers_master/${window.currentUid}`)).then((snapshot) => {
-            masterWorkers = snapshot.exists() ? snapshot.val() : [];
-            updateWorkerEditor();
-            updateArchiveDropdown();
-            loadWeekData();
-            preloadAllArchive();
-        }).catch((error) => console.error("Error loading workers:", error));
-    }
-
-    function addNewWorker() {
-        const name = document.getElementById('workerNameInp').value.trim();
-        if(!name) return;
-        masterWorkers.push({ name: name, inst_weekly: 0 });
-        document.getElementById('workerNameInp').value = "";
-        saveMasterWorkers();
-    }
-
-    function removeWorker(idx) {
-        if(confirm("هل تريد حذف هذا العامل من النظام نهائياً؟")) {
-            masterWorkers.splice(idx, 1);
-            saveMasterWorkers();
-        }
-    }
-
-    function saveMasterWorkers() {
-        if(!window.fbDB || !window.currentUid) return;
-        window.fbSet(window.fbRef(window.fbDB, `backups/workers_master/${window.currentUid}`), masterWorkers).then(() => {
-            updateWorkerEditor();
-            updateArchiveDropdown();
-            loadWeekData();
-        });
-    }
-
-    function updateWorkerEditor() {
-        const box = document.getElementById('workerListEditor');
-        box.innerHTML = masterWorkers.map((w, idx) => `
-            <div style="display:flex; justify-content:space-between; background:#f5f6fa; padding:5px 10px; border-radius:8px; margin-bottom:4px; align-items:center; font-size:13px;">
-                <span>👷 ${w.name}</span>
-                <button onclick="removeWorker(${idx})" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
-            </div>
-        `).join('');
+    async function loadMasterWorkers() {
+        const snap = await window.get(window.ref(window.db, `backups/workers_master/${window.currentUid}`));
+        masterWorkers = snap.exists() ? snap.val() : [];
+        updateArchiveDropdown();
+        loadWeekData();
     }
 
     function updateArchiveDropdown() {
         const dropdown = document.getElementById('archiveSearch');
-        dropdown.innerHTML = '<option value="">-- اختر اسم العامل لعرض أرشيفه --</option>' + 
-            masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+        dropdown.innerHTML = '<option value="">-- اختر العامل --</option>' + masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
     }
 
-    // جلب بيانات الأسبوع الحالي من المسار التجاري المنفصل
-    function loadWeekData() {
-        if(!window.fbDB || !window.currentUid || masterWorkers.length === 0) return;
-        window.fbGet(window.fbRef(window.fbDB, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`)).then((snapshot) => {
-            const saved = snapshot.exists() ? snapshot.val() : [];
-            const container = document.getElementById('cardsList');
-            container.innerHTML = masterWorkers.map((worker, idx) => {
-                let d = saved.find(s => s.name === worker.name) || {sal:'', loans:['','','','','',''], att:[1,1,1,1,1,1], note:''};
-                return `
-                    <div class="worker-card" id="card-${idx}">
-                        <div class="card-name">${worker.name}</div>
-                        <input type="text" inputmode="decimal" class="salary-input" value="${d.sal || ''}" oninput="recalc(${idx})" placeholder="الراتب الأسبوعي">
-                        <div class="days-grid">
-                            ${[0,1,2,3,4,5].map(di => `
-                                <div class="day-row">
-                                    <div class="day-info">
-                                        <span class="day-name">${weekdays[di]}</span>
-                                        <span class="day-num">${currentWeekDates[di]}</span>
-                                    </div>
-                                    <div class="att-btns">
-                                        <button class="btn-tgl ${d.att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx})">ح</button>
-                                        <button class="btn-tgl ${d.att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx})">½</button>
-                                        <button class="btn-tgl ${d.att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx})">غ</button>
-                                    </div>
-                                    <input type="text" inputmode="decimal" class="loan-input" value="${d.loans ? (d.loans[di] || '') : ''}" oninput="recalc(${idx})" placeholder="سلفه">
+    async function loadWeekData() {
+        if(!window.currentUid || masterWorkers.length === 0) return;
+        const snap = await window.get(window.ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`));
+        const saved = snap.exists() ? snap.val() : {};
+        
+        const container = document.getElementById('cardsList');
+        container.innerHTML = masterWorkers.map((worker, idx) => {
+            let d = saved[idx] || {sal:'', loans:['','','','','',''], att:[1,1,1,1,1,1], note:''};
+            return `
+                <div class="worker-card" id="card-${idx}">
+                    <div class="card-name">${worker.name}</div>
+                    <input type="number" class="salary-input" value="${d.sal}" placeholder="الراتب" onchange="syncData(${idx}, 'sal', this.value)">
+                    <div class="days-grid">
+                        ${[0,1,2,3,4,5].map(di => `
+                            <div class="day-row">
+                                <div class="day-info"><span class="day-name">${weekdays[di]}</span></div>
+                                <div class="att-btns">
+                                    <button class="btn-tgl ${d.att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx},${di})">ح</button>
+                                    <button class="btn-tgl ${d.att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx},${di})">½</button>
+                                    <button class="btn-tgl ${d.att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx},${di})">غ</button>
                                 </div>
-                            `).join('')}
-                        </div>
-                        <textarea class="note-input" placeholder="ملاحظات عمال ومسحوبات..." rows="2">${d.note || ''}</textarea>
-                        <div class="card-footer">
-                            <div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>قسط: <span class="sum-inst">0</span></span></div>
-                            <div class="footer-line" style="font-size:14px; color:var(--dark-green);"><span>الصافي لتقبيله:</span> <span class="sum-n">0</span></div>
-                        </div>
-                        <button class="btn-share" onclick="shareToWhatsApp(${idx})">إرسال كشف واتساب 🟢</button>
-                    </div>`;
-            }).join('');
-            masterWorkers.forEach((_, i) => recalc(i));
-        }).catch((error) => console.error("Error loading week data:", error));
+                                <input type="number" class="loan-input" value="${d.loans[di]}" placeholder="0" onchange="syncArrayData(${idx}, 'loans', ${di}, this.value)">
+                            </div>
+                        `).join('')}
+                    </div>
+                    <textarea class="note-input" placeholder="ملاحظات..." onblur="syncData(${idx}, 'note', this.value)">${d.note || ''}</textarea>
+                    <div class="card-footer">
+                        <div class="footer-line"><span>سلف: <span class="sum-l">0</span></span> <span>الصافي: <span class="sum-n" style="color:var(--dark-green)">0</span></span></div>
+                    </div>
+                    <button class="btn-share" onclick="shareToWhatsApp(${idx})">واتساب 🟢</button>
+                </div>`;
+        }).join('');
+        masterWorkers.forEach((_, i) => recalc(i));
     }
 
-    function toggleAtt(btn, idx) { Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active')); btn.classList.add('active'); recalc(idx); }
-    
+    function toggleAtt(btn, workerIdx, dayIdx) {
+        Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const val = btn.dataset.v;
+        syncArrayData(workerIdx, 'att', dayIdx, val);
+        recalc(workerIdx);
+    }
+
+    // وظائف المزامنة اللحظية
+    function syncData(workerIdx, field, value) {
+        setSyncing(true);
+        const path = `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${workerIdx}`;
+        window.update(window.ref(window.db, path), { [field]: value, name: masterWorkers[workerIdx].name }).then(() => {
+            setSyncing(false);
+            recalc(workerIdx);
+        });
+    }
+
+    function syncArrayData(workerIdx, arrayField, dayIdx, value) {
+        setSyncing(true);
+        const path = `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${workerIdx}/${arrayField}`;
+        window.update(window.ref(window.db, path), { [dayIdx]: value }).then(() => {
+            setSyncing(false);
+            recalc(workerIdx);
+        });
+    }
+
+    function setSyncing(status) {
+        const el = document.getElementById('syncStatus');
+        el.innerText = status ? "⏳ جاري الحفظ..." : "✅ تم الحفظ سحابياً";
+        el.style.background = status ? "var(--warning)" : "rgba(255,255,255,0.2)";
+    }
+
     function recalc(idx) {
         const c = document.getElementById(`card-${idx}`); if(!c) return;
-        const worker = masterWorkers[idx];
         let sal = parseFloat(c.querySelector('.salary-input').value) || 0;
         let lTotal = 0; c.querySelectorAll('.loan-input').forEach(i => lTotal += parseFloat(i.value) || 0);
         let aTotal = 0; c.querySelectorAll('.btn-tgl.active').forEach(b => aTotal += parseFloat(b.dataset.v));
-        let inst = (aTotal > 0) ? (parseFloat(worker.inst_weekly) || 0) : 0; 
-        let net = Math.round(((sal / 6) * aTotal) - lTotal - inst);
-        c.querySelector('.sum-l').innerText = lTotal; c.querySelector('.sum-inst').innerText = inst; c.querySelector('.sum-n').innerText = net > 0 ? net : 0;
+        let net = Math.round(((sal / 6) * aTotal) - lTotal);
+        c.querySelector('.sum-l').innerText = lTotal; 
+        c.querySelector('.sum-n').innerText = net > 0 ? net : 0;
         refreshStats();
     }
 
     function refreshStats() {
         let gL = 0, gN = 0, gS = 0;
         document.querySelectorAll('.worker-card').forEach(c => {
-            gL += (parseFloat(c.querySelector('.sum-l').innerText) || 0) + (parseFloat(c.querySelector('.sum-inst').innerText) || 0);
-            gN += parseFloat(c.querySelector('.sum-n').innerText) || 0; gS += parseFloat(c.querySelector('.salary-input').value) || 0;
+            gL += parseFloat(c.querySelector('.sum-l').innerText) || 0;
+            gN += parseFloat(c.querySelector('.sum-n').innerText) || 0; 
+            gS += parseFloat(c.querySelector('.salary-input').value) || 0;
         });
-        document.getElementById('stat-sal').innerText = gS; document.getElementById('stat-loan').innerText = gL; document.getElementById('stat-net').innerText = gN;
-    }
-
-    // حفظ كشوف حضور الأسبوع الجاري في مسار العميل الآمن
-    function saveWeek() {
-        if(!window.fbDB || !window.currentUid) return;
-        const data = Array.from(document.querySelectorAll('.worker-card')).map((c, idx) => ({
-            name: c.querySelector('.card-name').innerText.trim(), 
-            sal: c.querySelector('.salary-input').value,
-            loans: Array.from(c.querySelectorAll('.loan-input')).map(i => i.value),
-            att: Array.from(c.querySelectorAll('.btn-tgl.active')).map(b => b.dataset.v),
-            note: c.querySelector('.note-input').value, 
-            instPaid: parseFloat(c.querySelector('.sum-inst').innerText) || 0, 
-            fullDates: currentWeekDates 
-        }));
-        
-        window.fbSet(window.fbRef(window.fbDB, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`), data).then(() => {
-            alert("✔️ تم حفظ الأسبوع ومزامنة رواتب العمال سحابياً بنجاح ✅");
-            preloadAllArchive();
-        }).catch((error) => alert("خطأ أثناء الحفظ المأمن: " + error));
-    }
-
-    function preloadAllArchive() {
-        if(!window.fbDB || !window.currentUid) return;
-        window.fbGet(window.fbRef(window.fbDB, `backups/workers_weeks/${window.currentUid}`)).then((snapshot) => {
-            if(snapshot.exists()) { allArchiveData = snapshot.val(); }
-            buildArchiveHistory();
-        });
-    }
-
-    function buildArchiveHistory() {
-        const selectedName = document.getElementById('archiveSearch').value.trim();
-        const display = document.getElementById('archiveContent');
-        if(!selectedName) { display.innerHTML = ""; return; }
-        
-        let html = `<table class="archive-table"><thead><tr><th>تاريخ الأسبوع</th><th>الراتب</th><th>الأيام والغياب</th><th>سلفيات</th><th>الصافي</th></tr></thead><tbody>`;
-        let hasRecords = false;
-        let keys = Object.keys(allArchiveData).sort((a,b) => b.localeCompare(a));
-        
-        keys.forEach(key => {
-            const dataArr = allArchiveData[key];
-            const d = dataArr.find(r => r.name.trim() === selectedName);
-            if(d) {
-                hasRecords = true;
-                let loansSum = 0; if(d.loans) d.loans.forEach(l => loansSum += parseFloat(l || 0));
-                let attSum = 0; if(d.att) d.att.forEach(a => attSum += parseFloat(a || 0));
-                
-                html += `<tr>
-                    <td style="font-size:11px;">${key}</td>
-                    <td>${d.sal || 0}</td>
-                    <td>حضر: ${attSum} أيام</td>
-                    <td style="color:red;">${loansSum} ج.م</td>
-                    <td style="font-weight:900; color:green;">${Math.round(((parseFloat(d.sal||0)/6)*attSum)-loansSum-(d.instPaid||0))}</td>
-                </tr>`;
-            }
-        });
-        
-        html += `</tbody></table>`;
-        display.innerHTML = hasRecords ? html : "<p style='text-align:center; color:#777; font-size:13px;'>لا توجد سجلات مؤرشفة سابقة لهذا العامل.</p>";
+        document.getElementById('stat-sal').innerText = gS; 
+        document.getElementById('stat-loan').innerText = gL; 
+        document.getElementById('stat-net').innerText = gN;
     }
 
     function shareToWhatsApp(idx) {
-        const c = document.getElementById(`card-${idx}`); if(!c) return;
-        const name = c.querySelector('.card-name').innerText;
-        const sal = c.querySelector('.salary-input').value || 0;
+        const c = document.getElementById(`card-${idx}`);
+        const name = masterWorkers[idx].name;
         const net = c.querySelector('.sum-n').innerText;
-        const note = c.querySelector('.note-input').value || "لا توجد ملاحظات";
-        
-        let details = "";
-        c.querySelectorAll('.day-row').forEach((row, i) => {
-            const day = row.querySelector('.day-name').innerText;
-            const status = row.querySelector('.btn-tgl.active').innerText;
-            const loan = row.querySelector('.loan-input').value || 0;
-            details += `━ ${day}: [${status}] ${loan > 0 ? `| سلفة: ${loan} ج.م` : ''}\n`;
-        });
-
-        const msg = `*كشف حساب وعمال الورشة* 👷🪚\n` +
-                    `*العامل:* ${name}\n` +
-                    `*الفترة:* من ${currentWeekDates[0]} إلى ${currentWeekDates[5]}\n` +
-                    `━━━━━━━━━━━━━━━\n` +
-                    `💰 *الراتب الأسبوعي الأساسي:* ${sal} ج.م\n\n` +
-                    `📋 *بيان الحضور اليومي والسلف:*\n${details}\n` +
-                    `📝 *ملاحظات:* ${note}\n` +
-                    `━━━━━━━━━━━━━━━\n` +
-                    `💵 *الصافي المستحق للتقبيل:* *${net} ج.م*\n\n` +
-                    `شكراً لجهودكم معنا 🙏✨`;
-                    
+        const msg = `*كشف حساب عامل* 👷\n*الاسم:* ${name}\n*أسبوع:* ${currentWeekID}\n*الصافي المستحق:* ${net} ج.م\nتم التحديث عبر AZEMAA PRO`;
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
 </script>
