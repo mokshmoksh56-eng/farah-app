@@ -19,7 +19,6 @@
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #dfe4ea; margin: 0; padding: 0; color: var(--primary); font-weight: 700; padding-bottom: 60px; transition: background 0.3s, color 0.3s; }
         
-        /* واجهة انتظار للتحقق من الهوية السحابية */
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #dfe4ea;
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -79,7 +78,7 @@
         .pay-row { display: grid; grid-template-columns: 110px 1fr; gap: 5px; }
         .result-box { background: var(--primary); color: white; padding: 6px; border-radius: 10px; text-align: center; direction: rtl; margin-bottom: 6px; }
         
-        .btn-card { width: 100%; padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-weight: 900; color: white; margin-top: 3px; font-size: 11px; }
+        .btn-card { width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 900; color: white; margin-top: 3px; font-size: 11px; }
         .btn-save { background: var(--primary); }
         .btn-wa-direct { background: #25D366; }
         .btn-wa-invoice { background: #128C7E; }
@@ -123,7 +122,6 @@
 
         .hide-tables { opacity: 0 !important; max-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; visibility: hidden !important; border: none !important; }
 
-        /* تيمات الوضع الليلي */
         body.dark-theme { background: #1e272e; color: #ffffff; }
         body.dark-theme .stat-card { background: #2f3542; color: #ffffff; border-bottom: 4px solid #57606f; }
         body.dark-theme .card { background: #2f3542; border-color: #57606f; color: #ffffff; }
@@ -182,7 +180,7 @@
     <table class="summary-table">
         <thead>
             <tr>
-                <th>#</th>
+                <th>كود</th>
                 <th>اسم الزبون</th>
                 <th style="background: #4b6584;">📅 الاستلام</th>
                 <th style="background: var(--col-total);">💰 الإجمالي</th>
@@ -212,7 +210,7 @@
     <table class="summary-table">
         <thead>
             <tr>
-                <th>#</th>
+                <th>كود</th>
                 <th>اسم الزبون</th>
                 <th>📅 تاريخ الانتهاء</th>
                 <th>💰 المبلغ المسدد</th>
@@ -228,7 +226,6 @@
 <button class="btn-add-client" onclick="addNewCard()">+</button>
 
 <script>
-    // تهيئة الكونفيج والمكتبات
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
@@ -245,7 +242,6 @@
     const auth = firebase.auth(); 
 
     let currentUid = null; 
-    let visibleCards = []; 
 
     const monthColors = {
         1: "#ffdde1", 2: "#ee9ca7", 3: "#d4fc79", 4: "#96e6a1",
@@ -310,49 +306,47 @@
         }
     }
 
-    function createCardElement(i) {
+    function createCardElement(id, displayCode) {
         const card = document.createElement('div');
         card.className = `card locked-mode`;
-        card.id = `card-${i}`;
+        card.id = `card-${id}`;
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
-                <span style="direction:rtl; font-size: 13px;">👤 عميل رقم ${i}</span>
+                <span style="direction:rtl; font-size: 14px; font-weight: 900; color: var(--danger);">👤 عميل كود: ${displayCode}</span>
                 <div style="display: flex; align-items: center;">
-                    <button id="btn-lock-${i}" onclick="toggleCardLock(${i})" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button>
-                    <button onclick="archiveCardManual(${i})" class="btn-archive-icon" title="أرشفة">📁</button>
-                    <button onclick="deleteCard(${i})" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
+                    <button id="btn-lock-${id}" onclick="toggleCardLock('${id}')" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button>
+                    <button onclick="archiveCardManual('${id}')" class="btn-archive-icon" title="أرشفة">📁</button>
+                    <button onclick="deleteCard('${id}')" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
                 </div>
             </div>
-            <label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic(${i})" disabled>
+            <label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic('${id}')" disabled>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                <div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic(${i})" disabled></div>
+                <div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic('${id}')" disabled></div>
                 <div>
                     <label>📅 الاستلام:</label>
                     <div class="date-input-group">
-                        <input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
-                        <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
-                        <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic(${i})" disabled>
+                        <input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic('${id}')" disabled> /
+                        <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic('${id}')" disabled> /
+                        <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic('${id}')" disabled>
                     </div>
                 </div>
             </div>
-            <div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${i}" name="rating-${i}" value="${s}" onclick="updateLogic(${i})" disabled><label for="star${s}-${i}">★</label>`).join('')}</div>
-            <label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic(${i})" disabled>
-            <div class="tafqit-box" id="tafqit-total-${i}"></div>
+            <div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${id}" name="rating-${id}" value="${s}" onclick="updateLogic('${id}')" disabled><label for="star${s}-${id}">★</label>`).join('')}</div>
+            <label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic('${id}')" disabled>
+            <div class="tafqit-box" id="tafqit-total-${id}"></div>
             <div class="payment-section">
-                ${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic(${i})" disabled><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic(${i})" disabled></div><div class="tafqit-mini" id="tafqit-pay-${i}-${n}"></div></div>`).join('')}
+                ${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic('${id}')" disabled><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic('${id}')" disabled></div><div class="tafqit-mini" id="tafqit-pay-${id}-${n}"></div></div>`).join('')}
             </div>
-            <textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic(${i}); autoResize(this)" disabled></textarea>
-            <div class="result-box"><div id="rem-n-${i}" style="direction:ltr; font-size:14px;">المتبقي: 0</div><div id="rem-w-${i}" style="font-size:9px; color:#00d2ff;"></div></div>
+            <textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic('${id}'); autoResize(this)" disabled></textarea>
+            <div class="result-box"><div id="rem-n-${id}" style="direction:ltr; font-size:14px;">المتبقي: 0</div><div id="rem-w-${id}" style="font-size:9px; color:#00d2ff;"></div></div>
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
-                <button class="btn-card btn-save" onclick="saveToCloud(${i})">💾 حفظ وقفل</button>
-                <button class="btn-card btn-wa-direct" onclick="sendDirectWA(${i})">واتس مباشر</button>
-                <button class="btn-card btn-wa-invoice" onclick="sendWA(${i})">واتس فاتورة</button>
+                <button class="btn-card btn-save" onclick="saveToCloud('${id}')">💾 حفظ وقفل</button>
+                <button class="btn-card btn-wa-direct" onclick="sendDirectWA('${id}')">واتس مباشر</button>
+                <button class="btn-card btn-wa-invoice" onclick="sendWA('${id}')">واتس فاتورة</button>
             </div>
         `;
         document.getElementById('mainGrid').appendChild(card);
     }
-
-    for (let i = 1; i <= 50; i++) createCardElement(i);
 
     function initKeyboardListener() {
         const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
@@ -411,8 +405,7 @@
             pays: Array.from(card.querySelectorAll('.p-val')).map((p, idx) => ({
                 v: p.value || 0,
                 d: card.querySelectorAll('.p-date')[idx].value || ""
-            })),
-            isArchived: false
+            }))
         };
 
         const saveBtn = card.querySelector('.btn-save');
@@ -436,7 +429,8 @@
         if(!currentUid) return;
         if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) {
             db.ref(`backups/users/${currentUid}/${id}`).update({ isArchived: true }).then(() => {
-                document.getElementById(`card-${id}`).classList.remove('visible');
+                const card = document.getElementById(`card-${id}`);
+                if (card) card.classList.remove('visible');
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
@@ -446,13 +440,13 @@
         if(!currentUid) return;
         if(confirm('هل تريد استعادة هذا الزبون؟')) {
             db.ref(`backups/users/${currentUid}/${id}`).update({ isArchived: false }).then(() => {
-                document.getElementById(`card-${id}`).classList.add('visible');
+                const card = document.getElementById(`card-${id}`);
+                if (card) card.classList.add('visible');
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
     }
 
-    // استرجاع اسم الشركة المحلي فوراً لتجنب اختفائه قبل تحميل السحابة
     const savedCompanyName = localStorage.getItem('azemaa_company_name');
     if (savedCompanyName) {
         document.getElementById('companyNameInput').value = savedCompanyName;
@@ -477,28 +471,38 @@
         db.ref(`backups/users/${currentUid}`).on('value', (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
-                // جلب اسم الشركة من السحابة وعرضه، أو الاعتماد على التخزين المحلي
                 if (allData.settings && allData.settings.companyName) {
                     document.getElementById('companyNameInput').value = allData.settings.companyName;
-                    localStorage.setItem('azemaa_company_name', allData.settings.companyName); // تحديث المحلي
+                    localStorage.setItem('azemaa_company_name', allData.settings.companyName); 
                 } else if (localStorage.getItem('azemaa_company_name')) {
                     document.getElementById('companyNameInput').value = localStorage.getItem('azemaa_company_name');
-                    saveSettings(); // إجبار السحابة على حفظ الاسم المفقود
+                    saveSettings(); 
                 }
 
-                visibleCards = [];
+                document.querySelectorAll('.card').forEach(c => {
+                    c.classList.remove('visible');
+                    c.style.display = '';
+                });
+
                 for (let id in allData) {
                     if (id === 'settings') continue;
 
                     const d = allData[id];
-                    const card = document.getElementById(`card-${id}`);
+                    let card = document.getElementById(`card-${id}`);
+                    
+                    if (!card) {
+                        const displayCode = d.code || (isNaN(id) ? 'جديد' : id);
+                        createCardElement(id, displayCode);
+                        card = document.getElementById(`card-${id}`);
+                    }
+
                     if (card) {
                         if (d.isArchived) {
                             card.classList.remove('visible');
                         } else {
                             card.classList.add('visible');
-                            visibleCards.push(parseInt(id));
                         }
+                        card.style.display = ''; 
                         
                         if (card.classList.contains('locked-mode')) {
                             card.querySelector('.c-name').value = d.n || '';
@@ -506,11 +510,27 @@
                             card.querySelector('.d-day').value = d.dd || '';
                             card.querySelector('.d-month').value = d.dm || '';
                             card.querySelector('.d-year').value = d.dy || '';
-                            if (d.r) { const star = document.getElementById(`star${d.r}-${id}`); if(star) star.checked = true; }
+                            
+                            if (d.r) { 
+                                const star = document.getElementById(`star${d.r}-${id}`); 
+                                if(star) star.checked = true; 
+                            } else {
+                                card.querySelectorAll(`input[name="rating-${id}"]`).forEach(r => r.checked = false);
+                            }
+                            
                             card.querySelector('.c-total').value = d.t || '';
                             const nF = card.querySelector('.c-notes'); nF.value = d.notes || ''; autoResize(nF);
+                            
                             const pV = card.querySelectorAll('.p-val'); const pD = card.querySelectorAll('.p-date');
-                            if (d.pays) { d.pays.forEach((p, idx) => { if(pV[idx]) pV[idx].value = p.v || ''; if(pD[idx]) pD[idx].value = p.d || ''; }); }
+                            pV.forEach(p => p.value = '');
+                            pD.forEach(p => p.value = '');
+                            
+                            if (d.pays) { 
+                                d.pays.forEach((p, idx) => { 
+                                    if(pV[idx]) pV[idx].value = p.v || ''; 
+                                    if(pD[idx]) pD[idx].value = p.d || ''; 
+                                }); 
+                            }
                             updateLogic(id);
                         }
                     }
@@ -523,18 +543,37 @@
 
     function addNewCard() {
         if(!currentUid) return;
-        for (let i = 1; i <= 50; i++) {
-            const card = document.getElementById(`card-${i}`);
-            if (!card.classList.contains('visible')) {
-                card.classList.add('visible');
-                db.ref(`backups/users/${currentUid}/${i}`).update({ isArchived: false }).then(() => {
-                    if (card.classList.contains('locked-mode')) {
-                        toggleCardLock(i);
+        
+        db.ref(`backups/users/${currentUid}`).once('value', (snapshot) => {
+            const data = snapshot.val();
+            let maxCode = 0;
+            
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    if (key !== 'settings') {
+                        let currentCode = data[key].code ? parseInt(data[key].code) : (isNaN(key) ? 0 : parseInt(key));
+                        if (currentCode > maxCode) maxCode = currentCode;
                     }
-                }).catch(err => alert("❌ خطأ: " + err.message));
-                return;
+                });
             }
-        }
+            
+            const newCode = maxCode + 1; 
+            const uniqueId = 'id_' + Date.now();
+            
+            db.ref(`backups/users/${currentUid}/${uniqueId}`).update({ 
+                isArchived: false,
+                code: newCode, 
+                n: "", p: "", dd: "", dm: "", dy: "", t: 0, notes: ""
+            }).then(() => {
+                setTimeout(() => {
+                    const card = document.getElementById(`card-${uniqueId}`);
+                    if (card && card.classList.contains('locked-mode')) {
+                        toggleCardLock(uniqueId);
+                        card.querySelector('.c-name').focus();
+                    }
+                }, 300);
+            }).catch(err => alert("❌ خطأ: " + err.message));
+        });
     }
 
     function deleteCard(id) { 
@@ -542,9 +581,7 @@
         if(confirm('سيتم الحذف نهائياً؟')) { 
             db.ref(`backups/users/${currentUid}/${id}`).remove().then(() => {
                 const card = document.getElementById(`card-${id}`);
-                card.classList.remove('visible');
-                card.querySelectorAll('input').forEach(i => i.value = "");
-                card.querySelector('textarea').value = "";
+                if (card) card.remove();
                 refreshStats();
             }).catch(err => alert("❌ خطأ في الحذف: " + err.message)); 
         } 
@@ -628,6 +665,7 @@
 
             clientsArr.forEach(d => {
                 const id = d.id;
+                const displayCode = d.code || (isNaN(id) ? '---' : id); 
                 let pVal = 0; 
                 if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0));
                 const total = parseFloat(d.t) || 0;
@@ -645,19 +683,20 @@
 
                 if (d.isArchived || isPaid) {
                     archiveBody.innerHTML += `<tr class="row-paid">
-                        <td>${id}</td>
+                        <td style="font-weight:900; color:var(--danger)">${displayCode}</td>
                         <td>${d.n || '---'}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
                         <td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
                         <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
                         <td>${stars}</td>
-                        <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
+                        <td><button class="btn-restore" onclick="restoreFromArchive('${id}')">استعادة 🔄</button></td>
                     </tr>`;
                     if(isPaid) paidC++;
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
                     const rowHTML = `<tr class="${rowClass}">
-                        <td>${id}</td><td>${d.n}</td>
+                        <td style="font-weight:900; color:var(--danger)">${displayCode}</td>
+                        <td>${d.n}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td>
                         <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
@@ -689,11 +728,16 @@
         const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
 
-        visibleCards.forEach(id => { 
-            const card = document.getElementById(`card-${id}`); 
-            const name = card.querySelector('.c-name').value.toLowerCase();
-            const phone = card.querySelector('.c-phone').value.toLowerCase();
-            card.style.display = (name.includes(q) || phone.includes(q)) ? "block" : "none"; 
+        document.querySelectorAll('.card').forEach(card => {
+            if (card.classList.contains('visible')) {
+                const name = card.querySelector('.c-name').value.toLowerCase();
+                const phone = card.querySelector('.c-phone').value.toLowerCase();
+                if (name.includes(q) || phone.includes(q)) {
+                    card.style.setProperty('display', 'block', 'important');
+                } else {
+                    card.style.setProperty('display', 'none', 'important');
+                }
+            }
         });
     }
 
