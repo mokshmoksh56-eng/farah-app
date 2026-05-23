@@ -35,18 +35,18 @@
         td input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
         
         .btn-calc { background-color: #27ae60; color: white; width: 100%; padding: 14px; border: none; border-radius: 4px; font-size: 18px; cursor: pointer; margin-top: 10px; font-weight: bold; }
-        .btn-add { background-color: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; margin-top: 10px; font-size: 15px; width: 100%; font-weight: bold; }
+        .btn-add { background-color: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 15px; width: 100%; font-weight: bold; }
         
         .action-buttons { display: flex; margin-top: 15px; gap: 10px; }
         .btn-print { background-color: #34495e; color: white; border: none; padding: 14px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
         .btn-back-menu { background-color: #2f3640; color: white; border: none; padding: 14px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; text-decoration: none; text-align: center; width: 100%; display: block; }
         
-        canvas { display: block; width: 100%; margin-top: 20px; border: 2px solid #000; background: #fff; }
         .results { text-align: center; margin-top: 15px; font-weight: bold; font-size: 18px; color: #000; background: #f9f9f9; padding: 10px; border-radius: 4px; }
 
-        /* تنسيقات الجداول الجديدة لكل لوح */
-        #boardsTablesContainer { margin-top: 25px; }
-        .board-detail-container { margin-bottom: 30px; border: 2px solid #2c3e50; border-radius: 6px; overflow: hidden; page-break-inside: avoid; }
+        /* تنسيقات صفحات الطباعة والألواح */
+        #boardsRenderContainer { margin-top: 25px; }
+        .print-page { margin-bottom: 40px; }
+        .board-detail-container { margin-bottom: 15px; border: 2px solid #2c3e50; border-radius: 6px; overflow: hidden; page-break-inside: avoid; }
         .board-title { background: #2c3e50; color: white; padding: 12px; margin: 0; text-align: center; font-size: 18px; }
         .board-table { width: 100%; border-collapse: collapse; text-align: center; background: #fff; }
         .board-table th { background: #ecf0f1; color: #2c3e50; padding: 10px; font-weight: bold; border-bottom: 2px solid #bdc3c7; }
@@ -60,7 +60,7 @@
         .btn-open-archive { flex: 1; min-width: 100px; background-color: #8e44ad; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
         .btn-new-project { flex: 1; min-width: 100px; background-color: #f39c12; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-        #archiveModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100000; justify-content: center; align-items: center; }
+        #archiveModal, #pasteModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100000; justify-content: center; align-items: center; }
         .archive-content { background: #fff; width: 95%; max-width: 600px; padding: 20px; border-radius: 8px; max-height: 80vh; overflow-y: auto; direction: rtl; }
         .archive-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .archive-header h2 { margin: 0; color: #2c3e50; font-size: 20px; }
@@ -87,17 +87,19 @@
             .archive-item-actions button { flex: 1; }
         }
 
-        /* إعدادات الطباعة النظيفة */
+        /* إعدادات الطباعة لفصل كل لوح في صفحة وإخفاء التفاصيل والمقاسات */
         @media print {
             body { background-color: #fff; padding: 0; }
             .container { box-shadow: none; border: none; padding: 0; margin: 0; max-width: 100%; }
-            /* إخفاء عناصر التحكم والإدخال */
-            .sticky-panel, .table-responsive, .btn-add, .archive-controls, .action-buttons, #syncStatus, h1 { display: none !important; }
-            canvas { border: none !important; margin-bottom: 20px; }
-            .board-detail-container { page-break-inside: avoid; border: 1px solid #000; }
-            .board-title { background: #eee !important; color: #000 !important; border-bottom: 1px solid #000; }
-            .board-table th { background: #fff !important; color: #000 !important; border-bottom: 2px solid #000; }
-            .board-table td, .board-table th { border: 1px solid #000; }
+            /* إخفاء عناصر التحكم وجداول المقاسات (التفاصيل) في الطباعة */
+            .sticky-panel, .table-responsive, #addButtonsDiv, .archive-controls, .action-buttons, #syncStatus, h1, #resultStats, .board-detail-container { display: none !important; }
+            
+            /* فصل الصفحات */
+            .print-page { page-break-after: always; break-after: page; display: block; margin-bottom: 0; }
+            .print-page:last-child { page-break-after: auto; break-after: auto; }
+            
+            /* تكبير الرسمة لتأخذ مساحة أكبر في الطباعة */
+            canvas { border: 2px solid #000 !important; margin-bottom: 15px; max-height: 95vh !important; width: auto !important; max-width: 100% !important; display: block; margin-left: auto; margin-right: auto; }
         }
     </style>
 
@@ -186,7 +188,12 @@
             <tbody id="piecesBody"></tbody>
         </table>
     </div>
-    <button class="btn-add" onclick="addRow()">+ إضافة مقاس جديد</button>
+
+    <!-- أزرار الإضافة واللصق -->
+    <div id="addButtonsDiv" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+        <button class="btn-add" onclick="addRow()" style="flex: 1; min-width: 200px;">+ إضافة مقاس جديد</button>
+        <button class="btn-add" onclick="document.getElementById('pasteModal').style.display='flex'" style="flex: 1; min-width: 200px; background-color: #8e44ad;">📋 لصق مقاسات من وورد / إكسيل</button>
+    </div>
 
     <div class="archive-controls">
         <input type="text" id="projectName" class="input-project-name" placeholder="اسم المشروع (مثال: مطبخ جديد)">
@@ -201,12 +208,12 @@
     </div>
 
     <div id="resultStats" class="results">المخطط يظهر هنا بعد الحساب</div>
-    <canvas id="boardCanvas"></canvas>
     
-    <!-- مساحة مخصصة لجداول الألواح -->
-    <div id="boardsTablesContainer"></div>
+    <!-- مساحة مخصصة لرسم الألواح وجداولها ليتم طباعتها منفصلة -->
+    <div id="boardsRenderContainer"></div>
 </div>
 
+<!-- مودال الأرشيف -->
 <div id="archiveModal">
     <div class="archive-content">
         <div class="archive-header">
@@ -215,6 +222,19 @@
         </div>
         <input type="text" id="searchArchive" placeholder="🔍 ابحث عن اسم المشروع..." onkeyup="filterArchive()">
         <div id="archiveList"></div>
+    </div>
+</div>
+
+<!-- مودال لصق البيانات من وورد/إكسيل -->
+<div id="pasteModal">
+    <div class="archive-content">
+        <div class="archive-header">
+            <h2>📋 إدراج من وورد أو إكسيل</h2>
+            <button class="close-modal" onclick="document.getElementById('pasteModal').style.display='none'">إغلاق ❌</button>
+        </div>
+        <p style="font-size: 14px; color: #555;">قم بنسخ الجدول من وورد أو إكسيل (الاسم، الطول، العرض، العدد) ثم قم بلصقه في المربع بالأسفل:</p>
+        <textarea id="pasteInput" style="width: 100%; height: 150px; padding: 10px; font-size: 14px; border: 2px solid #ccc; border-radius: 4px; direction: rtl;" placeholder="الصق الجدول هنا باستخدام (Ctrl + V)..."></textarea>
+        <button class="btn-calc" style="margin-top: 15px;" onclick="processPastedData()">استخراج المقاسات ✔️</button>
     </div>
 </div>
 
@@ -236,9 +256,10 @@
             document.getElementById('projectName').value = ""; document.getElementById('piecesBody').innerHTML = "";
             window.addRow(); document.getElementById('totalBoardsNeeded').value = "0";
             document.getElementById('resultStats').innerText = "المخطط يظهر هنا بعد الحساب";
-            const canvas = document.getElementById('boardCanvas'); const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height); canvas.height = 0;
-            document.getElementById('boardsTablesContainer').innerHTML = ""; // مسح الجداول
+            
+            // تنظيف مساحة الرسم الجديدة
+            document.getElementById('boardsRenderContainer').innerHTML = "";
+            
             window.saveData(); syncStatus.innerText = "✨ تم بدء مشروع جديد"; syncStatus.style.color = "#27ae60";
         }
     };
@@ -410,6 +431,73 @@
     window.deleteRow = function(btn) { btn.closest('tr').remove(); window.updateRowNumbers(); window.saveData(); };
     window.updateRowNumbers = function() { document.querySelectorAll('.row-num').forEach((td, i) => td.innerText = i + 1); };
 
+    // --- دالة معالجة اللصق من وورد/إكسيل ---
+    window.processPastedData = function() {
+        const text = document.getElementById('pasteInput').value.trim();
+        if(!text) { alert("الرجاء لصق البيانات أولاً!"); return; }
+        
+        const rows = text.split(/\r?\n/);
+        let addedCount = 0;
+        
+        rows.forEach(row => {
+            let cols = row.split(/\t/);
+            // إذا لم يتعرف على Tab نجرب المسافات المتعددة
+            if(cols.length < 3) cols = row.split(/\s{2,}/); 
+            
+            if(cols.length >= 3) {
+                let l = parseFloat(cols[1].trim());
+                let w = parseFloat(cols[2].trim());
+                
+                // في حال كان الجدول المنسوخ (طول، عرض، عدد) فقط بدون اسم
+                if (cols.length === 3 && !isNaN(parseFloat(cols[0].trim()))) {
+                    l = parseFloat(cols[0].trim());
+                    w = parseFloat(cols[1].trim());
+                }
+
+                // تخطي صف العناوين إذا كان يحتوي على نصوص بدلاً من الأرقام
+                if (isNaN(l) || isNaN(w)) return; 
+
+                let name = "قطعة";
+                let len = 0, wid = 0, qty = 1;
+                
+                if(cols.length >= 4) {
+                    name = cols[0].trim();
+                    len = l; wid = w;
+                    qty = parseInt(cols[3].trim()) || 1;
+                } else if(cols.length === 3) {
+                    len = l; wid = w;
+                    qty = parseInt(cols[2].trim()) || 1;
+                    name = "قطعة " + (document.getElementById('piecesBody').children.length + 1);
+                }
+                
+                if(len > 0 && wid > 0) {
+                    const tbody = document.getElementById('piecesBody'); 
+                    const count = tbody.children.length + 1; 
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="row-num">${count}</td>
+                    <td><input type="text" class="p-name" value="${name}" oninput="saveData()"></td>
+                    <td><input type="number" class="p-len" value="${len}" oninput="saveData()"></td>
+                    <td><input type="number" class="p-wid" value="${wid}" oninput="saveData()"></td>
+                    <td><input type="number" class="p-qty" value="${qty}" oninput="saveData()"></td>
+                    <td class="rot-col"><input type="checkbox" class="p-rot" onchange="saveData()"></td>
+                    <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button></td>`;
+                    tbody.appendChild(tr);
+                    addedCount++;
+                }
+            }
+        });
+        
+        if(addedCount > 0) {
+            window.updateRowNumbers();
+            window.saveData();
+            alert(`تمت إضافة ${addedCount} مقاس بنجاح!`);
+            document.getElementById('pasteInput').value = "";
+            document.getElementById('pasteModal').style.display = 'none';
+        } else {
+            alert("لم يتم التعرف على مقاسات صحيحة. يرجى التأكد من أن الجدول المنسوخ يحتوي على الأقل على (الطول، العرض، العدد).");
+        }
+    };
+
     class MaxRectsPacker {
         constructor(width, height, kerf) { this.width = width; this.height = height; this.kerf = kerf; this.usedRects = []; this.freeRects = [{ x: 0, y: 0, w: width, h: height }]; }
         insert(w, h, name, allowRot) { let bestRect = this.findBestRect(w, h, allowRot); if (!bestRect) return null; bestRect.name = name; this.splitFreeRects(bestRect); this.cleanFreeRects(); this.usedRects.push(bestRect); return bestRect; }
@@ -456,28 +544,57 @@
         document.getElementById('totalBoardsNeeded').value = boards.length;
         document.getElementById('resultStats').innerText = "عدد الألواح المطلوبة: " + boards.length;
         
-        draw(bL, bW, boards, isGrain);
-        generateBoardsTables(boards); 
+        renderBoardsAndTables(bL, bW, boards, isGrain);
     };
 
-    function draw(boardW, boardH, boards, isGrain) {
-        const canvas = document.getElementById('boardCanvas'); const ctx = canvas.getContext('2d'); const padding = 80; canvas.width = 1100; const scale = (canvas.width - padding * 2) / boardW; const drawH = boardH * scale; canvas.height = (drawH + padding * 2) * boards.length; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
+    // --- دالة الرسم الجديدة لإنشاء كل لوح مع جدوله بشكل منفصل ---
+    window.renderBoardsAndTables = function(boardW, boardH, boards, isGrain) {
+        const container = document.getElementById('boardsRenderContainer');
+        container.innerHTML = ''; // تنظيف الحاوية السابقة
+
         let topText = boardW + " سم";
         if (isGrain) { topText += "   ( ↔️ اتجاه السمرة بالطول ↔️ )"; }
 
-        boards.forEach((packer, bIdx) => {
-            let offset = bIdx * (drawH + padding * 2); ctx.fillStyle = "#f5f5f5"; ctx.fillRect(padding, offset + padding, boardW * scale, drawH); ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeRect(padding, offset + padding, boardW * scale, drawH);
+        boards.forEach((packer, index) => {
+            // 1. إنشاء غلاف للصفحة المطبوعة
+            const pageWrapper = document.createElement('div');
+            pageWrapper.className = 'print-page';
+
+            // 2. إنشاء لوحة الرسم (Canvas) لهذا اللوح
+            const canvas = document.createElement('canvas');
+            canvas.style.width = '100%';
+            canvas.style.marginTop = '20px';
+            canvas.style.border = '2px solid #000';
+            canvas.style.background = '#fff';
+            
+            const ctx = canvas.getContext('2d');
+            const padding = 80; 
+            canvas.width = 1100; 
+            const scale = (canvas.width - padding * 2) / boardW; 
+            const drawH = boardH * scale; 
+            canvas.height = drawH + padding * 2; 
+            
+            ctx.fillStyle = "#fff"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = "#f5f5f5"; 
+            ctx.fillRect(padding, padding, boardW * scale, drawH); 
+            ctx.strokeStyle = "#000"; 
+            ctx.lineWidth = 3; 
+            ctx.strokeRect(padding, padding, boardW * scale, drawH);
             
             ctx.fillStyle = isGrain ? "#c0392b" : "#000"; 
             ctx.font = "bold 24px Arial"; ctx.textAlign = "center"; 
-            ctx.fillText(topText, padding + (boardW * scale) / 2, offset + padding / 2);
+            ctx.fillText(topText, padding + (boardW * scale) / 2, padding / 2);
             
             ctx.fillStyle = "#000";
-            ctx.save(); ctx.translate(padding/2, offset + padding + drawH/2); ctx.rotate(-Math.PI/2); ctx.fillText(boardH + " سم", 0, 0); ctx.restore();
+            ctx.save(); ctx.translate(padding/2, padding + drawH/2); ctx.rotate(-Math.PI/2); ctx.fillText(boardH + " سم", 0, 0); ctx.restore();
             
             packer.usedRects.forEach(r => {
-                const rx = padding + r.x * scale; const ry = offset + padding + r.y * scale; const rw = r.w * scale; const rh = r.h * scale; 
+                const rx = padding + r.x * scale; 
+                const ry = padding + r.y * scale; 
+                const rw = r.w * scale; 
+                const rh = r.h * scale; 
                 
                 ctx.fillStyle = "#f1c40f"; 
                 ctx.fillRect(rx, ry, rw, rh); 
@@ -487,11 +604,9 @@
                     ctx.beginPath();
                     ctx.rect(rx, ry, rw, rh);
                     ctx.clip(); 
-                    
                     ctx.strokeStyle = "rgba(160, 82, 45, 0.4)"; 
                     ctx.lineWidth = 1.5;
                     ctx.beginPath();
-                    
                     let step = 12; 
                     for (let gy = ry + 5; gy < ry + rh; gy += step) {
                         let yPos = gy + (Math.random() * 4 - 2); 
@@ -517,29 +632,25 @@
                     ctx.fillText(r.name, rx + rw / 2, ry + rh / 2 + 5); 
                 }
             });
-            ctx.fillStyle = "#000"; ctx.font = "bold 26px Arial"; ctx.textAlign = "right"; ctx.fillText("اللوح رقم " + (bIdx + 1), padding + (boardW * scale), offset + padding - 20);
-        });
-    }
+            ctx.fillStyle = "#000"; ctx.font = "bold 26px Arial"; ctx.textAlign = "right"; 
+            ctx.fillText("اللوح رقم " + (index + 1), padding + (boardW * scale), padding - 20);
 
-    window.generateBoardsTables = function(boards) {
-        const container = document.getElementById('boardsTablesContainer');
-        container.innerHTML = '';
-        
-        boards.forEach((packer, index) => {
+            pageWrapper.appendChild(canvas);
+
+            // 3. إنشاء الجدول الخاص بهذا اللوح (سيتم إخفاؤه في الطباعة)
             let piecesMap = {};
             packer.usedRects.forEach(r => {
                 let w = Math.round(r.w);
                 let h = Math.round(r.h);
                 let key = `${r.name}_${w}_${h}`;
-                
-                if(!piecesMap[key]) {
-                    piecesMap[key] = { name: r.name, w: w, h: h, qty: 0 };
-                }
+                if(!piecesMap[key]) { piecesMap[key] = { name: r.name, w: w, h: h, qty: 0 }; }
                 piecesMap[key].qty++;
             });
 
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'board-detail-container';
+            
             let html = `
-            <div class="board-detail-container">
                 <h3 class="board-title">تفاصيل مقاسات اللوح رقم ${index + 1}</h3>
                 <table class="board-table">
                     <thead>
@@ -562,9 +673,13 @@
                         <td>${p.qty}</td>
                     </tr>`;
             }
+            html += `</tbody></table>`;
+            tableWrapper.innerHTML = html;
             
-            html += `</tbody></table></div>`;
-            container.innerHTML += html;
+            pageWrapper.appendChild(tableWrapper);
+
+            // 4. إضافة الصفحة للحاوية الرئيسية
+            container.appendChild(pageWrapper);
         });
     };
 </script>
