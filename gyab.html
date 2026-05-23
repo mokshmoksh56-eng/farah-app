@@ -37,22 +37,17 @@
         .main-container { padding: 12px; }
         .config-box { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        .date-selectors { display: flex; gap: 5px; margin-bottom: 10px; }
-        .date-selectors select { flex: 1; padding: 10px; border-radius: 10px; border: 2px solid var(--teal); font-weight: 900; text-align: center; }
-
-        .settings-box { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-        .add-worker-form { display: flex; gap: 5px; margin-bottom: 10px; }
-        .add-worker-form input { flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-weight: bold; }
-        .add-worker-form button { background: var(--teal); color: white; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; font-weight: 900; }
-        
-        .worker-item { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 13px; }
-        .btn-del { color: var(--danger); background: none; border: none; font-size: 18px; cursor: pointer; }
+        .date-selectors { display: flex; gap: 5px; margin-top: 10px; }
+        .date-selectors select { 
+            flex: 1; padding: 12px 5px; border-radius: 10px; border: 2px solid var(--teal); 
+            font-weight: 900; background: #f9f9f9; cursor: pointer; text-align: center;
+        }
 
         #cardsList { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         @media (max-width: 550px) { #cardsList { grid-template-columns: 1fr; } }
         
-        .worker-card { background: var(--white); border-radius: 15px; padding: 12px; border-top: 5px solid var(--teal); box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
-        .card-name { font-size: 16px; color: var(--dark-green); text-align: center; margin-bottom: 10px; font-weight: 900; }
+        .worker-card { background: var(--white); border-radius: 15px; padding: 12px; border-top: 5px solid var(--teal); box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative;}
+        .card-name { font-size: 16px; color: var(--dark-green); text-align: center; margin-bottom: 10px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
         
         .salary-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; background: #fffcf0; padding: 5px; border-radius: 8px; }
         .salary-input { width: 80px; padding: 5px; border-radius: 5px; border: 1.5px solid #ddd; font-weight: 900; text-align: center; }
@@ -72,7 +67,6 @@
         .card-footer { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ddd; font-size: 13px; font-weight: 900; }
         .btn-share { width: 100%; background: var(--whatsapp-green); color: white; border: none; padding: 12px; border-radius: 12px; margin-top: 10px; font-weight: 900; cursor: pointer; }
 
-        /* تنسيقات الأرشيف */
         .archive-box { background: white; border-radius: 15px; padding: 15px; margin-top: 20px; border: 2px solid var(--teal); margin-bottom: 20px; }
         .archive-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; background: white; border-radius: 8px; overflow: hidden; }
         .archive-table th { background: #eee; padding: 8px; border: 1px solid #ddd; text-align: center; }
@@ -81,7 +75,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -127,23 +121,24 @@
 <div class="main-container">
     <div class="config-box">
         <div class="date-selectors">
-            <select id="dayPicker" onchange="updateDate()"></select>
-            <select id="monthPicker" onchange="updateDate()">
-                <option value="0">يناير</option><option value="1">فبراير</option><option value="2">مارس</option>
-                <option value="3">أبريل</option><option value="4">مايو</option><option value="5">يونيو</option>
-                <option value="6">يوليو</option><option value="7">أغسطس</option><option value="8">سبتمبر</option>
-                <option value="9">أكتوبر</option><option value="10">نوفمبر</option><option value="11">ديسمبر</option>
+            <select id="dayPicker" onchange="updateDateFromSelectors()"></select>
+            <select id="monthPicker" onchange="updateDateFromSelectors()">
+                <option value="0">01</option><option value="1">02</option><option value="2">03</option>
+                <option value="3">04</option><option value="4">05</option><option value="5">06</option>
+                <option value="6">07</option><option value="7">08</option><option value="8">09</option>
+                <option value="9">10</option><option value="10">11</option><option value="11">12</option>
             </select>
-            <select id="yearPicker" onchange="updateDate()"></select>
+            <select id="yearPicker" onchange="updateDateFromSelectors()"></select>
         </div>
+        <input type="hidden" id="datePicker" onchange="handleDateChange()">
 
-        <details class="settings-box">
-            <summary style="text-align:center; cursor:pointer; color:var(--teal); font-weight:900;">⚙️ إضافة وتعديل العمال بالورشة</summary>
-            <div class="add-worker-form" style="margin-top:10px;">
-                <input type="text" id="newWorkerName" placeholder="اكتب اسم العامل الجديد هنا...">
-                <button onclick="addWorker()">إضافة ➕</button>
+        <details style="margin-top: 15px;">
+            <summary style="font-weight: 900; color: var(--teal); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 10px;">⚙️ الإعدادات وإضافة العمال</summary>
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <input type="text" id="workerNameInp" style="flex:2; border: 1px solid #ddd; padding: 8px; border-radius: 8px;" placeholder="اسم عامل جديد">
+                <button onclick="addNewWorker()" style="background:var(--teal); color:white; border:none; padding:0 15px; border-radius:8px; font-weight: 900;">إضافة</button>
             </div>
-            <div id="masterList"></div>
+            <div id="workerListEditor" style="margin-top:10px;"></div>
         </details>
     </div>
 
@@ -166,78 +161,101 @@
     let allArchiveData = {};
 
     function initSystem() {
-        initDates();
-        listenToMasterWorkers();
+        initDateSelectors();
+        loadMasterWorkers();
     }
 
-    function initDates() {
-        const dS = document.getElementById('dayPicker'), yS = document.getElementById('yearPicker'), n = new Date();
-        for(let i=1; i<=31; i++) dS.add(new Option(i, i, i === n.getDate()));
-        for(let i=2024; i<=2030; i++) yS.add(new Option(i, i, i === n.getFullYear()));
-        document.getElementById('monthPicker').value = n.getMonth();
-        updateDate();
+    function initDateSelectors() {
+        const dSel = document.getElementById('dayPicker');
+        const ySel = document.getElementById('yearPicker');
+        const now = new Date();
+        for(let i=1; i<=31; i++) dSel.add(new Option(i, i, i === now.getDate(), i === now.getDate()));
+        for(let i = 2024; i <= 2030; i++) ySel.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear()));
+        document.getElementById('monthPicker').value = now.getMonth();
+        updateDateFromSelectors();
     }
 
-    function updateDate() {
-        const d = document.getElementById('dayPicker').value, m = parseInt(document.getElementById('monthPicker').value)+1, y = document.getElementById('yearPicker').value;
-        const picked = new Date(`${y}-${m}-${d}`);
-        let diff = (picked.getDay() === 6) ? 0 : (picked.getDay() + 1);
-        let sat = new Date(picked); sat.setDate(picked.getDate() - diff);
-        currentWeekID = sat.toISOString().split('T')[0];
+    function updateDateFromSelectors() {
+        const d = document.getElementById('dayPicker').value;
+        const m = parseInt(document.getElementById('monthPicker').value) + 1;
+        const y = document.getElementById('yearPicker').value;
+        document.getElementById('datePicker').value = `${y}-${m.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+        handleDateChange();
+    }
+
+    function handleDateChange() {
+        const pickedDate = new Date(document.getElementById('datePicker').value);
+        if (isNaN(pickedDate)) return;
+        let dayOfWeek = pickedDate.getDay();
+        let diffToSaturday = (dayOfWeek === 6) ? 0 : (dayOfWeek + 1);
+        let saturday = new Date(pickedDate);
+        saturday.setDate(pickedDate.getDate() - diffToSaturday);
+        currentWeekID = saturday.toISOString().split('T')[0];
         
         currentWeekDates = [];
         for(let i=0; i<6; i++) {
-            let tmp = new Date(sat); tmp.setDate(sat.getDate() + i);
+            let tmp = new Date(saturday); tmp.setDate(saturday.getDate() + i);
             currentWeekDates.push(tmp.getDate().toString().padStart(2,'0') + '/' + (tmp.getMonth()+1).toString().padStart(2,'0'));
         }
         document.getElementById('weekRangeDisplay').innerText = `أسبوع السبت ${currentWeekDates[0]}`;
         loadWeekData();
     }
 
-    // إصلاح مشكلة قراءة مصفوفة العمال وإجبارها على أن تكون Array سليم
-    function listenToMasterWorkers() {
-        onValue(window.ref(window.db, `backups/workers_master/${window.currentUid}`), (snap) => {
-            if(snap.exists()) {
-                let rawData = snap.val();
-                // تحويل البيانات لكائن مصفوفة حقيقي وتصفية أي فراغات
-                masterWorkers = Array.isArray(rawData) ? rawData : Object.values(rawData);
-                masterWorkers = masterWorkers.filter(w => w && w.name);
-            } else {
-                masterWorkers = [];
-            }
-            renderMasterList();
+    // تم إرجاع هذه الوظيفة لتطابق الكود الأول تماماً لمنع التداخل
+    function loadMasterWorkers() {
+        if(!window.db || !window.currentUid) return;
+        get(ref(window.db, `backups/workers_master/${window.currentUid}`)).then((snapshot) => {
+            let rawData = snapshot.exists() ? snapshot.val() : [];
+            masterWorkers = Array.isArray(rawData) ? rawData : Object.values(rawData);
+            masterWorkers = masterWorkers.filter(w => w && w.name);
+            
+            updateWorkerEditor();
             updateArchiveDropdown();
             loadWeekData();
+        }).catch((error) => console.error("Error loading workers:", error));
+    }
+
+    // وظيفة إضافة العامل من الكود الأول مع ميزة النزول للأسفل
+    function addNewWorker() {
+        const name = document.getElementById('workerNameInp').value.trim();
+        if(!name) return;
+        masterWorkers.push({ name: name, inst_weekly: 0 });
+        document.getElementById('workerNameInp').value = "";
+        saveMasterWorkers();
+        
+        // التمرير التلقائي لأسفل لرؤية كارت العامل الجديد
+        setTimeout(() => {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }, 300);
+    }
+
+    function removeWorker(idx) {
+        if(confirm("هل تريد حذف هذا العامل من النظام نهائياً؟")) {
+            masterWorkers.splice(idx, 1);
+            saveMasterWorkers();
+        }
+    }
+
+    function saveMasterWorkers() {
+        if(!window.db || !window.currentUid) return;
+        set(ref(window.db, `backups/workers_master/${window.currentUid}`), masterWorkers).then(() => {
+            updateWorkerEditor();
+            updateArchiveDropdown();
+            loadWeekData(); // يتم استدعاء بناء الجداول فوراً
         });
     }
 
-    function renderMasterList() {
-        document.getElementById('masterList').innerHTML = masterWorkers.map((w, i) => `
-            <div class="worker-item">
+    function updateWorkerEditor() {
+        const box = document.getElementById('workerListEditor');
+        box.innerHTML = masterWorkers.map((w, idx) => `
+            <div style="display:flex; justify-content:space-between; background:#f5f6fa; padding:5px 10px; border-radius:8px; margin-bottom:4px; align-items:center; font-size:13px;">
                 <span>👷 ${w.name}</span>
-                <button class="btn-del" onclick="deleteWorker(${i})" title="حذف العامل">🗑️</button>
+                <button onclick="removeWorker(${idx})" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
             </div>
         `).join('');
     }
 
-    // إضافة عامل جديد بشكل آمن
-    async function addWorker() {
-        const name = document.getElementById('newWorkerName').value.trim();
-        if(!name) return;
-        masterWorkers.push({ name: name });
-        // نستخدم Set لرفع المصفوفة السليمة من جديد
-        await window.set(window.ref(window.db, `backups/workers_master/${window.currentUid}`), masterWorkers);
-        document.getElementById('newWorkerName').value = "";
-    }
-
-    async function deleteWorker(idx) {
-        if(confirm("هل أنت متأكد من حذف هذا العامل نهائياً من القائمة؟")) {
-            masterWorkers.splice(idx, 1);
-            await window.set(window.ref(window.db, `backups/workers_master/${window.currentUid}`), masterWorkers);
-        }
-    }
-
-    // تحميل وبناء كروت الأسبوع
+    // تحميل وبناء كروت الأسبوع (تعمل بالمزامنة اللحظية)
     async function loadWeekData() {
         if(!window.currentUid || masterWorkers.length === 0) {
             document.getElementById('cardsList').innerHTML = "";
@@ -247,7 +265,6 @@
         const saved = snap.exists() ? snap.val() : {};
         
         document.getElementById('cardsList').innerHTML = masterWorkers.map((worker, idx) => {
-            // جلب بيانات العامل أو وضع قيم افتراضية إذا كان عاملاً جديداً
             let d = saved[idx] || {};
             let sal = d.sal || '';
             let att = d.att || [1,1,1,1,1,1];
@@ -368,13 +385,12 @@
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
-    // --- وظائف الأرشيف السحابي ---
     function updateArchiveDropdown() {
         const dropdown = document.getElementById('archiveSearch');
         const currentSelection = dropdown.value;
         dropdown.innerHTML = '<option value="">-- اختر اسم العامل لعرض أرشيفه --</option>' + 
             masterWorkers.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
-        dropdown.value = currentSelection; // للحفاظ على الاختيار بعد التحديث
+        dropdown.value = currentSelection;
     }
 
     async function fetchAndBuildArchive() {
@@ -384,7 +400,6 @@
         
         display.innerHTML = "<p style='text-align:center;'>⏳ جاري جلب الأرشيف...</p>";
         
-        // جلب كل أسابيع العمل من السحابة
         const snap = await window.get(window.ref(window.db, `backups/workers_weeks/${window.currentUid}`));
         if(snap.exists()) {
             allArchiveData = snap.val();
@@ -395,14 +410,12 @@
         let html = `<table class="archive-table"><thead><tr><th>تاريخ الأسبوع</th><th>الراتب</th><th>أيام حضرها</th><th>سلفيات</th><th>الصافي</th></tr></thead><tbody>`;
         let hasRecords = false;
         
-        // ترتيب التواريخ من الأحدث للأقدم
         let keys = Object.keys(allArchiveData).sort((a,b) => b.localeCompare(a));
         
         keys.forEach(weekKey => {
             const weekData = allArchiveData[weekKey];
             let workerRecord = null;
             
-            // البحث عن العامل بالاسم داخل بيانات الأسبوع (لأن الـ Index قد يتغير مع الحذف)
             Object.values(weekData).forEach(w => {
                 if(w && w.name === selectedName) workerRecord = w;
             });
