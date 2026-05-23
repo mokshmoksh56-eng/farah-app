@@ -38,6 +38,7 @@
         .card.visible { display: block; }
         .card.paid { border: 3px solid var(--success) !important; background-color: #f0fff4 !important; }
         
+        /* وضع القفل الخفيف للكارت المغلق */
         .card.locked-mode { background-color: #fafbfc; border-color: #d1d8e0; }
         .card.locked-mode input, .card.locked-mode textarea { background: #f1f2f6; color: #7f8c8d; cursor: not-allowed; border: 1px solid #dcdde1; }
         .card.locked-mode .rating-area label { cursor: not-allowed; pointer-events: none; }
@@ -76,11 +77,13 @@
         .btn-wa-direct { background: #25D366; }
         .btn-wa-invoice { background: #128C7E; }
         
+        /* أزرار التحكم بالقفل والتعديل */
         .btn-lock-toggle { background: none; border: none; cursor: pointer; font-size: 15px; margin-left: 8px; padding: 2px 5px; border-radius: 5px; background-color: #f1f2f6; transition: 0.2s; }
         .btn-lock-toggle:hover { background-color: #dcdde1; }
 
         .btn-add-client { position: fixed; bottom: 15px; right: 15px; background: #1abc9c; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 25px; cursor: pointer; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
+        /* أيقونة المظهر الليلي في الشريط العلوي */
         .btn-dark-mode-top { background: none; border: none; cursor: pointer; font-size: 13px; color: #ffffff; padding: 4px 10px; border-radius: 6px; background-color: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; transition: 0.2s; font-weight: bold; }
         .btn-dark-mode-top:hover { background-color: rgba(255,255,255,0.2); }
 
@@ -127,12 +130,14 @@
             border: none !important;
         }
 
+        /* 🌙 تخصيص وتطوير ألوان الوضع الليلي الاحترافي */
         body.dark-theme { background: #1e272e; color: #ffffff; }
         body.dark-theme .stat-card { background: #2f3542; color: #ffffff; border-bottom: 4px solid #57606f; }
         body.dark-theme .card { background: #2f3542; border-color: #57606f; color: #ffffff; }
         body.dark-theme label { color: #dcdde1; }
         body.dark-theme input, body.dark-theme textarea { background: #353b48; color: #ffffff; border-color: #57606f; }
         
+        /* ضبط صندوق التاريخ الكلي والمدخلات بداخله في الوضع التعديل المفتوح ليلاً لمنع الوميض العالي وضمان التباين */
         body.dark-theme .date-input-group { background: #4d2323; border-color: #ff4d4d; color: #ffffff; }
         body.dark-theme .date-input-group input { color: #ffffff !important; background: transparent !important; }
         body.dark-theme .date-input-group input::placeholder { color: #f5f6fa; opacity: 0.7; }
@@ -154,6 +159,7 @@
         body.dark-theme #archiveTableSection { background: #3d4652 !important; border-color: #57606f; }
         body.dark-theme .star-table { text-shadow: 0 0 3px rgba(241, 196, 15, 0.6); }
 
+        /* 🔘 أنيميشن مخصص للنبض الرصاصي داخل وخارج الكارت ليلاً عند فتحه للتعديل */
         @keyframes grayBrightPulse {
             0% { border-color: #7f8c8d; box-shadow: 0 0 8px #7f8c8d; background-color: #353b48; }
             50% { border-color: #b2bec3; box-shadow: 0 0 25px #b2bec3; background-color: #485460; }
@@ -161,10 +167,12 @@
         }
         body.dark-theme .card:focus-within:not(.locked-mode) { animation: grayBrightPulse 1s infinite ease-in-out; transform: translateY(-3px); z-index: 10; }
 
+        /* إبراز أرقام الجداول في الوضع الليلي بتباين ممتاز */
         body.dark-theme .col-total { color: #2196f3 !important; background-color: #162431 !important; } 
         body.dark-theme .col-paid { color: #4caf50 !important; background-color: #132717 !important; } 
         body.dark-theme .col-rem { color: #f44336 !important; background-color: #291414 !important; }
 
+        /* تعديل نبض السطور المتأخرة ليلاً لتكون مريحة للعين */
         @keyframes urgentPulseDark {
             0% { background-color: #2f3542; }
             50% { background-color: #4d2323; }
@@ -172,6 +180,7 @@
         }
         body.dark-theme .pulse-row { animation: urgentPulseDark 1.5s infinite; border: 2px solid #ff4d4d !important; }
 
+        /* شريط التمرير مخصص للوضع الليلي */
         body.dark-theme::-webkit-scrollbar { width: 10px; height: 10px; }
         body.dark-theme::-webkit-scrollbar-track { background: #1e272e; }
         body.dark-theme::-webkit-scrollbar-thumb { background: #485460; border-radius: 5px; }
@@ -269,16 +278,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
-    // 🟢 [تحديث المسار ذكياً]
-    const urlParams = new URLSearchParams(window.location.search);
-    const mode = urlParams.get('mode'); 
-    const currentId = urlParams.get('id');
-
-    let rootPath = 'clients'; // القيمة الافتراضية الرسمية
-    if (mode === 'trial' && currentId) {
-        rootPath = `trials/${currentId}/clients`;
-    }
+    const analytics = firebase.analytics();
 
     const monthColors = {
         1: "#ffdde1", 2: "#ee9ca7", 3: "#d4fc79", 4: "#96e6a1",
@@ -333,11 +333,13 @@
         const isLocked = card.classList.contains('locked-mode');
         
         if (isLocked) {
+            // فتح التعديل
             card.classList.remove('locked-mode');
             card.querySelectorAll('input, textarea').forEach(el => el.removeAttribute('disabled'));
             btn.innerHTML = '🔓 تعديل مفتوح';
             btn.style.color = 'var(--danger)';
         } else {
+            // قفل التعديل
             card.classList.add('locked-mode');
             card.querySelectorAll('input, textarea').forEach(el => el.setAttribute('disabled', 'true'));
             btn.innerHTML = '🔒 اضغط للتعديل';
@@ -347,7 +349,7 @@
 
     function createCardElement(i) {
         const card = document.createElement('div');
-        card.className = `card locked-mode`; 
+        card.className = `card locked-mode`; // تبدأ مقفلة افتراضياً لزيادة الحماية
         card.id = `card-${i}`;
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
@@ -387,10 +389,7 @@
         document.getElementById('mainGrid').appendChild(card);
     }
 
-    // 🟢 [تعديل هام جداً]: بناء الـ 50 كارت في الصفحة أولاً قبل أي عملية مزامنة لضمان تشغيل الواجهة فوراً
-    for (let i = 1; i <= 50; i++) {
-        createCardElement(i);
-    }
+    for (let i = 1; i <= 50; i++) createCardElement(i);
 
     function initKeyboardListener() {
         const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
@@ -444,8 +443,7 @@
             })),
             isArchived: false
         };
-        
-        db.ref(rootPath + '/' + id).update(data).then(() => {
+        db.ref('clients/' + id).update(data).then(() => {
             if (!card.classList.contains('locked-mode')) {
                 toggleCardLock(id);
             }
@@ -457,7 +455,7 @@
 
     function archiveCardManual(id) {
         if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) {
-            db.ref(rootPath + '/' + id).update({ isArchived: true }).then(() => {
+            db.ref('clients/' + id).update({ isArchived: true }).then(() => {
                 document.getElementById(`card-${id}`).classList.remove('visible');
                 refreshStats();
             });
@@ -466,7 +464,7 @@
 
     function restoreFromArchive(id) {
         if(confirm('هل تريد استعادة هذا الزبون؟')) {
-            db.ref(rootPath + '/' + id).update({ isArchived: false }).then(() => {
+            db.ref('clients/' + id).update({ isArchived: false }).then(() => {
                 document.getElementById(`card-${id}`).classList.add('visible');
                 refreshStats();
             });
@@ -482,12 +480,7 @@
             document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
         }
 
-        // إظهار كارت واحد على الأقل كبداية تشغيلية لتفادي المظهر الأبيض
-        document.getElementById('card-1').classList.add('visible');
-        visibleCards.push(1);
-
-        // الاستماع الفوري والتزامن مع السيرفر
-        db.ref(rootPath).on('value', (snapshot) => {
+        db.ref('clients').on('value', (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
                 visibleCards = [];
@@ -515,9 +508,8 @@
                         updateLogic(id);
                     }
                 }
+                initKeyboardListener();
             }
-            initKeyboardListener();
-            refreshStats();
         });
     };
 
@@ -529,7 +521,7 @@
                 if (card.classList.contains('locked-mode')) {
                     toggleCardLock(i);
                 }
-                db.ref(rootPath + '/' + i).update({ isArchived: false });
+                db.ref('clients/' + i).update({ isArchived: false });
                 return;
             }
         }
@@ -537,7 +529,7 @@
 
     function deleteCard(id) { 
         if(confirm('سيتم الحذف نهائياً؟')) { 
-            db.ref(rootPath + '/' + id).remove().then(() => {
+            db.ref('clients/' + id).remove().then(() => {
                 const card = document.getElementById(`card-${id}`);
                 card.classList.remove('visible');
                 card.querySelectorAll('input').forEach(i => i.value = "");
@@ -604,7 +596,7 @@
         summaryBody.innerHTML = '';
         archiveBody.innerHTML = '';
 
-        db.ref(rootPath).once('value', (snapshot) => {
+        db.ref('clients').once('value', (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
@@ -680,6 +672,7 @@
 
     function filterAll() {
         let q = document.getElementById('searchInput').value.toLowerCase();
+        
         const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
 
@@ -693,7 +686,8 @@
 
     function filterArchive() {
         let q = document.getElementById('archiveSearch').value.toLowerCase();
-        const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦'.'6','٧':'7','٨':'8','٩':'9'};
+        
+        const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
         
         let rows = document.querySelectorAll('#archive-body tr');
