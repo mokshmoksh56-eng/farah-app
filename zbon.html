@@ -242,9 +242,9 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const auth = firebase.auth(); // استدعاء الأمان والمصادقة
+    const auth = firebase.auth(); 
 
-    let currentUid = null; // متغير لحمل المعرف الفريد للمشتري الحالي
+    let currentUid = null; 
     let visibleCards = []; 
 
     const monthColors = {
@@ -263,7 +263,7 @@
     }
 
     const units = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
-    const tens = ['', '', 'عصرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+    const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
     const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
 
     function tafqit(n) {
@@ -386,10 +386,8 @@
         document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString('en-US')} ج.م`;
         document.getElementById(`rem-w-${id}`).innerText = rem > 0 ? "فقط " + tafqit(rem) + " جنيهاً لا غير" : (total > 0 ? "خالص ✓" : "");
         if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
-        refreshStats();
     }
 
-    // تعديل الحفظ ليتم في المسار السحابي الخاص بالـ UID الفريد لكل عميل لمنع تداخل البيانات
     function saveToCloud(id) {
         if(!currentUid) return;
         const card = document.getElementById(`card-${id}`);
@@ -408,13 +406,21 @@
             })),
             isArchived: false
         };
+
+        const saveBtn = card.querySelector('.btn-save');
+        saveBtn.innerText = "⏳ جاري الحفظ...";
+
         db.ref(`backups/users/${currentUid}/${id}`).update(data).then(() => {
             if (!card.classList.contains('locked-mode')) {
                 toggleCardLock(id);
             }
+            saveBtn.innerText = "💾 حفظ وقفل";
             const t = document.getElementById('toast');
             t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2000);
             refreshStats();
+        }).catch(err => {
+            saveBtn.innerText = "💾 حفظ وقفل";
+            alert("❌ فشل الحفظ! راجع الاتصال وقواعد الأمان.\nالسبب: " + err.message);
         });
     }
 
@@ -424,7 +430,7 @@
             db.ref(`backups/users/${currentUid}/${id}`).update({ isArchived: true }).then(() => {
                 document.getElementById(`card-${id}`).classList.remove('visible');
                 refreshStats();
-            });
+            }).catch(err => alert("❌ خطأ: " + err.message));
         }
     }
 
@@ -434,17 +440,14 @@
             db.ref(`backups/users/${currentUid}/${id}`).update({ isArchived: false }).then(() => {
                 document.getElementById(`card-${id}`).classList.add('visible');
                 refreshStats();
-            });
+            }).catch(err => alert("❌ خطأ: " + err.message));
         }
     }
 
-    // مراقبة الاتصال والتأكد من هوية المستخدم المسجل في الصفحة الرئيسية
     auth.onAuthStateChanged((user) => {
         if (user) {
-            currentUid = user.uid; // الحصول على الـ UID الخاص به
-            document.getElementById('auth-loader').style.display = 'none'; // إخفاء شاشة الانتظار
-            
-            // بدء جلب ومراقبة البيانات الحية من الفولدر الخاص بهذا العميل فقط
+            currentUid = user.uid; 
+            document.getElementById('auth-loader').style.display = 'none'; 
             startSyncingData();
         } else {
             document.getElementById('auth-loader').innerText = "⚠️ خطأ أمني: يرجى تسجيل الدخول من الصفحة الرئيسية أولاً!";
@@ -475,20 +478,26 @@
                             visibleCards.push(parseInt(id));
                         }
                         
-                        card.querySelector('.c-name').value = d.n || '';
-                        card.querySelector('.c-phone').value = d.p || '';
-                        card.querySelector('.d-day').value = d.dd || '';
-                        card.querySelector('.d-month').value = d.dm || '';
-                        card.querySelector('.d-year').value = d.dy || '';
-                        if (d.r) { const star = document.getElementById(`star${d.r}-${id}`); if(star) star.checked = true; }
-                        card.querySelector('.c-total').value = d.t || '';
-                        const nF = card.querySelector('.c-notes'); nF.value = d.notes || ''; autoResize(nF);
-                        const pV = card.querySelectorAll('.p-val'); const pD = card.querySelectorAll('.p-date');
-                        if (d.pays) { d.pays.forEach((p, idx) => { if(pV[idx]) pV[idx].value = p.v || ''; if(pD[idx]) pD[idx].value = p.d || ''; }); }
-                        updateLogic(id);
+                        // 🌟 التعديل الجوهري لحماية الكتابة:
+                        // لا نحدث الخانات من السحابة إلا إذا كان الكارت مقفولاً 
+                        // حتى لا تمسح السحابة مجهودك قبل الحفظ
+                        if (card.classList.contains('locked-mode')) {
+                            card.querySelector('.c-name').value = d.n || '';
+                            card.querySelector('.c-phone').value = d.p || '';
+                            card.querySelector('.d-day').value = d.dd || '';
+                            card.querySelector('.d-month').value = d.dm || '';
+                            card.querySelector('.d-year').value = d.dy || '';
+                            if (d.r) { const star = document.getElementById(`star${d.r}-${id}`); if(star) star.checked = true; }
+                            card.querySelector('.c-total').value = d.t || '';
+                            const nF = card.querySelector('.c-notes'); nF.value = d.notes || ''; autoResize(nF);
+                            const pV = card.querySelectorAll('.p-val'); const pD = card.querySelectorAll('.p-date');
+                            if (d.pays) { d.pays.forEach((p, idx) => { if(pV[idx]) pV[idx].value = p.v || ''; if(pD[idx]) pD[idx].value = p.d || ''; }); }
+                            updateLogic(id);
+                        }
                     }
                 }
                 initKeyboardListener();
+                refreshStats();
             }
         });
     }
@@ -498,11 +507,15 @@
         for (let i = 1; i <= 50; i++) {
             const card = document.getElementById(`card-${i}`);
             if (!card.classList.contains('visible')) {
+                // نظهر الكارت أولاً
                 card.classList.add('visible');
-                if (card.classList.contains('locked-mode')) {
-                    toggleCardLock(i);
-                }
-                db.ref(`backups/users/${currentUid}/${i}`).update({ isArchived: false });
+                // نسجل ظهوره في السحابة
+                db.ref(`backups/users/${currentUid}/${i}`).update({ isArchived: false }).then(() => {
+                    // نفتح القفل تلقائياً لتبدأ الكتابة بدون مشاكل
+                    if (card.classList.contains('locked-mode')) {
+                        toggleCardLock(i);
+                    }
+                }).catch(err => alert("❌ خطأ: " + err.message));
                 return;
             }
         }
@@ -517,7 +530,7 @@
                 card.querySelectorAll('input').forEach(i => i.value = "");
                 card.querySelector('textarea').value = "";
                 refreshStats();
-            }); 
+            }).catch(err => alert("❌ خطأ في الحذف: " + err.message)); 
         } 
     }
 
