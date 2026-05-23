@@ -29,7 +29,6 @@
             -webkit-tap-highlight-color: transparent; 
         }
         
-        /* شاشة القفل وتسجيل الدخول */
         #login-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg-main); z-index: 100000; display: none;
@@ -88,7 +87,6 @@
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; transition: 0.3s; }
         .network-status.offline .status-dot { background-color: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
         
-        /* تصميم عداد الوقت الجديد البارز جداً */
         #header-timer {
             background: #2d3436; color: #f1c40f; padding: 6px 14px; border-radius: 20px; 
             font-size: 15px; font-weight: bold; border: 2px solid #f1c40f;
@@ -150,7 +148,6 @@
 </div>
 
 <script>
-    // حماية فورية تمنع الوميض عند انتهاء الـ 15 دقيقة
     if (localStorage.getItem('_az_sys_lock_v1') === 'true' && localStorage.getItem('_az_sys_logged_in') !== 'true') {
         document.getElementById('login-overlay').style.display = 'flex';
         document.getElementById('lock-msg').style.display = 'block';
@@ -278,25 +275,41 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // ==========================================
-    // محرك العداد التنازلي للـ 15 دقيقة المعتمد
-    // ==========================================
     let trialInterval;
-    const TOTAL_TRIAL_MS = 15 * 60 * 1000; // 15 دقيقة تماماً
+    const TOTAL_TRIAL_MS = 15 * 60 * 1000; 
     
+    // الحل المبتكر: تحديث الـ iframes وإرسال توكن تجريبي مؤقت لتفادي أخطاء الصلاحيات
+    function updateIFramesWithTrialPermission(hasPermission) {
+        document.querySelectorAll('iframe').forEach(iframe => {
+            try {
+                const srcUrl = new URL(iframe.src, window.location.href);
+                if (hasPermission) {
+                    // نمرر صلاحية مؤقتة للـ iframe ليعلم أنه بداخل الـ 15 دقيقة
+                    srcUrl.searchParams.set('trial_auth', 'active_granted_session');
+                } else {
+                    srcUrl.searchParams.delete('trial_auth');
+                }
+                if (iframe.src !== srcUrl.toString()) {
+                    iframe.src = srcUrl.toString();
+                }
+            } catch(e) {
+                // إعادة تحميل تقليدية في حال تعذر قراءة الـ URL
+                iframe.src = iframe.src; 
+            }
+        });
+    }
+
     function initTrialTimer() {
         const isLocked = localStorage.getItem('_az_sys_lock_v1');
         let startTime = localStorage.getItem('_az_sys_start_v1');
         const now = Date.now();
         const headerTimerBox = document.getElementById('header-timer');
 
-        // إذا كان النظام مقفلاً مسبقاً بسبب انتهاء الوقت
         if (isLocked === 'true') {
             enforceLockScreen();
             return;
         }
 
-        // تسجيل وقت الدخول لأول مرة على المتصفح
         if (!startTime) {
             startTime = now.toString();
             localStorage.setItem('_az_sys_start_v1', startTime);
@@ -308,8 +321,8 @@
             localStorage.setItem('_az_sys_lock_v1', 'true');
             enforceLockScreen();
         } else {
-            // إظهار صندوق العداد الأصفر وتشغيل العد التنازلي
             headerTimerBox.style.display = 'block';
+            updateIFramesWithTrialPermission(true); // تفعيل الصلاحية للأقسام الداخلية
             runCountdown(parseInt(startTime));
         }
     }
@@ -323,7 +336,6 @@
             const elapsed = now - startTime;
             const remaining = TOTAL_TRIAL_MS - elapsed;
 
-            // عند انتهاء الـ 15 دقيقة أثناء العمل
             if (remaining <= 0) {
                 localStorage.setItem('_az_sys_lock_v1', 'true');
                 enforceLockScreen();
@@ -334,7 +346,6 @@
             const secs = Math.floor((remaining % 60000) / 1000);
             timeDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-            // إنذار أحمر ونبضان سريع في آخر 3 دقائق
             if (remaining < 3 * 60000) { 
                 headerTimerBox.classList.add('timer-danger');
             }
@@ -343,13 +354,13 @@
 
     function enforceLockScreen() {
         if (trialInterval) clearInterval(trialInterval);
+        updateIFramesWithTrialPermission(false); // سحب الصلاحيات من الأقسام الداخلية فوراً
         document.getElementById('header-timer').style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex';
         document.getElementById('lock-msg').style.display = 'block';
         document.getElementById('login-desc').style.display = 'none';
     }
 
-    // مراقبة الجلسة عبر Firebase
     onAuthStateChanged(auth, (user) => {
         if (user) {
             localStorage.setItem('_az_sys_logged_in', 'true');
@@ -359,7 +370,7 @@
             document.querySelectorAll('iframe').forEach(f => f.src = f.src);
         } else {
             localStorage.removeItem('_az_sys_logged_in');
-            initTrialTimer(); // بدء نظام التجربة والعداد إذا لم يسجل دخول بعد
+            initTrialTimer(); 
         }
     });
 
@@ -391,7 +402,6 @@
         }
     });
 
-    // أكواد النسخ الاحتياطي كما هي
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
         if(!auth.currentUser) return;
         let data = {}; let hasData = false;
