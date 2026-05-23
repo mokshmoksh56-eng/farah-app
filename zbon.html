@@ -388,12 +388,11 @@
         if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
     }
 
-    // تعديل دالة حفظ إعدادات اسم الشركة في السحابة
     function saveSettings() { 
         const cName = document.getElementById('companyNameInput').value;
-        localStorage.setItem('azemaa_company_name', cName); // حفظ محلي احتياطي
+        localStorage.setItem('azemaa_company_name', cName); 
         if (currentUid) {
-            db.ref(`backups/users/${currentUid}/settings`).update({ companyName: cName }); // الحفظ الدائم في السحابة
+            db.ref(`backups/users/${currentUid}/settings`).update({ companyName: cName }); 
         }
     }
 
@@ -453,6 +452,12 @@
         }
     }
 
+    // استرجاع اسم الشركة المحلي فوراً لتجنب اختفائه قبل تحميل السحابة
+    const savedCompanyName = localStorage.getItem('azemaa_company_name');
+    if (savedCompanyName) {
+        document.getElementById('companyNameInput').value = savedCompanyName;
+    }
+
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUid = user.uid; 
@@ -472,14 +477,17 @@
         db.ref(`backups/users/${currentUid}`).on('value', (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
-                // جلب اسم الشركة من السحابة وعرضه
+                // جلب اسم الشركة من السحابة وعرضه، أو الاعتماد على التخزين المحلي
                 if (allData.settings && allData.settings.companyName) {
                     document.getElementById('companyNameInput').value = allData.settings.companyName;
+                    localStorage.setItem('azemaa_company_name', allData.settings.companyName); // تحديث المحلي
+                } else if (localStorage.getItem('azemaa_company_name')) {
+                    document.getElementById('companyNameInput').value = localStorage.getItem('azemaa_company_name');
+                    saveSettings(); // إجبار السحابة على حفظ الاسم المفقود
                 }
 
                 visibleCards = [];
                 for (let id in allData) {
-                    // تخطي إعدادات الشركة حتى لا تعتبر كارت زبون
                     if (id === 'settings') continue;
 
                     const d = allData[id];
