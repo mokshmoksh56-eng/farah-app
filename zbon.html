@@ -38,7 +38,6 @@
         .card.visible { display: block; }
         .card.paid { border: 3px solid var(--success) !important; background-color: #f0fff4 !important; }
         
-        /* وضع القفل الخفيف للكارت المغلق */
         .card.locked-mode { background-color: #fafbfc; border-color: #d1d8e0; }
         .card.locked-mode input, .card.locked-mode textarea { background: #f1f2f6; color: #7f8c8d; cursor: not-allowed; border: 1px solid #dcdde1; }
         .card.locked-mode .rating-area label { cursor: not-allowed; pointer-events: none; }
@@ -77,13 +76,11 @@
         .btn-wa-direct { background: #25D366; }
         .btn-wa-invoice { background: #128C7E; }
         
-        /* أزرار التحكم بالقفل والتعديل */
         .btn-lock-toggle { background: none; border: none; cursor: pointer; font-size: 15px; margin-left: 8px; padding: 2px 5px; border-radius: 5px; background-color: #f1f2f6; transition: 0.2s; }
         .btn-lock-toggle:hover { background-color: #dcdde1; }
 
         .btn-add-client { position: fixed; bottom: 15px; right: 15px; background: #1abc9c; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 25px; cursor: pointer; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        /* أيقونة المظهر الليلي في الشريط العلوي */
         .btn-dark-mode-top { background: none; border: none; cursor: pointer; font-size: 13px; color: #ffffff; padding: 4px 10px; border-radius: 6px; background-color: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; transition: 0.2s; font-weight: bold; }
         .btn-dark-mode-top:hover { background-color: rgba(255,255,255,0.2); }
 
@@ -97,7 +94,7 @@
         .summary-table th { background: var(--primary); color: white; padding: 6px; border: 1px solid #ddd; }
         .summary-table td { padding: 4px; border: 1px solid #eee; font-weight: 700; transition: background 0.3s ease; }
         
-        @pragma webkit-keyframes urgentPulse {
+        @keyframes urgentPulse {
             0% { background-color: #fff; }
             50% { background-color: #ffcccc; }
             100% { background-color: #fff; }
@@ -272,21 +269,15 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const analytics = firebase.analytics();
 
-    // 🟢 [تحديث ذكي]: قراءة معلمات الرابط الممررة من الصفحة الرئيسية لتحديد المسار (تجريبي أو رسمي)
+    // 🟢 [تحديث المسار ذكياً]
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode'); 
     const currentId = urlParams.get('id');
 
-    // تحديد مسار التخزين بدقة لتخطي مشكلة حظر الحماية الصارمة
-    let rootPath = 'unauthorized_access';
+    let rootPath = 'clients'; // القيمة الافتراضية الرسمية
     if (mode === 'trial' && currentId) {
         rootPath = `trials/${currentId}/clients`;
-    } else if (mode === 'official' && currentId) {
-        rootPath = 'clients';
-    } else {
-        rootPath = 'clients'; // كوضع افتراضي احتياطي
     }
 
     const monthColors = {
@@ -396,7 +387,10 @@
         document.getElementById('mainGrid').appendChild(card);
     }
 
-    for (let i = 1; i <= 50; i++) createCardElement(i);
+    // 🟢 [تعديل هام جداً]: بناء الـ 50 كارت في الصفحة أولاً قبل أي عملية مزامنة لضمان تشغيل الواجهة فوراً
+    for (let i = 1; i <= 50; i++) {
+        createCardElement(i);
+    }
 
     function initKeyboardListener() {
         const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
@@ -451,7 +445,6 @@
             isArchived: false
         };
         
-        // استخدام المسار المحدث ديناميكياً
         db.ref(rootPath + '/' + id).update(data).then(() => {
             if (!card.classList.contains('locked-mode')) {
                 toggleCardLock(id);
@@ -489,7 +482,11 @@
             document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
         }
 
-        // الاستماع للمسار الديناميكي الموجه تلقائياً حسب الحالة
+        // إظهار كارت واحد على الأقل كبداية تشغيلية لتفادي المظهر الأبيض
+        document.getElementById('card-1').classList.add('visible');
+        visibleCards.push(1);
+
+        // الاستماع الفوري والتزامن مع السيرفر
         db.ref(rootPath).on('value', (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
@@ -518,8 +515,9 @@
                         updateLogic(id);
                     }
                 }
-                initKeyboardListener();
             }
+            initKeyboardListener();
+            refreshStats();
         });
     };
 
@@ -695,7 +693,7 @@
 
     function filterArchive() {
         let q = document.getElementById('archiveSearch').value.toLowerCase();
-        const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+        const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦'.'6','٧':'7','٨':'8','٩':'9'};
         for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
         
         let rows = document.querySelectorAll('#archive-body tr');
