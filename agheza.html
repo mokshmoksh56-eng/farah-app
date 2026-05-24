@@ -5,64 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <title>Azemaa Proo - المقاسات</title>
+    <title>Azemaa Proo - المقاسات السحابية</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
 
     <style>
-        :root { --primary: #0f172a; --gold: #d4af37; --accent: #2563eb; --bg: #e0e0e0; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; }
-        .container { max-width: 500px; margin: 0 auto; padding-bottom: 60px; }
-        header { text-align: center; padding: 20px; background: var(--primary); color: var(--gold); border-radius: 15px; margin-bottom: 15px; }
+        :root { 
+            --primary: #2c3e50; --gold: #d4af37; --accent: #3498db; 
+            --bg-main: #d1d8e0; --bg-card: white; --text-main: #2c3e50; --border: #b2bec3;
+        }
+        [data-theme="dark"] {
+            --primary: #1e272e; --gold: #f1c40f; --accent: #05c46b; 
+            --bg-main: #111417; --bg-card: #1e2124; --text-main: #f5f6fa; --border: #485460;
+        }
         
-        /* واجهة انتظار للتحقق من الهوية السحابية */
+        * { box-sizing: border-box; font-weight: 900 !important; transition: background 0.15s, color 0.15s; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; padding: 10px; padding-bottom: 40px; direction: rtl; }
+        .container { max-width: 500px; margin: 0 auto; padding-bottom: 60px; }
+        
+        header { background: var(--primary); color: white; padding: 12px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .nav-container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        
         #auth-loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main);
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
             font-size: 16px; color: var(--primary); font-weight: bold; text-align: center; padding: 20px;
         }
 
-        .panel { background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; font-family: inherit; }
+        .panel { background: var(--bg-card); padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid var(--border); }
+        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 16px; box-sizing: border-box; background: var(--bg-card); color: var(--text-main); }
         
         textarea { resize: none; min-height: 80px; overflow-y: hidden; line-height: 1.5; }
         
-        .size-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .size-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
         .size-grid input { text-align: center; font-size: 20px; color: var(--accent); }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; }
+        
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; color: white; margin-bottom: 10px; }
         .btn-add { background: var(--primary); }
-        .btn-update { background: var(--gold); display: none; }
-        .search-bar { width: 100%; padding: 12px; border: 2px solid var(--gold); border-radius: 12px; margin-bottom: 15px; box-sizing: border-box; }
-        .card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 10px; border-right: 6px solid var(--gold); }
-        .card-name { font-size: 18px; font-weight: bold; color: var(--primary); }
+        .btn-update { background: var(--gold); color: #000; display: none; }
         
-        .card-notes { font-size: 16px; color: #555; background: #fff9e6; padding: 8px 12px; border-radius: 8px; margin: 10px 0; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+        .search-bar { width: 100%; padding: 12px; border: 2px solid var(--gold); border-radius: 12px; margin-bottom: 15px; background: var(--bg-card); color: var(--text-main); }
         
-        .card-sizes { display: flex; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 10px; }
-        .size-val { font-weight: bold; color: var(--accent); font-size: 24px; text-align: center; }
-        .size-lbl { font-size: 12px; display: block; color: #888; }
+        .card { background: var(--bg-card); border-radius: 15px; padding: 15px; margin-bottom: 10px; border-right: 6px solid var(--gold); border-top: 1px solid var(--border); border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .card-name { font-size: 18px; color: var(--text-main); margin: 5px 0; }
+        
+        .card-notes { font-size: 16px; color: var(--text-main); background: rgba(212, 175, 55, 0.15); padding: 8px 12px; border-radius: 8px; margin: 10px 0; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+        
+        .card-sizes { display: flex; justify-content: space-around; background: var(--bg-main); padding: 10px; border-radius: 10px; }
+        .size-val { color: var(--accent); font-size: 24px; text-align: center; display: block; }
+        .size-lbl { font-size: 12px; display: block; color: var(--text-main); opacity: 0.7; }
+        
         .actions { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-act { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .edit { background: #e8f5e9; color: #2e7d32; }
-        .del { background: #ffebee; color: #c62828; }
+        .btn-act { flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; }
+        .edit { background: rgba(39, 174, 96, 0.2); color: #27ae60; }
+        .del { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
         
-        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1abc9c; color: white; padding: 12px 25px; border-radius: 30px; display: none; z-index: 1000; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; width: max-content; }
+        #sync-status { font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; display: inline-block; color: #fff; }
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #27ae60; color: white; padding: 12px 25px; border-radius: 30px; display: none; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; width: max-content; }
     </style>
 </head>
 <body>
 
-    <div id="auth-loader">⏳ جاري التحقق من الصلاحيات والمزامنة...</div>
+    <div id="auth-loader">⏳ جاري فحص حساب المشتري ومزامنة كشف المقاسات آمنياً...</div>
 
     <div class="container" id="app-screen" style="display:none;">
         <header>
-            <h2>Azemaa Proo</h2>
-            <p>نظام المقاسات - متزامن سحابياً ☁️</p>
+            <div class="nav-container">
+                <div>
+                    <h2 style="margin:0; font-size: 18px;">📐 AZEMAA PRO v10</h2>
+                    <span id="sync-status">🔄 جاري المزامنة...</span>
+                </div>
+                <button onclick="toggleTheme()" style="background:var(--gold); color:#000; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;">🌙 المظهر</button>
+            </div>
         </header>
 
         <div class="panel" id="mainPanel">
-            <h4 id="modeTxt">إضافة مقاس جديد</h4>
+            <h4 id="modeTxt" style="margin-top: 0; color: var(--accent);">إضافة مقاس جديد</h4>
             <select id="cat">
                 <option>ثلاجة ❄️</option><option>ميكروويف ⚡</option><option>ديب فريزر 🧊</option>
                 <option>بوتاجاز 🔥</option><option>غسالة 🧺</option><option>غسالة أطباق 🍽️</option>
@@ -74,15 +94,15 @@
             <textarea id="notes" placeholder="أدخل الملاحظات الإضافية بالتفصيل هنا..." oninput="autoExpand(this)"></textarea>
             
             <div class="size-grid">
-                <div><label style="font-size:12px; font-weight:bold;">عرض</label><input type="text" id="w" placeholder="0" inputmode="decimal"></div>
-                <div><label style="font-size:12px; font-weight:bold;">ارتفاع</label><input type="text" id="h" placeholder="0" inputmode="decimal"></div>
-                <div><label style="font-size:12px; font-weight:bold;">عمق</label><input type="text" id="d" placeholder="0" inputmode="decimal"></div>
+                <div><label style="font-size:12px;">عرض</label><input type="text" id="w" placeholder="0" inputmode="decimal"></div>
+                <div><label style="font-size:12px;">ارتفاع</label><input type="text" id="h" placeholder="0" inputmode="decimal"></div>
+                <div><label style="font-size:12px;">عمق</label><input type="text" id="d" placeholder="0" inputmode="decimal"></div>
             </div>
             <button class="btn btn-add" id="btnAdd" onclick="add()">حفظ ومزامنة ✅</button>
             <button class="btn btn-update" id="btnUpd" onclick="update()">تحديث البيانات 🔄</button>
         </div>
         
-        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الشركة..." onkeyup="render()">
+        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الشركة..." oninput="render()">
         <div id="list"></div>
     </div>
 
@@ -106,25 +126,28 @@
         let devicesRef = null; 
         let devicesData = {};
         let editKey = null;
+        let windowUserUid = null;
 
-        // مراقبة حالة تسجيل الدخول القادمة من صفحة الـ index
+        // 🔒 قفل الغرفة البرمجية: التحقق الأمني وعزل مسار العميل بالكامل
         auth.onAuthStateChanged(user => {
             if (user) {
-                // إخفاء شاشة الانتظار وإظهار التطبيق
+                windowUserUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
                 document.getElementById('app-screen').style.display = 'block';
                 
-                // توجيه قاعدة البيانات للمجلد الخاص بهذا المستخدم فقط!
-                devicesRef = fdb.ref('farah_agheza_sizes/' + user.uid);
+                // توجيه معزول للمجلد الخاص بالـ UID لمنع تداخل الزبائن
+                devicesRef = fdb.ref('farah_agheza_sizes/' + windowUserUid);
                 
-                // جلب بيانات هذا المستخدم فقط
+                document.getElementById('sync-status').innerText = "⚡ جاري المزامنة...";
+                
+                // الاستماع والتحديث السحابي اللحظي المستمر
                 devicesRef.on('value', (snapshot) => {
                     devicesData = snapshot.val() || {};
                     render();
+                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
                 });
             } else {
-                // في حالة الدخول بدون تسجيل من الصفحة الرئيسية
-                document.getElementById('auth-loader').innerText = "⚠️ خطأ في الصلاحيات: يرجى تسجيل الدخول من الصفحة الرئيسية أولاً.";
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
             }
         });
 
@@ -164,7 +187,7 @@
 
                 return `
                 <div class="card">
-                    <div style="font-size:12px; color:var(--gold); font-weight:bold;">${item.cat}</div>
+                    <div style="font-size:12px; color:var(--gold);">${item.cat}</div>
                     <div class="card-name">${item.name}</div>
                     <div class="card-notes">${item.notes || 'لا يوجد ملاحظات'}</div>
                     <div class="card-sizes">
@@ -181,6 +204,7 @@
         }
 
         function add() {
+            if(!windowUserUid) return;
             const item = { 
                 cat: document.getElementById('cat').value, 
                 name: document.getElementById('name').value, 
@@ -191,10 +215,15 @@
             };
             if(!item.name || !item.w) return alert("يرجى إكمال البيانات الأساسية (الشركة والعرض على الأقل)");
             
+            document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
             devicesRef.push(item).then(() => {
                 clear();
+                document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
                 showToast("✅ تم إضافة المقاس والمزامنة سحابياً");
-            }).catch(err => alert("حدث خطأ في الاتصال: " + err));
+            }).catch(err => {
+                document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
+                alert("حدث خطأ في الاتصال: " + err);
+            });
         }
 
         function startEdit(id) {
@@ -210,16 +239,16 @@
             document.getElementById('h').value = d.h;
             document.getElementById('d').value = d.d;
             
-            document.getElementById('modeTxt').innerText = "تعديل المقاس";
+            document.getElementById('modeTxt').innerText = "تعديل المقاس الحالي";
             document.getElementById('btnAdd').style.display = 'none';
             document.getElementById('btnUpd').style.display = 'block';
             
             autoExpand(notesField);
-            window.scrollTo(0,0);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function update() {
-            if (!editKey) return;
+            if (!editKey || !windowUserUid) return;
             const item = { 
                 cat: document.getElementById('cat').value, 
                 name: document.getElementById('name').value, 
@@ -229,20 +258,29 @@
                 d: norm(document.getElementById('d').value) 
             };
             
+            document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
             devicesRef.child(editKey).update(item).then(() => {
                 editKey = null;
                 document.getElementById('modeTxt').innerText = "إضافة مقاس جديد";
                 document.getElementById('btnAdd').style.display = 'block';
                 document.getElementById('btnUpd').style.display = 'none';
                 clear();
+                document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
                 showToast("🔄 تم تعديل المقاس والمزامنة سحابياً");
+            }).catch(err => {
+                document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
             });
         }
 
         function del(id) { 
+            if(!windowUserUid) return;
             if(confirm("هل أنت متأكد من حذف هذا المقاس نهائياً؟")) { 
+                document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
                 devicesRef.child(id).remove().then(() => {
+                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
                     showToast("🗑️ تم الحذف من قاعدة البيانات");
+                }).catch(err => {
+                    document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
                 });
             } 
         }
@@ -251,6 +289,15 @@
             ['name','notes','w','h','d'].forEach(id => document.getElementById(id).value = ''); 
             document.getElementById('notes').style.height = '80px';
         }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        if(localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     </script>
 </body>
 </html>
