@@ -80,13 +80,14 @@
         
         .sync-box { 
             display: grid; 
-            grid-template-columns: 1fr 1fr 1fr; 
+            /* تم تعديل الأعمدة لتتناسب مع حذف أزرار السحابة */
+            grid-template-columns: 1fr 1fr; 
             gap: 8px; 
             margin-bottom: 15px; 
             align-items: stretch;
         }
         
-        .sync-group-right, .sync-group-center, .sync-group-left {
+        .sync-group-center, .sync-group-left {
             display: grid;
             grid-template-columns: 1fr; 
             gap: 6px;
@@ -111,7 +112,6 @@
         .btn:active { transform: scale(0.95); } 
         .btn:hover { opacity: 0.9; }
         .btn-whatsapp { background: var(--whatsapp-green); }
-        .btn-cloud { background: var(--cloud-blue); }
         .btn-device { background: #a29bfe; }
 
         .main-container { display: flex; flex-direction: column; gap: 15px; }
@@ -177,11 +177,6 @@
 <div id="holidaysDropdown" class="holidays-dropdown"></div>
 
 <div class="sync-box">
-    <div class="sync-group-right">
-        <button id="cloud-save-btn" class="btn btn-cloud">☁️ حفظ السحابة</button>
-        <button id="cloud-load-btn" class="btn btn-cloud">🔄 استرجاع السحابة</button>
-    </div>
-
     <div class="sync-group-center">
         <button onclick="window.location.href='agheza.html'" class="btn btn-device">📱 أجهزة</button>
         <button onclick="window.location.href='kmatkitchen.html'" class="btn btn-device">🍳 خامات المطبخ</button>
@@ -403,14 +398,14 @@
 </script>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js](https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js)";
+    import { getDatabase } from "[https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js](https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js)";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "[https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js](https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js)";
     
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
-        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        databaseURL: "[https://azemaa-proo-default-rtdb.firebaseio.com](https://azemaa-proo-default-rtdb.firebaseio.com)",
         projectId: "azemaa-proo",
         storageBucket: "azemaa-proo.firebasestorage.app",
         messagingSenderId: "787350492977",
@@ -447,7 +442,7 @@
         } catch (error) {
             alert("❌ خطأ في التفعيل: بيانات حساب العميل غير مطابقة للسيرفر.");
         } finally {
-            loginBtn.innerText = "تفعيل النظام والمزامنة";
+            loginBtn.innerText = "تفعيل النظام الآمن";
             loginBtn.disabled = false;
         }
     });
@@ -461,98 +456,7 @@
         }
     });
 
-    // ==================== أزرار السحابة (Firebase) ====================
-    
-    // 1. دالة الحفظ السحابي المباشر
-    document.getElementById('cloud-save-btn').addEventListener('click', async () => {
-        if(!auth.currentUser) {
-            alert("⚠️ يجب تسجيل الدخول أولاً!");
-            return;
-        }
-        if(!navigator.onLine) { 
-            alert("⚠️ أنت غير متصل بالإنترنت!"); 
-            return; 
-        }
-        
-        // تجميع كافة البيانات المحلية عدا الثيم
-        let allData = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            let key = localStorage.key(i);
-            if (key !== 'theme' && key !== 'azemaa_dark_mode') {
-                allData[key] = localStorage.getItem(key);
-            }
-        }
-        
-        if (Object.keys(allData).length === 0) {
-            alert("⚠️ لا توجد بيانات محلية لحفظها على السحابة.");
-            return;
-        }
-
-        try {
-            const btn = document.getElementById('cloud-save-btn');
-            btn.innerText = "⏳ جاري الرفع...";
-            btn.disabled = true;
-
-            // حفظ البيانات في Firebase تحت معرف المستخدم الفريد (UID)
-            const userRef = ref(db, 'backups/users/' + auth.currentUser.uid + '/localBackup');
-            await set(userRef, allData);
-            
-            alert("✅ تم حفظ جميع البيانات على السحابة بنجاح!");
-        } catch (error) {
-            console.error(error);
-            alert("❌ فشل الحفظ السحابي: " + error.message);
-        } finally {
-            document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ السحابة";
-            document.getElementById('cloud-save-btn').disabled = false;
-        }
-    });
-
-    // 2. دالة استرجاع البيانات من السحابة
-    document.getElementById('cloud-load-btn').addEventListener('click', async () => {
-        if(!auth.currentUser) {
-            alert("⚠️ يجب تسجيل الدخول أولاً!");
-            return;
-        }
-        if(!navigator.onLine) { 
-            alert("⚠️ أنت غير متصل بالإنترنت!"); 
-            return; 
-        }
-        
-        if (!confirm("⚠️ تحذير: استرجاع البيانات من السحابة سيقوم باستبدال البيانات الحالية على هذا الجهاز. هل تريد الاستمرار؟")) {
-            return;
-        }
-
-        try {
-            const btn = document.getElementById('cloud-load-btn');
-            btn.innerText = "⏳ جاري التحميل...";
-            btn.disabled = true;
-
-            const userRef = ref(db, 'backups/users/' + auth.currentUser.uid + '/localBackup');
-            const snapshot = await get(userRef);
-
-            if (snapshot.exists()) {
-                const cloudData = snapshot.val();
-                
-                // تنظيف التخزين المحلي وكتابة البيانات المسترجعة
-                localStorage.clear();
-                for (let key in cloudData) {
-                    localStorage.setItem(key, cloudData[key]);
-                }
-                
-                alert("✅ تم استرجاع البيانات من السحابة بنجاح! جاري تحديث الشاشات...");
-                // إعادة تنشيط الإطارات لتحديث البيانات تلقائياً
-                document.querySelectorAll('iframe').forEach(f => { f.src = f.src; });
-            } else {
-                alert("❌ لا توجد بيانات محفوظة مسبقاً لهذا الحساب على السحابة.");
-            }
-        } catch (error) {
-            console.error(error);
-            alert("❌ فشل استرجاع البيانات: " + error.message);
-        } finally {
-            document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع السحابة";
-            document.getElementById('cloud-load-btn').disabled = false;
-        }
-    });
+    // تم حذف مستمعات الأحداث البرمجية لأزرار الرفع والاسترجاع السحابي من هنا تماماً
 </script>
 </body>
 </html>
