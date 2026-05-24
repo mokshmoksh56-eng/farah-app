@@ -177,8 +177,8 @@
 
 <div class="sync-box">
     <div class="sync-group-right">
-        <button id="cloud-save-btn" class="btn btn-cloud">☁️ حفظ</button>
-        <button id="cloud-load-btn" class="btn btn-cloud">🔄 استرجاع</button>
+        <button id="cloud-save-btn" class="btn btn-cloud">☁️ حفظ جميع الزبائن</button>
+        <button id="cloud-load-btn" class="btn btn-cloud">🔄 استرجاع الزبائن</button>
     </div>
 
     <div class="sync-group-center">
@@ -365,7 +365,6 @@
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('login-overlay').style.display = 'none';
-            // إعادة تنشيط الـ iframes وإمدادها بـ Token الجلسة البرمجي الجديد
             document.querySelectorAll('iframe').forEach(f => f.src = f.src);
         } else {
             document.getElementById('login-overlay').style.display = 'flex';
@@ -403,48 +402,52 @@
         }
     });
 
+    // ====== تعديل زر الحفظ السحابي لاستدعاء saveAllCards من zbon.html ======
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
         if(!auth.currentUser) return;
         if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت!"); return; }
-
-        let data = {}; let hasData = false;
-        for (let i = 0; i < localStorage.length; i++) { 
-            let k = localStorage.key(i); 
-            if (k !== 'theme') { data[k.replace(/[.#$[\]]/g, '_')] = localStorage.getItem(k); hasData = true; } 
-        }
-        if (!hasData) { alert("⚠️ لا توجد بيانات مسجلة لحفظها!"); return; }
-
-        try {
-            document.getElementById('cloud-save-btn').innerHTML = "⏳ جاري الحفظ...";
-            await set(ref(db, `backups/users/${auth.currentUser.uid}`), data); 
-            alert("تم حفظ النسخة الاحتياطية الكلية بنجاح ✅"); 
-        } catch (error) {
-            alert("❌ فشل الحفظ: " + error.message);
-        } finally {
-            document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ";
+        
+        // البحث عن iframe الخاص بـ zbon.html
+        const zbonIframe = document.querySelector('iframe[src="zbon.html"]');
+        if (zbonIframe && zbonIframe.contentWindow && zbonIframe.contentWindow.saveAllCards) {
+            // استدعاء دالة saveAllCards من صفحة zbon.html
+            zbonIframe.contentWindow.saveAllCards();
+        } else {
+            alert("⚠️ تعذر الوصول إلى صفحة الزبائن. حاول مرة أخرى.");
         }
     });
 
+    // ====== تعديل زر الاسترجاع ليعمل مع بيانات الزبائن فقط ======
     document.getElementById('cloud-load-btn').addEventListener('click', async () => {
         if(!auth.currentUser) return;
         if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت حالياً!"); return; }
-        if (!confirm("هل تريد استرجاع نسخة الـ localStorage الاحتياطية؟")) return;
+        if (!confirm("هل تريد استرجاع بيانات الزبائن من السحابة؟")) return;
 
         try {
             document.getElementById('cloud-load-btn').innerHTML = "⏳ جاري التحميل...";
+            // استرجاع بيانات الزبائن فقط وليس localStorage بالكامل
             const snapshot = await get(child(ref(db), `backups/users/${auth.currentUser.uid}`));
             if (snapshot.exists()) { 
                 const d = snapshot.val(); 
-                for (let k in d) { localStorage.setItem(k, d[k]); }
-                alert("🔄 تم استيراد البيانات الكلية وجاري تحديث اللوحة...");
-                window.location.reload();
+                // حفظ بيانات الزبائن فقط في localStorage بطريقة متوافقة
+                for (let k in d) {
+                    if (k === 'settings') {
+                        localStorage.setItem('azemaa_company_name', d[k].companyName || '');
+                    } else {
+                        localStorage.setItem(k, JSON.stringify(d[k]));
+                    }
+                }
+                alert("🔄 تم استيراد بيانات الزبائن وجاري تحديث اللوحة...");
+                // إعادة تحميل iframe الزبائن لتحديث البيانات
+                const zbonIframe = document.querySelector('iframe[src="zbon.html"]');
+                if (zbonIframe) zbonIframe.src = zbonIframe.src;
             } else {
-                alert("❓ لم يتم العثور على أي نسخة كبرى مخزنة.");
+                alert("❓ لم يتم العثور على أي بيانات مخزنة.");
             }
         } catch (error) {
             alert("❌ فشل الاسترجاع: " + error.message);
         } finally {
-            document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع";
+            document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع الزبائن";
         }
     });
 </script>
