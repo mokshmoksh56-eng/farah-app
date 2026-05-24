@@ -3,162 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>azemaa pro - السحابي الآمن</title>
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-            authDomain: "azemaa-proo.firebaseapp.com",
-            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-            projectId: "azemaa-proo",
-            storageBucket: "azemaa-proo.firebasestorage.app",
-            messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const auth = getAuth(app);
-
-        // جعل الكائنات عامة للاستخدام من الأماكن الأخرى
-        window.db = db;
-        window.auth = auth;
-
-        // التحقق من حالة تسجيل الدخول
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('login-overlay').style.display = 'none';
-                // تحديث اسم المستخدم في الواجهة إن أردت
-                document.getElementById('current-user-email').innerText = user.email;
-                document.querySelectorAll('iframe').forEach(f => { try { f.src = f.src; } catch(e){} });
-            } else {
-                document.getElementById('login-overlay').style.display = 'flex';
-                document.querySelectorAll('iframe').forEach(f => { f.src = 'about:blank'; });
-            }
-        });
-
-        // تسجيل الدخول
-        window.loginUser = async () => {
-            const email = document.getElementById('sys-email').value;
-            const password = document.getElementById('sys-password').value;
-            const errorDiv = document.getElementById('login-error');
-            const loginBtn = document.getElementById('login-btn');
-
-            if(!email || !password) {
-                errorDiv.innerText = "⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور!";
-                errorDiv.style.display = 'block';
-                return;
-            }
-
-            try {
-                loginBtn.innerText = "⏳ جاري التفعيل...";
-                loginBtn.disabled = true;
-                errorDiv.style.display = 'none';
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
-                console.error(error);
-                if (error.code === 'auth/user-not-found') {
-                    errorDiv.innerText = "❌ هذا الحساب غير موجود. يرجى شراء التفعيل من المطور.";
-                } else if (error.code === 'auth/wrong-password') {
-                    errorDiv.innerText = "❌ كلمة المرور غير صحيحة.";
-                } else {
-                    errorDiv.innerText = "❌ خطأ في الاتصال أو البيانات.";
-                }
-                errorDiv.style.display = 'block';
-            } finally {
-                loginBtn.innerText = "تفعيل النظام والمزامنة";
-                loginBtn.disabled = false;
-            }
-        };
-
-        // تسجيل الخروج
-        window.logoutUser = () => {
-            if(confirm("هل تريد تسجيل الخروج وقفل المنظومة؟")) {
-                signOut(auth).then(() => {
-                    localStorage.clear();
-                    window.location.reload();
-                });
-            }
-        };
-
-        // حفظ السحابة (متوافق مع rules التي أرسلتها)
-        window.saveToCloud = async () => {
-            const user = auth.currentUser;
-            if(!user) { alert("⚠️ يجب تسجيل الدخول أولاً!"); return; }
-            if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت!"); return; }
-            
-            let allData = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                let key = localStorage.key(i);
-                if (key !== 'theme' && key !== 'azemaa_dark_mode') {
-                    allData[key] = localStorage.getItem(key);
-                }
-            }
-            
-            if (Object.keys(allData).length === 0) { alert("⚠️ لا توجد بيانات للحفظ."); return; }
-
-            try {
-                const btn = document.getElementById('cloud-save-btn');
-                btn.innerText = "⏳ جاري الرفع...";
-                btn.disabled = true;
-                
-                // استخدام uid الحقيقي من Firebase كما هو مطلوب في rules
-                const userRef = ref(db, `backups/users/${user.uid}/localBackup`);
-                await set(userRef, allData);
-                alert("✅ تم حفظ جميع البيانات على السحابة بنجاح!");
-            } catch (error) {
-                console.error(error);
-                alert("❌ فشل الحفظ السحابي: " + error.message);
-            } finally {
-                document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ السحابة";
-                document.getElementById('cloud-save-btn').disabled = false;
-            }
-        };
-
-        // استرجاع من السحابة
-        window.loadFromCloud = async () => {
-            const user = auth.currentUser;
-            if(!user) { alert("⚠️ يجب تسجيل الدخول أولاً!"); return; }
-            if(!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت!"); return; }
-            if (!confirm("⚠️ تحذير: استرجاع البيانات من السحابة سيستبدل البيانات الحالية. هل تريد الاستمرار؟")) return;
-
-            try {
-                const btn = document.getElementById('cloud-load-btn');
-                btn.innerText = "⏳ جاري التحميل...";
-                btn.disabled = true;
-
-                const userRef = ref(db, `backups/users/${user.uid}/localBackup`);
-                const snapshot = await get(userRef);
-
-                if (snapshot.exists()) {
-                    const cloudData = snapshot.val();
-                    localStorage.clear();
-                    for (let key in cloudData) {
-                        localStorage.setItem(key, cloudData[key]);
-                    }
-                    alert("✅ تم استرجاع البيانات من السحابة بنجاح!");
-                    document.querySelectorAll('iframe').forEach(f => { f.src = f.src; });
-                } else {
-                    alert("❌ لا توجد بيانات محفوظة لهذا الحساب.");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("❌ فشل استرجاع البيانات: " + error.message);
-            } finally {
-                document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع السحابة";
-                document.getElementById('cloud-load-btn').disabled = false;
-            }
-        };
-    </script>
-
+    <title>azemaa pro - النسخة المستقلة</title>
     <style>
         :root { --bg-main: #eef2f7; --card-bg: #ffffff; --text-color: #2d3436; --header-grad: linear-gradient(135deg, #8ba4f9 0%, #6e8efb 50%, #a777e3 100%); --whatsapp-green: #25D366; --card-radius: 15px; }
         body.dark-mode { --bg-main: #0f172a; --card-bg: #1e293b; --text-color: #f1f5f9; }
-        body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg-main); color: var(--text-color); transition: 0.3s; -webkit-tap-highlight-color: transparent; }
+        body { font-family: sans-serif; margin: 0; padding: 10px; background: var(--bg-main); color: var(--text-color); transition: 0.3s; }
         
         #login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg-main); z-index: 100000; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .login-box { background: var(--card-bg); padding: 30px; border-radius: var(--card-radius); box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
@@ -166,63 +15,53 @@
         .login-box button { width: 100%; padding: 12px; background: #6e8efb; border: none; color: #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .error-msg { color: #e74c3c; font-size: 12px; margin-top: 5px; display: none; }
 
-        header { position: relative; background: var(--header-grad); color: #fff; padding: 15px; border-radius: var(--card-radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; user-select: none; }
-        .header-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; transition: 0.3s; }
-        .network-status.offline .status-dot { background-color: #e74c3c; }
+        header { position: relative; background: var(--header-grad); color: #fff; padding: 15px; border-radius: var(--card-radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .header-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #2ecc71; }
         
-        .sync-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .sync-group { display: grid; grid-template-columns: 1fr; gap: 6px; }
+        .sync-box { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .btn { border: none; color: #fff; padding: 12px 4px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; text-align: center; transition: 0.3s; }
         .btn:active { transform: scale(0.95); }
-        .btn-whatsapp { background: var(--whatsapp-green); }
-        .btn-cloud { background: #00a8ff; }
+        .btn-whatsapp { background: #25D366; }
         .btn-device { background: #a29bfe; }
 
         .main-container { display: flex; flex-direction: column; gap: 15px; }
         .card { background: var(--card-bg); border-radius: var(--card-radius); height: 350px; display: flex; flex-direction: column; overflow: hidden; position: relative; border: 2px solid #ddd; }
         .overlay { position: absolute; top: 50px; left: 0; right: 0; bottom: 0; z-index: 5; cursor: pointer; }
-        .h { padding: 12px 15px; color: #fff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; z-index: 10; cursor: pointer; user-select: none; }
+        .h { padding: 12px 15px; color: #fff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; z-index: 10; cursor: pointer; }
         .zoom-btn { background: rgba(255,255,255,0.25); color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; }
         .card.fullscreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; border-radius: 0; margin: 0; border: none; }
         .card.fullscreen .overlay { display: none; }
         iframe { flex: 1; border: none; width: 100%; pointer-events: none; }
         .card.fullscreen iframe { pointer-events: auto; }
-        .holidays-dropdown { display: none; background: var(--card-bg); border: 2px solid var(--whatsapp-green); position: absolute; top: 80px; right: 10px; z-index: 100; padding: 10px; border-radius: 15px; width: 280px; max-width: 90vw; max-height: 300px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .holidays-dropdown { display: none; background: var(--card-bg); border: 2px solid #25D366; position: absolute; top: 80px; right: 10px; z-index: 100; padding: 10px; border-radius: 15px; width: 280px; max-width: 90vw; max-height: 300px; overflow-y: auto; }
         .holidays-dropdown.show { display: block; }
         .holiday-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; display: flex; justify-content: space-between; }
-        .time-date-container { display: flex; align-items: baseline; gap: 10px; }
-        @media (max-width: 550px) {
-            header { padding: 12px; }
-            .header-center { position: static; transform: none; order: 3; width: 100%; justify-content: center; margin-top: 10px; background: rgba(255, 255, 255, 0.15); padding: 8px; }
-            .sync-box { gap: 6px; flex-direction: column; grid-template-columns: 1fr; }
-            .btn { font-size: 11.5px; padding: 10px 2px; }
-        }
+        @media (max-width: 550px) { .header-center { position: static; transform: none; order: 3; width: 100%; justify-content: center; margin-top: 10px; } .sync-box { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h3>🔐 azemaa pro - تفعيل السحابة</h3>
-        <p style="font-size: 13px; color: #7f8c8d;">سجل دخول بحساب العميل لتفعيل النظام والمزامنة</p>
-        <input type="email" id="sys-email" placeholder="البريد الإلكتروني للعميل">
-        <input type="password" id="sys-password" placeholder="كلمة المرور السحابية">
-        <div id="login-error" class="error-msg"></div>
-        <button id="login-btn" onclick="loginUser()">تفعيل النظام والمزامنة</button>
-        <p style="font-size: 11px; margin-top: 15px;">*للحصول على حساب، يرجى التواصل مع المطور</p>
+        <h3>🔐 azemaa pro - التفعيل</h3>
+        <p style="font-size: 13px; color: #7f8c8d;">أدخل كود التفعيل لبدء العمل</p>
+        <input type="text" id="license-key" placeholder="كود التفعيل">
+        <div id="login-error" class="error-msg">❌ كود التفعيل غير صحيح</div>
+        <button id="login-btn">▶️ تشغيل النظام</button>
+        <p style="font-size: 11px; margin-top: 15px;">للحصول على كود التفعيل: <strong>واتساب 01234567890</strong></p>
     </div>
 </div>
 
 <header>
     <div>
-        <div class="time-date-container"><div id="digital-clock" style="font-weight:bold; font-size: 1.2rem;">00:00</div><div id="digital-date" style="font-size: 0.9rem;">0000/00/00</div></div>
-        <div id="countdown" onclick="toggleHolidaysDropdown(event)" style="font-size: 0.75rem; cursor: pointer; padding-top: 4px;">جاري التحميل...</div>
+        <div id="digital-clock" style="font-weight:bold; font-size: 1.2rem;">00:00</div>
+        <div id="digital-date" style="font-size: 0.9rem;">0000/00/00</div>
+        <div id="countdown" onclick="toggleHolidaysDropdown(event)" style="font-size: 0.75rem; cursor: pointer;">جاري التحميل...</div>
     </div>
     <div style="display: flex; align-items: center; gap: 10px;">
-        <span id="current-user-email" style="font-size: 11px; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 20px;"></span>
         <button onclick="toggleTheme()" style="background:none; border:none; color:white; cursor:pointer; font-size: 1.4rem;">🌙</button>
-        <button onclick="logoutUser()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;">خروج 🚪</button>
+        <button id="logout-btn" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;">خروج 🚪</button>
     </div>
     <div class="header-center network-status" id="network-status"><span class="status-dot"></span><span id="status-text">متصل</span></div>
 </header>
@@ -230,9 +69,10 @@
 <div id="holidaysDropdown" class="holidays-dropdown"></div>
 
 <div class="sync-box">
-    <div class="sync-group"><button id="cloud-save-btn" class="btn btn-cloud" onclick="saveToCloud()">☁️ حفظ السحابة</button><button id="cloud-load-btn" class="btn btn-cloud" onclick="loadFromCloud()">🔄 استرجاع السحابة</button></div>
-    <div class="sync-group"><button onclick="window.location.href='agheza.html'" class="btn btn-device">📱 أجهزة</button><button onclick="window.location.href='kmatkitchen.html'" class="btn btn-device">🍳 خامات المطبخ</button></div>
-    <div class="sync-group"><button id="wa-save-btn" class="btn btn-whatsapp" onclick="saveToWhatsApp()">🟢 واتس حفظ</button><button id="wa-load-btn" class="btn btn-whatsapp" onclick="loadFromWhatsApp()">📥 واتس استرجاع</button></div>
+    <button id="wa-save-btn" class="btn btn-whatsapp">🟢 واتس حفظ (نسخة احتياطية)</button>
+    <button id="wa-load-btn" class="btn btn-whatsapp">📥 واتس استرجاع</button>
+    <button onclick="window.location.href='agheza.html'" class="btn btn-device">📱 أجهزة</button>
+    <button onclick="window.location.href='kmatkitchen.html'" class="btn btn-device">🍳 خامات المطبخ</button>
 </div>
 
 <div class="main-container">
@@ -245,20 +85,137 @@
 </div>
 
 <script>
-    // التوافق مع دوال الواجهة
-    function toggleZoom(card, event) { if(event) event.stopPropagation(); if (card.classList.contains('fullscreen')) { card.classList.remove('fullscreen'); card.querySelector('.zoom-btn').innerText = "تكبير"; } else { document.querySelectorAll('.card.fullscreen').forEach(c => { c.classList.remove('fullscreen'); c.querySelector('.zoom-btn').innerText = "تكبير"; }); card.classList.add('fullscreen'); card.querySelector('.zoom-btn').innerText = "إغلاق"; } }
-    function updateOnlineStatus() { const statusDiv = document.getElementById('network-status'); const statusText = document.getElementById('status-text'); if (navigator.onLine) { statusDiv.classList.remove('offline'); statusText.innerText = 'متصل'; } else { statusDiv.classList.add('offline'); statusText.innerText = 'غير متصل'; } }
-    window.addEventListener('online', updateOnlineStatus); window.addEventListener('offline', updateOnlineStatus); updateOnlineStatus();
-    const holidays = [{ name: "عيد الأضحى المبارك 🐑", date: new Date("May 27, 2026").getTime() },{ name: "رأس السنة الهجرية 🌙", date: new Date("June 16, 2026").getTime() },{ name: "ثورة 30 يونيو 🇪🇬", date: new Date("June 30, 2026").getTime() },{ name: "عيد ثورة 23 يوليو 🇪🇬", date: new Date("July 23, 2026").getTime() },{ name: "المولد النبوي الشريف 🕌", date: new Date("September 5, 2026").getTime() },{ name: "عيد القوات المسلحة 🪖", date: new Date("October 6, 2026").getTime() },{ name: "رأس السنة الميلادية 🎄", date: new Date("January 1, 2027").getTime() },{ name: "عيد الميلاد المجيد ⛪", date: new Date("January 7, 2027").getTime() },{ name: "ثورة 25 يناير 🇪🇬", date: new Date("January 25, 2027").getTime() },{ name: "شهر رمضان المبارك 🌙", date: new Date("February 8, 2027").getTime() },{ name: "عيد الفطر المبارك ✨", date: new Date("March 10, 2027").getTime() },{ name: "عيد تحرير سيناء 🦅", date: new Date("April 25, 2027").getTime() },{ name: "عيد العمال 🛠️", date: new Date("May 1, 2027").getTime() },{ name: "شم النسيم 🐟", date: new Date("May 3, 2027").getTime() }];
-    function updateHeader() { const now = new Date(); document.getElementById('digital-clock').innerText = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}); document.getElementById('digital-date').innerText = now.toLocaleDateString('ar-EG') .split('/').reverse().join('/'); let next = holidays.find(h => h.date > now.getTime()) || holidays[0]; let diff = Math.ceil((next.date - now.getTime()) / (1000 * 60 * 60 * 24)); document.getElementById('countdown').innerText = "باقي " + diff + " يوم على " + next.name; }
-    function toggleHolidaysDropdown(event) { if(event) event.stopPropagation(); const drop = document.getElementById('holidaysDropdown'); drop.classList.toggle('show'); if(drop.classList.contains('show')) { drop.innerHTML = holidays.map(h => `<div class="holiday-item"><span>${h.name}</span><span>${new Date(h.date).toLocaleDateString('ar-EG')}</span></div>`).join(''); } }
-    function toggleTheme() { document.body.classList.toggle('dark-mode'); }
-    setInterval(updateHeader, 60000); updateHeader();
+    // ==================== نظام التفعيل (كل عميل له كود مختلف) ====================
     
-    // دوال الواتساب
-    function saveToWhatsApp() { if (!navigator.onLine) { alert("⚠️ أنت غير متصل بالإنترنت!"); return; } let allData = {}; for (let i = 0; i < localStorage.length; i++) { let key = localStorage.key(i); if (key !== 'theme' && key !== 'azemaa_dark_mode') { allData[key] = localStorage.getItem(key); } } if (Object.keys(allData).length === 0) { alert("⚠️ لا توجد بيانات."); return; } const dataString = JSON.stringify(allData); const msg = `*📋 نسخة احتياطية - azemaa pro*\n\n\`\`\`\n${dataString}\n\`\`\`\n\n🔄 للاسترجاع: انسخ الكود أعلاه واستخدم زر "واتس استرجاع"`; window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank'); alert("✅ تم فتح الواتساب."); }
-    function loadFromWhatsApp() { const code = prompt("📋 الصق كود النسخة الاحتياطية هنا (JSON):"); if (!code) return; try { let cleanCode = code.replace(/```/g, '').replace(/📋 انسخ الكود أعلاه للاسترجاع لاحقاً/g, '').replace(/🔄 للاسترجاع: انسخ الكود أعلاه واستخدم زر "واتس استرجاع"/g, '').replace(/\*\*📋 نسخة احتياطية - azemaa pro\*\*/g, '').trim(); const data = JSON.parse(cleanCode); if (confirm(`تم العثور على ${Object.keys(data).length} عنصر. هل تريد استعادتها؟`)) { localStorage.clear(); for (let key in data) { localStorage.setItem(key, data[key]); } alert("✅ تم استرجاع البيانات بنجاح!"); document.querySelectorAll('iframe').forEach(f => { f.src = f.src; }); } } catch (error) { alert("❌ فشل الاسترجاع: " + error.message); } }
-    window.saveToWhatsApp = saveToWhatsApp; window.loadFromWhatsApp = loadFromWhatsApp;
+    // 🔐 هنا تقوم بتعيين كود التفعيل لكل عميل على حدة
+    // مثال: العميل أحمد كوده "AHMED2024"، العميل محمد كوده "MOHAMED567"
+    const VALID_LICENSE_CODES = ["AZEMAA2024", "ADMIN123", "DEMO123"];
+    
+    // يمكنك إضافة كود لكل عميل بالطريقة دي:
+    // VALID_LICENSE_CODES.push("كود_العميل_الجديد");
+    
+    function checkAuth() {
+        const savedLicense = localStorage.getItem('azemaa_license');
+        if (savedLicense && VALID_LICENSE_CODES.includes(savedLicense)) {
+            document.getElementById('login-overlay').style.display = 'none';
+            return true;
+        } else {
+            document.getElementById('login-overlay').style.display = 'flex';
+            return false;
+        }
+    }
+    
+    document.getElementById('login-btn').addEventListener('click', () => {
+        const license = document.getElementById('license-key').value.trim();
+        const errorDiv = document.getElementById('login-error');
+        
+        if (VALID_LICENSE_CODES.includes(license)) {
+            localStorage.setItem('azemaa_license', license);
+            errorDiv.style.display = 'none';
+            document.getElementById('login-overlay').style.display = 'none';
+            document.querySelectorAll('iframe').forEach(f => { f.src = f.src; });
+        } else {
+            errorDiv.style.display = 'block';
+        }
+    });
+    
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        if(confirm("هل تريد تسجيل الخروج؟")) {
+            localStorage.removeItem('azemaa_license');
+            localStorage.clear();
+            window.location.reload();
+        }
+    });
+    
+    checkAuth();
+    
+    // ==================== باقي دوال النظام ====================
+    
+    function toggleZoom(card, event) {
+        if(event) event.stopPropagation();
+        if (card.classList.contains('fullscreen')) {
+            card.classList.remove('fullscreen');
+            card.querySelector('.zoom-btn').innerText = "تكبير";
+        } else {
+            document.querySelectorAll('.card.fullscreen').forEach(c => {
+                c.classList.remove('fullscreen');
+                c.querySelector('.zoom-btn').innerText = "تكبير";
+            });
+            card.classList.add('fullscreen');
+            card.querySelector('.zoom-btn').innerText = "إغلاق";
+        }
+    }
+    
+    const holidays = [
+        { name: "عيد الأضحى المبارك 🐑", date: new Date("May 27, 2026").getTime() },
+        { name: "رأس السنة الهجرية 🌙", date: new Date("June 16, 2026").getTime() },
+        { name: "المولد النبوي الشريف 🕌", date: new Date("September 5, 2026").getTime() }
+    ];
+    
+    function updateHeader() {
+        const now = new Date();
+        document.getElementById('digital-clock').innerText = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+        document.getElementById('digital-date').innerText = now.toLocaleDateString('ar-EG');
+        let next = holidays.find(h => h.date > now.getTime()) || holidays[0];
+        let diff = Math.ceil((next.date - now.getTime()) / (1000 * 60 * 60 * 24));
+        document.getElementById('countdown').innerText = "باقي " + diff + " يوم على " + next.name;
+    }
+    
+    function toggleHolidaysDropdown(event) {
+        if(event) event.stopPropagation();
+        const drop = document.getElementById('holidaysDropdown');
+        drop.classList.toggle('show');
+        if(drop.classList.contains('show')) {
+            drop.innerHTML = holidays.map(h => `<div class="holiday-item"><span>${h.name}</span><span>${new Date(h.date).toLocaleDateString('ar-EG')}</span></div>`).join('');
+        }
+    }
+    
+    function toggleTheme() { document.body.classList.toggle('dark-mode'); }
+    
+    setInterval(updateHeader, 60000);
+    updateHeader();
+    
+    // دوال الواتساب للنسخ الاحتياطي
+    function saveToWhatsApp() {
+        let allData = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key !== 'theme' && key !== 'azemaa_license') {
+                allData[key] = localStorage.getItem(key);
+            }
+        }
+        if (Object.keys(allData).length === 0) {
+            alert("⚠️ لا توجد بيانات للحفظ.");
+            return;
+        }
+        const dataString = JSON.stringify(allData);
+        const msg = `*📋 نسخة احتياطية - azemaa pro*\n\n${dataString}\n\n🔄 للاسترجاع: انسخ النص بالكامل واستخدم زر الاسترجاع`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+    
+    function loadFromWhatsApp() {
+        const code = prompt("📋 الصق النص الكامل للنسخة الاحتياطية:");
+        if (!code) return;
+        try {
+            let cleanCode = code.replace(/\*📋 نسخة احتياطية - azemaa pro\*\*\n\n/g, '').replace(/\n\n🔄 للاسترجاع.*/g, '').trim();
+            const data = JSON.parse(cleanCode);
+            if (confirm(`تم العثور على ${Object.keys(data).length} عنصر. هل تريد الاستعادة؟`)) {
+                const license = localStorage.getItem('azemaa_license');
+                localStorage.clear();
+                if (license) localStorage.setItem('azemaa_license', license);
+                for (let key in data) {
+                    localStorage.setItem(key, data[key]);
+                }
+                alert("✅ تم الاسترجاع بنجاح!");
+                document.querySelectorAll('iframe').forEach(f => { f.src = f.src; });
+            }
+        } catch (error) {
+            alert("❌ فشل الاسترجاع: " + error.message);
+        }
+    }
+    
+    document.getElementById('wa-save-btn').addEventListener('click', saveToWhatsApp);
+    document.getElementById('wa-load-btn').addEventListener('click', loadFromWhatsApp);
 </script>
 </body>
 </html>
