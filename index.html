@@ -197,7 +197,7 @@
     <div class="card" ondblclick="toggleZoom(this, event)">
         <div class="overlay"></div>
         <div class="h" style="background:#ff7675;"><span>👤 الزبائن</span><button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button></div>
-        <iframe src="zbon.html" id="iframe-zbon"></iframe>
+        <iframe src="zbon.html"></iframe>
     </div>
     
     <div class="card" ondblclick="toggleZoom(this, event)">
@@ -232,6 +232,8 @@
 </div>
 
 <script>
+    // ==================== دوال الواجهة العامة ====================
+    
     function toggleZoom(card, event) {
         if(event) event.stopPropagation();
         if (card.classList.contains('fullscreen')) {
@@ -396,14 +398,13 @@
         }
     }
 
-    // ربط أزرار الواتساب
     document.getElementById('wa-save-btn').addEventListener('click', saveToWhatsApp);
     document.getElementById('wa-load-btn').addEventListener('click', loadFromWhatsApp);
 </script>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     
     const firebaseConfig = {
@@ -460,8 +461,9 @@
         }
     });
 
-    // ==================== أزرار السحابة ====================
+    // ==================== أزرار السحابة (Firebase) ====================
     
+    // 1. دالة الحفظ السحابي المباشر
     document.getElementById('cloud-save-btn').addEventListener('click', async () => {
         if(!auth.currentUser) {
             alert("⚠️ يجب تسجيل الدخول أولاً!");
@@ -472,23 +474,40 @@
             return; 
         }
         
-        const zbonIframe = document.getElementById('iframe-zbon');
-        if (zbonIframe && zbonIframe.contentWindow) {
-            try {
-                if (typeof zbonIframe.contentWindow.saveAllCardsToCloud === 'function') {
-                    zbonIframe.contentWindow.saveAllCardsToCloud();
-                } else {
-                    alert("⚠️ انتظر حتى تكتمل صفحة الزبائن تحميلها ثم حاول مرة أخرى.");
-                }
-            } catch (e) {
-                console.log("خطأ:", e);
-                alert("⚠️ تعذر الوصول لصفحة الزبائن. تأكد من تحميلها بالكامل.");
+        // تجميع كافة البيانات المحلية عدا الثيم
+        let allData = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key !== 'theme' && key !== 'azemaa_dark_mode') {
+                allData[key] = localStorage.getItem(key);
             }
-        } else {
-            alert("⚠️ صفحة الزبائن غير متاحة حالياً.");
+        }
+        
+        if (Object.keys(allData).length === 0) {
+            alert("⚠️ لا توجد بيانات محلية لحفظها على السحابة.");
+            return;
+        }
+
+        try {
+            const btn = document.getElementById('cloud-save-btn');
+            btn.innerText = "⏳ جاري الرفع...";
+            btn.disabled = true;
+
+            // حفظ البيانات في Firebase تحت معرف المستخدم الفريد (UID)
+            const userRef = ref(db, 'backups/users/' + auth.currentUser.uid + '/localBackup');
+            await set(userRef, allData);
+            
+            alert("✅ تم حفظ جميع البيانات على السحابة بنجاح!");
+        } catch (error) {
+            console.error(error);
+            alert("❌ فشل الحفظ السحابي: " + error.message);
+        } finally {
+            document.getElementById('cloud-save-btn').innerHTML = "☁️ حفظ السحابة";
+            document.getElementById('cloud-save-btn').disabled = false;
         }
     });
 
+    // 2. دالة استرجاع البيانات من السحابة
     document.getElementById('cloud-load-btn').addEventListener('click', async () => {
         if(!auth.currentUser) {
             alert("⚠️ يجب تسجيل الدخول أولاً!");
@@ -499,20 +518,39 @@
             return; 
         }
         
-        const zbonIframe = document.getElementById('iframe-zbon');
-        if (zbonIframe && zbonIframe.contentWindow) {
-            try {
-                if (typeof zbonIframe.contentWindow.loadAllCardsFromCloud === 'function') {
-                    zbonIframe.contentWindow.loadAllCardsFromCloud();
-                } else {
-                    alert("⚠️ انتظر حتى تكتمل صفحة الزبائن تحميلها ثم حاول مرة أخرى.");
+        if (!confirm("⚠️ تحذير: استرجاع البيانات من السحابة سيقوم باستبدال البيانات الحالية على هذا الجهاز. هل تريد الاستمرار؟")) {
+            return;
+        }
+
+        try {
+            const btn = document.getElementById('cloud-load-btn');
+            btn.innerText = "⏳ جاري التحميل...";
+            btn.disabled = true;
+
+            const userRef = ref(db, 'backups/users/' + auth.currentUser.uid + '/localBackup');
+            const snapshot = await get(userRef);
+
+            if (snapshot.exists()) {
+                const cloudData = snapshot.val();
+                
+                // تنظيف التخزين المحلي وكتابة البيانات المسترجعة
+                localStorage.clear();
+                for (let key in cloudData) {
+                    localStorage.setItem(key, cloudData[key]);
                 }
-            } catch (e) {
-                console.log("خطأ:", e);
-                alert("⚠️ تعذر الوصول لصفحة الزبائن. تأكد من تحميلها بالكامل.");
+                
+                alert("✅ تم استرجاع البيانات من السحابة بنجاح! جاري تحديث الشاشات...");
+                // إعادة تنشيط الإطارات لتحديث البيانات تلقائياً
+                document.querySelectorAll('iframe').forEach(f => { f.src = f.src; });
+            } else {
+                alert("❌ لا توجد بيانات محفوظة مسبقاً لهذا الحساب على السحابة.");
             }
-        } else {
-            alert("⚠️ صفحة الزبائن غير متاحة حالياً.");
+        } catch (error) {
+            console.error(error);
+            alert("❌ فشل استرجاع البيانات: " + error.message);
+        } finally {
+            document.getElementById('cloud-load-btn').innerHTML = "🔄 استرجاع السحابة";
+            document.getElementById('cloud-load-btn').disabled = false;
         }
     });
 </script>
