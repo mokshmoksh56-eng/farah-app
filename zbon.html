@@ -462,6 +462,7 @@
         }
     });
 
+    // ====== تعديل الدالة startSyncingData لحل مشكلة اختفاء الكروت ======
     function startSyncingData() {
         if (localStorage.getItem('azemaa_dark_mode') === 'enabled') {
             document.body.classList.add('dark-theme');
@@ -479,10 +480,8 @@
                     saveSettings(); 
                 }
 
-                document.querySelectorAll('.card').forEach(c => {
-                    c.classList.remove('visible');
-                    c.style.display = '';
-                });
+                // ✅ التعديل الرئيسي: لا نخفي كل الكروت تلقائياً
+                // بدلاً من ذلك، نتحكم في كل كارت حسب بياناته
 
                 for (let id in allData) {
                     if (id === 'settings') continue;
@@ -504,6 +503,7 @@
                         }
                         card.style.display = ''; 
                         
+                        // ✅ تحديث البيانات فقط إذا كان الكارت في وضع القفل
                         if (card.classList.contains('locked-mode')) {
                             card.querySelector('.c-name').value = d.n || '';
                             card.querySelector('.c-phone').value = d.p || '';
@@ -575,6 +575,58 @@
             }).catch(err => alert("❌ خطأ: " + err.message));
         });
     }
+
+    // ====== إضافة دالة saveAllCards لحفظ جميع الكروت دفعة واحدة ======
+    function saveAllCards() {
+        if (!currentUid) {
+            alert("⚠️ يجب تسجيل الدخول أولاً.");
+            return;
+        }
+        
+        const cards = document.querySelectorAll('.card.visible');
+        if (cards.length === 0) {
+            alert("⚠️ لا توجد كروت ظاهرة لحفظها.");
+            return;
+        }
+
+        let savePromises = [];
+        cards.forEach(card => {
+            const id = card.id.replace('card-', '');
+            const data = {
+                n: card.querySelector('.c-name')?.value || "",
+                p: card.querySelector('.c-phone')?.value || "",
+                dd: card.querySelector('.d-day')?.value || "",
+                dm: card.querySelector('.d-month')?.value || "",
+                dy: card.querySelector('.d-year')?.value || "",
+                r: card.querySelector(`input[name="rating-${id}"]:checked`)?.value || 0,
+                t: card.querySelector('.c-total')?.value || 0,
+                notes: card.querySelector('.c-notes')?.value || "",
+                pays: Array.from(card.querySelectorAll('.p-val')).map((p, idx) => ({
+                    v: p.value || 0,
+                    d: card.querySelectorAll('.p-date')[idx]?.value || ""
+                })),
+                isArchived: false
+            };
+            savePromises.push(db.ref(`backups/users/${currentUid}/${id}`).update(data));
+        });
+
+        Promise.all(savePromises)
+            .then(() => {
+                alert(`✅ تم حفظ ${cards.length} كارت بنجاح في السحابة.`);
+                cards.forEach(card => {
+                    const id = card.id.replace('card-', '');
+                    if (!card.classList.contains('locked-mode')) {
+                        toggleCardLock(id);
+                    }
+                });
+            })
+            .catch(error => {
+                alert("❌ فشل حفظ بعض الكروت. راجع الاتصال. \nالسبب: " + error.message);
+            });
+    }
+
+    // جعل الدالة متاحة للاستدعاء من الصفحة الرئيسية
+    window.saveAllCards = saveAllCards;
 
     function deleteCard(id) { 
         if(!currentUid) return;
