@@ -111,7 +111,7 @@
         .holidays-dropdown.show { display: block; }
         .holiday-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; display: flex; justify-content: space-between; }
 
-        .time-date-container { display: flex; align-items: baseline; gap: 10px; }
+        .time-date-container { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
         @media (max-width: 550px) {
             header { padding: 12px; }
@@ -139,11 +139,13 @@
         <div class="time-date-container">
             <div id="digital-clock" style="font-weight:bold; font-size: 1.2rem;">00:00</div>
             <div id="digital-date" style="font-size: 0.9rem; font-weight: bold; opacity: 0.9;">0000/00/00</div>
+            <span id="network-status" style="padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: bold; background: #2ecc71; color: white; user-select: none;">متصل 🟢</span>
         </div>
         <div id="countdown" onclick="toggleHolidaysDropdown(event)" style="font-size: 0.75rem; cursor: pointer; padding-top: 4px;">جاري التحميل...</div>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <button onclick="refreshAllIframes()" title="تحديث الأقسام" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer;">🔄</button>
         <button onclick="toggleTheme()" style="background:none; border:none; color:white; cursor:pointer; font-size: 1.4rem; padding: 5px;">🌙</button>
         <button id="logout-btn" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 5px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;">خروج 🚪</button>
     </div>
@@ -273,7 +275,7 @@
         { name: "ثورة 30 يونيو 🇪🇬", date: new Date("June 30, 2026").getTime() },
         { name: "عيد ثورة 23 يوليو 🇪🇬", date: new Date("July 23, 2026").getTime() },
         { name: "المولد النبوي الشريف 🕌", date: new Date("September 5, 2026").getTime() },
-        { name: "عيد القوات المسحلة 🪖", date: new Date("October 6, 2026").getTime() },
+        { name: "عيد القوات المسلحة 🪖", date: new Date("October 6, 2026").getTime() },
         { name: "رأس السنة الميلادية 🎄", date: new Date("January 1, 2027").getTime() },
         { name: "عيد الميلاد المجيد ⛪", date: new Date("January 7, 2027").getTime() },
         { name: "ثورة 25 يناير 🇪🇬", date: new Date("January 25, 2027").getTime() },
@@ -288,20 +290,37 @@
         const now = new Date();
         document.getElementById('digital-clock').innerText = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
         
-        // جلب اسم اليوم باللغة العربية (السبت، الأحد، إلخ)
         const weekday = now.toLocaleDateString('ar-EG', { weekday: 'long' });
-        
         const yyyy = now.toLocaleDateString('ar-EG', { year: 'numeric' });
         const mm = now.toLocaleDateString('ar-EG', { month: '2-digit' });
         const dd = now.toLocaleDateString('ar-EG', { day: '2-digit' });
         
-        // دمج اسم اليوم مع التاريخ
         document.getElementById('digital-date').innerText = weekday + ' ' + yyyy + '/' + mm + '/' + dd;
         
         let next = holidays.find(h => h.date > now.getTime()) || holidays[0];
         let diff = Math.ceil((next.date - now.getTime()) / (1000 * 60 * 60 * 24));
         document.getElementById('countdown').innerText = "باقي " + diff + " يوم على " + next.name;
     }
+
+    // دالة تحديث كافة الـ iframes دفعة واحدة دون الحاجة لتحديث الصفحة بالكامل
+    function refreshAllIframes() {
+        document.querySelectorAll('iframe').forEach(f => {
+            f.src = f.src;
+        });
+    }
+
+    // متابعة حالة شبكة الإنترنت بشكل حي ومباشر ومستمر
+    window.addEventListener('online', () => {
+        const status = document.getElementById('network-status');
+        status.innerText = "متصل 🟢";
+        status.style.background = "#2ecc71";
+    });
+
+    window.addEventListener('offline', () => {
+        const status = document.getElementById('network-status');
+        status.innerText = "غير متصل 🔴";
+        status.style.background = "#e74c3c";
+    });
 
     function toggleHolidaysDropdown(event) {
         if(event) event.stopPropagation();
