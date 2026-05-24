@@ -5,9 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>azemaa proo | ترتيب زمني ذكي للبيع</title>
     
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, update, remove, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210",
+            measurementId: "G-R28J7010TH"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        window.db = getDatabase(app);
+        window.auth = getAuth(app);
+
+        // ربط الدوال بالـ window لاستخدامها في السكريبت العادي
+        window.ref = ref;
+        window.update = update;
+        window.remove = remove;
+        window.get = get;
+        window.onValue = onValue;
+
+        onAuthStateChanged(window.auth, (user) => {
+            if (user) {
+                window.currentUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                if (typeof startSyncingData === "function") {
+                    startSyncingData();
+                }
+            } else {
+                document.getElementById('auth-loader').innerText = "⚠️ خطأ أمني: يرجى تسجيل الدخول من الصفحة الرئيسية أولاً!";
+            }
+        });
+    </script>
 
     <style>
         :root {
@@ -19,6 +55,7 @@
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #dfe4ea; margin: 0; padding: 0; color: var(--primary); font-weight: 700; padding-bottom: 60px; transition: background 0.3s, color 0.3s; }
         
+        /* واجهة انتظار للتحقق من الهوية السحابية */
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #dfe4ea;
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -78,7 +115,7 @@
         .pay-row { display: grid; grid-template-columns: 110px 1fr; gap: 5px; }
         .result-box { background: var(--primary); color: white; padding: 6px; border-radius: 10px; text-align: center; direction: rtl; margin-bottom: 6px; }
         
-        .btn-card { width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 900; color: white; margin-top: 3px; font-size: 11px; }
+        .btn-card { width: 100%; padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-weight: 900; color: white; margin-top: 3px; font-size: 11px; }
         .btn-save { background: var(--primary); }
         .btn-wa-direct { background: #25D366; }
         .btn-wa-invoice { background: #128C7E; }
@@ -122,6 +159,7 @@
 
         .hide-tables { opacity: 0 !important; max-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; visibility: hidden !important; border: none !important; }
 
+        /* تيمات الوضع الليلي */
         body.dark-theme { background: #1e272e; color: #ffffff; }
         body.dark-theme .stat-card { background: #2f3542; color: #ffffff; border-bottom: 4px solid #57606f; }
         body.dark-theme .card { background: #2f3542; border-color: #57606f; color: #ffffff; }
@@ -180,7 +218,7 @@
     <table class="summary-table">
         <thead>
             <tr>
-                <th>كود</th>
+                <th>#</th>
                 <th>اسم الزبون</th>
                 <th style="background: #4b6584;">📅 الاستلام</th>
                 <th style="background: var(--col-total);">💰 الإجمالي</th>
@@ -210,7 +248,7 @@
     <table class="summary-table">
         <thead>
             <tr>
-                <th>كود</th>
+                <th>#</th>
                 <th>اسم الزبون</th>
                 <th>📅 تاريخ الانتهاء</th>
                 <th>💰 المبلغ المسدد</th>
@@ -226,22 +264,7 @@
 <button class="btn-add-client" onclick="addNewCard()">+</button>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-        authDomain: "azemaa-proo.firebaseapp.com",
-        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-        projectId: "azemaa-proo",
-        storageBucket: "azemaa-proo.firebasestorage.app",
-        messagingSenderId: "787350492977",
-        appId: "1:787350492977:web:84061dcf31622fcb07c210",
-        measurementId: "G-R28J7010TH"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth(); 
-
-    let currentUid = null; 
+    let visibleCards = []; 
 
     const monthColors = {
         1: "#ffdde1", 2: "#ee9ca7", 3: "#d4fc79", 4: "#96e6a1",
@@ -306,47 +329,49 @@
         }
     }
 
-    function createCardElement(id, displayCode) {
+    function createCardElement(i) {
         const card = document.createElement('div');
         card.className = `card locked-mode`;
-        card.id = `card-${id}`;
+        card.id = `card-${i}`;
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
-                <span style="direction:rtl; font-size: 14px; font-weight: 900; color: var(--danger);">👤 عميل كود: ${displayCode}</span>
+                <span style="direction:rtl; font-size: 13px;">👤 عميل رقم ${i}</span>
                 <div style="display: flex; align-items: center;">
-                    <button id="btn-lock-${id}" onclick="toggleCardLock('${id}')" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button>
-                    <button onclick="archiveCardManual('${id}')" class="btn-archive-icon" title="أرشفة">📁</button>
-                    <button onclick="deleteCard('${id}')" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
+                    <button id="btn-lock-${i}" onclick="toggleCardLock(${i})" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button>
+                    <button onclick="archiveCardManual(${i})" class="btn-archive-icon" title="أرشفة">📁</button>
+                    <button onclick="deleteCard(${i})" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
                 </div>
             </div>
-            <label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic('${id}')" disabled>
+            <label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic(${i})" disabled>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                <div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic('${id}')" disabled></div>
+                <div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic(${i})" disabled></div>
                 <div>
                     <label>📅 الاستلام:</label>
                     <div class="date-input-group">
-                        <input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic('${id}')" disabled> /
-                        <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic('${id}')" disabled> /
-                        <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic('${id}')" disabled>
+                        <input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
+                        <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
+                        <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic(${i})" disabled>
                     </div>
                 </div>
             </div>
-            <div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${id}" name="rating-${id}" value="${s}" onclick="updateLogic('${id}')" disabled><label for="star${s}-${id}">★</label>`).join('')}</div>
-            <label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic('${id}')" disabled>
-            <div class="tafqit-box" id="tafqit-total-${id}"></div>
+            <div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${i}" name="rating-${i}" value="${s}" onclick="updateLogic(${i})" disabled><label for="star${s}-${i}">★</label>`).join('')}</div>
+            <label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic(${i})" disabled>
+            <div class="tafqit-box" id="tafqit-total-${i}"></div>
             <div class="payment-section">
-                ${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic('${id}')" disabled><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic('${id}')" disabled></div><div class="tafqit-mini" id="tafqit-pay-${id}-${n}"></div></div>`).join('')}
+                ${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic(${i})" disabled><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic(${i})" disabled></div><div class="tafqit-mini" id="tafqit-pay-${i}-${n}"></div></div>`).join('')}
             </div>
-            <textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic('${id}'); autoResize(this)" disabled></textarea>
-            <div class="result-box"><div id="rem-n-${id}" style="direction:ltr; font-size:14px;">المتبقي: 0</div><div id="rem-w-${id}" style="font-size:9px; color:#00d2ff;"></div></div>
+            <textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic(${i}); autoResize(this)" disabled></textarea>
+            <div class="result-box"><div id="rem-n-${i}" style="direction:ltr; font-size:14px;">المتبقي: 0</div><div id="rem-w-${i}" style="font-size:9px; color:#00d2ff;"></div></div>
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
-                <button class="btn-card btn-save" onclick="saveToCloud('${id}')">💾 حفظ وقفل</button>
-                <button class="btn-card btn-wa-direct" onclick="sendDirectWA('${id}')">واتس مباشر</button>
-                <button class="btn-card btn-wa-invoice" onclick="sendWA('${id}')">واتس فاتورة</button>
+                <button class="btn-card btn-save" onclick="saveToCloud(${i})">💾 حفظ وقفل</button>
+                <button class="btn-card btn-wa-direct" onclick="sendDirectWA(${i})">واتس مباشر</button>
+                <button class="btn-card btn-wa-invoice" onclick="sendWA(${i})">واتس فاتورة</button>
             </div>
         `;
         document.getElementById('mainGrid').appendChild(card);
     }
+
+    for (let i = 1; i <= 50; i++) createCardElement(i);
 
     function initKeyboardListener() {
         const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
@@ -385,13 +410,13 @@
     function saveSettings() { 
         const cName = document.getElementById('companyNameInput').value;
         localStorage.setItem('azemaa_company_name', cName); 
-        if (currentUid) {
-            db.ref(`backups/users/${currentUid}/settings`).update({ companyName: cName }); 
+        if (window.currentUid) {
+            window.update(window.ref(window.db, `backups/users/${window.currentUid}/settings`), { companyName: cName });
         }
     }
 
     function saveToCloud(id) {
-        if(!currentUid) return;
+        if(!window.currentUid) return;
         const card = document.getElementById(`card-${id}`);
         const data = {
             n: card.querySelector('.c-name').value || "",
@@ -405,13 +430,14 @@
             pays: Array.from(card.querySelectorAll('.p-val')).map((p, idx) => ({
                 v: p.value || 0,
                 d: card.querySelectorAll('.p-date')[idx].value || ""
-            }))
+            })),
+            isArchived: false
         };
 
         const saveBtn = card.querySelector('.btn-save');
         saveBtn.innerText = "⏳ جاري الحفظ...";
 
-        db.ref(`backups/users/${currentUid}/${id}`).update(data).then(() => {
+        window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), data).then(() => {
             if (!card.classList.contains('locked-mode')) {
                 toggleCardLock(id);
             }
@@ -426,41 +452,24 @@
     }
 
     function archiveCardManual(id) {
-        if(!currentUid) return;
+        if(!window.currentUid) return;
         if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) {
-            db.ref(`backups/users/${currentUid}/${id}`).update({ isArchived: true }).then(() => {
-                const card = document.getElementById(`card-${id}`);
-                if (card) card.classList.remove('visible');
+            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: true }).then(() => {
+                document.getElementById(`card-${id}`).classList.remove('visible');
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
     }
 
     function restoreFromArchive(id) {
-        if(!currentUid) return;
+        if(!window.currentUid) return;
         if(confirm('هل تريد استعادة هذا الزبون؟')) {
-            db.ref(`backups/users/${currentUid}/${id}`).update({ isArchived: false }).then(() => {
-                const card = document.getElementById(`card-${id}`);
-                if (card) card.classList.add('visible');
+            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: false }).then(() => {
+                document.getElementById(`card-${id}`).classList.add('visible');
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
     }
-
-    const savedCompanyName = localStorage.getItem('azemaa_company_name');
-    if (savedCompanyName) {
-        document.getElementById('companyNameInput').value = savedCompanyName;
-    }
-
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            currentUid = user.uid; 
-            document.getElementById('auth-loader').style.display = 'none'; 
-            startSyncingData();
-        } else {
-            document.getElementById('auth-loader').innerText = "⚠️ خطأ أمني: يرجى تسجيل الدخول من الصفحة الرئيسية أولاً!";
-        }
-    });
 
     function startSyncingData() {
         if (localStorage.getItem('azemaa_dark_mode') === 'enabled') {
@@ -468,41 +477,26 @@
             document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
         }
 
-        db.ref(`backups/users/${currentUid}`).on('value', (snapshot) => {
+        window.onValue(window.ref(window.db, `backups/users/${window.currentUid}`), (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
                 if (allData.settings && allData.settings.companyName) {
                     document.getElementById('companyNameInput').value = allData.settings.companyName;
-                    localStorage.setItem('azemaa_company_name', allData.settings.companyName); 
-                } else if (localStorage.getItem('azemaa_company_name')) {
-                    document.getElementById('companyNameInput').value = localStorage.getItem('azemaa_company_name');
-                    saveSettings(); 
                 }
 
-                document.querySelectorAll('.card').forEach(c => {
-                    c.classList.remove('visible');
-                    c.style.display = '';
-                });
-
+                visibleCards = [];
                 for (let id in allData) {
                     if (id === 'settings') continue;
 
                     const d = allData[id];
-                    let card = document.getElementById(`card-${id}`);
-                    
-                    if (!card) {
-                        const displayCode = d.code || (isNaN(id) ? 'جديد' : id);
-                        createCardElement(id, displayCode);
-                        card = document.getElementById(`card-${id}`);
-                    }
-
+                    const card = document.getElementById(`card-${id}`);
                     if (card) {
                         if (d.isArchived) {
                             card.classList.remove('visible');
                         } else {
                             card.classList.add('visible');
+                            visibleCards.push(parseInt(id));
                         }
-                        card.style.display = ''; 
                         
                         if (card.classList.contains('locked-mode')) {
                             card.querySelector('.c-name').value = d.n || '';
@@ -510,27 +504,11 @@
                             card.querySelector('.d-day').value = d.dd || '';
                             card.querySelector('.d-month').value = d.dm || '';
                             card.querySelector('.d-year').value = d.dy || '';
-                            
-                            if (d.r) { 
-                                const star = document.getElementById(`star${d.r}-${id}`); 
-                                if(star) star.checked = true; 
-                            } else {
-                                card.querySelectorAll(`input[name="rating-${id}"]`).forEach(r => r.checked = false);
-                            }
-                            
+                            if (d.r) { const star = document.getElementById(`star${d.r}-${id}`); if(star) star.checked = true; }
                             card.querySelector('.c-total').value = d.t || '';
                             const nF = card.querySelector('.c-notes'); nF.value = d.notes || ''; autoResize(nF);
-                            
                             const pV = card.querySelectorAll('.p-val'); const pD = card.querySelectorAll('.p-date');
-                            pV.forEach(p => p.value = '');
-                            pD.forEach(p => p.value = '');
-                            
-                            if (d.pays) { 
-                                d.pays.forEach((p, idx) => { 
-                                    if(pV[idx]) pV[idx].value = p.v || ''; 
-                                    if(pD[idx]) pD[idx].value = p.d || ''; 
-                                }); 
-                            }
+                            if (d.pays) { d.pays.forEach((p, idx) => { if(pV[idx]) pV[idx].value = p.v || ''; if(pD[idx]) pD[idx].value = p.d || ''; }); }
                             updateLogic(id);
                         }
                     }
@@ -542,46 +520,29 @@
     }
 
     function addNewCard() {
-        if(!currentUid) return;
-        
-        db.ref(`backups/users/${currentUid}`).once('value', (snapshot) => {
-            const data = snapshot.val();
-            let maxCode = 0;
-            
-            if (data) {
-                Object.keys(data).forEach(key => {
-                    if (key !== 'settings') {
-                        let currentCode = data[key].code ? parseInt(data[key].code) : (isNaN(key) ? 0 : parseInt(key));
-                        if (currentCode > maxCode) maxCode = currentCode;
+        if(!window.currentUid) return;
+        for (let i = 1; i <= 50; i++) {
+            const card = document.getElementById(`card-${i}`);
+            if (!card.classList.contains('visible')) {
+                card.classList.add('visible');
+                window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(() => {
+                    if (card.classList.contains('locked-mode')) {
+                        toggleCardLock(i);
                     }
-                });
+                }).catch(err => alert("❌ خطأ: " + err.message));
+                return;
             }
-            
-            const newCode = maxCode + 1; 
-            const uniqueId = 'id_' + Date.now();
-            
-            db.ref(`backups/users/${currentUid}/${uniqueId}`).update({ 
-                isArchived: false,
-                code: newCode, 
-                n: "", p: "", dd: "", dm: "", dy: "", t: 0, notes: ""
-            }).then(() => {
-                setTimeout(() => {
-                    const card = document.getElementById(`card-${uniqueId}`);
-                    if (card && card.classList.contains('locked-mode')) {
-                        toggleCardLock(uniqueId);
-                        card.querySelector('.c-name').focus();
-                    }
-                }, 300);
-            }).catch(err => alert("❌ خطأ: " + err.message));
-        });
+        }
     }
 
     function deleteCard(id) { 
-        if(!currentUid) return;
+        if(!window.currentUid) return;
         if(confirm('سيتم الحذف نهائياً؟')) { 
-            db.ref(`backups/users/${currentUid}/${id}`).remove().then(() => {
+            window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`)).then(() => {
                 const card = document.getElementById(`card-${id}`);
-                if (card) card.remove();
+                card.classList.remove('visible');
+                card.querySelectorAll('input').forEach(i => i.value = "");
+                card.querySelector('textarea').value = "";
                 refreshStats();
             }).catch(err => alert("❌ خطأ في الحذف: " + err.message)); 
         } 
@@ -638,15 +599,15 @@
     }
 
     function refreshStats() {
-        if(!currentUid) return;
+        if(!window.currentUid) return;
         let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0;
         const summaryBody = document.getElementById('summary-body');
         const archiveBody = document.getElementById('archive-body');
         summaryBody.innerHTML = '';
         archiveBody.innerHTML = '';
 
-        db.ref(`backups/users/${currentUid}`).once('value', (snapshot) => {
-            const data = snapshot.val();
+        window.get(window.ref(window.db, `backups/users/${window.currentUid}`)).then((snapshot) => {
+            const data = snapshot.exists() ? snapshot.val() : null;
             if (!data) return;
 
             let clientsArr = [];
@@ -665,7 +626,6 @@
 
             clientsArr.forEach(d => {
                 const id = d.id;
-                const displayCode = d.code || (isNaN(id) ? '---' : id); 
                 let pVal = 0; 
                 if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0));
                 const total = parseFloat(d.t) || 0;
@@ -683,20 +643,19 @@
 
                 if (d.isArchived || isPaid) {
                     archiveBody.innerHTML += `<tr class="row-paid">
-                        <td style="font-weight:900; color:var(--danger)">${displayCode}</td>
+                        <td>${id}</td>
                         <td>${d.n || '---'}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
                         <td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
                         <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
                         <td>${stars}</td>
-                        <td><button class="btn-restore" onclick="restoreFromArchive('${id}')">استعادة 🔄</button></td>
+                        <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
                     </tr>`;
                     if(isPaid) paidC++;
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
                     const rowHTML = `<tr class="${rowClass}">
-                        <td style="font-weight:900; color:var(--danger)">${displayCode}</td>
-                        <td>${d.n}</td>
+                        <td>${id}</td><td>${d.n}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td>
                         <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
@@ -728,16 +687,11 @@
         const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
 
-        document.querySelectorAll('.card').forEach(card => {
-            if (card.classList.contains('visible')) {
-                const name = card.querySelector('.c-name').value.toLowerCase();
-                const phone = card.querySelector('.c-phone').value.toLowerCase();
-                if (name.includes(q) || phone.includes(q)) {
-                    card.style.setProperty('display', 'block', 'important');
-                } else {
-                    card.style.setProperty('display', 'none', 'important');
-                }
-            }
+        visibleCards.forEach(id => { 
+            const card = document.getElementById(`card-${id}`); 
+            const name = card.querySelector('.c-name').value.toLowerCase();
+            const phone = card.querySelector('.c-phone').value.toLowerCase();
+            card.style.display = (name.includes(q) || phone.includes(q)) ? "block" : "none"; 
         });
     }
 
