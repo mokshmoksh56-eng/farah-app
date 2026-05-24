@@ -28,8 +28,18 @@
         .top-bar { background: #072d48; color: #1abc9c; padding: 8px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         .header { background: var(--primary); color: white; padding: 10px; text-align: center; border-radius: 0 0 30px 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .header h1 { margin: 0; font-size: 20px; font-weight: 900; }
+        
         .toolbar { max-width: 1100px; margin: 8px auto; padding: 0 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         #companyNameInput, #searchInput, .archive-search { padding: 10px; border-radius: 12px; border: 2px solid var(--primary); font-size: 15px; font-weight: 900; outline: none; width: 100%; box-sizing: border-box; }
+        
+        .cloud-buttons { max-width: 1100px; margin: 8px auto; padding: 0 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-cloud-save, .btn-cloud-load { padding: 12px; border-radius: 12px; border: none; color: white; font-weight: 900; font-size: 14px; cursor: pointer; transition: 0.3s; }
+        .btn-cloud-save { background: #00a8ff; }
+        .btn-cloud-load { background: #6c5ce7; }
+        .btn-cloud-save:hover { background: #0097e6; }
+        .btn-cloud-load:hover { background: #5f4fd1; }
+        .btn-cloud-save:active, .btn-cloud-load:active { transform: scale(0.95); }
+        
         .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 1100px; margin: 8px auto; padding: 0 10px; }
         .stat-card { background: white; padding: 6px; border-radius: 12px; text-align: center; border-bottom: 4px solid var(--accent); transition: background 0.3s; }
         .stat-card h4 { margin: 0; font-size: 11px; }
@@ -142,6 +152,8 @@
         body.dark-theme .col-total { color: #2196f3 !important; background-color: #162431 !important; } 
         body.dark-theme .col-paid { color: #4caf50 !important; background-color: #132717 !important; } 
         body.dark-theme .col-rem { color: #f44336 !important; background-color: #291414 !important; }
+        body.dark-theme .btn-cloud-save { background: #0097e6; }
+        body.dark-theme .btn-cloud-load { background: #5f4fd1; }
         @keyframes urgentPulseDark { 0% { background-color: #2f3542; } 50% { background-color: #4d2323; } 100% { background-color: #2f3542; } }
         body.dark-theme .pulse-row { animation: urgentPulseDark 1.5s infinite; border: 2px solid #ff4d4d !important; }
     </style>
@@ -165,6 +177,16 @@
 <div class="toolbar">
     <input type="text" id="companyNameInput" placeholder="🏢 اسم شركتك..." oninput="saveSettings()">
     <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو التليفون..." onkeyup="filterAll()">
+</div>
+
+<!-- ✅ أزرار الحفظ والاسترجاع السحابي الشاملة -->
+<div class="cloud-buttons">
+    <button class="btn-cloud-save" onclick="saveAllCardsToCloud()">
+        ☁️ حفظ جميع الزبائن للسحابة
+    </button>
+    <button class="btn-cloud-load" onclick="loadAllCardsFromCloud()">
+        🔄 استرجاع جميع الزبائن من السحابة
+    </button>
 </div>
 
 <div class="stats-bar">
@@ -462,7 +484,6 @@
         }
     });
 
-    // ====== تعديل الدالة startSyncingData لحل مشكلة اختفاء الكروت ======
     function startSyncingData() {
         if (localStorage.getItem('azemaa_dark_mode') === 'enabled') {
             document.body.classList.add('dark-theme');
@@ -479,9 +500,6 @@
                     document.getElementById('companyNameInput').value = localStorage.getItem('azemaa_company_name');
                     saveSettings(); 
                 }
-
-                // ✅ التعديل الرئيسي: لا نخفي كل الكروت تلقائياً
-                // بدلاً من ذلك، نتحكم في كل كارت حسب بياناته
 
                 for (let id in allData) {
                     if (id === 'settings') continue;
@@ -503,7 +521,6 @@
                         }
                         card.style.display = ''; 
                         
-                        // ✅ تحديث البيانات فقط إذا كان الكارت في وضع القفل
                         if (card.classList.contains('locked-mode')) {
                             card.querySelector('.c-name').value = d.n || '';
                             card.querySelector('.c-phone').value = d.p || '';
@@ -576,10 +593,16 @@
         });
     }
 
-    // ====== إضافة دالة saveAllCards لحفظ جميع الكروت دفعة واحدة ======
-    function saveAllCards() {
+    // ==================== دوال الحفظ والاسترجاع الشاملة ====================
+    
+    async function saveAllCardsToCloud() {
         if (!currentUid) {
-            alert("⚠️ يجب تسجيل الدخول أولاً.");
+            alert("⚠️ يجب تسجيل الدخول أولاً!");
+            return;
+        }
+        
+        if (!navigator.onLine) {
+            alert("⚠️ أنت غير متصل بالإنترنت!");
             return;
         }
         
@@ -588,11 +611,28 @@
             alert("⚠️ لا توجد كروت ظاهرة لحفظها.");
             return;
         }
-
+        
+        if (!confirm(`سيتم حفظ ${cards.length} زبون إلى السحابة. هل تريد المتابعة؟`)) {
+            return;
+        }
+        
+        // عرض رسالة تحميل
+        const loadingMsg = document.createElement('div');
+        loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #00a8ff; color: white; padding: 20px 30px; border-radius: 15px; z-index: 9999; font-weight: bold; font-size: 16px;';
+        loadingMsg.innerText = '⏳ جاري حفظ البيانات في السحابة...';
+        document.body.appendChild(loadingMsg);
+        
         let savePromises = [];
+        let savedCount = 0;
+        
         cards.forEach(card => {
             const id = card.id.replace('card-', '');
+            
+            const codeMatch = card.querySelector('span').innerText.match(/كود: (\d+)/);
+            const code = codeMatch ? parseInt(codeMatch[1]) : 0;
+            
             const data = {
+                code: code,
                 n: card.querySelector('.c-name')?.value || "",
                 p: card.querySelector('.c-phone')?.value || "",
                 dd: card.querySelector('.d-day')?.value || "",
@@ -607,26 +647,133 @@
                 })),
                 isArchived: false
             };
-            savePromises.push(db.ref(`backups/users/${currentUid}/${id}`).update(data));
+            
+            savePromises.push(
+                db.ref(`backups/users/${currentUid}/${id}`).update(data)
+                    .then(() => {
+                        savedCount++;
+                        if (!card.classList.contains('locked-mode')) {
+                            toggleCardLock(id);
+                        }
+                    })
+                    .catch(err => {
+                        console.error(`فشل حفظ الكارت ${id}:`, err);
+                    })
+            );
         });
-
-        Promise.all(savePromises)
-            .then(() => {
-                alert(`✅ تم حفظ ${cards.length} كارت بنجاح في السحابة.`);
-                cards.forEach(card => {
-                    const id = card.id.replace('card-', '');
-                    if (!card.classList.contains('locked-mode')) {
-                        toggleCardLock(id);
-                    }
-                });
-            })
-            .catch(error => {
-                alert("❌ فشل حفظ بعض الكروت. راجع الاتصال. \nالسبب: " + error.message);
-            });
+        
+        try {
+            await Promise.all(savePromises);
+            document.body.removeChild(loadingMsg);
+            alert(`✅ تم حفظ ${savedCount} زبون بنجاح في السحابة!`);
+            refreshStats();
+        } catch (error) {
+            document.body.removeChild(loadingMsg);
+            alert(`❌ حدث خطأ أثناء الحفظ: ${error.message}`);
+        }
     }
 
-    // جعل الدالة متاحة للاستدعاء من الصفحة الرئيسية
-    window.saveAllCards = saveAllCards;
+    async function loadAllCardsFromCloud() {
+        if (!currentUid) {
+            alert("⚠️ يجب تسجيل الدخول أولاً!");
+            return;
+        }
+        
+        if (!navigator.onLine) {
+            alert("⚠️ أنت غير متصل بالإنترنت!");
+            return;
+        }
+        
+        if (!confirm("سيتم استرجاع جميع بيانات الزبائن من السحابة.\nسيتم استبدال البيانات الحالية. هل تريد المتابعة؟")) {
+            return;
+        }
+        
+        const loadingMsg = document.createElement('div');
+        loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #6c5ce7; color: white; padding: 20px 30px; border-radius: 15px; z-index: 9999; font-weight: bold; font-size: 16px;';
+        loadingMsg.innerText = '⏳ جاري استرجاع البيانات من السحابة...';
+        document.body.appendChild(loadingMsg);
+        
+        try {
+            const snapshot = await db.ref(`backups/users/${currentUid}`).once('value');
+            const allData = snapshot.val();
+            
+            document.body.removeChild(loadingMsg);
+            
+            if (!allData) {
+                alert("❓ لم يتم العثور على أي بيانات مخزنة في السحابة.");
+                return;
+            }
+            
+            // إزالة الكروت القديمة
+            const grid = document.getElementById('mainGrid');
+            grid.querySelectorAll('.card').forEach(card => card.remove());
+            
+            // استرجاع الإعدادات
+            if (allData.settings && allData.settings.companyName) {
+                document.getElementById('companyNameInput').value = allData.settings.companyName;
+                localStorage.setItem('azemaa_company_name', allData.settings.companyName);
+            }
+            
+            let restoredCount = 0;
+            
+            for (let id in allData) {
+                if (id === 'settings') continue;
+                
+                const d = allData[id];
+                if (d.isArchived) continue;
+                
+                const displayCode = d.code || (isNaN(id) ? 'جديد' : id);
+                
+                createCardElement(id, displayCode);
+                const card = document.getElementById(`card-${id}`);
+                
+                if (card) {
+                    card.querySelector('.c-name').value = d.n || '';
+                    card.querySelector('.c-phone').value = d.p || '';
+                    card.querySelector('.d-day').value = d.dd || '';
+                    card.querySelector('.d-month').value = d.dm || '';
+                    card.querySelector('.d-year').value = d.dy || '';
+                    
+                    if (d.r) {
+                        const star = document.getElementById(`star${d.r}-${id}`);
+                        if (star) star.checked = true;
+                    }
+                    
+                    card.querySelector('.c-total').value = d.t || '';
+                    const nF = card.querySelector('.c-notes');
+                    nF.value = d.notes || '';
+                    autoResize(nF);
+                    
+                    const pV = card.querySelectorAll('.p-val');
+                    const pD = card.querySelectorAll('.p-date');
+                    
+                    if (d.pays) {
+                        d.pays.forEach((p, idx) => {
+                            if (pV[idx]) pV[idx].value = p.v || '';
+                            if (pD[idx]) pD[idx].value = p.d || '';
+                        });
+                    }
+                    
+                    card.classList.add('visible');
+                    updateLogic(id);
+                    restoredCount++;
+                }
+            }
+            
+            initKeyboardListener();
+            refreshStats();
+            
+            alert(`✅ تم استرجاع ${restoredCount} زبون بنجاح من السحابة!`);
+            
+        } catch (error) {
+            document.body.removeChild(loadingMsg);
+            alert(`❌ فشل الاسترجاع: ${error.message}`);
+        }
+    }
+
+    // جعل الدوال متاحة للاستدعاء من الصفحة الرئيسية
+    window.saveAllCardsToCloud = saveAllCardsToCloud;
+    window.loadAllCardsFromCloud = loadAllCardsFromCloud;
 
     function deleteCard(id) { 
         if(!currentUid) return;
