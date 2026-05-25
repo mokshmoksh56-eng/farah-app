@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root {
@@ -120,7 +120,7 @@
         button.action-btn { padding: 10px 24px; font-size: 14px; font-weight: 700; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .btn-save { background-color: #475569; color: white; }
         .btn-pdf-print { background-color: #1e3a8a; color: white; } 
-        .btn-pdf-download { background-color: #16a34a; color: white; }
+        .btn-img-download { background-color: #16a34a; color: white; } /* تعديل لون الزر الجديد */
         .btn-delete { background-color: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
         .btn-new-row-trigger, .btn-new-extra-trigger { background-color: #475569; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
@@ -439,8 +439,9 @@
 
         <div class="btn-container" id="main-action-buttons">
             <button type="button" class="action-btn btn-save" onclick="archiveCustomerData()">☁️ حفظ وأرشفة</button>
-            <button type="button" class="action-btn btn-pdf-print" onclick="window.print()">🖨️ طباعة (أو حفظ كـ PDF)</button>
-            <button type="button" class="action-btn btn-pdf-download" onclick="downloadPDF()">⬇️ تحميل كملف PDF</button>
+            <button type="button" class="action-btn btn-pdf-print" onclick="window.print()">🖨️ طباعة تقليدية</button>
+            
+            <button type="button" class="action-btn btn-img-download" onclick="downloadImage()">🖼️ حفظ كصورة (للاستوديو)</button>
         </div>
 
         <div class="card card-summary">
@@ -929,14 +930,14 @@
     }
 
     // ----------------------------------------------------------------------
-    // دالة إنشاء وتحميل ملف الـ PDF 
+    // دالة إنشاء وتحميل العقد كـ صورة (JPG) لتنزل في الاستوديو مباشرة
     // ----------------------------------------------------------------------
-    function downloadPDF() {
+    function downloadImage() {
         const name = document.getElementById('customerName').value.trim() || 'بدون_اسم';
         
-        alert('⏳ جاري تجهيز العقد... يرجى الانتظار للحظات حتى يظهر إشعار التحميل.');
+        alert('⏳ جاري التقاط صورة للعقد... يرجى الانتظار للحظات.');
 
-        // 1. إخفاء الأزرار وأرشيف العقود حتى لا تظهر في الـ PDF
+        // 1. إخفاء الأزرار وأرشيف العقود حتى لا تظهر في الصورة
         const elementsToHide = document.querySelectorAll(
             '#main-action-buttons, .card-archive, .card-actions-wrapper, .btn-new-row-trigger, .btn-new-extra-trigger, .btn-delete'
         );
@@ -945,7 +946,7 @@
         const syncStatus = document.getElementById('sync-status');
         if(syncStatus) syncStatus.style.display = 'none';
 
-        // 2. ✨ السر هنا: نقل القيم المدخلة يدوياً لتصبح جزءاً من كود الصفحة حتى تظهر بوضوح في الـ PDF (الورقة المليانة) ✨
+        // 2. ✨ السر هنا: نقل القيم المدخلة يدوياً لتصبح جزءاً من كود الصفحة حتى تظهر بوضوح في الصورة (الورقة المليانة) ✨
         const element = document.getElementById('app-screen');
         const inputs = element.querySelectorAll('input, textarea, select');
         
@@ -962,32 +963,36 @@
             }
         });
 
-        // 3. الصعود لأعلى الصفحة لضمان عدم خروج مساحات بيضاء أو قص الصفحة
+        // 3. الصعود لأعلى الصفحة لضمان تصويرها بالكامل
         window.scrollTo(0, 0);
 
-        // 4. إعدادات المكتبة (تثبيت مقاس شاشة 1000 بيكسل لضمان التنسيق الممتاز حتى لو تم التحميل من الموبايل)
-        const opt = {
-            margin:       0.3,
-            filename:     `عقد_مطبخ_${name}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { 
-                scale: 2, 
-                useCORS: true, 
-                scrollY: 0,
-                windowWidth: 1000 // فرض مقاس شاشة الكمبيوتر
-            },
-            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-        };
+        // 4. التقاط الصورة باستخدام مكتبة html2canvas بفرض مقاس شاشة ممتاز
+        html2canvas(element, { 
+            scale: 2, 
+            useCORS: true, 
+            scrollY: 0,
+            windowWidth: 1000 // فرض مقاس شاشة الكمبيوتر ليخرج التصميم منسقاً من الموبايل
+        }).then(canvas => {
+            // تحويل اللوحة إلى رابط بيانات لصورة JPG
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            
+            // إنشاء رابط تحميل مخفي للصورة لكي تنزل في الهاتف (الاستوديو)
+            const a = document.createElement('a');
+            a.href = imgData;
+            a.download = `عقد_مطبخ_${name}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
 
-        // 5. توليد وحفظ الـ PDF
-        html2pdf().set(opt).from(element).save().then(() => {
-            // إرجاع الأزرار للظهور
+            // إرجاع الأزرار للظهور بعد التقاط الصورة
             elementsToHide.forEach(el => el.style.display = '');
             if(syncStatus) syncStatus.style.display = 'inline-block';
+            
+            alert('✅ تم حفظ العقد كصورة بنجاح! راجع (الاستوديو / معرض الصور) في هاتفك.');
         }).catch(err => {
             elementsToHide.forEach(el => el.style.display = '');
             if(syncStatus) syncStatus.style.display = 'inline-block';
-            alert('❌ حدث خطأ! تذكر أنه يمكنك أيضاً استخدام زر "الطباعة" واختيار (حفظ كملف PDF) من متصفحك كبديل سريع ومضمون.');
+            alert('❌ حدث خطأ أثناء التقاط الصورة. يرجى التأكد من مساحة تخزين الهاتف.');
         });
     }
 </script>
