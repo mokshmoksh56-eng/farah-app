@@ -929,63 +929,65 @@
     }
 
     // ----------------------------------------------------------------------
-    // دالة إنشاء وتحميل ملف الـ PDF الاحترافي عبر تقنية الـ Blob لحل مشاكل الموبايل
+    // دالة إنشاء وتحميل ملف الـ PDF 
     // ----------------------------------------------------------------------
     function downloadPDF() {
         const name = document.getElementById('customerName').value.trim() || 'بدون_اسم';
         
-        // 1. تحديد كافة الأزرار والأجزاء التي لا نريد ظهورها في ملف الـ PDF النهائي
+        alert('⏳ جاري تجهيز العقد... يرجى الانتظار للحظات حتى يظهر إشعار التحميل.');
+
+        // 1. إخفاء الأزرار وأرشيف العقود حتى لا تظهر في الـ PDF
         const elementsToHide = document.querySelectorAll(
             '#main-action-buttons, .card-archive, .card-actions-wrapper, .btn-new-row-trigger, .btn-new-extra-trigger, .btn-delete'
         );
-        
-        // إخفاء العناصر وتحديث حالة النظام
         elementsToHide.forEach(el => el.style.display = 'none');
+        
         const syncStatus = document.getElementById('sync-status');
         if(syncStatus) syncStatus.style.display = 'none';
 
-        alert('⏳ جاري تجهيز العقد... يرجى الانتظار للحظات حتى يظهر إشعار التحميل.');
-
-        // 2. تحديد قسم الصفحة المراد تصويره وتحويله
+        // 2. ✨ السر هنا: نقل القيم المدخلة يدوياً لتصبح جزءاً من كود الصفحة حتى تظهر بوضوح في الـ PDF (الورقة المليانة) ✨
         const element = document.getElementById('app-screen');
+        const inputs = element.querySelectorAll('input, textarea, select');
+        
+        inputs.forEach(input => {
+            if (input.tagName === 'INPUT') {
+                input.setAttribute('value', input.value);
+            } else if (input.tagName === 'TEXTAREA') {
+                input.innerText = input.value;
+            } else if (input.tagName === 'SELECT') {
+                Array.from(input.options).forEach(opt => {
+                    if (opt.value === input.value) opt.setAttribute('selected', 'selected');
+                    else opt.removeAttribute('selected');
+                });
+            }
+        });
 
-        // 3. إعدادات المكتبة (الجودة، المقاس، اتجاه الورقة)
+        // 3. الصعود لأعلى الصفحة لضمان عدم خروج مساحات بيضاء أو قص الصفحة
+        window.scrollTo(0, 0);
+
+        // 4. إعدادات المكتبة (تثبيت مقاس شاشة 1000 بيكسل لضمان التنسيق الممتاز حتى لو تم التحميل من الموبايل)
         const opt = {
             margin:       0.3,
             filename:     `عقد_مطبخ_${name}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true, 
+                scrollY: 0,
+                windowWidth: 1000 // فرض مقاس شاشة الكمبيوتر
+            },
             jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
 
-        // 4. توليد وتحميل الملف بصيغة Blob (الطريقة الأكثر توافقاً وإجباراً للتحميل على الموبايل)
-        html2pdf().set(opt).from(element).output('blob').then(function (blob) {
-            // إنشاء رابط تحميل وهمي
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = opt.filename;
-            document.body.appendChild(a);
-            
-            // محاكاة الضغط للتحميل الإجباري
-            a.click();
-            
-            // تنظيف الرابط وإرجاع العناصر المخفية لطبيعتها بعد نصف ثانية
-            setTimeout(() => {
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                elementsToHide.forEach(el => el.style.display = '');
-                if(syncStatus) syncStatus.style.display = 'inline-block';
-                
-                alert('✅ تم التحميل بنجاح! راجع مجلد التنزيلات (Downloads) في جهازك.');
-            }, 500);
-
-        }).catch(err => {
-            // في حالة حدوث أي خطأ، نرجع الأزرار ونظهر رسالة تنبيه
-            elementsToHide.forEach(el => el.style.display = ''); 
+        // 5. توليد وحفظ الـ PDF
+        html2pdf().set(opt).from(element).save().then(() => {
+            // إرجاع الأزرار للظهور
+            elementsToHide.forEach(el => el.style.display = '');
             if(syncStatus) syncStatus.style.display = 'inline-block';
-            alert('❌ حدث خطأ أثناء تجهيز ملف الـ PDF. يرجى استخدام زر الطباعة التقليدية واختيار "حفظ كـ PDF" من هناك.');
+        }).catch(err => {
+            elementsToHide.forEach(el => el.style.display = '');
+            if(syncStatus) syncStatus.style.display = 'inline-block';
+            alert('❌ حدث خطأ! تذكر أنه يمكنك أيضاً استخدام زر "الطباعة" واختيار (حفظ كملف PDF) من متصفحك كبديل سريع ومضمون.');
         });
     }
 </script>
