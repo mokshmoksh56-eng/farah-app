@@ -116,11 +116,11 @@
         .btn-card-save { padding: 6px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--primary); background-color: transparent; color: var(--primary); border-radius: 4px; cursor: pointer; transition: all 0.2s; }
         .btn-card-save:hover { background-color: var(--primary); color: white; }
 
-        .btn-container { display: flex; gap: 10px; justify-content: center; margin: 25px 0; }
+        .btn-container { display: flex; gap: 10px; justify-content: center; margin: 25px 0; flex-wrap: wrap; }
         button.action-btn { padding: 10px 24px; font-size: 14px; font-weight: 700; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .btn-save { background-color: #475569; color: white; }
-        .btn-pdf { background-color: var(--primary); color: white; } 
-        .btn-whatsapp { background-color: #16a34a; color: white; }
+        .btn-pdf-print { background-color: #1e3a8a; color: white; } 
+        .btn-pdf-download { background-color: #16a34a; color: white; }
         .btn-delete { background-color: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
         .btn-new-row-trigger, .btn-new-extra-trigger { background-color: #475569; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
@@ -439,8 +439,8 @@
 
         <div class="btn-container" id="main-action-buttons">
             <button type="button" class="action-btn btn-save" onclick="archiveCustomerData()">☁️ حفظ وأرشفة</button>
-            <button type="button" class="action-btn btn-pdf" onclick="exportToPDF()">📄 طباعة / PDF</button>
-            <button type="button" class="action-btn btn-whatsapp" onclick="sendToWhatsapp()">💬 إرسال PDF عبر واتساب</button>
+            <button type="button" class="action-btn btn-pdf-print" onclick="window.print()">🖨️ طباعة تقليدية</button>
+            <button type="button" class="action-btn btn-pdf-download" onclick="downloadPDF()">⬇️ تحميل كملف PDF</button>
         </div>
 
         <div class="card card-summary">
@@ -587,12 +587,6 @@
         textarea.style.height = textarea.scrollHeight + 'px';
     }
 
-    function exportToPDF() {
-        const customerName = document.getElementById('customerName').value.trim() || "عقد_مطبخ";
-        document.title = "عقد_مطبخ_" + customerName;
-        window.print();
-    }
-
     function confirmTableSave(tableName) { alert(`تم حفظ بيانات [ ${tableName} ] مؤقتاً في النموذج. تذكر ضغط حفظ العقد سحابياً!`); }
 
     function updateLiveClock() {
@@ -604,3 +598,371 @@
         hours = hours % 12;
         hours = hours ? hours : 12; 
         document.getElementById('liveClock').innerText = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+    }
+    setInterval(updateLiveClock, 1000);
+
+    function applyStatusColors(selectElement) {
+        if (!selectElement) return;
+        const value = selectElement.value.trim();
+        if (value.includes("علينا") || value.includes("مشمول مجاناً")) selectElement.className = "status-on-us";
+        else if (value.includes("على العميل") || value.includes("غير متفق عليه") || value === "متفق عليه بسعر إضافي") selectElement.className = "status-on-client";
+        else selectElement.className = "";
+    }
+
+    function toggleTransportCostField() {
+        const sel = document.getElementById('transportOn').value;
+        const row = document.getElementById('transportCostRow');
+        if (sel === 'على العميل') row.style.display = 'table-row';
+        else { row.style.display = 'none'; document.getElementById('transportCost').value = ""; }
+        calculateAllTotals();
+    }
+
+    function toggleLightingCostField() {
+        const sel = document.getElementById('lighting').value;
+        const row = document.getElementById('lightingCostRow');
+        if (sel === 'متفق عليه بسعر إضافي') row.style.display = 'table-row';
+        else { row.style.display = 'none'; document.getElementById('lightingCost').value = ""; }
+        calculateAllTotals();
+    }
+
+    function toggleSinkCostField() {
+        const sel = document.getElementById('sinkOn').value;
+        const row = document.getElementById('sinkCostRow');
+        if (sel === 'علينا') row.style.display = 'table-row';
+        else { row.style.display = 'none'; document.getElementById('sinkCost').value = ""; }
+        calculateAllTotals();
+    }
+
+    function toggleMarbleFields() {
+        const marbleOn = document.getElementById('marbleOn').value;
+        const disp = (marbleOn === 'على العميل') ? 'none' : 'table-row';
+        document.getElementById('marbleDetailsRow').style.display = disp;
+        document.getElementById('marbleMetersRow').style.display = disp;
+        document.getElementById('marblePricePerMeterRow').style.display = disp;
+        document.getElementById('marbleTotalCostRow').style.display = disp;
+        calculateAllTotals();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        updateLiveClock(); 
+        const yearSelect = document.getElementById('deliveryYear');
+        const monthSelect = document.getElementById('deliveryMonth');
+        const daySelect = document.getElementById('deliveryDay');
+        yearSelect.innerHTML = '<option value="">السنة</option>';
+        for (let y = 2026; y <= 2070; y++) yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+        monthSelect.innerHTML = '<option value="">الشهر</option>';
+        for (let m = 1; m <= 12; m++) monthSelect.innerHTML += `<option value="${m < 10 ? '0'+m : m}">${m < 10 ? '0'+m : m}</option>`;
+        daySelect.innerHTML = '<option value="">اليوم</option>';
+        for (let d = 1; d <= 31; d++) daySelect.innerHTML += `<option value="${d < 10 ? '0'+d : d}">${d < 10 ? '0'+d : d}</option>`;
+        
+        toggleMarbleFields(); toggleLightingCostField(); toggleTransportCostField(); toggleSinkCostField();
+        ['marbleOn', 'sinkOn', 'lighting', 'transportOn'].forEach(id => applyStatusColors(document.getElementById(id)));
+    });
+
+    function addNewManualAccessoryRow(savedName = "", savedPrice = "", savedQty = 1) {
+        manualRowCounter++;
+        const tbody = document.getElementById('accessoriesSubRows');
+        const row = document.createElement('tr');
+        row.id = `manual_acc_row_${manualRowCounter}`;
+        row.innerHTML = `
+            <td style="padding: 4px 10px;"><input type="text" class="acc-manual-name" placeholder="اسم القطعة..." value="${savedName}"></td>
+            <td style="padding: 4px 10px;"><input type="number" class="acc-price" placeholder="السعر..." value="${savedPrice}" oninput="calculateAllTotals()"></td>
+            <td style="padding: 4px 10px;"><input type="number" class="acc-qty" value="${savedQty}" min="1" oninput="calculateAllTotals()"></td>
+            <td class="acc-row-total" style="font-weight: 700; color: var(--primary-light); padding: 4px 10px;">0 جنيه</td>
+            <td style="text-align: center; padding: 4px 10px;"><button type="button" class="btn-delete" onclick="document.getElementById('${row.id}').remove(); calculateAllTotals();">✖</button></td>
+        `;
+        tbody.appendChild(row);
+        calculateAllTotals();
+    }
+
+    function addNewManualExtraRow(savedName = "", savedPrice = "") {
+        manualExtraRowCounter++;
+        const tbody = document.getElementById('extrasSubRows');
+        const row = document.createElement('tr');
+        row.id = `manual_extra_row_${manualExtraRowCounter}`;
+        row.innerHTML = `
+            <td style="padding: 4px 10px;"><input type="text" class="extra-manual-name" placeholder="البند..." value="${savedName}"></td>
+            <td style="padding: 4px 10px;"><input type="number" class="extra-price" placeholder="السعر..." value="${savedPrice}" oninput="calculateAllTotals()"></td>
+            <td style="text-align: center; padding: 4px 10px;"><button type="button" class="btn-delete" onclick="document.getElementById('${row.id}').remove(); calculateAllTotals();">✖</button></td>
+        `;
+        tbody.appendChild(row);
+        calculateAllTotals();
+    }
+
+    function calculateAllTotals() {
+        const meters = parseFloat(document.getElementById('totalMeters').value) || 0;
+        const pricePerMeter = parseFloat(document.getElementById('pricePerMeter').value) || 0;
+        const kitchenBaseTotal = meters * pricePerMeter;
+        document.getElementById('totalPrice').value = kitchenBaseTotal > 0 ? kitchenBaseTotal.toLocaleString('ar-EG') + ' جنيه' : '';
+        document.getElementById('summaryKitchenPrice').innerText = kitchenBaseTotal.toLocaleString('ar-EG') + ' جنيه';
+
+        const marbleOn = document.getElementById('marbleOn').value;
+        let marbleTotalCost = 0;
+        const sumMarbleOnEl = document.getElementById('summaryMarbleOn');
+        if (marbleOn === 'علينا') {
+            const marbleMeters = parseFloat(document.getElementById('marbleMeters').value) || 0;
+            const marblePrice = parseFloat(document.getElementById('marblePricePerMeter').value) || 0;
+            marbleTotalCost = marbleMeters * marblePrice;
+            document.getElementById('marbleTotalPrice').value = marbleTotalCost > 0 ? marbleTotalCost.toLocaleString('ar-EG') + ' جنيه' : '';
+            sumMarbleOnEl.innerText = "علينا (الورشة)"; sumMarbleOnEl.style.color = "var(--status-green-text)";
+        } else {
+            sumMarbleOnEl.innerText = "على العميل"; sumMarbleOnEl.style.color = "var(--status-red-text)";
+            document.getElementById('marbleTotalPrice').value = "";
+        }
+        document.getElementById('summaryMarblePrice').innerText = marbleTotalCost.toLocaleString('ar-EG') + ' جنيه';
+
+        const sinkOn = document.getElementById('sinkOn').value;
+        const sinkCost = parseFloat(document.getElementById('sinkCost').value) || 0;
+        const sumSinkOnEl = document.getElementById('summarySinkOn');
+        if (sinkOn === 'علينا') { sumSinkOnEl.innerText = "علينا (الورشة)"; sumSinkOnEl.style.color = "var(--status-green-text)"; } 
+        else { sumSinkOnEl.innerText = "على العميل"; sumSinkOnEl.style.color = "var(--status-red-text)"; }
+        document.getElementById('summarySinkPrice').innerText = sinkCost.toLocaleString('ar-EG') + ' جنيه';
+
+        const lightingSelection = document.getElementById('lighting').value;
+        const lightingCost = parseFloat(document.getElementById('lightingCost').value) || 0;
+        const sumLightOnEl = document.getElementById('summaryLightingOn');
+        if (lightingSelection.includes("علينا")) { sumLightOnEl.innerText = "علينا (مجاناً)"; sumLightOnEl.style.color = "var(--status-green-text)"; } 
+        else if (lightingSelection === "متفق عليه بسعر إضافي") { sumLightOnEl.innerText = "علينا (إضافي)"; sumLightOnEl.style.color = "var(--status-green-text)"; } 
+        else { sumLightOnEl.innerText = "غير متفق عليه"; sumLightOnEl.style.color = "var(--status-red-text)"; }
+        document.getElementById('summaryLightingPrice').innerText = lightingCost.toLocaleString('ar-EG') + ' جنيه';
+
+        const transportSelection = document.getElementById('transportOn').value;
+        const transportCost = parseFloat(document.getElementById('transportCost').value) || 0;
+        const sumTransOnEl = document.getElementById('summaryTransportOn');
+        if (transportSelection === 'علينا') { sumTransOnEl.innerText = "علينا (الورشة)"; sumTransOnEl.style.color = "var(--status-green-text)"; } 
+        else if (transportSelection === 'على العميل') { sumTransOnEl.innerText = "على العميل"; sumTransOnEl.style.color = "var(--status-red-text)"; } 
+        else { sumTransOnEl.innerText = "غير متفق عليه"; sumTransOnEl.style.color = "var(--status-red-text)"; }
+        document.getElementById('summaryTransportPrice').innerText = transportCost.toLocaleString('ar-EG') + ' جنيه';
+
+        let accessoriesTotalSum = 0;
+        document.querySelectorAll('#accessoriesSubRows tr').forEach(row => {
+            const price = parseFloat(row.querySelector('.acc-price').value) || 0;
+            const qty = parseFloat(row.querySelector('.acc-qty').value) || 0;
+            const rowTotal = price * qty;
+            accessoriesTotalSum += rowTotal;
+            row.querySelector('.acc-row-total').innerText = rowTotal.toLocaleString('ar-EG') + ' جنيه';
+        });
+        document.getElementById('accessoriesGrandTotal').innerText = accessoriesTotalSum.toLocaleString('ar-EG') + ' جنيه';
+        document.getElementById('summaryAccessoriesPrice').innerText = accessoriesTotalSum.toLocaleString('ar-EG') + ' جنيه';
+
+        let extrasTotalSum = 0;
+        document.querySelectorAll('#extrasSubRows tr').forEach(row => { extrasTotalSum += parseFloat(row.querySelector('.extra-price').value) || 0; });
+        document.getElementById('extrasGrandTotal').innerText = extrasTotalSum.toLocaleString('ar-EG') + ' جنيه';
+        document.getElementById('summaryExtrasPrice').innerText = extrasTotalSum.toLocaleString('ar-EG') + ' جنيه';
+
+        const discountValue = parseFloat(document.getElementById('totalDiscount').value) || 0;
+        document.getElementById('summaryDiscountPrice').innerText = discountValue.toLocaleString('ar-EG') + ' جنيه';
+
+        const finalGrandTotalSum = (kitchenBaseTotal + marbleTotalCost + sinkCost + lightingCost + transportCost + accessoriesTotalSum + extrasTotalSum) - discountValue;
+        document.getElementById('summaryFinalGrandTotal').innerText = finalGrandTotalSum.toLocaleString('ar-EG') + ' ج.م';
+        return finalGrandTotalSum;
+    }
+
+    function archiveCustomerData() {
+        if(!windowUserUid || !contractsRef) return alert("خطأ: غير متصل بقاعدة البيانات السحابية!");
+        
+        const name = document.getElementById('customerName').value.trim();
+        if (!name) { alert('برجاء إدخال اسم الزبون أولاً لحفظ العقد سحابياً!'); return; }
+
+        let accessoriesList = [];
+        document.querySelectorAll('#accessoriesSubRows tr').forEach(row => {
+            const inputName = row.querySelector('.acc-manual-name').value.trim();
+            if(inputName) {
+                accessoriesList.push({ name: inputName, price: row.querySelector('.acc-price').value, qty: row.querySelector('.acc-qty').value });
+            }
+        });
+
+        let extrasList = [];
+        document.querySelectorAll('#extrasSubRows tr').forEach(row => {
+            const inputName = row.querySelector('.extra-manual-name').value.trim();
+            if(inputName) {
+                extrasList.push({ name: inputName, price: row.querySelector('.extra-price').value });
+            }
+        });
+
+        const customerData = {
+            timestamp: Date.now(),
+            customerCode: document.getElementById('customerCode').value,
+            shopName: document.getElementById('shopName').value, 
+            name: name,
+            phone: document.getElementById('customerPhone').value,
+            location: document.getElementById('installLocation').value,
+            year: document.getElementById('deliveryYear').value,
+            month: document.getElementById('deliveryMonth').value,
+            day: document.getElementById('deliveryDay').value,
+            notesCustomer: document.getElementById('notesCustomer').value,
+            totalMeters: document.getElementById('totalMeters').value,
+            priceType: document.getElementById('priceType').value,
+            pricePerMeter: document.getElementById('pricePerMeter').value,
+            notesStructure: document.getElementById('notesStructure').value,
+            kitchenType: document.getElementById('kitchenType').value,
+            interiorType: document.getElementById('interiorType').value,
+            doorType: document.getElementById('doorType').value,
+            primaryColor: document.getElementById('primaryColor').value,
+            secondaryColor: document.getElementById('secondaryColor').value,
+            notesMaterials: document.getElementById('notesMaterials').value,
+            marbleOn: document.getElementById('marbleOn').value,
+            marbleType: document.getElementById('marbleType').value,
+            marbleMeters: document.getElementById('marbleMeters').value,
+            marblePricePerMeter: document.getElementById('marblePricePerMeter').value,
+            sinkOn: document.getElementById('sinkOn').value,
+            sinkCost: document.getElementById('sinkCost').value,
+            lighting: document.getElementById('lighting').value,
+            lightingCost: document.getElementById('lightingCost').value,
+            baseType: document.getElementById('baseType').value,
+            transportOn: document.getElementById('transportOn').value,
+            transportCost: document.getElementById('transportCost').value,
+            totalDiscount: document.getElementById('totalDiscount').value, 
+            notesMarble: document.getElementById('notesMarble').value,
+            accessories: accessoriesList,
+            notesAccessories: document.getElementById('notesAccessories').value,
+            extras: extrasList,
+            notesExtras: document.getElementById('notesExtras').value,
+            grandTotal: document.getElementById('summaryFinalGrandTotal').innerText
+        };
+
+        document.getElementById('sync-status').innerText = "☁️ جاري الرفع للسحابة...";
+        contractsRef.push(customerData).then(() => {
+            alert('☁️ تم حفظ وأرشفة عقد الزبون [' + name + '] بنجاح في قاعدة البيانات السحابية!');
+        }).catch(err => {
+            alert("حدث خطأ أثناء الرفع السحابي: " + err);
+            document.getElementById('sync-status').innerText = "⚠️ فشل الرفع";
+        });
+    }
+
+    function renderArchive() {
+        const tbody = document.getElementById('archiveTableRows');
+        tbody.innerHTML = '';
+        
+        const keys = Object.keys(onlineContractsData);
+
+        if(keys.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; font-weight:bold; color:var(--text-muted);">لا يوجد عقود محفوظة سحابياً</td></tr>`;
+            return;
+        }
+
+        keys.reverse().forEach(key => {
+            const cust = onlineContractsData[key];
+            const dateStr = (cust.year && cust.month && cust.day) ? `${cust.year}/${cust.month}/${cust.day}` : 'غير محدد';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="font-weight:bold;">${cust.name}</td>
+                <td style="font-weight:bold;">${dateStr}</td>
+                <td style="font-weight:bold; color:var(--primary);">${cust.grandTotal}</td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-delete" style="background:#1e3a8a; margin-left: 5px;" onclick="loadCustomerFromArchive('${key}')">🔍 استرجاع</button>
+                    <button type="button" class="btn-delete" onclick="deleteCustomerFromArchive('${key}')">✖ حذف</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function loadCustomerFromArchive(key) {
+        const cust = onlineContractsData[key];
+        if (!cust) return;
+
+        document.getElementById('shopName').value = cust.shopName || ''; 
+        document.getElementById('customerName').value = cust.name || '';
+        document.getElementById('customerCode').value = cust.customerCode || ''; 
+        document.getElementById('customerPhone').value = cust.phone || '';
+        document.getElementById('installLocation').value = cust.location || '';
+        document.getElementById('deliveryYear').value = cust.year || '';
+        document.getElementById('deliveryMonth').value = cust.month || '';
+        document.getElementById('deliveryDay').value = cust.day || '';
+        document.getElementById('notesCustomer').value = cust.notesCustomer || '';
+        document.getElementById('totalMeters').value = cust.totalMeters || '';
+        document.getElementById('priceType').value = cust.priceType || 'متر طولى';
+        document.getElementById('pricePerMeter').value = cust.pricePerMeter || '';
+        document.getElementById('notesStructure').value = cust.notesStructure || '';
+        document.getElementById('kitchenType').value = cust.kitchenType || 'فيبر';
+        document.getElementById('interiorType').value = cust.interiorType || 'فيبر';
+        document.getElementById('doorType').value = cust.doorType || 'عادية';
+        document.getElementById('primaryColor').value = cust.primaryColor || '';
+        document.getElementById('secondaryColor').value = cust.secondaryColor || '';
+        document.getElementById('notesMaterials').value = cust.notesMaterials || '';
+        document.getElementById('marbleOn').value = cust.marbleOn || 'علينا';
+        document.getElementById('marbleType').value = cust.marbleType || '';
+        document.getElementById('marbleMeters').value = cust.marbleMeters || '';
+        document.getElementById('marblePricePerMeter').value = cust.marblePricePerMeter || '';
+        document.getElementById('sinkOn').value = cust.sinkOn || 'علينا';
+        document.getElementById('sinkCost').value = cust.sinkCost || '';
+        document.getElementById('lighting').value = cust.lighting || 'غير متفق عليه';
+        document.getElementById('lightingCost').value = cust.lightingCost || '';
+        document.getElementById('baseType').value = cust.baseType || 'وزة الومنيوم مقفولة';
+        document.getElementById('transportOn').value = cust.transportOn || 'غير متفق عليه';
+        document.getElementById('transportCost').value = cust.transportCost || '';
+        document.getElementById('totalDiscount').value = cust.totalDiscount || ''; 
+        document.getElementById('notesMarble').value = cust.notesMarble || '';
+
+        document.getElementById('accessoriesSubRows').innerHTML = '';
+        if (cust.accessories && cust.accessories.length > 0) {
+            cust.accessories.forEach(acc => addNewManualAccessoryRow(acc.name, acc.price, acc.qty));
+        }
+        document.getElementById('notesAccessories').value = cust.notesAccessories || '';
+
+        document.getElementById('extrasSubRows').innerHTML = '';
+        if (cust.extras && cust.extras.length > 0) {
+            cust.extras.forEach(ext => addNewManualExtraRow(ext.name, ext.price));
+        }
+        document.getElementById('notesExtras').value = cust.notesExtras || '';
+
+        toggleMarbleFields(); toggleLightingCostField(); toggleTransportCostField(); toggleSinkCostField();
+        ['marbleOn', 'sinkOn', 'lighting', 'transportOn'].forEach(id => applyStatusColors(document.getElementById(id)));
+        document.querySelectorAll('textarea').forEach(t => autoExpandNotes(t));
+        
+        alert('✅ تم سحب بيانات عقد الزبون [' + cust.name + '] من السحابة بنجاح!');
+    }
+
+    function deleteCustomerFromArchive(key) {
+        if(!confirm('هل أنت متأكد من الحذف النهائي لهذا العقد من قاعدة البيانات السحابية؟')) return;
+        contractsRef.child(key).remove().then(() => {
+            alert('🗑️ تم الحذف السحابي بنجاح');
+        });
+    }
+
+    function clearAllArchive() {
+        if(!confirm('هل أنت متأكد من مسح كافة العقود السحابية الخاصة بك؟')) return;
+        contractsRef.remove().then(() => {
+            alert('🗑️ تم تفريغ قاعدة البيانات السحابية');
+        });
+    }
+
+    // ----------------------------------------------------------------------
+    // دالة إنشاء وتحميل ملف الـ PDF الاحترافي
+    // ----------------------------------------------------------------------
+    function downloadPDF() {
+        const name = document.getElementById('customerName').value.trim() || 'بدون_اسم';
+        
+        // 1. تحديد كافة الأزرار وعناصر التحكم التي لا نريد ظهورها في العقد الرسمي
+        const elementsToHide = document.querySelectorAll(
+            '#main-action-buttons, .card-archive, .card-actions-wrapper, .btn-new-row-trigger, .btn-new-extra-trigger, .btn-delete'
+        );
+        
+        // إخفاء العناصر
+        elementsToHide.forEach(el => el.style.display = 'none');
+
+        // 2. تحديد قسم الصفحة المراد تصويره وتحويله
+        const element = document.getElementById('app-screen');
+
+        // 3. إعدادات المكتبة لجودة ووضوح أعلى
+        const opt = {
+            margin:       0.3,
+            filename:     `عقد_مطبخ_${name}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        // 4. توليد وتحميل الملف وإعادة الأزرار المخفية للظهور مرة أخرى
+        html2pdf().set(opt).from(element).save().then(() => {
+            elementsToHide.forEach(el => el.style.display = ''); // إرجاع الظهور
+            alert('✅ تم تجهيز وتحميل العقد كملف PDF على جهازك بنجاح!');
+        }).catch(err => {
+            elementsToHide.forEach(el => el.style.display = ''); // إرجاع الظهور حتى في حالة الخطأ
+            alert('❌ حدث خطأ أثناء تجهيز ملف الـ PDF.');
+        });
+    }
+</script>
+</body>
+</html>
