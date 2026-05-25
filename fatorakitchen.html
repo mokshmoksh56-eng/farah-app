@@ -439,7 +439,7 @@
 
         <div class="btn-container" id="main-action-buttons">
             <button type="button" class="action-btn btn-save" onclick="archiveCustomerData()">☁️ حفظ وأرشفة</button>
-            <button type="button" class="action-btn btn-pdf-print" onclick="window.print()">🖨️ طباعة تقليدية</button>
+            <button type="button" class="action-btn btn-pdf-print" onclick="window.print()">🖨️ طباعة (أو حفظ كـ PDF)</button>
             <button type="button" class="action-btn btn-pdf-download" onclick="downloadPDF()">⬇️ تحميل كملف PDF</button>
         </div>
 
@@ -929,38 +929,63 @@
     }
 
     // ----------------------------------------------------------------------
-    // دالة إنشاء وتحميل ملف الـ PDF الاحترافي
+    // دالة إنشاء وتحميل ملف الـ PDF الاحترافي عبر تقنية الـ Blob لحل مشاكل الموبايل
     // ----------------------------------------------------------------------
     function downloadPDF() {
         const name = document.getElementById('customerName').value.trim() || 'بدون_اسم';
         
-        // 1. تحديد كافة الأزرار وعناصر التحكم التي لا نريد ظهورها في العقد الرسمي
+        // 1. تحديد كافة الأزرار والأجزاء التي لا نريد ظهورها في ملف الـ PDF النهائي
         const elementsToHide = document.querySelectorAll(
             '#main-action-buttons, .card-archive, .card-actions-wrapper, .btn-new-row-trigger, .btn-new-extra-trigger, .btn-delete'
         );
         
-        // إخفاء العناصر
+        // إخفاء العناصر وتحديث حالة النظام
         elementsToHide.forEach(el => el.style.display = 'none');
+        const syncStatus = document.getElementById('sync-status');
+        if(syncStatus) syncStatus.style.display = 'none';
+
+        alert('⏳ جاري تجهيز العقد... يرجى الانتظار للحظات حتى يظهر إشعار التحميل.');
 
         // 2. تحديد قسم الصفحة المراد تصويره وتحويله
         const element = document.getElementById('app-screen');
 
-        // 3. إعدادات المكتبة لجودة ووضوح أعلى
+        // 3. إعدادات المكتبة (الجودة، المقاس، اتجاه الورقة)
         const opt = {
             margin:       0.3,
             filename:     `عقد_مطبخ_${name}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
+            html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
             jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
 
-        // 4. توليد وتحميل الملف وإعادة الأزرار المخفية للظهور مرة أخرى
-        html2pdf().set(opt).from(element).save().then(() => {
-            elementsToHide.forEach(el => el.style.display = ''); // إرجاع الظهور
-            alert('✅ تم تجهيز وتحميل العقد كملف PDF على جهازك بنجاح!');
+        // 4. توليد وتحميل الملف بصيغة Blob (الطريقة الأكثر توافقاً وإجباراً للتحميل على الموبايل)
+        html2pdf().set(opt).from(element).output('blob').then(function (blob) {
+            // إنشاء رابط تحميل وهمي
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = opt.filename;
+            document.body.appendChild(a);
+            
+            // محاكاة الضغط للتحميل الإجباري
+            a.click();
+            
+            // تنظيف الرابط وإرجاع العناصر المخفية لطبيعتها بعد نصف ثانية
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                elementsToHide.forEach(el => el.style.display = '');
+                if(syncStatus) syncStatus.style.display = 'inline-block';
+                
+                alert('✅ تم التحميل بنجاح! راجع مجلد التنزيلات (Downloads) في جهازك.');
+            }, 500);
+
         }).catch(err => {
-            elementsToHide.forEach(el => el.style.display = ''); // إرجاع الظهور حتى في حالة الخطأ
-            alert('❌ حدث خطأ أثناء تجهيز ملف الـ PDF.');
+            // في حالة حدوث أي خطأ، نرجع الأزرار ونظهر رسالة تنبيه
+            elementsToHide.forEach(el => el.style.display = ''); 
+            if(syncStatus) syncStatus.style.display = 'inline-block';
+            alert('❌ حدث خطأ أثناء تجهيز ملف الـ PDF. يرجى استخدام زر الطباعة التقليدية واختيار "حفظ كـ PDF" من هناك.');
         });
     }
 </script>
