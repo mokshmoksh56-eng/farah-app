@@ -157,6 +157,7 @@
     <div class="sync-group">
         <button onclick="window.location.href='agheza.html'" class="btn btn-device">📱 أجهزة</button>
         <button onclick="window.location.href='kmatkitchen.html'" class="btn btn-device">📏 مقايسات</button>
+        <button onclick="window.location.href='fatora.html'" class="btn btn-device" style="background: #0984e3;">📄 العقود والتوريدات</button>
     </div>
 
     <div class="sync-group">
@@ -335,19 +336,61 @@
     setInterval(updateHeader, 60000);
     updateHeader();
 
-    window.saveToWhatsApp = function() {
-        if(window.exportAllToWhatsApp) {
-            window.exportAllToWhatsApp();
-        } else {
-            alert("⏳ النظام قيد التهيئة، يرجى الانتظار أو تسجيل الدخول أولاً.");
+    function saveToWhatsApp() {
+        let data = {};
+        let hasData = false;
+        
+        for (let i = 0; i < localStorage.length; i++) { 
+            let k = localStorage.key(i); 
+            if (k !== 'theme') { 
+                data[k] = localStorage.getItem(k); 
+                hasData = true; 
+            } 
+        }
+        
+        if (!hasData) { 
+            alert("⚠️ لا توجد بيانات مسجلة لحفظها!"); 
+            return; 
+        }
+
+        try {
+            let jsonData = JSON.stringify(data);
+            let encodedData = btoa(unescape(encodeURIComponent(jsonData)));
+            
+            let textMessage = "نسخة احتياطية لنظام azemaa pro 🔐\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بياناتك:\n\n" + encodedData;
+            let whatsappUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textMessage);
+            
+            window.open(whatsappUrl, '_blank');
+            
+        } catch (error) {
+            alert("❌ حدث خطأ أثناء تجهيز البيانات: " + error.message);
         }
     }
 
-    window.loadFromWhatsApp = function() {
-        if(window.importAllFromWhatsApp) {
-            window.importAllFromWhatsApp();
-        } else {
-            alert("⏳ النظام قيد التهيئة، يرجى الانتظار أو تسجيل الدخول أولاً.");
+    function loadFromWhatsApp() {
+        let inputCode = prompt("📥 الصق كود النسخة الاحتياطية (الموجود أسفل رسالة الواتساب) هنا:");
+        
+        if (!inputCode || inputCode.trim() === "") return;
+
+        try {
+            let codeToDecode = inputCode;
+            if (inputCode.includes("نسخة احتياطية")) {
+                let parts = inputCode.split("\n\n");
+                codeToDecode = parts[parts.length - 1].trim();
+            }
+
+            let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
+            let data = JSON.parse(decodedData);
+            
+            if (confirm("⚠️ تحذير: سيتم استبدال بياناتك الحالية بالبيانات المسترجعة من الكود. هل تريد المتابعة؟")) {
+                for (let k in data) { 
+                    localStorage.setItem(k, data[k]); 
+                }
+                alert("✅ تم استرجاع البيانات بنجاح! سيتم إعادة تحميل الصفحة وجلب بيانات السحابة.");
+                window.location.reload();
+            }
+        } catch (error) {
+            alert("❌ الكود غير صحيح أو تالف! يرجى التأكد من نسخ الكود المشفر فقط بالكامل.");
         }
     }
 </script>
@@ -355,12 +398,10 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
-        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
         projectId: "azemaa-proo",
         storageBucket: "azemaa-proo.firebasestorage.app",
         messagingSenderId: "787350492977",
@@ -369,7 +410,6 @@
     
     const app = initializeApp(firebaseConfig); 
     const auth = getAuth(app);
-    const db = getDatabase(app);
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -409,108 +449,6 @@
             });
         }
     });
-
-    window.exportAllToWhatsApp = async function() {
-        const user = auth.currentUser;
-        if (!user) {
-            alert("⚠️ يرجى تسجيل الدخول أولاً لتصدير النسخة الاحتياطية.");
-            return;
-        }
-        
-        let backupData = { localStorage: {}, firebase: {} };
-        const uid = user.uid;
-        
-        // حفظ التخزين المحلي (يشمل الإعدادات المؤقتة والأسماء الافتراضية)
-        for (let i = 0; i < localStorage.length; i++) { 
-            let k = localStorage.key(i); 
-            if (k !== 'theme') { backupData.localStorage[k] = localStorage.getItem(k); } 
-        }
-
-        // المسارات الشاملة لجميع الأقسام الـ 13 (القديمة والجديدة)
-        const paths = [
-            `backups/farah_agheza_sizes/${uid}`,  // الأجهزة السحابية
-            `backups/workers_master/${uid}`,      // العمال (الأسماء الأساسية)
-            `backups/workers_weeks/${uid}`,       // العمال (الحضور والرواتب)
-            `backups/notes_users/${uid}`,         // الملاحظات
-            `backups/invoices_acc/${uid}`,        // مقايسات الإكسسوارات
-            `backups/deliveries_users/${uid}`,    // التسليمات
-            `backups/users/${uid}`,               // الزبائن والترتيب الزمني
-            `backups/yomya_users/${uid}`,         // الخزينة واليومية
-            `backups/cut_projects/${uid}`,        // مخططات التقطيع (المشاريع الحالية)
-            `backups/cut_archive/${uid}`,         // مخططات التقطيع (الأرشيف)
-            `backups/settings_alum/${uid}`,       // الألومنيوم (الإعدادات، الأسعار، والأصناف)
-            `backups/invoices_alum/${uid}`,       // الألومنيوم (المقايسات والأرشيف)
-            `backups/invoices_wood/${uid}`        // الخشب (المقايسات والأرشيف)
-        ];
-
-        try {
-            document.querySelector('.btn-whatsapp').innerText = "⏳ جاري التجميع...";
-            
-            for (let path of paths) {
-                const snapshot = await get(ref(db, path));
-                if (snapshot.exists()) {
-                    backupData.firebase[path] = snapshot.val();
-                }
-            }
-
-            let jsonData = JSON.stringify(backupData);
-            let encodedData = btoa(unescape(encodeURIComponent(jsonData)));
-            
-            let textMessage = "نسخة احتياطية شاملة لنظام azemaa pro 🔐\n(تشمل الخزينة، العمال، التسليمات، الأجهزة، والمقايسات بأنواعها)\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بياناتك:\n\n" + encodedData;
-            let whatsappUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textMessage);
-            
-            window.open(whatsappUrl, '_blank');
-        } catch (error) {
-            alert("❌ حدث خطأ أثناء تجهيز بيانات السحابة: " + error.message);
-        } finally {
-            document.querySelector('.btn-whatsapp').innerText = "🟢 حفظ للواتس";
-        }
-    }
-
-    window.importAllFromWhatsApp = async function() {
-        const user = auth.currentUser;
-        if (!user) {
-            alert("⚠️ يرجى تسجيل الدخول أولاً لاسترجاع البيانات.");
-            return;
-        }
-
-        let inputCode = prompt("📥 الصق كود النسخة الاحتياطية (الموجود أسفل رسالة الواتساب) هنا:");
-        
-        if (!inputCode || inputCode.trim() === "") return;
-
-        try {
-            let codeToDecode = inputCode;
-            if (inputCode.includes("نسخة احتياطية")) {
-                let parts = inputCode.split("\n\n");
-                codeToDecode = parts[parts.length - 1].trim();
-            }
-
-            let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
-            let data = JSON.parse(decodedData);
-            
-            if (confirm("⚠️ تحذير خطير: سيتم استبدال بيانات السحابة الحالية بالبيانات المسترجعة من الكود لكافة الأقسام. هل أنت متأكد؟")) {
-                
-                // استرجاع التخزين المحلي
-                if (data.localStorage) {
-                    for (let k in data.localStorage) { 
-                        localStorage.setItem(k, data.localStorage[k]); 
-                    }
-                }
-
-                // استرجاع قواعد البيانات السحابية (Firebase)
-                if (data.firebase) {
-                    for (let path in data.firebase) {
-                        await set(ref(db, path), data.firebase[path]);
-                    }
-                }
-
-                alert("✅ تم استرجاع البيانات الشاملة بنجاح! سيتم إعادة تحميل النظام لمزامنة واجهات الأقسام.");
-                window.location.reload();
-            }
-        } catch (error) {
-            alert("❌ الكود غير صحيح أو تالف! يرجى التأكد من نسخ الكود المشفر فقط بالكامل دون مسافات زائدة.");
-        }
-    }
 </script>
 </body>
 </html>
