@@ -420,20 +420,27 @@
         let backupData = { localStorage: {}, firebase: {} };
         const uid = user.uid;
         
+        // حفظ التخزين المحلي (يشمل الإعدادات المؤقتة والأسماء الافتراضية)
         for (let i = 0; i < localStorage.length; i++) { 
             let k = localStorage.key(i); 
             if (k !== 'theme') { backupData.localStorage[k] = localStorage.getItem(k); } 
         }
 
+        // المسارات الشاملة لجميع الأقسام الـ 13 (القديمة والجديدة)
         const paths = [
-            `backups/farah_agheza_sizes/${uid}`,
-            `backups/workers_master/${uid}`,
-            `backups/workers_weeks/${uid}`,
-            `backups/notes_users/${uid}`,
-            `backups/invoices_acc/${uid}`,
-            `backups/deliveries_users/${uid}`,
-            `backups/users/${uid}`,
-            `backups/yomya_users/${uid}`
+            `backups/farah_agheza_sizes/${uid}`,  // الأجهزة السحابية
+            `backups/workers_master/${uid}`,      // العمال (الأسماء الأساسية)
+            `backups/workers_weeks/${uid}`,       // العمال (الحضور والرواتب)
+            `backups/notes_users/${uid}`,         // الملاحظات
+            `backups/invoices_acc/${uid}`,        // مقايسات الإكسسوارات
+            `backups/deliveries_users/${uid}`,    // التسليمات
+            `backups/users/${uid}`,               // الزبائن والترتيب الزمني
+            `backups/yomya_users/${uid}`,         // الخزينة واليومية
+            `backups/cut_projects/${uid}`,        // مخططات التقطيع (المشاريع الحالية)
+            `backups/cut_archive/${uid}`,         // مخططات التقطيع (الأرشيف)
+            `backups/settings_alum/${uid}`,       // الألومنيوم (الإعدادات، الأسعار، والأصناف)
+            `backups/invoices_alum/${uid}`,       // الألومنيوم (المقايسات والأرشيف)
+            `backups/invoices_wood/${uid}`        // الخشب (المقايسات والأرشيف)
         ];
 
         try {
@@ -449,7 +456,7 @@
             let jsonData = JSON.stringify(backupData);
             let encodedData = btoa(unescape(encodeURIComponent(jsonData)));
             
-            let textMessage = "نسخة احتياطية شاملة لنظام azemaa pro 🔐\n(تشمل الخزينة، العمال، التسليمات، والمقايسات)\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بياناتك:\n\n" + encodedData;
+            let textMessage = "نسخة احتياطية شاملة لنظام azemaa pro 🔐\n(تشمل الخزينة، العمال، التسليمات، الأجهزة، والمقايسات بأنواعها)\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بياناتك:\n\n" + encodedData;
             let whatsappUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textMessage);
             
             window.open(whatsappUrl, '_blank');
@@ -481,14 +488,16 @@
             let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
             let data = JSON.parse(decodedData);
             
-            if (confirm("⚠️ تحذير خطير: سيتم استبدال بيانات السحابة الحالية بالبيانات المسترجعة من الكود. هل أنت متأكد؟")) {
+            if (confirm("⚠️ تحذير خطير: سيتم استبدال بيانات السحابة الحالية بالبيانات المسترجعة من الكود لكافة الأقسام. هل أنت متأكد؟")) {
                 
+                // استرجاع التخزين المحلي
                 if (data.localStorage) {
                     for (let k in data.localStorage) { 
                         localStorage.setItem(k, data.localStorage[k]); 
                     }
                 }
 
+                // استرجاع قواعد البيانات السحابية (Firebase)
                 if (data.firebase) {
                     for (let path in data.firebase) {
                         await set(ref(db, path), data.firebase[path]);
