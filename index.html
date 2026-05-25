@@ -302,14 +302,12 @@
         document.getElementById('countdown').innerText = "باقي " + diff + " يوم على " + next.name;
     }
 
-    // دالة تحديث كافة الـ iframes دفعة واحدة دون الحاجة لتحديث الصفحة بالكامل
     function refreshAllIframes() {
         document.querySelectorAll('iframe').forEach(f => {
             f.src = f.src;
         });
     }
 
-    // متابعة حالة شبكة الإنترنت بشكل حي ومباشر ومستمر
     window.addEventListener('online', () => {
         const status = document.getElementById('network-status');
         status.innerText = "متصل 🟢";
@@ -337,61 +335,19 @@
     setInterval(updateHeader, 60000);
     updateHeader();
 
-    function saveToWhatsApp() {
-        let data = {};
-        let hasData = false;
-        
-        for (let i = 0; i < localStorage.length; i++) { 
-            let k = localStorage.key(i); 
-            if (k !== 'theme') { 
-                data[k] = localStorage.getItem(k); 
-                hasData = true; 
-            } 
-        }
-        
-        if (!hasData) { 
-            alert("⚠️ لا توجد بيانات مسجلة لحفظها!"); 
-            return; 
-        }
-
-        try {
-            let jsonData = JSON.stringify(data);
-            let encodedData = btoa(unescape(encodeURIComponent(jsonData)));
-            
-            let textMessage = "نسخة احتياطية لنظام azemaa pro 🔐\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بياناتك:\n\n" + encodedData;
-            let whatsappUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textMessage);
-            
-            window.open(whatsappUrl, '_blank');
-            
-        } catch (error) {
-            alert("❌ حدث خطأ أثناء تجهيز البيانات: " + error.message);
+    window.saveToWhatsApp = function() {
+        if(window.exportAllToWhatsApp) {
+            window.exportAllToWhatsApp();
+        } else {
+            alert("⏳ النظام قيد التهيئة، يرجى الانتظار أو تسجيل الدخول أولاً.");
         }
     }
 
-    function loadFromWhatsApp() {
-        let inputCode = prompt("📥 الصق كود النسخة الاحتياطية (الموجود أسفل رسالة الواتساب) هنا:");
-        
-        if (!inputCode || inputCode.trim() === "") return;
-
-        try {
-            let codeToDecode = inputCode;
-            if (inputCode.includes("نسخة احتياطية")) {
-                let parts = inputCode.split("\n\n");
-                codeToDecode = parts[parts.length - 1].trim();
-            }
-
-            let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
-            let data = JSON.parse(decodedData);
-            
-            if (confirm("⚠️ تحذير: سيتم استبدال بياناتك الحالية بالبيانات المسترجعة من الكود. هل تريد المتابعة؟")) {
-                for (let k in data) { 
-                    localStorage.setItem(k, data[k]); 
-                }
-                alert("✅ تم استرجاع البيانات بنجاح! سيتم إعادة تحميل الصفحة وجلب بيانات السحابة.");
-                window.location.reload();
-            }
-        } catch (error) {
-            alert("❌ الكود غير صحيح أو تالف! يرجى التأكد من نسخ الكود المشفر فقط بالكامل.");
+    window.loadFromWhatsApp = function() {
+        if(window.importAllFromWhatsApp) {
+            window.importAllFromWhatsApp();
+        } else {
+            alert("⏳ النظام قيد التهيئة، يرجى الانتظار أو تسجيل الدخول أولاً.");
         }
     }
 </script>
@@ -399,10 +355,12 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
         projectId: "azemaa-proo",
         storageBucket: "azemaa-proo.firebasestorage.app",
         messagingSenderId: "787350492977",
@@ -411,6 +369,7 @@
     
     const app = initializeApp(firebaseConfig); 
     const auth = getAuth(app);
+    const db = getDatabase(app);
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -450,6 +409,99 @@
             });
         }
     });
+
+    window.exportAllToWhatsApp = async function() {
+        const user = auth.currentUser;
+        if (!user) {
+            alert("⚠️ يرجى تسجيل الدخول أولاً لتصدير النسخة الاحتياطية.");
+            return;
+        }
+        
+        let backupData = { localStorage: {}, firebase: {} };
+        const uid = user.uid;
+        
+        for (let i = 0; i < localStorage.length; i++) { 
+            let k = localStorage.key(i); 
+            if (k !== 'theme') { backupData.localStorage[k] = localStorage.getItem(k); } 
+        }
+
+        const paths = [
+            `backups/farah_agheza_sizes/${uid}`,
+            `backups/workers_master/${uid}`,
+            `backups/workers_weeks/${uid}`,
+            `backups/notes_users/${uid}`,
+            `backups/invoices_acc/${uid}`,
+            `backups/deliveries_users/${uid}`,
+            `backups/users/${uid}`,
+            `backups/yomya_users/${uid}`
+        ];
+
+        try {
+            document.querySelector('.btn-whatsapp').innerText = "⏳ جاري التجميع...";
+            
+            for (let path of paths) {
+                const snapshot = await get(ref(db, path));
+                if (snapshot.exists()) {
+                    backupData.firebase[path] = snapshot.val();
+                }
+            }
+
+            let jsonData = JSON.stringify(backupData);
+            let encodedData = btoa(unescape(encodeURIComponent(jsonData)));
+            
+            let textMessage = "نسخة احتياطية شاملة لنظام azemaa pro 🔐\n(تشمل الخزينة، العمال، التسليمات، والمقايسات)\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بياناتك:\n\n" + encodedData;
+            let whatsappUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textMessage);
+            
+            window.open(whatsappUrl, '_blank');
+        } catch (error) {
+            alert("❌ حدث خطأ أثناء تجهيز بيانات السحابة: " + error.message);
+        } finally {
+            document.querySelector('.btn-whatsapp').innerText = "🟢 حفظ للواتس";
+        }
+    }
+
+    window.importAllFromWhatsApp = async function() {
+        const user = auth.currentUser;
+        if (!user) {
+            alert("⚠️ يرجى تسجيل الدخول أولاً لاسترجاع البيانات.");
+            return;
+        }
+
+        let inputCode = prompt("📥 الصق كود النسخة الاحتياطية (الموجود أسفل رسالة الواتساب) هنا:");
+        
+        if (!inputCode || inputCode.trim() === "") return;
+
+        try {
+            let codeToDecode = inputCode;
+            if (inputCode.includes("نسخة احتياطية")) {
+                let parts = inputCode.split("\n\n");
+                codeToDecode = parts[parts.length - 1].trim();
+            }
+
+            let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
+            let data = JSON.parse(decodedData);
+            
+            if (confirm("⚠️ تحذير خطير: سيتم استبدال بيانات السحابة الحالية بالبيانات المسترجعة من الكود. هل أنت متأكد؟")) {
+                
+                if (data.localStorage) {
+                    for (let k in data.localStorage) { 
+                        localStorage.setItem(k, data.localStorage[k]); 
+                    }
+                }
+
+                if (data.firebase) {
+                    for (let path in data.firebase) {
+                        await set(ref(db, path), data.firebase[path]);
+                    }
+                }
+
+                alert("✅ تم استرجاع البيانات الشاملة بنجاح! سيتم إعادة تحميل النظام لمزامنة واجهات الأقسام.");
+                window.location.reload();
+            }
+        } catch (error) {
+            alert("❌ الكود غير صحيح أو تالف! يرجى التأكد من نسخ الكود المشفر فقط بالكامل دون مسافات زائدة.");
+        }
+    }
 </script>
 </body>
 </html>
