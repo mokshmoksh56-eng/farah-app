@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>عقد اتفاق وتوريد شبابيك وأبواب - خامات جديدة + إضافة بند مخصص</title>
+    <title>عقد اتفاق وتوريد شبابيك وأبواب - سحابي</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --primary: #1e3a8a;
@@ -27,134 +32,53 @@
             line-height: 1.4;
         }
 
+        /* شاشة التحميل السحابي والأمان */
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f1f5f9;
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 18px; color: var(--primary); font-weight: bold; text-align: center; padding: 20px;
+        }
+
+        #sync-status {
+            background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 20px; font-size: 12px;
+            display: inline-block; margin-top: 10px; border: 1px solid rgba(255,255,255,0.3);
+        }
+
         .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
-            border: 1px solid var(--border-color);
+            max-width: 1100px; margin: 0 auto; background-color: #ffffff; padding: 20px;
+            border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); border: 1px solid var(--border-color);
         }
 
-        .header-banner {
-            background-color: var(--primary-dark);
-            color: #ffffff;
-            padding: 20px;
-            border-radius: 6px;
-            text-align: center;
-            border-bottom: 4px solid var(--primary);
-            margin-bottom: 25px;
-            position: relative;
-        }
+        .header-banner { background-color: var(--primary-dark); color: #ffffff; padding: 20px; border-radius: 6px; text-align: center; border-bottom: 4px solid var(--primary); margin-bottom: 25px; position: relative; }
+        .digital-clock { position: absolute; top: 12px; left: 15px; background: rgba(255, 255, 255, 0.1); padding: 3px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.2); }
+        .header-banner h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+        .header-banner p { margin: 6px 0 0 0; color: #cbd5e1; font-size: 14px; }
 
-        .digital-clock {
-            position: absolute;
-            top: 12px;
-            left: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 3px 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
+        .card { background-color: var(--bg-light); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; }
+        .card h3 { margin-top: 0; margin-bottom: 12px; font-size: 16px; color: var(--primary-dark); display: flex; align-items: center; gap: 8px; border-bottom: 2px solid var(--primary); padding-bottom: 6px; font-weight: 700; }
 
-        .header-banner h2 {
-            margin: 0;
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .header-banner p {
-            margin: 6px 0 0 0;
-            color: #cbd5e1;
-            font-size: 14px;
-        }
-
-        .card {
-            background-color: var(--bg-light);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .card h3 {
-            margin-top: 0;
-            margin-bottom: 12px;
-            font-size: 16px;
-            color: var(--primary-dark);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border-bottom: 2px solid var(--primary);
-            padding-bottom: 6px;
-            font-weight: 700;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 5px;
-        }
-
-        th, td {
-            padding: 8px 10px;
-            border: 1px solid var(--border-color);
-            text-align: right;
-            font-size: 14px;
-            color: var(--text-main);
-        }
-
-        th {
-            background-color: #e2e8f0;
-            color: var(--primary-dark);
-            font-weight: 700;
-        }
-
+        table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+        th, td { padding: 8px 10px; border: 1px solid var(--border-color); text-align: right; font-size: 14px; color: var(--text-main); }
+        th { background-color: #e2e8f0; color: var(--primary-dark); font-weight: 700; }
         .main-table th { width: 30%; background-color: #f1f5f9; }
 
         input[type="text"], input[type="number"], select, textarea {
-            width: 100%;
-            padding: 7px 10px;
-            box-sizing: border-box;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-            color: #000000;
-            background-color: #ffffff;
-            font-weight: 600;
+            width: 100%; padding: 7px 10px; box-sizing: border-box; border: 1px solid var(--border-color);
+            border-radius: 4px; font-size: 14px; font-family: inherit; color: #000000; background-color: #ffffff; font-weight: 600;
         }
-
-        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2);
-        }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2); }
 
         select.status-on-us { background-color: var(--status-green-bg) !important; color: var(--status-green-text) !important; border-color: var(--status-green-text) !important; }
         select.status-on-client { background-color: var(--status-red-bg) !important; color: var(--status-red-text) !important; border-color: var(--status-red-text) !important; }
 
         .total-highlight { background-color: #f1f5f9 !important; }
         .total-highlight td, .total-highlight th { font-weight: 700; color: var(--primary-dark) !important; }
-        
         .discount-highlight { background-color: #fff1f2 !important; }
         .discount-highlight th, .discount-highlight td { color: var(--status-red-text) !important; font-weight: 700; }
-
-        .summary-grand-total-row td {
-            font-size: 16px !important; font-weight: 700 !important; color: #ffffff !important;
-            background-color: var(--primary-dark) !important; padding: 12px !important;
-        }
+        .summary-grand-total-row td { font-size: 16px !important; font-weight: 700 !important; color: #ffffff !important; background-color: var(--primary-dark) !important; padding: 12px !important; }
 
         .card-actions-wrapper { display: flex; justify-content: flex-end; margin-top: 10px; padding-top: 8px; }
-
-        .btn-card-save, .btn-new-row-trigger {
-            padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 4px; cursor: pointer; transition: all 0.2s;
-        }
+        .btn-card-save, .btn-new-row-trigger { padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
         .btn-card-save { border: 1px solid var(--primary); background-color: transparent; color: var(--primary); }
         .btn-card-save:hover { background-color: var(--primary); color: white; }
         .btn-new-row-trigger { background-color: #475569; color: white; border: none; margin-bottom: 10px; }
@@ -181,7 +105,7 @@
             .card { box-shadow: none; border: 1px solid #000000; background: #ffffff !important; page-break-inside: avoid; }
             .card-actions-wrapper, .btn-container, .card-archive, .btn-new-row-trigger { display: none !important; }
             input, select, textarea { border: none !important; background: transparent !important; box-shadow: none !important; appearance: none; padding: 0 !important; color: #000000 !important; }
-            .digital-clock { display: none !important; }
+            .digital-clock, #sync-status { display: none !important; }
             th { background-color: #eaeara !important; color: #000000 !important; }
             td button.btn-delete { display: none; }
             .custom-input { display: block !important; border: none !important; padding: 0 !important; }
@@ -190,11 +114,14 @@
 </head>
 <body>
 
-<div class="container">
+<div id="auth-loader">⏳ جاري فحص الحساب ومزامنة قاعدة بيانات العقود آمنياً...</div>
+
+<div class="container" id="app-screen" style="display:none;">
     <div class="header-banner">
         <div id="liveClock" class="digital-clock">00:00:00 ص</div>
-        <h2>عقد اتفاق وتوريد شبابيك وأبواب (إضافة خامات مخصصة)</h2>
+        <h2>عقد اتفاق وتوريد شبابيك وأبواب (سحابي)</h2>
         <p>وثيقة رسمية - إمكانية إضافة أي نوع قطاع أو زجاج جديد</p>
+        <div id="sync-status">🔄 جاري الاتصال بالسحابة...</div>
     </div>
     
     <form id="windowsForm">
@@ -237,7 +164,7 @@
         </div>
 
         <div class="card">
-            <h3>🪟 المقاسات والمواصفات الفنية (إمكانية إضافة خامات مخصصة)</h3>
+            <h3>🪟 المقاسات والمواصفات الفنية</h3>
             <button type="button" class="btn-new-row-trigger" onclick="addNewWindowRow()">➕ إضافة شباك / باب جديد</button>
 
             <div style="overflow-x: auto;">
@@ -245,16 +172,15 @@
                     <thead>
                         <tr>
                             <th style="width: 20%;">البيان (الغرفة)</th>
-                            <th style="width: 17%;">نوع القطاع (إضافة جديد)</th>
-                            <th style="width: 17%;">نوع الزجاج (إضافة جديد)</th>
+                            <th style="width: 17%;">نوع القطاع</th>
+                            <th style="width: 17%;">نوع الزجاج</th>
                             <th style="width: 10%;">الأمتار</th>
                             <th style="width: 12%;">سعر المتر (ج.م)</th>
                             <th style="width: 14%;">الإجمالي</th>
                             <th style="width: 5%;">حذف</th>
                         </tr>
                     </thead>
-                    <tbody id="windowsSubRows">
-                        </tbody>
+                    <tbody id="windowsSubRows"></tbody>
                 </table>
             </div>
             
@@ -272,7 +198,7 @@
                 </tr>
             </table>
             <div class="card-actions-wrapper">
-                <button type="button" class="btn-card-save" onclick="confirmTableSave('المقاسات والمواصفات الفنية')">💾 حفظ بند المقاسات</button>
+                <button type="button" class="btn-card-save" onclick="confirmTableSave('المقاسات والمواصفات الفنية')">💾 حفظ مؤقت للبند</button>
             </div>
         </div>
 
@@ -312,12 +238,12 @@
                 </tr>
             </table>
             <div class="card-actions-wrapper">
-                <button type="button" class="btn-card-save" onclick="confirmTableSave('اللوجستيات والخصومات')">💾 حفظ البند</button>
+                <button type="button" class="btn-card-save" onclick="confirmTableSave('اللوجستيات والخصومات')">💾 حفظ مؤقت للبند</button>
             </div>
         </div>
 
         <div class="btn-container">
-            <button type="button" class="action-btn btn-save" onclick="archiveContract()">💾 حفظ العقد بالأرشيف</button>
+            <button type="button" class="action-btn btn-save" onclick="archiveContract()">☁️ حفظ وأرشفة العقد سحابياً</button>
             <button type="button" class="action-btn btn-pdf" onclick="window.print()">📄 طباعة / PDF</button>
             <button type="button" class="action-btn btn-whatsapp" onclick="sendToWhatsapp()">💬 إرسال واتساب</button>
         </div>
@@ -350,10 +276,75 @@
             </table>
         </div>
 
+        <div class="card card-archive">
+            <h3>☁️ أرشيف السحابة الموثق لعقود الشبابيك</h3>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table id="archiveTable">
+                    <thead>
+                        <tr>
+                            <th>اسم الزبون</th>
+                            <th>تاريخ التسليم</th>
+                            <th>الإجمالي</th>
+                            <th style="text-align: center; width: 30%;">إجراءات السحابة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archiveTableRows"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+                <button type="button" class="btn-delete" onclick="clearAllArchive()">🗑️ تفريغ الأرشيف السحابي كلياً</button>
+            </div>
+        </div>
+
     </form>
 </div>
 
 <script>
+    // ----------------------------------------------------------------------
+    // 1. إعدادات السحابة والمصادقة (Firebase Setup)
+    // ----------------------------------------------------------------------
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const fdb = firebase.database();
+    
+    let contractsRef = null; 
+    let onlineContractsData = {};
+    let windowUserUid = null;
+
+    // 🔒 قفل الغرفة البرمجية وعزل مسار العميل لعقود الشبابيك
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            windowUserUid = user.uid;
+            document.getElementById('auth-loader').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'block';
+            
+            // تخصيص مسار لعقود الشبابيك حصراً
+            contractsRef = fdb.ref('backups/windows_contracts/' + windowUserUid);
+            
+            // الاستماع اللحظي
+            contractsRef.on('value', (snapshot) => {
+                onlineContractsData = snapshot.val() || {};
+                renderArchive();
+                document.getElementById('sync-status').innerText = "✅ السحابة متزامنة";
+            });
+        } else {
+            document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
+        }
+    });
+
+    // ----------------------------------------------------------------------
+    // 2. دوال المنطق والواجهة وحساب التكاليف (الشبابيك)
+    // ----------------------------------------------------------------------
     let windowRowCounter = 0;
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -376,6 +367,8 @@
         applyStatusColors(document.getElementById('transportOn'));
         applyStatusColors(document.getElementById('installOn'));
         
+        // منع إضافة سطر فارغ مبدئي إذا تم تحميل الأرشيف، لكن مبدئياً نضيف سطر.
+        // سنتركه يضيف سطر، وفي حالة الاسترجاع نقوم بتفريغ الجدول أولاً.
         addNewWindowRow();
     });
 
@@ -400,16 +393,11 @@
     function toggleTransportCost() {
         const transportOn = document.getElementById('transportOn').value;
         const row = document.getElementById('transportCostRow');
-        if (transportOn === 'بسعر إضافي') {
-            row.style.display = 'table-row';
-        } else {
-            row.style.display = 'none';
-            document.getElementById('transportCost').value = "";
-        }
+        if (transportOn === 'بسعر إضافي') row.style.display = 'table-row';
+        else { row.style.display = 'none'; document.getElementById('transportCost').value = ""; }
         calculateFinalTotal();
     }
 
-    // دالة لإظهار/إخفاء حقل الإدخال المخصص عند اختيار "إضافة جديد"
     function toggleCustomInput(selectElement, customInputId) {
         const customInput = document.getElementById(customInputId);
         if (selectElement.value === "__CUSTOM__") {
@@ -418,16 +406,14 @@
         } else {
             customInput.classList.remove('active');
         }
-        // عند تغيير القيمة، إعادة حساب الجدول (لأن النص المعروض قد يتغير عند الطباعة)
         calculateWindowsTable();
     }
 
-    // الحصول على النص المعروض للقطاع (سواء من القائمة أو من الحقل المخصص)
     function getProfileDisplayValue(row) {
         const select = row.querySelector('.win-profile');
-        const customInput = row.querySelector('.profile-custom-input');
+        const customInput = row.querySelector('.profile-custom-input') || row.querySelector('.profile-custom'); // التصحيح
         if (select.value === "__CUSTOM__") {
-            return customInput.value.trim() !== "" ? customInput.value.trim() : "نوع جديد (غير محدد)";
+            return customInput.value.trim() !== "" ? customInput.value.trim() : "نوع جديد";
         } else {
             return select.options[select.selectedIndex]?.text || select.value;
         }
@@ -435,9 +421,9 @@
 
     function getGlassDisplayValue(row) {
         const select = row.querySelector('.win-glass');
-        const customInput = row.querySelector('.glass-custom-input');
+        const customInput = row.querySelector('.glass-custom-input') || row.querySelector('.glass-custom'); // التصحيح
         if (select.value === "__CUSTOM__") {
-            return customInput.value.trim() !== "" ? customInput.value.trim() : "زجاج جديد (غير محدد)";
+            return customInput.value.trim() !== "" ? customInput.value.trim() : "زجاج جديد";
         } else {
             return select.options[select.selectedIndex]?.text || select.value;
         }
@@ -449,7 +435,6 @@
         const tr = document.createElement('tr');
         tr.id = `win_row_${windowRowCounter}`;
         
-        // تحديد ما إذا كانت القيم الممررة تشير إلى خيار مخصص (غير موجود في القائمة)
         const isProfileCustom = !['PVC تركي', 'PVC مصري', 'PVC ألماني', 'ألوميتال PS صغير', 'ألوميتال PS كبير', 'ألوميتال جامبو', 'ألوميتال بروفايل 50', 'ألوميتال بروفايل 60', 'ألوميتال سحب بارد', 'خشب طبيعي', 'حديد مشغول', 'ستانلس ستيل'].includes(profileVal);
         const isGlassCustom = !['سنجل شفاف', 'سنجل فامية', 'دبل شفاف', 'دبل عاكس', 'دبل جورجيا', 'تريبل (ثلاثي) شفاف', 'زجاج مصفح (لامينيت)', 'زجاج سيكوريت (مقسى)', 'زجاج معتم (مات)', 'زجاج ملون (أزرق/أخضر)'].includes(glassVal);
         
@@ -462,7 +447,6 @@
             <td><input type="text" class="win-input win-name" placeholder="مثال: شباك صالة" value="${name.replace(/"/g, '&quot;')}"></td>
             <td>
                 <select class="win-input win-profile" onchange="toggleCustomInput(this, 'profile_custom_${windowRowCounter}')">
-                    <!-- قائمة الخامات الرئيسية -->
                     <optgroup label="PVC">
                         <option value="PVC تركي" ${profileVal=='PVC تركي'?'selected':''}>PVC تركي</option>
                         <option value="PVC مصري" ${profileVal=='PVC مصري'?'selected':''}>PVC مصري</option>
@@ -477,38 +461,38 @@
                         <option value="ألوميتال سحب بارد" ${profileVal=='ألوميتال سحب بارد'?'selected':''}>ألوميتال سحب بارد</option>
                     </optgroup>
                     <optgroup label="أخرى">
-                        <option value="خشب طبيعي" ${profileVal=='خشب طبيعي'?'selected':''}>خشب طبيعي (سوييدش/زان)</option>
-                        <option value="حديد مشغول" ${profileVal=='حديد مشغول'?'selected':''}>حديد مشغول (ديكور)</option>
-                        <option value="ستانلس ستيل" ${profileVal=='ستانلس ستيل'?'selected':''}>ستانلس ستيل (للمطابخ)</option>
+                        <option value="خشب طبيعي" ${profileVal=='خشب طبيعي'?'selected':''}>خشب طبيعي</option>
+                        <option value="حديد مشغول" ${profileVal=='حديد مشغول'?'selected':''}>حديد مشغول</option>
+                        <option value="ستانلس ستيل" ${profileVal=='ستانلس ستيل'?'selected':''}>ستانلس ستيل</option>
                     </optgroup>
-                    <option value="__CUSTOM__" ${isProfileCustom ? 'selected' : ''}>➕ إضافة جديد (مخصص)...</option>
+                    <option value="__CUSTOM__" ${isProfileCustom ? 'selected' : ''}>➕ إضافة جديد...</option>
                 </select>
                 <div id="profile_custom_${windowRowCounter}" class="custom-input ${isProfileCustom ? 'active' : ''}">
-                    <input type="text" class="win-input profile-custom" placeholder="أدخل نوع القطاع الجديد" value="${profileCustomText.replace(/"/g, '&quot;')}" oninput="calculateWindowsTable()">
+                    <input type="text" class="win-input profile-custom" placeholder="أدخل نوع القطاع" value="${profileCustomText.replace(/"/g, '&quot;')}" oninput="calculateWindowsTable()">
                 </div>
              </td>
             <td>
                 <select class="win-input win-glass" onchange="toggleCustomInput(this, 'glass_custom_${windowRowCounter}')">
                     <optgroup label="سنجل">
                         <option value="سنجل شفاف" ${glassVal=='سنجل شفاف'?'selected':''}>سنجل شفاف</option>
-                        <option value="سنجل فامية" ${glassVal=='سنجل فامية'?'selected':''}>سنجل فامية (عاكس)</option>
+                        <option value="سنجل فامية" ${glassVal=='سنجل فامية'?'selected':''}>سنجل فامية</option>
                     </optgroup>
                     <optgroup label="دبل">
                         <option value="دبل شفاف" ${glassVal=='دبل شفاف'?'selected':''}>دبل شفاف</option>
-                        <option value="دبل عاكس" ${glassVal=='دبل عاكس'?'selected':''}>دبل عاكس بني/أسود</option>
+                        <option value="دبل عاكس" ${glassVal=='دبل عاكس'?'selected':''}>دبل عاكس</option>
                         <option value="دبل جورجيا" ${glassVal=='دبل جورجيا'?'selected':''}>دبل بجورجيا</option>
                     </optgroup>
                     <optgroup label="خامات متقدمة">
-                        <option value="تريبل (ثلاثي) شفاف" ${glassVal=='تريبل (ثلاثي) شفاف'?'selected':''}>تريبل (ثلاثي) شفاف - عزل حراري</option>
-                        <option value="زجاج مصفح (لامينيت)" ${glassVal=='زجاج مصفح (لامينيت)'?'selected':''}>زجاج مصفح (لامينيت) - أمان</option>
-                        <option value="زجاج سيكوريت (مقسى)" ${glassVal=='زجاج سيكوريت (مقسى)'?'selected':''}>زجاج سيكوريت (مقسى) - مقاوم للكسر</option>
-                        <option value="زجاج معتم (مات)" ${glassVal=='زجاج معتم (مات)'?'selected':''}>زجاج معتم (مات) - للحمامات</option>
-                        <option value="زجاج ملون (أزرق/أخضر)" ${glassVal=='زجاج ملون (أزرق/أخضر)'?'selected':''}>زجاج ملون (أزرق/أخضر)</option>
+                        <option value="تريبل (ثلاثي) شفاف" ${glassVal=='تريبل (ثلاثي) شفاف'?'selected':''}>تريبل شفاف</option>
+                        <option value="زجاج مصفح (لامينيت)" ${glassVal=='زجاج مصفح (لامينيت)'?'selected':''}>زجاج مصفح</option>
+                        <option value="زجاج سيكوريت (مقسى)" ${glassVal=='زجاج سيكوريت (مقسى)'?'selected':''}>سيكوريت</option>
+                        <option value="زجاج معتم (مات)" ${glassVal=='زجاج معتم (مات)'?'selected':''}>معتم (مات)</option>
+                        <option value="زجاج ملون (أزرق/أخضر)" ${glassVal=='زجاج ملون (أزرق/أخضر)'?'selected':''}>زجاج ملون</option>
                     </optgroup>
-                    <option value="__CUSTOM__" ${isGlassCustom ? 'selected' : ''}>➕ إضافة جديد (مخصص)...</option>
+                    <option value="__CUSTOM__" ${isGlassCustom ? 'selected' : ''}>➕ إضافة جديد...</option>
                 </select>
                 <div id="glass_custom_${windowRowCounter}" class="custom-input ${isGlassCustom ? 'active' : ''}">
-                    <input type="text" class="win-input glass-custom" placeholder="أدخل نوع الزجاج الجديد" value="${glassCustomText.replace(/"/g, '&quot;')}" oninput="calculateWindowsTable()">
+                    <input type="text" class="win-input glass-custom" placeholder="أدخل نوع الزجاج" value="${glassCustomText.replace(/"/g, '&quot;')}" oninput="calculateWindowsTable()">
                 </div>
              </td>
             <td><input type="number" class="win-input win-meters" placeholder="الأمتار" value="${meters}" step="0.01" oninput="calculateWindowsTable()"></td>
@@ -522,9 +506,7 @@
 
     function calculateWindowsTable() {
         let totalWindowsCost = 0;
-        const rows = document.querySelectorAll('#windowsSubRows tr');
-        
-        rows.forEach(row => {
+        document.querySelectorAll('#windowsSubRows tr').forEach(row => {
             const meters = parseFloat(row.querySelector('.win-meters').value) || 0;
             const price = parseFloat(row.querySelector('.win-price').value) || 0;
             const rowTotal = meters * price;
@@ -556,10 +538,131 @@
 
         const finalTotal = (windowsCost + transport + extras) - discount;
         document.getElementById('finalGrandTotal').innerText = finalTotal.toLocaleString('ar-EG') + ' جنيه مصري';
+        return finalTotal;
     }
 
-    function confirmTableSave(tableName) {
-        alert(`✅ تم تأكيد وحفظ بيانات [ ${tableName} ] مؤقتاً بالنموذج!`);
+    function confirmTableSave(tableName) { alert(`✅ تم تأكيد وحفظ بيانات [ ${tableName} ] مؤقتاً بالنموذج!`); }
+
+    // ----------------------------------------------------------------------
+    // 3. دوال الحفظ والاسترجاع السحابي (Windows)
+    // ----------------------------------------------------------------------
+    function archiveContract() {
+        if(!windowUserUid || !contractsRef) return alert("خطأ: غير متصل بقاعدة البيانات السحابية!");
+
+        const name = document.getElementById('customerName').value.trim();
+        if (!name) { alert('برجاء إدخال اسم العميل.'); return; }
+
+        let windowsList = [];
+        document.querySelectorAll('#windowsSubRows tr').forEach(row => {
+            const wName = row.querySelector('.win-name').value;
+            const wProfile = getProfileDisplayValue(row);
+            const wGlass = getGlassDisplayValue(row);
+            const wMet = row.querySelector('.win-meters').value;
+            const wPri = row.querySelector('.win-price').value;
+            if(wName || wMet) {
+                windowsList.push({ name: wName, profile: wProfile, glass: wGlass, meters: wMet, price: wPri });
+            }
+        });
+
+        const contractData = {
+            timestamp: Date.now(),
+            shopName: document.getElementById('shopName').value,
+            name: name,
+            customerCode: document.getElementById('customerCode').value,
+            phone: document.getElementById('customerPhone').value,
+            location: document.getElementById('installLocation').value,
+            year: document.getElementById('deliveryYear').value,
+            month: document.getElementById('deliveryMonth').value,
+            day: document.getElementById('deliveryDay').value,
+            windows: windowsList,
+            notesAccessories: document.getElementById('notesAccessories').value,
+            transportOn: document.getElementById('transportOn').value,
+            transportCost: document.getElementById('transportCost').value,
+            installOn: document.getElementById('installOn').value,
+            extraWorksCost: document.getElementById('extraWorksCost').value,
+            totalDiscount: document.getElementById('totalDiscount').value,
+            grandTotal: document.getElementById('finalGrandTotal').innerText
+        };
+
+        document.getElementById('sync-status').innerText = "☁️ جاري الرفع للسحابة...";
+        contractsRef.push(contractData).then(() => {
+            alert('☁️ تم أرشفة عقد العميل [ ' + name + ' ] بنجاح في السحابة!');
+        }).catch(err => {
+            alert("حدث خطأ أثناء الرفع السحابي: " + err);
+            document.getElementById('sync-status').innerText = "⚠️ فشل الرفع";
+        });
+    }
+
+    function renderArchive() {
+        const tbody = document.getElementById('archiveTableRows');
+        tbody.innerHTML = '';
+        const keys = Object.keys(onlineContractsData);
+
+        if(keys.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; font-weight:bold; color:var(--text-muted);">لا يوجد عقود محفوظة سحابياً</td></tr>`;
+            return;
+        }
+
+        keys.reverse().forEach(key => {
+            const cust = onlineContractsData[key];
+            const dateStr = (cust.year && cust.month && cust.day) ? `${cust.year}/${cust.month}/${cust.day}` : 'غير محدد';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="font-weight:bold;">${cust.name}</td>
+                <td style="font-weight:bold;">${dateStr}</td>
+                <td style="font-weight:bold; color:var(--primary);">${cust.grandTotal}</td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-delete" style="background:#1e3a8a; margin-left: 5px;" onclick="loadCustomerFromArchive('${key}')">🔍 استرجاع</button>
+                    <button type="button" class="btn-delete" onclick="deleteCustomerFromArchive('${key}')">✖ حذف</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function loadCustomerFromArchive(key) {
+        const cust = onlineContractsData[key];
+        if (!cust) return;
+
+        document.getElementById('shopName').value = cust.shopName || '';
+        document.getElementById('customerName').value = cust.name || '';
+        document.getElementById('customerCode').value = cust.customerCode || '';
+        document.getElementById('customerPhone').value = cust.phone || '';
+        document.getElementById('installLocation').value = cust.location || '';
+        document.getElementById('deliveryYear').value = cust.year || '';
+        document.getElementById('deliveryMonth').value = cust.month || '';
+        document.getElementById('deliveryDay').value = cust.day || '';
+        document.getElementById('notesAccessories').value = cust.notesAccessories || '';
+        
+        document.getElementById('transportOn').value = cust.transportOn || 'مجاناً (مشمول)';
+        document.getElementById('transportCost').value = cust.transportCost || '';
+        document.getElementById('installOn').value = cust.installOn || 'علينا (مشمول)';
+        document.getElementById('extraWorksCost').value = cust.extraWorksCost || '';
+        document.getElementById('totalDiscount').value = cust.totalDiscount || '';
+
+        // تفريغ جدول الشبابيك ثم إعادة بنائه
+        document.getElementById('windowsSubRows').innerHTML = '';
+        if (cust.windows && cust.windows.length > 0) {
+            cust.windows.forEach(w => addNewWindowRow(w.name, w.profile, w.glass, w.meters, w.price));
+        } else {
+            addNewWindowRow(); // سطر فارغ مبدئي إذا لم يوجد
+        }
+
+        toggleTransportCost();
+        applyStatusColors(document.getElementById('transportOn'));
+        applyStatusColors(document.getElementById('installOn'));
+
+        alert('✅ تم سحب بيانات عقد الشبابيك [ ' + cust.name + ' ] من السحابة بنجاح!');
+    }
+
+    function deleteCustomerFromArchive(key) {
+        if(!confirm('هل أنت متأكد من الحذف النهائي لهذا العقد من السحابة؟')) return;
+        contractsRef.child(key).remove().then(() => alert('🗑️ تم الحذف السحابي بنجاح'));
+    }
+
+    function clearAllArchive() {
+        if(!confirm('هل أنت متأكد من مسح كافة عقود الشبابيك السحابية الخاصة بك؟')) return;
+        contractsRef.remove().then(() => alert('🗑️ تم تفريغ قاعدة البيانات السحابية'));
     }
 
     function sendToWhatsapp() {
@@ -568,43 +671,10 @@
         const phone = document.getElementById('customerPhone').value;
         if (!name || !phone) { alert('برجاء إدخال اسم العميل ورقم الهاتف.'); return; }
 
-        let msg = `*عقد اتفاق وتوريد شبابيك وأبواب ( ${shop} )*\n\n`;
-        msg += `👤 *العميل:* ${name} | 📍 *الموقع:* ${document.getElementById('installLocation').value || 'لم يحدد'}\n`;
-        msg += `--------------------------------\n`;
-        msg += `🪟 *تفاصيل القطاعات والزجاج (بإمكانية إضافة خامات جديدة):*\n`;
-        
-        document.querySelectorAll('#windowsSubRows tr').forEach(row => {
-            const wName = row.querySelector('.win-name').value || 'قطعة';
-            const wProfile = getProfileDisplayValue(row);
-            const wGlass = getGlassDisplayValue(row);
-            const wMet = row.querySelector('.win-meters').value || 0;
-            const wPri = row.querySelector('.win-price').value || 0;
-            const wTot = row.querySelector('.win-row-total').innerText;
-            if(wMet > 0) {
-                msg += `- *${wName}* (قطاع: ${wProfile}) | زجاج: ${wGlass}\n  [ الأمتار: ${wMet}م | السعر: ${wPri} ج.م | الإجمالي: ${wTot} ج.م ]\n\n`;
-            }
-        });
-
-        msg += `--------------------------------\n`;
-        msg += `🚚 *النقل:* ${document.getElementById('transportOn').value}\n`;
-        msg += `🛠️ *التركيب:* ${document.getElementById('installOn').value}\n`;
-        
-        const noteAcc = document.getElementById('notesAccessories').value;
-        if (noteAcc) msg += `\n📝 *ملاحظات الإكسسوارات:*\n${noteAcc}\n`;
-        
-        msg += `--------------------------------\n`;
-        msg += `❌ *الخصم:* ${document.getElementById('totalDiscount').value || 0} ج.م\n`;
-        msg += `🔥 *الإجمالي النهائي:* ${document.getElementById('finalGrandTotal').innerText}\n`;
-
+        let msg = `*عقد شبابيك وأبواب صادر من ( ${shop} )*\n👤 *العميل:* ${name}\n🔥 *الإجمالي النهائي المستحق:* ${document.getElementById('finalGrandTotal').innerText}`;
         let formattedPhone = phone.startsWith('01') ? '20' + phone.slice(1) : phone;
         window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(msg)}`, '_blank');
     }
-
-    function archiveContract() {
-        const name = document.getElementById('customerName').value;
-        if (!name) { alert('برجاء إدخال اسم العميل.'); return; }
-        alert(`💾 تم أرشفة عقد العميل [ ${name} ] بنجاح!`);
-    }
 </script>
 </body>
-</html>
+</html> 
