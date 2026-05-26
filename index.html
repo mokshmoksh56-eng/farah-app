@@ -222,7 +222,7 @@
     </div>
 
     <div class="sync-group">
-        <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">☁️ حفظ للواتس</button>
+        <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">☁️ حفظ نسخة احتياطية</button>
         <button onclick="loadFromWhatsApp()" class="btn btn-whatsapp">📥 استرجاع السحابة</button>
     </div>
 </div>
@@ -398,7 +398,7 @@
 </script>
 
 <script type="module">
-    // نظام المصادقة السحابي والنسخ الاحتياطي الذكي للواتساب
+    // نظام المصادقة السحابي والنسخ الاحتياطي الذكي (عبر الملفات)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -430,7 +430,7 @@
         }
     });
 
-    // --- دالة النسخ الاحتياطي السحابي الشامل للواتساب ---
+    // --- دالة النسخ الاحتياطي السحابي الشامل (تصدير ملف .txt) ---
     window.saveToWhatsApp = async function() {
         if (!currentUserUid) {
             alert("⚠️ يجب تسجيل الدخول أولاً لأخذ نسخة احتياطية.");
@@ -438,9 +438,9 @@
         }
 
         try {
-            alert("⏳ جاري سحب البيانات من السحابة لتجهيز النسخة... يرجى الانتظار.");
+            alert("⏳ جاري سحب البيانات وتجهيز ملف النسخة الاحتياطية... يرجى الانتظار.");
             
-            const paths = ['kitchen_contracts', 'workers_master', 'workers_weeks', 'workers_archive', 'farah_agheza_sizes', 'users', 'notes_users', 'yomya_users', 'settings_alum', 'invoices_alum', 'cut_projects', 'cut_archive', 'invoices_wood'];
+            const paths = ['kitchen_contracts', 'windows_contracts', 'workers_master', 'workers_weeks', 'workers_archive', 'farah_agheza_sizes', 'users', 'notes_users', 'yomya_users', 'settings_alum', 'invoices_alum', 'cut_projects', 'cut_archive', 'invoices_wood'];
             let allData = {};
             
             for (let path of paths) {
@@ -455,53 +455,87 @@
                 return;
             }
 
+            // تحويل البيانات وتشفيرها
             let jsonData = JSON.stringify(allData);
             let encodedData = btoa(unescape(encodeURIComponent(jsonData)));
             
-            let textMessage = "نسخة احتياطية شاملة لنظام azemaa pro ☁️🔐\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بيانات السحابة بالكامل:\n\n" + encodedData;
-            let whatsappUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textMessage);
+            // مقدمة نصية اختيارية داخل الملف لتوضيح محتواه
+            let textMessage = "نسخة احتياطية شاملة لنظام azemaa pro ☁️\n\n" + encodedData;
             
-            window.open(whatsappUrl, '_blank');
+            // إنشاء الملف
+            const blob = new Blob([textMessage], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const dateStr = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+            const fileName = `azemaa_backup_${dateStr}.txt`;
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert("✅ تم تحميل ملف النسخة الاحتياطية بنجاح!\n\nقم بفتح 'مدير الملفات' أو 'التنزيلات' وأرسل الملف الذي تم تحميله للواتساب للرجوع إليه وقت الحاجة.");
             
         } catch (error) {
             alert("❌ حدث خطأ أثناء تجهيز البيانات السحابية: " + error.message);
         }
     };
 
-    // --- دالة استرجاع البيانات السحابية من الواتساب ---
+    // --- دالة استرجاع البيانات السحابية (استيراد من ملف .txt) ---
     window.loadFromWhatsApp = async function() {
         if (!currentUserUid) {
             alert("⚠️ يجب تسجيل الدخول أولاً لاسترجاع النسخة الاحتياطية.");
             return;
         }
 
-        let inputCode = prompt("📥 الصق كود النسخة الاحتياطية السحابية هنا:");
-        if (!inputCode || inputCode.trim() === "") return;
+        // إنشاء زر مخفي لرفع الملفات
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.txt';
+        fileInput.style.display = 'none';
 
-        try {
-            let codeToDecode = inputCode;
-            if (inputCode.includes("نسخة احتياطية")) {
-                let parts = inputCode.split("\n\n");
-                codeToDecode = parts[parts.length - 1].trim();
-            }
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-            let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
-            let data = JSON.parse(decodedData);
-            
-            if (confirm("⚠️ تحذير خطير: سيتم مسح بيانات السحابة الحالية واستبدالها بالبيانات الموجودة في هذا الكود بالكامل. هل أنت متأكد؟")) {
-                
-                alert("⏳ جاري رفع البيانات إلى السحابة... يرجى عدم إغلاق الصفحة.");
-                
-                for (let path in data) {
-                    await set(ref(db, `backups/${path}/${currentUserUid}`), data[path]);
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    let fileContent = event.target.result;
+                    let codeToDecode = fileContent;
+                    
+                    if (fileContent.includes("نسخة احتياطية")) {
+                        let parts = fileContent.split("\n\n");
+                        codeToDecode = parts[parts.length - 1].trim();
+                    }
+
+                    let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
+                    let data = JSON.parse(decodedData);
+                    
+                    if (confirm("⚠️ تحذير خطير: سيتم مسح بيانات السحابة الحالية واستبدالها بالبيانات الموجودة في هذا الملف بالكامل. هل أنتِ متأكدة؟")) {
+                        
+                        alert("⏳ جاري رفع البيانات إلى السحابة... يرجى عدم إغلاق الصفحة.");
+                        
+                        for (let path in data) {
+                            await set(ref(db, `backups/${path}/${currentUserUid}`), data[path]);
+                        }
+                        
+                        alert("✅ تم استرجاع البيانات للسحابة بنجاح! سيتم إعادة تحميل النظام.");
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    alert("❌ الملف غير صحيح أو تالف! يرجى التأكد من اختيار ملف النسخة الاحتياطية الصحيح.");
                 }
-                
-                alert("✅ تم استرجاع البيانات للسحابة بنجاح! سيتم إعادة تحميل النظام.");
-                window.location.reload();
-            }
-        } catch (error) {
-            alert("❌ الكود غير صحيح أو تالف! يرجى التأكد من نسخ الكود المشفر فقط بالكامل.");
-        }
+            };
+            reader.readAsText(file);
+        };
+
+        document.body.appendChild(fileInput);
+        fileInput.click();
+        document.body.removeChild(fileInput);
     };
 
     // --- نظام تسجيل الدخول وتسجيل الخروج ---
