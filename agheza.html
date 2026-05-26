@@ -7,10 +7,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <title>Azemaa Proo - المقاسات السحابية</title>
     
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-
     <style>
         :root { 
             --primary: #2c3e50; --gold: #d4af37; --accent: #3498db; 
@@ -98,17 +94,21 @@
                 <div><label style="font-size:12px;">ارتفاع</label><input type="text" id="h" placeholder="0" inputmode="decimal"></div>
                 <div><label style="font-size:12px;">عمق</label><input type="text" id="d" placeholder="0" inputmode="decimal"></div>
             </div>
-            <button class="btn btn-add" id="btnAdd" onclick="add()">حفظ ومزامنة ✅</button>
-            <button class="btn btn-update" id="btnUpd" onclick="update()">تحديث البيانات 🔄</button>
+            <button class="btn btn-add" id="btnAdd" onclick="addSize()">حفظ ومزامنة ✅</button>
+            <button class="btn btn-update" id="btnUpd" onclick="updateSize()">تحديث البيانات 🔄</button>
         </div>
         
-        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الشركة..." oninput="render()">
+        <input type="text" id="search" class="search-bar" placeholder="🔍 ابحث بالاسم أو الشركة..." oninput="renderData()">
         <div id="list"></div>
     </div>
 
     <div id="toast">✅ تم الحفظ والمزامنة سحابياً</div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -119,62 +119,39 @@
             appId: "1:787350492977:web:84061dcf31622fcb07c210"
         };
 
-        firebase.initializeApp(firebaseConfig);
-
-        const auth = firebase.auth();
-        const fdb = firebase.database();
-        let devicesRef = null; 
+        const app = initializeApp(firebaseConfig);
+        const fdb = getDatabase(app);
+        const auth = getAuth(app);
+        
         let devicesData = {};
         let editKey = null;
         let windowUserUid = null;
+        let devicesRef = null;
 
-        // 🔒 قفل الغرفة البرمجية: التحقق الأمني وعزل مسار العميل بالكامل
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                windowUserUid = user.uid;
-                document.getElementById('auth-loader').style.display = 'none';
-                document.getElementById('app-screen').style.display = 'block';
-                
-                // 🛠️ تم تعديل المسار هنا ليطابق قواعد الأمان (Rules) السحابية تماماً
-                devicesRef = fdb.ref('backups/farah_agheza_sizes/' + windowUserUid);
-                
-                document.getElementById('sync-status').innerText = "⚡ جاري المزامنة...";
-                
-                // الاستماع والتحديث السحابي اللحظي المستمر
-                devicesRef.on('value', (snapshot) => {
-                    devicesData = snapshot.val() || {};
-                    render();
-                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
-                });
-            } else {
-                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
-            }
-        });
-
-        function autoExpand(textarea) {
+        window.autoExpand = function(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = textarea.scrollHeight + 'px';
-        }
+        };
 
-        function showToast(message) {
+        window.showToast = function(message) {
             const t = document.getElementById('toast');
             t.innerText = message;
             t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 2500);
-        }
+        };
 
-        function norm(t) {
+        window.norm = function(t) {
             if(!t) return "";
             const ar = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
             const en = ['0','1','2','3','4','5','6','7','8','9'];
             let r = t.toString().toLowerCase();
             for(let i=0; i<10; i++) r = r.replace(ar[i], en[i]);
             return r.replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
-        }
+        };
 
-        function render() {
+        window.renderData = function() {
             const container = document.getElementById('list');
-            const q = norm(document.getElementById('search').value);
+            const q = window.norm(document.getElementById('search').value);
             
             const itemsArray = Object.keys(devicesData).map(key => ({
                 id: key,
@@ -182,7 +159,7 @@
             })).reverse();
 
             container.innerHTML = itemsArray.map(item => {
-                const searchStr = norm(item.cat + " " + item.name + " " + (item.notes || ""));
+                const searchStr = window.norm(item.cat + " " + item.name + " " + (item.notes || ""));
                 if (q && !searchStr.includes(q)) return '';
 
                 return `
@@ -196,37 +173,59 @@
                         <div><span class="size-lbl">عمـق</span><span class="size-val">${item.d}</span></div>
                     </div>
                     <div class="actions">
-                        <button class="btn-act edit" onclick="startEdit('${item.id}')">تعديل ✏️</button>
-                        <button class="btn-act del" onclick="del('${item.id}')">حذف 🗑️</button>
+                        <button class="btn-act edit" onclick="startEditSize('${item.id}')">تعديل ✏️</button>
+                        <button class="btn-act del" onclick="deleteSize('${item.id}')">حذف 🗑️</button>
                     </div>
                 </div>`;
             }).join('');
-        }
+        };
 
-        function add() {
+        // 🔒 قفل الغرفة البرمجية بالـ Modules
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                windowUserUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                
+                devicesRef = ref(fdb, 'backups/farah_agheza_sizes/' + windowUserUid);
+                
+                document.getElementById('sync-status').innerText = "⚡ جاري المزامنة...";
+                
+                onValue(devicesRef, (snapshot) => {
+                    devicesData = snapshot.val() || {};
+                    window.renderData();
+                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
+                });
+            } else {
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
+            }
+        });
+
+        window.addSize = function() {
             if(!windowUserUid) return;
             const item = { 
                 cat: document.getElementById('cat').value, 
                 name: document.getElementById('name').value, 
                 notes: document.getElementById('notes').value, 
-                w: norm(document.getElementById('w').value), 
-                h: norm(document.getElementById('h').value), 
-                d: norm(document.getElementById('d').value) 
+                w: window.norm(document.getElementById('w').value), 
+                h: window.norm(document.getElementById('h').value), 
+                d: window.norm(document.getElementById('d').value) 
             };
             if(!item.name || !item.w) return alert("يرجى إكمال البيانات الأساسية (الشركة والعرض على الأقل)");
             
             document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
-            devicesRef.push(item).then(() => {
-                clear();
+            
+            push(devicesRef, item).then(() => {
+                window.clearInputs();
                 document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
-                showToast("✅ تم إضافة المقاس والمزامنة سحابياً");
+                window.showToast("✅ تم إضافة المقاس والمزامنة سحابياً");
             }).catch(err => {
                 document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
                 alert("حدث خطأ في الاتصال: " + err);
             });
-        }
+        };
 
-        function startEdit(id) {
+        window.startEditSize = function(id) {
             editKey = id;
             const d = devicesData[id];
             document.getElementById('cat').value = d.cat;
@@ -243,61 +242,66 @@
             document.getElementById('btnAdd').style.display = 'none';
             document.getElementById('btnUpd').style.display = 'block';
             
-            autoExpand(notesField);
+            window.autoExpand(notesField);
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        };
 
-        function update() {
+        window.updateSize = function() {
             if (!editKey || !windowUserUid) return;
             const item = { 
                 cat: document.getElementById('cat').value, 
                 name: document.getElementById('name').value, 
                 notes: document.getElementById('notes').value, 
-                w: norm(document.getElementById('w').value), 
-                h: norm(document.getElementById('h').value), 
-                d: norm(document.getElementById('d').value) 
+                w: window.norm(document.getElementById('w').value), 
+                h: window.norm(document.getElementById('h').value), 
+                d: window.norm(document.getElementById('d').value) 
             };
             
             document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
-            devicesRef.child(editKey).update(item).then(() => {
+            const itemRef = ref(fdb, 'backups/farah_agheza_sizes/' + windowUserUid + '/' + editKey);
+            
+            update(itemRef, item).then(() => {
                 editKey = null;
                 document.getElementById('modeTxt').innerText = "إضافة مقاس جديد";
                 document.getElementById('btnAdd').style.display = 'block';
                 document.getElementById('btnUpd').style.display = 'none';
-                clear();
+                window.clearInputs();
                 document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
-                showToast("🔄 تم تعديل المقاس والمزامنة سحابياً");
+                window.showToast("🔄 تم تعديل المقاس والمزامنة سحابياً");
             }).catch(err => {
                 document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
             });
-        }
+        };
 
-        function del(id) { 
+        window.deleteSize = function(id) { 
             if(!windowUserUid) return;
             if(confirm("هل أنت متأكد من حذف هذا المقاس نهائياً؟")) { 
                 document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
-                devicesRef.child(id).remove().then(() => {
+                const itemRef = ref(fdb, 'backups/farah_agheza_sizes/' + windowUserUid + '/' + id);
+                remove(itemRef).then(() => {
                     document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
-                    showToast("🗑️ تم الحذف من قاعدة البيانات");
+                    window.showToast("🗑️ تم الحذف من قاعدة البيانات");
                 }).catch(err => {
                     document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
                 });
             } 
-        }
+        };
 
-        function clear() { 
+        window.clearInputs = function() { 
             ['name','notes','w','h','d'].forEach(id => document.getElementById(id).value = ''); 
             document.getElementById('notes').style.height = '80px';
-        }
+        };
 
-        function toggleTheme() {
+        window.toggleTheme = function() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
-        }
+        };
 
-        if(localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        if(localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
     </script>
 </body>
 </html>
