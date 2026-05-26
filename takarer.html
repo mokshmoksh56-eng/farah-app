@@ -24,6 +24,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg);
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
             font-size: 16px; color: var(--accent); font-weight: bold;
+            text-align: center;
         }
 
         header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; position: relative; }
@@ -82,8 +83,7 @@
 
 <div class="archive-container">
     <label for="year-select">📂 أرشيف السنوات المالي:</label>
-    <select id="year-select" class="archive-select">
-        </select>
+    <select id="year-select" class="archive-select"></select>
 </div>
 
 <div class="summary-grid">
@@ -150,8 +150,7 @@
         projectId: "azemaa-proo",
         storageBucket: "azemaa-proo.firebasestorage.app",
         messagingSenderId: "787350492977",
-        appId: "1:787350492977:web:84061dcf31622fcb07c210",
-        measurementId: "G-R28J7010TH"
+        appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -175,13 +174,16 @@
 
     let clientsRef, yomyaRef, weeksRef;
 
+    // دمج التحويل التلقائي في حالة عدم تسجيل الدخول
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUid = user.uid;
             document.getElementById('auth-loader').style.display = 'none';
             initReport(currentYear);
         } else {
-            document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من لوحة التحكم الرئيسية أولاً!";
+            const loader = document.getElementById('auth-loader');
+            loader.innerHTML = "⚠️ حظر أمني: يرجى تسجيل الدخول أولاً!<br><br><span style='font-size:12px; color:#64748b;'>سيتم تحويلك للصفحة الرئيسية...</span>";
+            setTimeout(() => { window.location.href = 'index.html'; }, 2000);
         }
     });
 
@@ -205,7 +207,7 @@
             }
         };
 
-        // تجميع الحسابات واليوميات والعمال من المسارات المعزولة لكل عميل بشكل منفصل
+        // إعداد المسارات بناءً على الـ Security Rules الخاصة بك
         clientsRef = ref(db, `backups/users/${currentUid}`);
         yomyaRef = ref(db, `backups/yomya_users/${currentUid}`);
         weeksRef = ref(db, `backups/workers_weeks/${currentUid}`);
@@ -218,44 +220,73 @@
     function processAndRender(data, targetYear) {
         let monthlyStats = Array.from({ length: 12 }, () => ({ deals: 0, custPay: 0, yomIn: 0, totalOut: 0 }));
 
+        // 💡 [السر هنا] دالة قوية جداً لفك شفرة التاريخ مهما كانت صيغته (شرط، سلاش، أمريكي، عربي)
+        const extractDate = (dStr) => {
+            if (!dStr) return null;
+            let d = new Date(dStr);
+            if (!isNaN(d)) return { year: d.getFullYear(), month: d.getMonth() };
+            
+            let parts = String(dStr).split(/[-/]/);
+            if (parts.length === 3) {
+                let p0 = parseInt(parts[0]), p1 = parseInt(parts[1]), p2 = parseInt(parts[2]);
+                if (p2 > 2000) return { year: p2, month: p1 - 1 }; // صيغة DD/MM/YYYY
+                if (p0 > 2000) return { year: p0, month: p1 - 1 }; // صيغة YYYY-MM-DD
+            }
+            return null;
+        };
+
+        // --- 1. معالجة العملاء والعقود ---
         Object.values(data.clients).forEach(client => {
             if (client.dy == targetYear) {
                 let m = parseInt(client.dm) - 1;
                 if (m >= 0 && m < 12) monthlyStats[m].deals++;
             }
             if (client.pays) {
-                client.pays.forEach(p => {
-                    if (p.d) {
-                        const d = new Date(p.d);
-                        if (d.getFullYear() === targetYear) {
-                            monthlyStats[d.getMonth()].custPay += parseFloat(p.v || 0);
-                        }
+                Object.values(client.pays).forEach(p => {
+                    let pDate = extractDate(p.d);
+                    if (pDate && pDate.year === targetYear && pDate.month >= 0 && pDate.month < 12) {
+                        monthlyStats[pDate.month].custPay += parseFloat(p.v || 0);
                     }
                 });
             }
         });
 
-        Object.values(data.yomya).forEach(y => {
-            if (y.date) {
-                const d = new Date(y.date);
-                if (d.getFullYear() === targetYear) {
-                    let m = d.getMonth();
-                    monthlyStats[m].yomIn += parseFloat(y.inVal || 0);
-                    monthlyStats[m].totalOut += parseFloat(y.outVal || 0);
-                }
+        // --- 2. معالجة اليومية والخزينة (Yomya) بطريقة البحث العميق (Recursive) ---
+        const allYomya = [];
+        const findYomya = (obj) => {
+            if (!obj || typeof obj !== 'object') return;
+            if (obj.date !== undefined && (obj.inVal !== undefined || obj.outVal !== undefined)) {
+                allYomya.push(obj);
+            } else {
+                Object.values(obj).forEach(findYomya);
+            }
+        };
+        findYomya(data.yomya); // سيبحث في اليومية حتى لو كانت مقسمة لشهور أو أيام داخل القاعدة
+
+        allYomya.forEach(y => {
+            let yDate = extractDate(y.date);
+            if (yDate && yDate.year === targetYear && yDate.month >= 0 && yDate.month < 12) {
+                monthlyStats[yDate.month].yomIn += parseFloat(y.inVal || 0);
+                monthlyStats[yDate.month].totalOut += parseFloat(y.outVal || 0);
             }
         });
 
+        // --- 3. معالجة غياب ورواتب العمال (Gyab) بضمان تحويل كائنات فايربيز إلى مصفوفات ---
         Object.keys(data.weeks).forEach(weekKey => {
-            const d = new Date(weekKey);
-            if (d.getFullYear() === targetYear) {
-                let m = d.getMonth();
-                data.weeks[weekKey].forEach(w => {
-                    let sal = parseFloat(w.sal || 0);
-                    let att = (w.att || []).reduce((a, b) => a + parseFloat(b || 0), 0);
-                    let loans = (w.loans || []).reduce((a, b) => a + parseFloat(b || 0), 0);
-                    let net = ((sal / 6) * att) - loans - (parseFloat(w.instPaid || 0));
-                    monthlyStats[m].totalOut += net > 0 ? Math.round(net) : 0;
+            let wDate = extractDate(weekKey);
+            if (wDate && wDate.year === targetYear && wDate.month >= 0 && wDate.month < 12) {
+                let workersList = data.weeks[weekKey];
+                
+                Object.values(workersList || {}).forEach(w => {
+                    if (w && typeof w === 'object' && w.sal) {
+                        let sal = parseFloat(w.sal || 0);
+                        // استخدام Object.values يمنع توقف الكود إذا أرجع فايربيز الغياب كـ Object بدلاً من Array
+                        let att = Object.values(w.att || {}).reduce((a, b) => a + parseFloat(b || 0), 0);
+                        let loans = Object.values(w.loans || {}).reduce((a, b) => a + parseFloat(b || 0), 0);
+                        
+                        let net = ((sal / 6) * att) - loans - (parseFloat(w.instPaid || 0));
+                        monthlyStats[wDate.month].totalOut += net > 0 ? Math.round(net) : 0;
+                    }
                 });
             }
         });
