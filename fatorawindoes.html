@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>عقد اتفاق وتوريد شبابيك وأبواب - سحابي</title>
+    <title>عقد اتفاق وتوريد شبابيك وأبواب - سحابي (v10)</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root {
@@ -84,11 +86,11 @@
         .btn-new-row-trigger { background-color: #475569; color: white; border: none; margin-bottom: 10px; }
         .btn-new-row-trigger:hover { background-color: var(--primary-dark); }
 
-        .btn-container { display: flex; gap: 10px; justify-content: center; margin: 25px 0; }
+        .btn-container { display: flex; gap: 10px; justify-content: center; margin: 25px 0; flex-wrap: wrap; }
         button.action-btn { padding: 10px 24px; font-size: 14px; font-weight: 700; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .btn-save { background-color: #475569; color: white; }
         .btn-pdf { background-color: var(--primary); color: white; } 
-        .btn-whatsapp { background-color: #16a34a; color: white; }
+        .btn-img-download { background-color: #16a34a; color: white; }
         .btn-delete { background-color: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
         .date-dropdown-container { display: flex; align-items: center; gap: 4px; }
@@ -119,7 +121,7 @@
 <div class="container" id="app-screen" style="display:none;">
     <div class="header-banner">
         <div id="liveClock" class="digital-clock">00:00:00 ص</div>
-        <h2>عقد اتفاق وتوريد شبابيك وأبواب (سحابي)</h2>
+        <h2>عقد اتفاق وتوريد شبابيك وأبواب (v10)</h2>
         <p>وثيقة رسمية - إمكانية إضافة أي نوع قطاع أو زجاج جديد</p>
         <div id="sync-status">🔄 جاري الاتصال بالسحابة...</div>
     </div>
@@ -242,10 +244,10 @@
             </div>
         </div>
 
-        <div class="btn-container">
+        <div class="btn-container" id="main-action-buttons">
             <button type="button" class="action-btn btn-save" onclick="archiveContract()">☁️ حفظ وأرشفة العقد سحابياً</button>
             <button type="button" class="action-btn btn-pdf" onclick="window.print()">📄 طباعة / PDF</button>
-            <button type="button" class="action-btn btn-whatsapp" onclick="sendToWhatsapp()">💬 إرسال واتساب</button>
+            <button type="button" class="action-btn btn-img-download" onclick="downloadImage()">🖼️ حفظ كصورة (للاستوديو)</button>
         </div>
 
         <div class="card">
@@ -321,17 +323,14 @@
     let onlineContractsData = {};
     let windowUserUid = null;
 
-    // 🔒 قفل الغرفة البرمجية وعزل مسار العميل لعقود الشبابيك
     auth.onAuthStateChanged(user => {
         if (user) {
             windowUserUid = user.uid;
             document.getElementById('auth-loader').style.display = 'none';
             document.getElementById('app-screen').style.display = 'block';
             
-            // تخصيص مسار لعقود الشبابيك حصراً
             contractsRef = fdb.ref('backups/windows_contracts/' + windowUserUid);
             
-            // الاستماع اللحظي
             contractsRef.on('value', (snapshot) => {
                 onlineContractsData = snapshot.val() || {};
                 renderArchive();
@@ -367,8 +366,6 @@
         applyStatusColors(document.getElementById('transportOn'));
         applyStatusColors(document.getElementById('installOn'));
         
-        // منع إضافة سطر فارغ مبدئي إذا تم تحميل الأرشيف، لكن مبدئياً نضيف سطر.
-        // سنتركه يضيف سطر، وفي حالة الاسترجاع نقوم بتفريغ الجدول أولاً.
         addNewWindowRow();
     });
 
@@ -411,7 +408,7 @@
 
     function getProfileDisplayValue(row) {
         const select = row.querySelector('.win-profile');
-        const customInput = row.querySelector('.profile-custom-input') || row.querySelector('.profile-custom'); // التصحيح
+        const customInput = row.querySelector('.profile-custom-input') || row.querySelector('.profile-custom'); 
         if (select.value === "__CUSTOM__") {
             return customInput.value.trim() !== "" ? customInput.value.trim() : "نوع جديد";
         } else {
@@ -421,7 +418,7 @@
 
     function getGlassDisplayValue(row) {
         const select = row.querySelector('.win-glass');
-        const customInput = row.querySelector('.glass-custom-input') || row.querySelector('.glass-custom'); // التصحيح
+        const customInput = row.querySelector('.glass-custom-input') || row.querySelector('.glass-custom'); 
         if (select.value === "__CUSTOM__") {
             return customInput.value.trim() !== "" ? customInput.value.trim() : "زجاج جديد";
         } else {
@@ -640,12 +637,11 @@
         document.getElementById('extraWorksCost').value = cust.extraWorksCost || '';
         document.getElementById('totalDiscount').value = cust.totalDiscount || '';
 
-        // تفريغ جدول الشبابيك ثم إعادة بنائه
         document.getElementById('windowsSubRows').innerHTML = '';
         if (cust.windows && cust.windows.length > 0) {
             cust.windows.forEach(w => addNewWindowRow(w.name, w.profile, w.glass, w.meters, w.price));
         } else {
-            addNewWindowRow(); // سطر فارغ مبدئي إذا لم يوجد
+            addNewWindowRow(); 
         }
 
         toggleTransportCost();
@@ -665,16 +661,83 @@
         contractsRef.remove().then(() => alert('🗑️ تم تفريغ قاعدة البيانات السحابية'));
     }
 
-    function sendToWhatsapp() {
-        const shop = document.getElementById('shopName').value || 'الشركة';
-        const name = document.getElementById('customerName').value;
-        const phone = document.getElementById('customerPhone').value;
-        if (!name || !phone) { alert('برجاء إدخال اسم العميل ورقم الهاتف.'); return; }
+    // ------------------------------------------------------------------
+    // 4. دالة حفظ الصورة المحسّنة (تعمل على الجوال والاستوديو - V10)
+    // ------------------------------------------------------------------
+    function downloadImage() {
+        const name = document.getElementById('customerName').value.trim() || 'بدون_اسم';
+        if (!name) {
+            alert('❌ يرجى إدخال اسم العميل أولاً قبل حفظ الصورة.');
+            return;
+        }
+        alert('⏳ جاري تجهيز الصورة... يرجى الانتظار.');
 
-        let msg = `*عقد شبابيك وأبواب صادر من ( ${shop} )*\n👤 *العميل:* ${name}\n🔥 *الإجمالي النهائي المستحق:* ${document.getElementById('finalGrandTotal').innerText}`;
-        let formattedPhone = phone.startsWith('01') ? '20' + phone.slice(1) : phone;
-        window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+        // إخفاء العناصر غير المرغوب فيها في الصورة
+        const elementsToHide = document.querySelectorAll(
+            '#main-action-buttons, .card-archive, .card-actions-wrapper, .btn-new-row-trigger, .btn-delete'
+        );
+        elementsToHide.forEach(el => el.style.display = 'none');
+        const syncStatus = document.getElementById('sync-status');
+        if (syncStatus) syncStatus.style.display = 'none';
+
+        // تعيين قيم الحقول الحالية في السمات لضمان ظهورها
+        document.querySelectorAll('input, textarea, select').forEach(input => {
+            if (input.tagName === 'INPUT') input.setAttribute('value', input.value);
+            else if (input.tagName === 'TEXTAREA') input.innerHTML = input.value;
+            else if (input.tagName === 'SELECT') {
+                Array.from(input.options).forEach(opt => {
+                    opt.selected = (opt.value === input.value);
+                    if (opt.selected) opt.setAttribute('selected', 'selected');
+                    else opt.removeAttribute('selected');
+                });
+            }
+        });
+
+        window.scrollTo(0, 0);
+        const element = document.getElementById('app-screen');
+
+        setTimeout(() => {
+            html2canvas(element, {
+                scale: 2.5,
+                useCORS: false,
+                backgroundColor: '#ffffff',
+                logging: false,
+                windowWidth: element.scrollWidth
+            }).then(canvas => {
+                canvas.toBlob(blob => {
+                    if (!blob) throw new Error('فشل إنشاء ملف الصورة');
+                    const url = URL.createObjectURL(blob);
+                    
+                    const newWin = window.open();
+                    if (newWin) {
+                        newWin.document.write(`
+                            <html dir="rtl">
+                            <head><title>عقد شبابيك وأبواب - ${name}</title><meta charset="UTF-8"></head>
+                            <body style="margin:0; display:flex; justify-content:center; background:#e2e8f0;">
+                                <img src="${url}" style="max-width:100%; height:auto; box-shadow:0 0 10px rgba(0,0,0,0.3);" />
+                                <p style="text-align:center; font-family:sans-serif; position:fixed; bottom:10px; width:100%; background:rgba(0,0,0,0.7); color:white; padding:8px;">✋ اضغط مع الاستمرار على الصورة ثم اختر "حفظ الصورة" لحفظها في معرض هاتفك.</p>
+                            </body>
+                            </html>
+                        `);
+                        newWin.onload = () => URL.revokeObjectURL(url);
+                    } else {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `عقد_شبابيك_${name}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                    }
+                }, 'image/png', 1.0);
+            }).catch(err => {
+                console.error(err);
+                alert('❌ حدث خطأ أثناء التقاط الصورة. تأكد من مساحة التخزين وأعد المحاولة.');
+            }).finally(() => {
+                elementsToHide.forEach(el => el.style.display = '');
+                if (syncStatus) syncStatus.style.display = 'inline-block';
+            });
+        }, 200);
     }
 </script>
 </body>
-</html> 
+</html>
