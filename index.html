@@ -149,7 +149,6 @@
             animation: ticker-scroll 45s linear infinite; 
         }
 
-        /* إيقاف الشريط عند مرور الماوس (أو اللمس) للقراءة */
         .news-ticker-container:hover .ticker-text {
             animation-play-state: paused;
         }
@@ -184,17 +183,12 @@
     </div>
 </div>
 
-<!-- شريط المباريات القادمة الجديد (محدث للـ 6 أيام القادمة بدءاً من 26 مايو) -->
 <div class="news-ticker-container">
     <div class="ticker-text">
         <span class="ticker-item">🇪🇬 <strong>منتخب مصر × روسيا</strong> - مباراة ودية دولية استعداداً للمونديال - الخميس 28 مايو - 9:00 م</span>
-        
         <span class="ticker-item">🏆 <strong>أرسنال × باريس سان جيرمان</strong> - نهائي دوري أبطال أوروبا 2026 - السبت 30 مايو - 10:00 م</span>
-        
         <span class="ticker-item">⚽ <strong>الإسماعيلي × فاركو</strong> - الدوري المصري الممتاز (الجولة 13) - الخميس 28 مايو - 5:00 م</span>
-        
         <span class="ticker-item">⚽ <strong>المقاولون العرب × مودرن سبورت</strong> - الدوري المصري الممتاز (الجولة 13) - الجمعة 29 مايو - 5:00 م</span>
-        
         <span class="ticker-item">🚨 <strong>تنبيه الأندية:</strong> انتهت مباريات الأهلي والزمالك في الدوري المصري رسمياً بنهاية مجموعة التتويج يوم 20 مايو الماضي!</span>
     </div>
 </div>
@@ -228,8 +222,8 @@
     </div>
 
     <div class="sync-group">
-        <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">🟢 حفظ للواتس</button>
-        <button onclick="loadFromWhatsApp()" class="btn btn-whatsapp">📥 استرجاع من الواتس</button>
+        <button onclick="saveToWhatsApp()" class="btn btn-whatsapp">☁️ حفظ للواتس</button>
+        <button onclick="loadFromWhatsApp()" class="btn btn-whatsapp">📥 استرجاع السحابة</button>
     </div>
 </div>
 
@@ -290,6 +284,7 @@
 </div>
 
 <script>
+    // واجهة المستخدم (الساعة، التكبير، المظهر)
     function toggleZoom(card, event) {
         if(event) event.stopPropagation();
         if (card.classList.contains('fullscreen')) {
@@ -391,9 +386,7 @@
     function toggleHolidaysDropdown(event) {
         if(event) event.stopPropagation();
         const drop = document.getElementById('holidaysDropdown');
-        
         drop.classList.toggle('show');
-        
         if(drop.classList.contains('show')) {
             drop.innerHTML = holidays.map(h => `<div class="holiday-item"><span>${h.name}</span><span>${new Date(h.date).toLocaleDateString('ar-EG')}</span></div>`).join('');
         }
@@ -402,41 +395,87 @@
     function toggleTheme() { document.body.classList.toggle('dark-mode'); }
     setInterval(updateHeader, 60000);
     updateHeader();
+</script>
 
-    function saveToWhatsApp() {
-        let data = {};
-        let hasData = false;
-        
-        for (let i = 0; i < localStorage.length; i++) { 
-            let k = localStorage.key(i); 
-            if (k !== 'theme') { 
-                data[k] = localStorage.getItem(k); 
-                hasData = true; 
-            } 
+<script type="module">
+    // نظام المصادقة السحابي والنسخ الاحتياطي الذكي للواتساب
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210"
+    };
+    
+    const app = initializeApp(firebaseConfig); 
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    
+    let currentUserUid = null;
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUserUid = user.uid;
+            document.getElementById('login-overlay').style.display = 'none';
+            document.querySelectorAll('iframe').forEach(f => f.src = f.src);
+        } else {
+            currentUserUid = null;
+            document.getElementById('login-overlay').style.display = 'flex';
         }
-        
-        if (!hasData) { 
-            alert("⚠️ لا توجد بيانات مسجلة لحفظها!"); 
-            return; 
+    });
+
+    // --- دالة النسخ الاحتياطي السحابي الشامل للواتساب ---
+    window.saveToWhatsApp = async function() {
+        if (!currentUserUid) {
+            alert("⚠️ يجب تسجيل الدخول أولاً لأخذ نسخة احتياطية.");
+            return;
         }
 
         try {
-            let jsonData = JSON.stringify(data);
+            alert("⏳ جاري سحب البيانات من السحابة لتجهيز النسخة... يرجى الانتظار.");
+            
+            const paths = ['kitchen_contracts', 'workers_master', 'workers_weeks', 'workers_archive', 'farah_agheza_sizes', 'users', 'notes_users', 'yomya_users', 'settings_alum', 'invoices_alum', 'cut_projects', 'cut_archive', 'invoices_wood'];
+            let allData = {};
+            
+            for (let path of paths) {
+                const snapshot = await get(ref(db, `backups/${path}/${currentUserUid}`));
+                if (snapshot.exists()) {
+                    allData[path] = snapshot.val();
+                }
+            }
+
+            if (Object.keys(allData).length === 0) {
+                alert("⚠️ لا توجد بيانات سحابية مسجلة لحفظها!");
+                return;
+            }
+
+            let jsonData = JSON.stringify(allData);
             let encodedData = btoa(unescape(encodeURIComponent(jsonData)));
             
-            let textMessage = "نسخة احتياطية لنظام azemaa pro 🔐\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بياناتك:\n\n" + encodedData;
+            let textMessage = "نسخة احتياطية شاملة لنظام azemaa pro ☁️🔐\nالرجاء الاحتفاظ بهذا الكود لاسترجاع بيانات السحابة بالكامل:\n\n" + encodedData;
             let whatsappUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textMessage);
             
             window.open(whatsappUrl, '_blank');
             
         } catch (error) {
-            alert("❌ حدث خطأ أثناء تجهيز البيانات: " + error.message);
+            alert("❌ حدث خطأ أثناء تجهيز البيانات السحابية: " + error.message);
         }
-    }
+    };
 
-    function loadFromWhatsApp() {
-        let inputCode = prompt("📥 الصق كود النسخة الاحتياطية (الموجود أسفل رسالة الواتساب) هنا:");
-        
+    // --- دالة استرجاع البيانات السحابية من الواتساب ---
+    window.loadFromWhatsApp = async function() {
+        if (!currentUserUid) {
+            alert("⚠️ يجب تسجيل الدخول أولاً لاسترجاع النسخة الاحتياطية.");
+            return;
+        }
+
+        let inputCode = prompt("📥 الصق كود النسخة الاحتياطية السحابية هنا:");
         if (!inputCode || inputCode.trim() === "") return;
 
         try {
@@ -449,44 +488,23 @@
             let decodedData = decodeURIComponent(escape(atob(codeToDecode)));
             let data = JSON.parse(decodedData);
             
-            if (confirm("⚠️ تحذير: سيتم استبدال بياناتك الحالية بالبيانات المسترجعة من الكود. هل تريد المتابعة؟")) {
-                for (let k in data) { 
-                    localStorage.setItem(k, data[k]); 
+            if (confirm("⚠️ تحذير خطير: سيتم مسح بيانات السحابة الحالية واستبدالها بالبيانات الموجودة في هذا الكود بالكامل. هل أنت متأكد؟")) {
+                
+                alert("⏳ جاري رفع البيانات إلى السحابة... يرجى عدم إغلاق الصفحة.");
+                
+                for (let path in data) {
+                    await set(ref(db, `backups/${path}/${currentUserUid}`), data[path]);
                 }
-                alert("✅ تم استرجاع البيانات بنجاح! سيتم إعادة تحميل الصفحة وجلب بيانات السحابة.");
+                
+                alert("✅ تم استرجاع البيانات للسحابة بنجاح! سيتم إعادة تحميل النظام.");
                 window.location.reload();
             }
         } catch (error) {
             alert("❌ الكود غير صحيح أو تالف! يرجى التأكد من نسخ الكود المشفر فقط بالكامل.");
         }
-    }
-</script>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    
-    const firebaseConfig = {
-        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-        authDomain: "azemaa-proo.firebaseapp.com",
-        projectId: "azemaa-proo",
-        storageBucket: "azemaa-proo.firebasestorage.app",
-        messagingSenderId: "787350492977",
-        appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
-    
-    const app = initializeApp(firebaseConfig); 
-    const auth = getAuth(app);
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            document.getElementById('login-overlay').style.display = 'none';
-            document.querySelectorAll('iframe').forEach(f => f.src = f.src);
-        } else {
-            document.getElementById('login-overlay').style.display = 'flex';
-        }
-    });
-
+    // --- نظام تسجيل الدخول وتسجيل الخروج ---
     document.getElementById('login-btn').addEventListener('click', async () => {
         const email = document.getElementById('sys-email').value;
         const password = document.getElementById('sys-password').value;
@@ -504,7 +522,7 @@
         } catch (error) {
             alert("❌ خطأ في التفعيل: بيانات حساب العميل غير مطابقة للسيرفر.");
         } finally {
-            loginBtn.innerText = "تفعيل النظام";
+            loginBtn.innerText = "تفعيل النظام الآمن";
             loginBtn.disabled = false;
         }
     });
