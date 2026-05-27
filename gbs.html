@@ -3,100 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دفتر عناوين الزبائن الجغرافي السحابي</title>
+    <title>دفتر عناوين الزبائن</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
 
-    <div id="auth-loader" class="fixed inset-0 bg-gray-50 z-[9999] flex flex-col justify-center items-center text-blue-600 font-bold text-center p-5 transition-all">
+    <div id="auth-loader" class="fixed inset-0 bg-gray-50 z-[9999] flex flex-col justify-center items-center text-blue-600 font-bold text-center p-5">
         <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-        ⏳ جاري فحص حساب المستخدم ومزامنة دفتر الزبائن أمنياً...
+        ⏳ جاري التحقق...
     </div>
 
-    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg hidden z-50 text-sm font-bold whitespace-nowrap transition-all">
-        ✅ تم الحفظ والمزامنة سحابياً
-    </div>
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg hidden z-50 text-sm font-bold">✅ تم الحفظ</div>
 
     <div id="app-screen" style="display:none;" class="max-w-md mx-auto px-4 pt-6 pb-20">
         
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl mb-6 text-center relative">
-            <h1 class="text-2xl font-bold">دفتر عناوين الزبائن</h1>
-            <p class="text-sm opacity-90 mt-1">سجل عنوان زبونك وموقعه سحابياً</p>
-            <span id="sync-status" class="absolute top-3 left-3 text-[10px] bg-black/20 px-2 py-1 rounded-full font-bold">🔄 جاري المزامنة...</span>
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl mb-6 text-center">
+            <h1 class="text-2xl font-bold">دفتر الزبائن</h1>
+            <span id="sync-status" class="text-[10px] bg-black/20 px-2 py-1 rounded-full font-bold">🔄 جاهز</span>
         </div>
 
         <div class="flex gap-2 mb-4">
-            <button onclick="showTab('add')" id="tabAddBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow">➕ إضافة</button>
-            <button onclick="showTab('list')" id="tabListBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700">📋 الزبائن</button>
-            <button onclick="showTab('search')" id="tabSearchBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700">🔍 بحث</button>
+            <button onclick="showTab('add')" id="tabAddBtn" class="flex-1 py-2 rounded-xl font-bold bg-blue-600 text-white shadow">➕ إضافة</button>
+            <button onclick="showTab('list')" id="tabListBtn" class="flex-1 py-2 rounded-xl font-bold bg-gray-200 text-gray-700">📋 الزبائن</button>
+            <button onclick="showTab('search')" id="tabSearchBtn" class="flex-1 py-2 rounded-xl font-bold bg-gray-200 text-gray-700">🔍 بحث</button>
         </div>
 
-        <div id="addTab" class="bg-white p-6 rounded-2xl shadow-md mb-6 border border-gray-100">
-            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span>👤</span> إضافة زبون جديد
-            </h2>
-            
+        <div id="addTab" class="bg-white p-6 rounded-2xl shadow-md mb-6">
             <form id="customerForm" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">اسم الزبون *</label>
-                    <input type="text" id="name" required placeholder="مثال: محمد أحمد" class="w-full mt-1 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    <input type="text" id="name" required class="w-full mt-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">رقم الهاتف</label>
-                    <input type="tel" id="phone" placeholder="مثال: 05xxxxxxxx" class="w-full mt-1 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    <label class="block text-sm font-medium text-gray-700">🏠 العنوان *</label>
+                    <textarea id="address" required class="w-full mt-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
                 </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">🏠 العنوان / المكان *</label>
-                    <textarea id="address" required placeholder="اكتب العنوان الكامل هنا... (الحي، الشارع، رقم المنزل، معالم قريبة)" class="w-full mt-1 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" rows="3"></textarea>
-                </div>
-
-                <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-gray-300">
-                    <button type="button" onclick="getLocation()" class="w-full bg-emerald-500 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-2">
-                        <i class="fas fa-location-dot"></i> 📍 حدد موقعي الحالي الآن
-                    </button>
-                    <p id="locationStatus" class="text-xs text-center text-gray-500 mt-2">الموقع لم يحدد بعد *</p>
-                    <input type="hidden" id="lat">
-                    <input type="hidden" id="lng">
-                </div>
-
-                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">
-                    <i class="fas fa-cloud-arrow-up"></i> حفظ ومزامنة الدفتر
-                </button>
+                <button type="button" onclick="getLocation()" class="w-full bg-emerald-500 text-white py-2 rounded-xl font-bold"><i class="fas fa-location-dot"></i> تحديد الموقع</button>
+                <input type="hidden" id="lat"><input type="hidden" id="lng">
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">حفظ الزبون</button>
             </form>
         </div>
 
-        <div id="listTab" class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hidden">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <span>📋</span> الزبائن المسجلين
-                </h2>
-                <div class="flex gap-2">
-                    <button onclick="exportData()" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 transition">
-                        <i class="fas fa-download"></i> تصدير
-                    </button>
-                    <button onclick="clearAllData()" class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition">
-                        <i class="fas fa-trash"></i> مسح الكل
-                    </button>
-                </div>
-            </div>
-            <div id="customersList" class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                <p class="text-gray-400 text-sm text-center py-4">جاري تحميل الزبائن...</p>
-            </div>
+        <div id="listTab" class="bg-white p-6 rounded-2xl shadow-md hidden">
+            <div id="customersList" class="space-y-3"></div>
         </div>
 
-        <div id="searchTab" class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hidden">
-            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span>🔍</span> بحث في الزبائن
-            </h2>
-            <input type="text" id="searchInput" placeholder="ابحث بالاسم أو رقم الهاتف أو العنوان..." class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition mb-4">
-            <div id="searchResults" class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                <p class="text-gray-400 text-sm text-center py-4">اكتب للبحث...</p>
-            </div>
+        <div id="searchTab" class="bg-white p-6 rounded-2xl shadow-md hidden">
+            <input type="text" id="searchInput" placeholder="ابحث باسم الزبون..." class="w-full p-3 border rounded-xl mb-4">
+            <div id="searchResults" class="space-y-3"></div>
         </div>
-
     </div>
 
     <script type="module">
@@ -104,265 +60,64 @@
         import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-            authDomain: "azemaa-proo.firebaseapp.com",
-            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-            projectId: "azemaa-proo",
-            storageBucket: "azemaa-proo.firebasestorage.app",
-            messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210"
-        };
-
+        // (يتم وضع إعدادات Firebase الخاصة بك هنا كما كانت)
+        const firebaseConfig = { /* ... */ };
         const app = initializeApp(firebaseConfig);
         const fdb = getDatabase(app);
         const auth = getAuth(app);
-        
-        let customersData = {};
-        let windowUserUid = null;
-        let customersRef = null;
-
-        window.showToast = function(message) {
-            const t = document.getElementById('toast');
-            t.innerText = message;
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2500);
-        };
-
-        window.escapeHtml = function(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        };
+        let customersData = {}, windowUserUid, customersRef;
 
         window.showTab = function(tab) {
-            document.getElementById('addTab').classList.add('hidden');
-            document.getElementById('listTab').classList.add('hidden');
-            document.getElementById('searchTab').classList.add('hidden');
-            
-            document.getElementById('tabAddBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700';
-            document.getElementById('tabListBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700';
-            document.getElementById('tabSearchBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700';
-            
-            if(tab === 'add') {
-                document.getElementById('addTab').classList.remove('hidden');
-                document.getElementById('tabAddBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow';
-            } else if(tab === 'list') {
-                document.getElementById('listTab').classList.remove('hidden');
-                document.getElementById('tabListBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow';
-            } else if(tab === 'search') {
-                document.getElementById('searchTab').classList.remove('hidden');
-                document.getElementById('tabSearchBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow';
-            }
+            document.getElementById('addTab').classList.toggle('hidden', tab !== 'add');
+            document.getElementById('listTab').classList.toggle('hidden', tab !== 'list');
+            document.getElementById('searchTab').classList.toggle('hidden', tab !== 'search');
         };
 
-        window.getLocation = function() {
-            const status = document.getElementById("locationStatus");
-            status.innerText = "جاري الاتصال بالأقمار الصناعية... ⏳";
-            status.className = "text-xs text-center text-amber-600 mt-2 font-bold";
-            
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((pos) => {
-                    document.getElementById("lat").value = pos.coords.latitude;
-                    document.getElementById("lng").value = pos.coords.longitude;
-                    status.innerHTML = "تم التقاط الموقع بنجاح! ✅";
-                    status.className = "text-xs text-center text-emerald-600 mt-2 font-bold";
-                }, (error) => {
-                    status.innerText = "❌ فشل تحديد الموقع. تأكد من تشغيل الـ GPS.";
-                    status.className = "text-xs text-center text-red-500 mt-2";
-                }, { enableHighAccuracy: true, timeout: 10000 });
-            } else {
-                status.innerText = "متصفحك لا يدعم الـ GPS";
-            }
+        window.renderCustomers = function(data = customersData, containerId = "customersList") {
+            const container = document.getElementById(containerId);
+            const arr = Object.keys(data).map(k => ({id: k, ...data[k]})).reverse();
+            container.innerHTML = arr.length ? arr.map(cus => `
+                <div class="p-4 bg-gray-50 rounded-xl border">
+                    <h3 class="font-bold text-gray-800">${cus.name}</h3>
+                    <p class="text-sm text-gray-600 mt-1">${cus.address}</p>
+                    <a href="https://www.google.com/maps/search/?api=1&query=${cus.lat},${cus.lng}" target="_blank" class="text-blue-600 text-xs font-bold mt-2 block">📍 عرض الخريطة</a>
+                </div>
+            `).join('') : '<p class="text-center text-gray-400">لا يوجد بيانات</p>';
         };
 
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                windowUserUid = user.uid;
-                document.getElementById('auth-loader').style.display = 'none';
-                document.getElementById('app-screen').style.display = 'block';
-                
-                // تم التعديل ليتطابق تماماً مع ملف الـ rules (backups/gbs/$uid)
-                customersRef = ref(fdb, 'backups/gbs/' + windowUserUid);
-                
-                document.getElementById('sync-status').innerText = "⚡ جاري المزامنة...";
-                
-                onValue(customersRef, (snapshot) => {
-                    customersData = snapshot.val() || {};
-                    window.renderCustomers();
-                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
-                });
-            } else {
-                const loader = document.getElementById('auth-loader');
-                loader.innerHTML = '<i class="fas fa-lock text-4xl mb-4 text-red-500"></i>⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!';
-                loader.className = "fixed inset-0 bg-gray-50 z-[9999] flex flex-col justify-center items-center text-red-600 font-bold text-center p-5";
-            }
-        });
-
-        window.renderCustomers = function() {
-            const listContainer = document.getElementById("customersList");
-            const customersArray = Object.keys(customersData).map(key => ({
-                id: key,
-                ...customersData[key]
-            })).reverse();
-            
-            if(customersArray.length === 0) {
-                listContainer.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">لا يوجد زبائن مسجلين حالياً.</p>';
-            } else {
-                listContainer.innerHTML = customersArray.map((cus) => {
-                    // تم تصحيح رابط الخرائط ليكون رابط جوجل ماب قياسي ومباشر
-                    const mapUrl = `https://www.google.com/maps?q=${cus.lat},${cus.lng}`;
-                    const whatsappUrl = cus.phone !== "غير مدخل" && cus.phone ? `https://wa.me/${cus.phone.replace(/[^0-9]/g, '')}` : null;
-                    
-                    return `
-                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 relative hover:shadow-md transition">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <h3 class="font-bold text-gray-800">${window.escapeHtml(cus.name)}</h3>
-                                    <p class="text-xs text-gray-500 mt-1"><i class="fas fa-phone"></i> ${window.escapeHtml(cus.phone)}</p>
-                                </div>
-                                <span class="text-[10px] text-gray-400">${cus.date || ''}</span>
-                            </div>
-                            
-                            <div class="bg-white p-2 rounded-lg mb-3 border-r-4 border-blue-500">
-                                <p class="text-xs text-gray-400 mb-1"><i class="fas fa-location-dot"></i> العنوان / المكان:</p>
-                                <p class="text-sm text-gray-700 font-medium">${window.escapeHtml(cus.address)}</p>
-                            </div>
-                            
-                            <div class="flex gap-2 flex-wrap">
-                                <a href="${mapUrl}" target="_blank" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 transition text-center">
-                                    <i class="fas fa-map-marker-alt"></i> 🗺️ الخريطة
-                                </a>
-                                ${whatsappUrl ? `<a href="${whatsappUrl}" target="_blank" class="flex-1 bg-green-50 text-green-600 py-2 rounded-lg text-xs font-bold hover:bg-green-100 transition text-center">
-                                    <i class="fab fa-whatsapp"></i> واتساب
-                                </a>` : ''}
-                                <button onclick="deleteCustomer('${cus.id}')" class="bg-red-50 text-red-500 px-3 rounded-lg text-xs hover:bg-red-100 transition">
-                                    <i class="fas fa-trash"></i> حذف
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            if(document.getElementById("searchInput").value) {
-                document.getElementById("searchInput").dispatchEvent(new Event('input'));
-            }
-        };
-
-        document.getElementById("customerForm").addEventListener("submit", function(e) {
+        document.getElementById("customerForm").addEventListener("submit", (e) => {
             e.preventDefault();
-            if(!windowUserUid) return;
-            
-            const name = document.getElementById("name").value;
-            const phone = document.getElementById("phone").value;
-            const address = document.getElementById("address").value;
-            const lat = document.getElementById("lat").value;
-            const lng = document.getElementById("lng").value;
-            
-            if(!lat || !lng) {
-                alert("من فضلك اضغط على زر 'حدد موقعي الحالي الآن' أولاً لتحديد موقع الزبون على الخريطة!");
-                return;
-            }
-
             const newCustomer = { 
-                name, 
-                phone: phone || "غير مدخل", 
-                address, 
-                lat, 
-                lng, 
-                date: new Date().toLocaleString('ar-EG')
+                name: document.getElementById("name").value, 
+                address: document.getElementById("address").value,
+                lat: document.getElementById("lat").value,
+                lng: document.getElementById("lng").value
             };
-            
-            document.getElementById('sync-status').innerText = "⚡ جاري الرفع...";
-            
             push(customersRef, newCustomer).then(() => {
-                this.reset();
-                document.getElementById("locationStatus").innerText = "الموقع لم يحدد بعد *";
-                document.getElementById("locationStatus").className = "text-xs text-center text-gray-500 mt-2";
-                document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
-                window.showToast("✅ تم حفظ العنوان والمزامنة سحابياً");
+                document.getElementById("customerForm").reset();
                 window.showTab('list');
-            }).catch(err => {
-                document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
-                alert("حدث خطأ في الاتصال: " + err);
             });
         });
 
-        window.deleteCustomer = function(id) {
-            if(!windowUserUid) return;
-            if(confirm("هل أنت متأكد من حذف هذا الزبون نهائياً؟")) {
-                document.getElementById('sync-status').innerText = "⚡ جاري الحذف...";
-                // تم التعديل ليتطابق مع الـ rules (backups/gbs)
-                const itemRef = ref(fdb, 'backups/gbs/' + windowUserUid + '/' + id);
-                remove(itemRef).then(() => {
-                    window.showToast("🗑️ تم الحذف من السحابة بنجاح");
-                }).catch(err => {
-                    document.getElementById('sync-status').innerText = "⚠️ خطأ";
-                });
-            }
-        };
-
-        window.clearAllData = function() {
-            if(!windowUserUid) return;
-            if(confirm("⚠️ تحذير: هل أنت متأكد من حذف جميع الزبائن من السحابة؟ هذا الإجراء لا يمكن التراجع عنه!")) {
-                document.getElementById('sync-status').innerText = "⚡ جاري مسح الدفتر...";
-                remove(customersRef).then(() => {
-                    window.showToast("تم تفريغ الدفتر بالكامل");
-                });
-            }
-        };
-
-        window.exportData = function() {
-            const customersArray = Object.keys(customersData).map(key => customersData[key]);
-            if(customersArray.length === 0) {
-                alert("لا توجد بيانات لتصديرها!");
-                return;
-            }
-            const dataStr = JSON.stringify(customersArray, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            const exportFileDefaultName = `customers_cloud_${new Date().toISOString().slice(0,19)}.json`;
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-        };
-
-        document.getElementById("searchInput").addEventListener("input", function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const customersArray = Object.keys(customersData).map(key => customersData[key]);
-            
-            const results = customersArray.filter(cus => 
-                (cus.name && cus.name.toLowerCase().includes(searchTerm)) || 
-                (cus.phone && cus.phone.toLowerCase().includes(searchTerm)) ||
-                (cus.address && cus.address.toLowerCase().includes(searchTerm))
-            );
-            
-            const searchResults = document.getElementById("searchResults");
-            if(results.length === 0) {
-                searchResults.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">لا توجد نتائج مطابقة.</p>';
-                return;
-            }
-            
-            searchResults.innerHTML = results.map((cus) => {
-                // تم تصحيح الرابط هنا أيضاً
-                const mapUrl = `https://www.google.com/maps?q=${cus.lat},${cus.lng}`;
-                return `
-                    <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <h3 class="font-bold text-gray-800">${window.escapeHtml(cus.name)}</h3>
-                        <p class="text-xs text-gray-500"><i class="fas fa-phone"></i> ${window.escapeHtml(cus.phone)}</p>
-                        <p class="text-sm text-gray-600 mt-2"><i class="fas fa-location-dot"></i> ${window.escapeHtml(cus.address.substring(0, 100))}${cus.address.length > 100 ? '...' : ''}</p>
-                        <a href="${mapUrl}" target="_blank" class="inline-block mt-2 text-blue-600 text-sm font-bold">
-                            <i class="fas fa-map-marker-alt"></i> عرض على الخريطة
-                        </a>
-                    </div>
-                `;
-            }).join('');
+        document.getElementById("searchInput").addEventListener("input", (e) => {
+            const val = e.target.value.toLowerCase();
+            const filtered = Object.fromEntries(Object.entries(customersData).filter(([_, v]) => v.name.toLowerCase().includes(val)));
+            renderCustomers(filtered, "searchResults");
         });
 
-        window.onload = () => {
-            window.showTab('add');
-        };
+        // تشغيل Auth
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                windowUserUid = user.uid;
+                customersRef = ref(fdb, 'backups/gbs/' + windowUserUid);
+                onValue(customersRef, (snap) => {
+                    customersData = snap.val() || {};
+                    renderCustomers();
+                });
+                document.getElementById('auth-loader').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+            }
+        });
     </script>
 </body>
 </html>
