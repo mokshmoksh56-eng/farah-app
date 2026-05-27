@@ -11,16 +11,16 @@
 
     <div id="auth-loader" class="fixed inset-0 bg-gray-50 z-[9999] flex flex-col justify-center items-center text-blue-600 font-bold text-center p-5">
         <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-        ⏳ جاري التحقق...
+        ⏳ جاري فحص الحساب والمزامنة...
     </div>
 
-    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg hidden z-50 text-sm font-bold">✅ تم الحفظ</div>
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg hidden z-50 text-sm font-bold whitespace-nowrap">✅ تم الحفظ بنجاح</div>
 
     <div id="app-screen" style="display:none;" class="max-w-md mx-auto px-4 pt-6 pb-20">
         
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl mb-6 text-center">
             <h1 class="text-2xl font-bold">دفتر الزبائن</h1>
-            <span id="sync-status" class="text-[10px] bg-black/20 px-2 py-1 rounded-full font-bold">🔄 جاهز</span>
+            <p class="text-xs opacity-80 mt-1">سجل عناوين الزبائن ومواقعهم</p>
         </div>
 
         <div class="flex gap-2 mb-4">
@@ -32,16 +32,18 @@
         <div id="addTab" class="bg-white p-6 rounded-2xl shadow-md mb-6">
             <form id="customerForm" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">اسم الزبون *</label>
-                    <input type="text" id="name" required class="w-full mt-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-bold text-gray-700">اسم الزبون</label>
+                    <input type="text" id="name" required placeholder="اكتب الاسم هنا" class="w-full mt-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">🏠 العنوان *</label>
-                    <textarea id="address" required class="w-full mt-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
+                    <label class="block text-sm font-bold text-gray-700">العنوان / المكان</label>
+                    <textarea id="address" required placeholder="تفاصيل العنوان..." class="w-full mt-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
                 </div>
-                <button type="button" onclick="getLocation()" class="w-full bg-emerald-500 text-white py-2 rounded-xl font-bold"><i class="fas fa-location-dot"></i> تحديد الموقع</button>
+                <button type="button" onclick="getLocation()" class="w-full bg-emerald-500 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-600 transition">
+                    <i class="fas fa-location-dot"></i> تحديد الموقع الحالي
+                </button>
                 <input type="hidden" id="lat"><input type="hidden" id="lng">
-                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">حفظ الزبون</button>
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg">حفظ البيانات</button>
             </form>
         </div>
 
@@ -50,7 +52,7 @@
         </div>
 
         <div id="searchTab" class="bg-white p-6 rounded-2xl shadow-md hidden">
-            <input type="text" id="searchInput" placeholder="ابحث باسم الزبون..." class="w-full p-3 border rounded-xl mb-4">
+            <input type="text" id="searchInput" placeholder="ابحث باسم الزبون..." class="w-full p-3 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none">
             <div id="searchResults" class="space-y-3"></div>
         </div>
     </div>
@@ -60,42 +62,65 @@
         import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // (يتم وضع إعدادات Firebase الخاصة بك هنا كما كانت)
-        const firebaseConfig = { /* ... */ };
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        };
+
         const app = initializeApp(firebaseConfig);
         const fdb = getDatabase(app);
         const auth = getAuth(app);
+        
         let customersData = {}, windowUserUid, customersRef;
 
         window.showTab = function(tab) {
             document.getElementById('addTab').classList.toggle('hidden', tab !== 'add');
             document.getElementById('listTab').classList.toggle('hidden', tab !== 'list');
             document.getElementById('searchTab').classList.toggle('hidden', tab !== 'search');
+            
+            document.getElementById('tabAddBtn').className = `flex-1 py-2 rounded-xl font-bold ${tab === 'add' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
+            document.getElementById('tabListBtn').className = `flex-1 py-2 rounded-xl font-bold ${tab === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
+            document.getElementById('tabSearchBtn').className = `flex-1 py-2 rounded-xl font-bold ${tab === 'search' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
         };
 
-        window.renderCustomers = function(data = customersData, containerId = "customersList") {
+        window.getLocation = () => {
+            navigator.geolocation.getCurrentPosition(pos => {
+                document.getElementById("lat").value = pos.coords.latitude;
+                document.getElementById("lng").value = pos.coords.longitude;
+                alert("تم تحديد الموقع بنجاح!");
+            }, () => alert("فشل تحديد الموقع"));
+        };
+
+        window.renderCustomers = (data = customersData, containerId = "customersList") => {
             const container = document.getElementById(containerId);
             const arr = Object.keys(data).map(k => ({id: k, ...data[k]})).reverse();
             container.innerHTML = arr.length ? arr.map(cus => `
                 <div class="p-4 bg-gray-50 rounded-xl border">
                     <h3 class="font-bold text-gray-800">${cus.name}</h3>
                     <p class="text-sm text-gray-600 mt-1">${cus.address}</p>
-                    <a href="https://www.google.com/maps/search/?api=1&query=${cus.lat},${cus.lng}" target="_blank" class="text-blue-600 text-xs font-bold mt-2 block">📍 عرض الخريطة</a>
+                    <a href="https://www.google.com/maps/search/?api=1&query=${cus.lat},${cus.lng}" target="_blank" class="text-blue-600 text-xs font-bold mt-2 block">📍 عرض على الخريطة</a>
                 </div>
-            `).join('') : '<p class="text-center text-gray-400">لا يوجد بيانات</p>';
+            `).join('') : '<p class="text-center text-gray-400">لا توجد بيانات</p>';
         };
 
         document.getElementById("customerForm").addEventListener("submit", (e) => {
             e.preventDefault();
-            const newCustomer = { 
-                name: document.getElementById("name").value, 
+            push(customersRef, {
+                name: document.getElementById("name").value,
                 address: document.getElementById("address").value,
-                lat: document.getElementById("lat").value,
-                lng: document.getElementById("lng").value
-            };
-            push(customersRef, newCustomer).then(() => {
+                lat: document.getElementById("lat").value || 0,
+                lng: document.getElementById("lng").value || 0
+            }).then(() => {
                 document.getElementById("customerForm").reset();
                 window.showTab('list');
+                const t = document.getElementById('toast');
+                t.classList.remove('hidden');
+                setTimeout(() => t.classList.add('hidden'), 2000);
             });
         });
 
@@ -105,7 +130,6 @@
             renderCustomers(filtered, "searchResults");
         });
 
-        // تشغيل Auth
         onAuthStateChanged(auth, user => {
             if (user) {
                 windowUserUid = user.uid;
@@ -113,9 +137,11 @@
                 onValue(customersRef, (snap) => {
                     customersData = snap.val() || {};
                     renderCustomers();
+                    document.getElementById('auth-loader').style.display = 'none';
+                    document.getElementById('app-screen').style.display = 'block';
                 });
-                document.getElementById('auth-loader').style.display = 'none';
-                document.getElementById('app-screen').style.display = 'block';
+            } else {
+                document.body.innerHTML = '<div class="p-10 text-center text-red-600 font-bold">يرجى تسجيل الدخول أولاً</div>';
             }
         });
     </script>
