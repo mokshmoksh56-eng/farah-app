@@ -104,7 +104,6 @@
         import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // إعدادات Firebase من ملف agheza
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -123,7 +122,6 @@
         let windowUserUid = null;
         let customersRef = null;
 
-        // دوال مساعدة عامة
         window.showToast = function(message) {
             const t = document.getElementById('toast');
             t.innerText = message;
@@ -178,15 +176,14 @@
             }
         };
 
-        // 🔒 التحقق والمزامنة الفورية (نفس أسلوب agheza)
         onAuthStateChanged(auth, user => {
             if (user) {
                 windowUserUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
                 document.getElementById('app-screen').style.display = 'block';
                 
-                // مسار مختلف مخصص للزبائن لمنع مسح بيانات الأجهزة
-                customersRef = ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid);
+                // تم التعديل ليتطابق تماماً مع ملف الـ rules (backups/gbs/$uid)
+                customersRef = ref(fdb, 'backups/gbs/' + windowUserUid);
                 
                 document.getElementById('sync-status').innerText = "⚡ جاري المزامنة...";
                 
@@ -202,19 +199,19 @@
             }
         });
 
-        // دوال معالجة البيانات
         window.renderCustomers = function() {
             const listContainer = document.getElementById("customersList");
             const customersArray = Object.keys(customersData).map(key => ({
                 id: key,
                 ...customersData[key]
-            })).reverse(); // الأحدث أولاً
+            })).reverse();
             
             if(customersArray.length === 0) {
                 listContainer.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">لا يوجد زبائن مسجلين حالياً.</p>';
             } else {
                 listContainer.innerHTML = customersArray.map((cus) => {
-                    const mapUrl = `https://www.google.com/maps?q=${cus.lat},${cus.lng}`;
+                    // تصحيح رابط خرائط جوجل ليفتح بشكل قياسي ومباشر
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${cus.lat},${cus.lng}`;
                     const whatsappUrl = cus.phone !== "غير مدخل" && cus.phone ? `https://wa.me/${cus.phone.replace(/[^0-9]/g, '')}` : null;
                     
                     return `
@@ -248,13 +245,11 @@
                 }).join('');
             }
 
-            // تحديث نتائج البحث إذا كانت نافذة البحث مفتوحة وفيها نص
             if(document.getElementById("searchInput").value) {
                 document.getElementById("searchInput").dispatchEvent(new Event('input'));
             }
         };
 
-        // إضافة زبون ومزامنته سحابياً
         document.getElementById("customerForm").addEventListener("submit", function(e) {
             e.preventDefault();
             if(!windowUserUid) return;
@@ -294,12 +289,12 @@
             });
         });
 
-        // الحذف السحابي
         window.deleteCustomer = function(id) {
             if(!windowUserUid) return;
             if(confirm("هل أنت متأكد من حذف هذا الزبون نهائياً؟")) {
                 document.getElementById('sync-status').innerText = "⚡ جاري الحذف...";
-                const itemRef = ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid + '/' + id);
+                // تم التعديل ليتطابق مع الـ rules (backups/gbs)
+                const itemRef = ref(fdb, 'backups/gbs/' + windowUserUid + '/' + id);
                 remove(itemRef).then(() => {
                     window.showToast("🗑️ تم الحذف من السحابة بنجاح");
                 }).catch(err => {
@@ -308,7 +303,6 @@
             }
         };
 
-        // مسح كل البيانات سحابياً
         window.clearAllData = function() {
             if(!windowUserUid) return;
             if(confirm("⚠️ تحذير: هل أنت متأكد من حذف جميع الزبائن من السحابة؟ هذا الإجراء لا يمكن التراجع عنه!")) {
@@ -319,7 +313,6 @@
             }
         };
 
-        // التصدير إلى ملف JSON محلي
         window.exportData = function() {
             const customersArray = Object.keys(customersData).map(key => customersData[key]);
             if(customersArray.length === 0) {
@@ -335,7 +328,6 @@
             linkElement.click();
         };
 
-        // البحث داخل البيانات المحملة
         document.getElementById("searchInput").addEventListener("input", function(e) {
             const searchTerm = e.target.value.toLowerCase();
             const customersArray = Object.keys(customersData).map(key => customersData[key]);
@@ -353,7 +345,7 @@
             }
             
             searchResults.innerHTML = results.map((cus) => {
-                const mapUrl = `https://www.google.com/maps?q=${cus.lat},${cus.lng}`;
+                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${cus.lat},${cus.lng}`;
                 return `
                     <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
                         <h3 class="font-bold text-gray-800">${window.escapeHtml(cus.name)}</h3>
@@ -367,7 +359,6 @@
             }).join('');
         });
 
-        // الإقلاع
         window.onload = () => {
             window.showTab('add');
         };
