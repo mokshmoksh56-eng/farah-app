@@ -3,50 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دفتر عناوين الزبائن السحابي</title>
+    <title>دفتر عناوين الزبائن الجغرافي السحابي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Cairo', sans-serif; }
-        
-        /* شاشة التحميل والأمان */
-        #auth-loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6;
-            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-size: 18px; color: #1f2937; font-weight: 900; text-align: center; padding: 20px;
-        }
-
-        .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-        .toast {
-            background: #ffffff; color: #1f2937; padding: 12px 25px; border-radius: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-weight: 700;
-            border-right: 4px solid #6366f1; animation: slideUpToast 0.3s ease, fadeOutToast 0.3s ease 2.7s forwards;
-        }
-        .toast.error { border-right-color: #ef4444; }
-        .toast.success { border-right-color: #10b981; }
-        @keyframes slideUpToast { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeOutToast { from { opacity: 1; } to { opacity: 0; } }
-    </style>
 </head>
-<body class="bg-gray-50 min-h-screen pb-12">
+<body class="bg-gray-50 min-h-screen font-sans">
 
-    <div id="auth-loader">⏳ جاري فحص حساب المستخدم ومزامنة العناوين سحابياً...</div>
+    <div id="auth-loader" class="fixed inset-0 bg-gray-50 z-[9999] flex flex-col justify-center items-center text-blue-600 font-bold text-center p-5 transition-all">
+        <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+        ⏳ جاري فحص حساب المستخدم ومزامنة دفتر الزبائن أمنياً...
+    </div>
 
-    <div id="app-screen" style="display:none;" class="max-w-md mx-auto px-4 pt-6">
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg hidden z-50 text-sm font-bold whitespace-nowrap transition-all">
+        ✅ تم الحفظ والمزامنة سحابياً
+    </div>
+
+    <div id="app-screen" style="display:none;" class="max-w-md mx-auto px-4 pt-6 pb-20">
         
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl mb-6 text-center">
-            <h1 class="text-2xl font-bold">دفتر العناوين السحابي</h1>
-            <p class="text-sm opacity-90 mt-1">سجل عناوين ومواقع زبائنك سحابياً بضغطة زر</p>
-            <div id="sync-status" class="inline-block bg-white/20 text-white px-3 py-1 rounded-full text-xs font-bold mt-3">
-                🔄 جاري الاتصال بالسحابة...
-            </div>
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl mb-6 text-center relative">
+            <h1 class="text-2xl font-bold">دفتر عناوين الزبائن</h1>
+            <p class="text-sm opacity-90 mt-1">سجل عنوان زبونك وموقعه سحابياً</p>
+            <span id="sync-status" class="absolute top-3 left-3 text-[10px] bg-black/20 px-2 py-1 rounded-full font-bold">🔄 جاري المزامنة...</span>
         </div>
 
         <div class="flex gap-2 mb-4">
-            <button onclick="window.showTab('add')" id="tabAddBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow">➕ إضافة</button>
-            <button onclick="window.showTab('list')" id="tabListBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700">📋 الزبائن</button>
-            <button onclick="window.showTab('search')" id="tabSearchBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700">🔍 بحث</button>
+            <button onclick="showTab('add')" id="tabAddBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow">➕ إضافة</button>
+            <button onclick="showTab('list')" id="tabListBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700">📋 الزبائن</button>
+            <button onclick="showTab('search')" id="tabSearchBtn" class="flex-1 py-2 rounded-xl font-bold transition-all bg-gray-200 text-gray-700">🔍 بحث</button>
         </div>
 
         <div id="addTab" class="bg-white p-6 rounded-2xl shadow-md mb-6 border border-gray-100">
@@ -67,11 +50,11 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">🏠 العنوان / المكان *</label>
-                    <textarea id="address" required placeholder="اكتب العنوان الكامل هنا..." class="w-full mt-1 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" rows="3"></textarea>
+                    <textarea id="address" required placeholder="اكتب العنوان الكامل هنا... (الحي، الشارع، رقم المنزل، معالم قريبة)" class="w-full mt-1 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" rows="3"></textarea>
                 </div>
 
                 <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-gray-300">
-                    <button type="button" onclick="window.getLocation()" class="w-full bg-emerald-500 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-2">
+                    <button type="button" onclick="getLocation()" class="w-full bg-emerald-500 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-2">
                         <i class="fas fa-location-dot"></i> 📍 حدد موقعي الحالي الآن
                     </button>
                     <p id="locationStatus" class="text-xs text-center text-gray-500 mt-2">الموقع لم يحدد بعد *</p>
@@ -80,7 +63,7 @@
                 </div>
 
                 <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">
-                    <i class="fas fa-cloud-upload-alt"></i> حفظ العنوان في السحابة
+                    <i class="fas fa-cloud-arrow-up"></i> حفظ ومزامنة الدفتر
                 </button>
             </form>
         </div>
@@ -91,16 +74,16 @@
                     <span>📋</span> الزبائن المسجلين
                 </h2>
                 <div class="flex gap-2">
-                    <button onclick="window.exportData()" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 transition">
+                    <button onclick="exportData()" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 transition">
                         <i class="fas fa-download"></i> تصدير
                     </button>
-                    <button onclick="window.clearAllData()" class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition">
-                        <i class="fas fa-trash"></i> تفريغ
+                    <button onclick="clearAllData()" class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition">
+                        <i class="fas fa-trash"></i> مسح الكل
                     </button>
                 </div>
             </div>
-            <div id="customersList" class="space-y-3 max-h-96 overflow-y-auto">
-                <p class="text-gray-400 text-sm text-center py-4">جاري التحميل...</p>
+            <div id="customersList" class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                <p class="text-gray-400 text-sm text-center py-4">جاري تحميل الزبائن...</p>
             </div>
         </div>
 
@@ -109,20 +92,19 @@
                 <span>🔍</span> بحث في الزبائن
             </h2>
             <input type="text" id="searchInput" placeholder="ابحث بالاسم أو رقم الهاتف أو العنوان..." class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition mb-4">
-            <div id="searchResults" class="space-y-3 max-h-96 overflow-y-auto">
+            <div id="searchResults" class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                 <p class="text-gray-400 text-sm text-center py-4">اكتب للبحث...</p>
             </div>
         </div>
 
     </div>
 
-    <div class="toast-container" id="toast-container"></div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+        // إعدادات Firebase من ملف agheza
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -136,58 +118,25 @@
         const app = initializeApp(firebaseConfig);
         const fdb = getDatabase(app);
         const auth = getAuth(app);
-
+        
+        let customersData = {};
         let windowUserUid = null;
         let customersRef = null;
-        window.myCustomers = [];
 
-        // نظام الإشعارات
-        window.showToast = function(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerText = message;
-            container.appendChild(toast);
-            setTimeout(() => { toast.remove(); }, 3000);
+        // دوال مساعدة عامة
+        window.showToast = function(message) {
+            const t = document.getElementById('toast');
+            t.innerText = message;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2500);
         };
 
-        // المصادقة وجلب البيانات سحابياً
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                windowUserUid = user.uid;
-                document.getElementById('auth-loader').style.display = 'none';
-                document.getElementById('app-screen').style.display = 'block';
-                
-                // مسار مخصص للزبائن (GPS)
-                customersRef = ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid);
-                
-                // استماع للتغييرات اللحظية
-                onValue(customersRef, (snapshot) => {
-                    window.myCustomers = [];
-                    snapshot.forEach(childSnapshot => {
-                        window.myCustomers.push({
-                            id: childSnapshot.key,
-                            ...childSnapshot.val()
-                        });
-                    });
-                    
-                    // ترتيب من الأحدث للأقدم
-                    window.myCustomers.reverse();
-                    
-                    document.getElementById('sync-status').innerText = "✅ السحابة محدثة";
-                    window.loadCustomers();
-                    
-                    // تحديث البحث لو التبويب مفتوح
-                    if(!document.getElementById('searchTab').classList.contains('hidden')) {
-                        document.getElementById("searchInput").dispatchEvent(new Event('input'));
-                    }
-                });
-            } else {
-                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
-            }
-        });
+        window.escapeHtml = function(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
 
-        // التبويبات
         window.showTab = function(tab) {
             document.getElementById('addTab').classList.add('hidden');
             document.getElementById('listTab').classList.add('hidden');
@@ -203,18 +152,16 @@
             } else if(tab === 'list') {
                 document.getElementById('listTab').classList.remove('hidden');
                 document.getElementById('tabListBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow';
-                window.loadCustomers();
             } else if(tab === 'search') {
                 document.getElementById('searchTab').classList.remove('hidden');
                 document.getElementById('tabSearchBtn').className = 'flex-1 py-2 rounded-xl font-bold transition-all bg-blue-600 text-white shadow';
             }
         };
 
-        // الـ GPS
         window.getLocation = function() {
             const status = document.getElementById("locationStatus");
             status.innerText = "جاري الاتصال بالأقمار الصناعية... ⏳";
-            status.className = "text-xs text-center text-amber-600 mt-2";
+            status.className = "text-xs text-center text-amber-600 mt-2 font-bold";
             
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((pos) => {
@@ -223,10 +170,7 @@
                     status.innerHTML = "تم التقاط الموقع بنجاح! ✅";
                     status.className = "text-xs text-center text-emerald-600 mt-2 font-bold";
                 }, (error) => {
-                    let errorMsg = "❌ فشل تحديد الموقع. ";
-                    if(error.code === error.PERMISSION_DENIED) errorMsg += "قم بالسماح للمتصفح باستخدام الموقع.";
-                    else errorMsg += "حاول مرة أخرى.";
-                    status.innerText = errorMsg;
+                    status.innerText = "❌ فشل تحديد الموقع. تأكد من تشغيل الـ GPS.";
                     status.className = "text-xs text-center text-red-500 mt-2";
                 }, { enableHighAccuracy: true, timeout: 10000 });
             } else {
@@ -234,7 +178,83 @@
             }
         };
 
-        // حفظ زبون سحابياً
+        // 🔒 التحقق والمزامنة الفورية (نفس أسلوب agheza)
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                windowUserUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                
+                // مسار مختلف مخصص للزبائن لمنع مسح بيانات الأجهزة
+                customersRef = ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid);
+                
+                document.getElementById('sync-status').innerText = "⚡ جاري المزامنة...";
+                
+                onValue(customersRef, (snapshot) => {
+                    customersData = snapshot.val() || {};
+                    window.renderCustomers();
+                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
+                });
+            } else {
+                const loader = document.getElementById('auth-loader');
+                loader.innerHTML = '<i class="fas fa-lock text-4xl mb-4 text-red-500"></i>⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!';
+                loader.className = "fixed inset-0 bg-gray-50 z-[9999] flex flex-col justify-center items-center text-red-600 font-bold text-center p-5";
+            }
+        });
+
+        // دوال معالجة البيانات
+        window.renderCustomers = function() {
+            const listContainer = document.getElementById("customersList");
+            const customersArray = Object.keys(customersData).map(key => ({
+                id: key,
+                ...customersData[key]
+            })).reverse(); // الأحدث أولاً
+            
+            if(customersArray.length === 0) {
+                listContainer.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">لا يوجد زبائن مسجلين حالياً.</p>';
+            } else {
+                listContainer.innerHTML = customersArray.map((cus) => {
+                    const mapUrl = `https://www.google.com/maps?q=${cus.lat},${cus.lng}`;
+                    const whatsappUrl = cus.phone !== "غير مدخل" && cus.phone ? `https://wa.me/${cus.phone.replace(/[^0-9]/g, '')}` : null;
+                    
+                    return `
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 relative hover:shadow-md transition">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="font-bold text-gray-800">${window.escapeHtml(cus.name)}</h3>
+                                    <p class="text-xs text-gray-500 mt-1"><i class="fas fa-phone"></i> ${window.escapeHtml(cus.phone)}</p>
+                                </div>
+                                <span class="text-[10px] text-gray-400">${cus.date || ''}</span>
+                            </div>
+                            
+                            <div class="bg-white p-2 rounded-lg mb-3 border-r-4 border-blue-500">
+                                <p class="text-xs text-gray-400 mb-1"><i class="fas fa-location-dot"></i> العنوان / المكان:</p>
+                                <p class="text-sm text-gray-700 font-medium">${window.escapeHtml(cus.address)}</p>
+                            </div>
+                            
+                            <div class="flex gap-2 flex-wrap">
+                                <a href="${mapUrl}" target="_blank" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 transition text-center">
+                                    <i class="fas fa-map-marker-alt"></i> 🗺️ الخريطة
+                                </a>
+                                ${whatsappUrl ? `<a href="${whatsappUrl}" target="_blank" class="flex-1 bg-green-50 text-green-600 py-2 rounded-lg text-xs font-bold hover:bg-green-100 transition text-center">
+                                    <i class="fab fa-whatsapp"></i> واتساب
+                                </a>` : ''}
+                                <button onclick="deleteCustomer('${cus.id}')" class="bg-red-50 text-red-500 px-3 rounded-lg text-xs hover:bg-red-100 transition">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // تحديث نتائج البحث إذا كانت نافذة البحث مفتوحة وفيها نص
+            if(document.getElementById("searchInput").value) {
+                document.getElementById("searchInput").dispatchEvent(new Event('input'));
+            }
+        };
+
+        // إضافة زبون ومزامنته سحابياً
         document.getElementById("customerForm").addEventListener("submit", function(e) {
             e.preventDefault();
             if(!windowUserUid) return;
@@ -246,11 +266,9 @@
             const lng = document.getElementById("lng").value;
             
             if(!lat || !lng) {
-                window.showToast("حدد موقع الزبون على الخريطة أولاً!", "error");
+                alert("من فضلك اضغط على زر 'حدد موقعي الحالي الآن' أولاً لتحديد موقع الزبون على الخريطة!");
                 return;
             }
-
-            document.getElementById('sync-status').innerText = "⚡ جاري الحفظ...";
 
             const newCustomer = { 
                 name, 
@@ -261,74 +279,71 @@
                 date: new Date().toLocaleString('ar-EG')
             };
             
-            push(ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid), newCustomer).then(() => {
-                document.getElementById("customerForm").reset();
-                document.getElementById("locationStatus").innerText = "الموقع لم يحدد بعد";
+            document.getElementById('sync-status').innerText = "⚡ جاري الرفع...";
+            
+            push(customersRef, newCustomer).then(() => {
+                this.reset();
+                document.getElementById("locationStatus").innerText = "الموقع لم يحدد بعد *";
                 document.getElementById("locationStatus").className = "text-xs text-center text-gray-500 mt-2";
-                window.showToast("تم حفظ الزبون سحابياً بنجاح!", "success");
+                document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
+                window.showToast("✅ تم حفظ العنوان والمزامنة سحابياً");
                 window.showTab('list');
+            }).catch(err => {
+                document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
+                alert("حدث خطأ في الاتصال: " + err);
             });
         });
 
-        // حماية النصوص
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // إنشاء كارت الزبون (عشان نستخدمه في القائمة والبحث)
-        function generateCustomerHTML(cus) {
-            const mapUrl = `https://maps.google.com/?q=${cus.lat},${cus.lng}`;
-            const whatsappUrl = cus.phone !== "غير مدخل" && cus.phone ? `https://wa.me/${cus.phone.replace(/[^0-9]/g, '')}` : null;
-            
-            return `
-                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 relative hover:shadow-md transition">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h3 class="font-bold text-gray-800">${escapeHtml(cus.name)}</h3>
-                            <p class="text-xs text-gray-500 mt-1"><i class="fas fa-phone"></i> ${escapeHtml(cus.phone)}</p>
-                        </div>
-                        <span class="text-[10px] text-gray-400">${cus.date}</span>
-                    </div>
-                    
-                    <div class="bg-white p-2 rounded-lg mb-3 border-r-4 border-blue-500">
-                        <p class="text-xs text-gray-400 mb-1"><i class="fas fa-location-dot"></i> العنوان / المكان:</p>
-                        <p class="text-sm text-gray-700 font-medium">${escapeHtml(cus.address)}</p>
-                    </div>
-                    
-                    <div class="flex gap-2 flex-wrap">
-                        <a href="${mapUrl}" target="_blank" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 transition text-center">
-                            <i class="fas fa-map-marker-alt"></i> الخريطة
-                        </a>
-                        ${whatsappUrl ? `<a href="${whatsappUrl}" target="_blank" class="flex-1 bg-green-50 text-green-600 py-2 rounded-lg text-xs font-bold hover:bg-green-100 transition text-center">
-                            <i class="fab fa-whatsapp"></i> واتساب
-                        </a>` : ''}
-                        <button onclick="window.deleteCustomer('${cus.id}')" class="bg-red-50 text-red-500 px-3 rounded-lg text-xs hover:bg-red-100 transition">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        // عرض الزبائن
-        window.loadCustomers = function() {
-            const listContainer = document.getElementById("customersList");
-            if(window.myCustomers.length === 0) {
-                listContainer.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">لا يوجد زبائن مسجلين سحابياً.</p>';
-                return;
+        // الحذف السحابي
+        window.deleteCustomer = function(id) {
+            if(!windowUserUid) return;
+            if(confirm("هل أنت متأكد من حذف هذا الزبون نهائياً؟")) {
+                document.getElementById('sync-status').innerText = "⚡ جاري الحذف...";
+                const itemRef = ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid + '/' + id);
+                remove(itemRef).then(() => {
+                    window.showToast("🗑️ تم الحذف من السحابة بنجاح");
+                }).catch(err => {
+                    document.getElementById('sync-status').innerText = "⚠️ خطأ";
+                });
             }
-            listContainer.innerHTML = window.myCustomers.map(generateCustomerHTML).join('');
         };
 
-        // البحث
-        document.getElementById("searchInput")?.addEventListener("input", function(e) {
+        // مسح كل البيانات سحابياً
+        window.clearAllData = function() {
+            if(!windowUserUid) return;
+            if(confirm("⚠️ تحذير: هل أنت متأكد من حذف جميع الزبائن من السحابة؟ هذا الإجراء لا يمكن التراجع عنه!")) {
+                document.getElementById('sync-status').innerText = "⚡ جاري مسح الدفتر...";
+                remove(customersRef).then(() => {
+                    window.showToast("تم تفريغ الدفتر بالكامل");
+                });
+            }
+        };
+
+        // التصدير إلى ملف JSON محلي
+        window.exportData = function() {
+            const customersArray = Object.keys(customersData).map(key => customersData[key]);
+            if(customersArray.length === 0) {
+                alert("لا توجد بيانات لتصديرها!");
+                return;
+            }
+            const dataStr = JSON.stringify(customersArray, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `customers_cloud_${new Date().toISOString().slice(0,19)}.json`;
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        };
+
+        // البحث داخل البيانات المحملة
+        document.getElementById("searchInput").addEventListener("input", function(e) {
             const searchTerm = e.target.value.toLowerCase();
-            const results = window.myCustomers.filter(cus => 
-                cus.name.toLowerCase().includes(searchTerm) || 
-                cus.phone.toLowerCase().includes(searchTerm) ||
-                cus.address.toLowerCase().includes(searchTerm)
+            const customersArray = Object.keys(customersData).map(key => customersData[key]);
+            
+            const results = customersArray.filter(cus => 
+                (cus.name && cus.name.toLowerCase().includes(searchTerm)) || 
+                (cus.phone && cus.phone.toLowerCase().includes(searchTerm)) ||
+                (cus.address && cus.address.toLowerCase().includes(searchTerm))
             );
             
             const searchResults = document.getElementById("searchResults");
@@ -336,46 +351,26 @@
                 searchResults.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">لا توجد نتائج مطابقة.</p>';
                 return;
             }
-            searchResults.innerHTML = results.map(generateCustomerHTML).join('');
+            
+            searchResults.innerHTML = results.map((cus) => {
+                const mapUrl = `https://www.google.com/maps?q=${cus.lat},${cus.lng}`;
+                return `
+                    <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <h3 class="font-bold text-gray-800">${window.escapeHtml(cus.name)}</h3>
+                        <p class="text-xs text-gray-500"><i class="fas fa-phone"></i> ${window.escapeHtml(cus.phone)}</p>
+                        <p class="text-sm text-gray-600 mt-2"><i class="fas fa-location-dot"></i> ${window.escapeHtml(cus.address.substring(0, 100))}${cus.address.length > 100 ? '...' : ''}</p>
+                        <a href="${mapUrl}" target="_blank" class="inline-block mt-2 text-blue-600 text-sm font-bold">
+                            <i class="fas fa-map-marker-alt"></i> عرض على الخريطة
+                        </a>
+                    </div>
+                `;
+            }).join('');
         });
 
-        // حذف زبون سحابياً
-        window.deleteCustomer = function(id) {
-            if(!windowUserUid) return;
-            if(confirm("هل أنت متأكد من حذف هذا الزبون نهائياً من السحابة؟")) {
-                document.getElementById('sync-status').innerText = "⚡ جاري الحذف...";
-                remove(ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid + '/' + id)).then(() => {
-                    window.showToast("تم الحذف بنجاح!", "success");
-                });
-            }
+        // الإقلاع
+        window.onload = () => {
+            window.showTab('add');
         };
-
-        // مسح الكل سحابياً
-        window.clearAllData = function() {
-            if(!windowUserUid) return;
-            if(confirm("⚠️ تحذير: هل أنت متأكد من مسح جميع بيانات الزبائن من السحابة بشكل نهائي؟")) {
-                document.getElementById('sync-status').innerText = "⚡ جاري التفريغ...";
-                remove(ref(fdb, 'backups/farah_gbs_customers/' + windowUserUid)).then(() => {
-                    window.showToast("تم تفريغ دفتر العناوين بالكامل.", "success");
-                });
-            }
-        };
-
-        // تصدير البيانات (JSON)
-        window.exportData = function() {
-            if(window.myCustomers.length === 0) {
-                window.showToast("لا توجد بيانات لتصديرها!", "error");
-                return;
-            }
-            const dataStr = JSON.stringify(window.myCustomers, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            const exportFileDefaultName = `customers_cloud_${new Date().toISOString().slice(0,10)}.json`;
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-        };
-
     </script>
 </body>
 </html>
