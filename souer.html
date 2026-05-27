@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>معرض التشطيبات</title>
+    <title>معرض التشطيبات - السحابي</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
@@ -48,12 +48,21 @@
             min-height: 100vh;
         }
 
+        /* شاشة التحميل والأمان */
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body);
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 18px; color: var(--text-main); font-weight: 900; text-align: center; padding: 20px; font-family: 'Cairo', sans-serif;
+        }
+
         header { 
             background: var(--glass-bg); backdrop-filter: blur(15px); border-bottom: 1px solid var(--glass-border);
             text-align: center; padding: 30px 20px; margin-bottom: 40px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-soft);
         }
         header h1 { margin: 0; font-weight: 900; font-size: 2.5rem; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         header p { margin: 10px 0 0 0; color: var(--text-muted); font-size: 1.1rem; font-weight: 700; }
+        #sync-status { display: inline-block; background: rgba(99, 102, 241, 0.1); color: #6366f1; padding: 5px 15px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 10px; }
+        body.dark-mode #sync-status { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
 
         .dark-mode-toggle { 
             position: absolute; top: 50%; transform: translateY(-50%); left: 5%; background: var(--card-bg); 
@@ -134,7 +143,6 @@
         .close-btn { position: absolute; top: 20px; right: 40px; color: rgba(255,255,255,0.6); font-size: 45px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .close-btn:hover { color: white; transform: rotate(90deg); }
         
-        /* زر التحميل داخل النافذة */
         .download-btn {
             display: block; width: fit-content; margin: 10px auto; padding: 10px 25px; background: var(--primary-gradient);
             color: white; text-decoration: none; border-radius: 30px; font-weight: bold; font-family: 'Cairo', sans-serif;
@@ -144,7 +152,6 @@
 
         .no-categories-msg { text-align: center; font-size: 20px; color: var(--text-muted); font-weight: 700; margin-top: 50px; }
 
-        /* شريط التحميل (Spinner) */
         .loader {
             display: none; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid #6366f1;
             border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;
@@ -152,7 +159,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* نظام الإشعارات (Toast) */
         .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
         .toast {
             background: var(--card-bg); color: var(--text-main); padding: 12px 25px; border-radius: 30px;
@@ -173,20 +179,25 @@
 </head>
 <body>
 
-    <header>
-        <button class="dark-mode-toggle" onclick="toggleDarkMode()">✨ مظهر فخم</button>
-        <h1>معرض التشطيبات</h1>
-        <p>نظام احترافي لإدارة أعمالك بضغطة زر</p>
-    </header>
+    <div id="auth-loader">⏳ جاري فحص حساب المشتري ومزامنة المعرض سحابياً...</div>
 
-    <div class="container">
-        <div class="add-category-wrapper">
-            <input type="text" id="newCategoryName" placeholder="اكتب اسم القسم (مثال: جبس بورد، أرضيات)">
-            <button onclick="addNewCategory()">✨ إنشاء القسم</button>
+    <div id="app-screen" style="display:none;">
+        <header>
+            <button class="dark-mode-toggle" onclick="toggleDarkMode()">✨ مظهر فخم</button>
+            <h1>معرض التشطيبات</h1>
+            <p>نظام احترافي لإدارة أعمالك بضغطة زر</p>
+            <div id="sync-status">🔄 جاري الاتصال بالسحابة...</div>
+        </header>
+
+        <div class="container">
+            <div class="add-category-wrapper">
+                <input type="text" id="newCategoryName" placeholder="اكتب اسم القسم (مثال: جبس بورد، أرضيات)">
+                <button onclick="addNewCategory()">✨ إنشاء القسم</button>
+            </div>
+
+            <div class="tabs-container" id="tabs-container"></div>
+            <div id="sections-container"></div>
         </div>
-
-        <div class="tabs-container" id="tabs-container"></div>
-        <div id="sections-container"></div>
     </div>
 
     <div class="toast-container" id="toast-container"></div>
@@ -198,75 +209,114 @@
         <a id="downloadLink" class="download-btn" href="#" download="image.jpg">⬇️ تحميل الصورة</a>
     </div>
 
-    <script>
-        // ==========================================
-        // نظام الإشعارات الذكي (بديل Alert)
-        // ==========================================
-        function showToast(message, type = 'success') {
+    <script type="module">
+        // استدعاء مكتبات فايربيز (نفس مسار ونظام agheza تماماً)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const fdb = getDatabase(app);
+        const auth = getAuth(app);
+
+        let windowUserUid = null;
+        let galleryRef = null;
+        
+        window.appCategories = [];
+        window.galleryImages = {};
+        let currentActiveTab = null;
+
+        // نظام الإشعارات الذكي
+        window.showToast = function(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.innerText = message;
             container.appendChild(toast);
-            // إزالة الإشعار بعد 3 ثواني
             setTimeout(() => { toast.remove(); }, 3000);
-        }
+        };
 
-        // ==========================================
-        // الوضع الليلي
-        // ==========================================
-        function initDarkMode() {
-            if (localStorage.getItem('darkMode') === 'enabled') {
-                document.body.classList.add('dark-mode');
-            }
-        }
-        function toggleDarkMode() {
+        // المظهر الليلي
+        window.initDarkMode = function() {
+            if (localStorage.getItem('darkMode') === 'enabled') { document.body.classList.add('dark-mode'); }
+        };
+        window.toggleDarkMode = function() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
-        }
-        initDarkMode();
+        };
+        window.initDarkMode();
 
-        // ==========================================
-        // إدارة الأقسام
-        // ==========================================
-        let appCategories = [];
+        // 🔒 قفل الغرفة البرمجية والمصادقة
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                windowUserUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                
+                // مسار مخصص للمعرض لتجنب التداخل مع المقاسات
+                galleryRef = ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid);
+                
+                document.getElementById('sync-status').innerText = "⚡ جاري مزامنة المعرض...";
+                
+                // الاستماع للتغييرات السحابية لحظياً
+                onValue(galleryRef, (snapshot) => {
+                    const data = snapshot.val() || { categories: {}, images: {} };
+                    
+                    let loadedCats = [];
+                    if(data.categories) {
+                        loadedCats = Object.keys(data.categories).map(k => ({ id: k, name: data.categories[k].name }));
+                    }
 
-        function initializeCategories() {
-            let savedCategories = localStorage.getItem('appCategories');
-            if (!localStorage.getItem('appInitialized')) {
-                appCategories = [
-                    { id: 'kitchens', name: 'المطابخ' },
-                    { id: 'windows', name: 'الشبابيك' },
-                    { id: 'bathrooms', name: 'وحدات الحمام' },
-                    { id: 'doors', name: 'الأبواب' },
-                    { id: 'decor', name: 'الديكورات' }
-                ];
-                localStorage.setItem('appCategories', JSON.stringify(appCategories));
-                localStorage.setItem('appInitialized', 'true');
+                    // إذا كانت السحابة فارغة تماماً، نضيف الأقسام الافتراضية
+                    if (loadedCats.length === 0) {
+                        const defaultCats = ['المطابخ', 'الشبابيك', 'وحدات الحمام', 'الأبواب', 'الديكورات'];
+                        defaultCats.forEach(catName => {
+                            push(ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid + '/categories'), { name: catName });
+                        });
+                    } else {
+                        window.appCategories = loadedCats;
+                    }
+
+                    window.galleryImages = data.images || {};
+                    renderAllCategoriesAndImages();
+                    document.getElementById('sync-status').innerText = "✅ المعرض مزامن لحظياً";
+                });
             } else {
-                appCategories = savedCategories ? JSON.parse(savedCategories) : [];
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
             }
-            renderAllCategories();
-        }
+        });
 
-        function renderAllCategories() {
+        // رسم الأقسام والصور
+        function renderAllCategoriesAndImages() {
             const tabsContainer = document.getElementById('tabs-container');
             const sectionsContainer = document.getElementById('sections-container');
             tabsContainer.innerHTML = ''; sectionsContainer.innerHTML = '';
 
-            if (appCategories.length === 0) {
-                sectionsContainer.innerHTML = '<div class="no-categories-msg">لا يوجد أي أقسام حالياً. ابدأ بإضافة أقسامك من الأعلى! ✨</div>';
+            if (window.appCategories.length === 0) {
+                sectionsContainer.innerHTML = '<div class="no-categories-msg">جاري تحميل الأقسام... ⏳</div>';
                 return;
             }
 
-            appCategories.forEach((cat) => {
+            window.appCategories.forEach((cat) => {
+                // إنشاء الأزرار (التبويبات)
                 const tabBtn = document.createElement('button');
                 tabBtn.className = 'tab-btn';
                 tabBtn.id = 'btn-' + cat.id;
                 tabBtn.innerText = cat.name;
-                tabBtn.onclick = function(event) { openCategory(event, cat.id); };
+                tabBtn.onclick = function(event) { window.openCategory(event, cat.id); };
                 tabsContainer.appendChild(tabBtn);
 
+                // إنشاء الأقسام ومناطق الرفع
                 const sectionDiv = document.createElement('div');
                 sectionDiv.id = cat.id;
                 sectionDiv.className = 'gallery-section';
@@ -275,69 +325,101 @@
                         <input type="text" id="caption-${cat.id}" class="caption-input" placeholder="هل تريد إضافة وصف للصورة؟ (اختياري)">
                         <br>
                         <label for="upload-${cat.id}">📸 اختر صورك أو اسحبها هنا مباشرة</label>
-                        <input type="file" id="upload-${cat.id}" multiple accept="image/*" onchange="handleFileSelect(event, '${cat.id}')">
+                        <input type="file" id="upload-${cat.id}" multiple accept="image/*" onchange="window.handleFileSelect(event, '${cat.id}')">
                         <div class="loader" id="loader-${cat.id}"></div>
                         <div class="action-btns">
-                            <button class="clear-btn" onclick="clearAllImagesInCategory('${cat.id}')">🗑️ تفريغ الصور</button>
-                            <button class="clear-btn delete-cat-btn" onclick="deleteFullCategory('${cat.id}', '${cat.name}')">❌ حذف القسم</button>
+                            <button class="clear-btn" onclick="window.clearAllImagesInCategory('${cat.id}')">🗑️ تفريغ الصور</button>
+                            <button class="clear-btn delete-cat-btn" onclick="window.deleteFullCategory('${cat.id}', '${cat.name}')">❌ حذف القسم</button>
                         </div>
                     </div>
                     <div class="gallery-grid" id="grid-${cat.id}"></div>
                 `;
                 sectionsContainer.appendChild(sectionDiv);
-                setupDragAndDrop(cat.id);
+                window.setupDragAndDrop(cat.id);
+
+                // تفريغ الصور الخاصة بهذا القسم في الشبكة
+                const grid = document.getElementById("grid-" + cat.id);
+                // عكس مصفوفة الصور لتظهر الأحدث أولاً
+                const imagesArray = Object.keys(window.galleryImages).map(imgKey => ({
+                    id: imgKey, ...window.galleryImages[imgKey]
+                })).filter(img => img.category === cat.id).reverse();
+
+                imagesArray.forEach(img => {
+                    const wrapper = document.createElement("div");
+                    wrapper.className = "img-wrapper";
+                    
+                    const imgElement = document.createElement("img");
+                    imgElement.src = img.data;
+                    imgElement.onclick = function() { window.openFullscreen(img.data, img.caption); };
+
+                    const delBtn = document.createElement("button");
+                    delBtn.className = "delete-single-btn";
+                    delBtn.innerHTML = "🗑️";
+                    delBtn.title = "حذف الصورة";
+                    delBtn.onclick = function(e) { e.stopPropagation(); window.deleteSingleImageFromDB(img.id); };
+
+                    wrapper.appendChild(imgElement);
+                    wrapper.appendChild(delBtn);
+                    
+                    if(img.caption) {
+                        const cap = document.createElement("div"); cap.className = "img-caption"; cap.innerText = img.caption; wrapper.appendChild(cap);
+                    }
+                    grid.appendChild(wrapper);
+                });
             });
 
-            if(appCategories.length > 0) {
-                document.getElementById(appCategories[0].id).style.display = 'block';
-                document.getElementById('btn-' + appCategories[0].id).classList.add('active');
+            // فتح القسم النشط أو الأول
+            if(window.appCategories.length > 0) {
+                let tabToOpen = currentActiveTab || window.appCategories[0].id;
+                if(!document.getElementById(tabToOpen)) tabToOpen = window.appCategories[0].id; // لو القسم اتحذف
+                window.openCategory(null, tabToOpen);
             }
         }
 
-        function addNewCategory() {
+        window.addNewCategory = function() {
+            if(!windowUserUid) return;
             const nameInput = document.getElementById('newCategoryName');
             const name = nameInput.value.trim();
-            if (!name) { showToast("رجاءً اكتب اسم القسم أولاً!", "error"); return; }
+            if (!name) { window.showToast("رجاءً اكتب اسم القسم أولاً!", "error"); return; }
 
-            const newId = 'cat_' + Date.now(); 
-            appCategories.push({id: newId, name: name});
-            localStorage.setItem('appCategories', JSON.stringify(appCategories));
-            
-            nameInput.value = '';
-            renderAllCategories();
-            openCategory(null, newId);
-            showToast(`تم إنشاء قسم "${name}" بنجاح!`, "success");
-        }
+            document.getElementById('sync-status').innerText = "⚡ جاري إضافة القسم...";
+            push(ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid + '/categories'), { name: name }).then(() => {
+                nameInput.value = '';
+                window.showToast(`تم إنشاء قسم "${name}" سحابياً!`, "success");
+            });
+        };
 
-        function deleteFullCategory(id, name) {
-            if(confirm(`هل أنت متأكد من مسح قسم "${name}" بكل صوره نهائياً؟`)) {
-                db.transaction(["images"], "readwrite").objectStore("images").index("category").openCursor(IDBKeyRange.only(id)).onsuccess = function(e) {
-                    const cursor = e.target.result;
-                    if (cursor) { e.target.source.objectStore.delete(cursor.primaryKey); cursor.continue(); }
-                    else {
-                        appCategories = appCategories.filter(cat => cat.id !== id);
-                        localStorage.setItem('appCategories', JSON.stringify(appCategories));
-                        renderAllCategories();
-                        showToast("تم حذف القسم بنجاح.", "success");
+        window.deleteFullCategory = function(id, name) {
+            if(!windowUserUid) return;
+            if(confirm(`هل أنت متأكد من مسح قسم "${name}" بكل صوره من السحابة نهائياً؟`)) {
+                document.getElementById('sync-status').innerText = "⚡ جاري الحذف...";
+                
+                // حذف القسم نفسه
+                remove(ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid + '/categories/' + id));
+                
+                // حذف كل الصور المتعلقة به
+                Object.keys(window.galleryImages).forEach(imgKey => {
+                    if(window.galleryImages[imgKey].category === id) {
+                        remove(ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid + '/images/' + imgKey));
                     }
-                };
+                });
+                
+                window.showToast("تم حذف القسم سحابياً.", "success");
             }
-        }
+        };
 
-        // ==========================================
-        // نظام ضغط الصور التلقائي (للحفاظ على المساحة)
-        // ==========================================
-        function compressImage(base64Str, callback) {
+        // ضغط الصورة (لتناسب السحابة)
+        window.compressImage = function(base64Str, callback) {
             const img = new Image();
             img.src = base64Str;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1200; // أقصى عرض للصورة
-                const MAX_HEIGHT = 1200;
+                // تصغير الأبعاد لحماية السيرفر والمزامنة السريعة
+                const MAX_WIDTH = 800; 
+                const MAX_HEIGHT = 800;
                 let width = img.width;
                 let height = img.height;
 
-                // حساب الأبعاد الجديدة مع الحفاظ على النسبة
                 if (width > height) {
                     if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                 } else {
@@ -347,30 +429,29 @@
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                // ضغط الصورة لجودة 80%
-                callback(canvas.toDataURL('image/jpeg', 0.8));
+                // جودة 60% مناسبة جداً للعرض السريع
+                callback(canvas.toDataURL('image/jpeg', 0.6));
             };
-        }
+        };
 
-        // ==========================================
-        // السحب والإفلات وقراءة الصور
-        // ==========================================
-        function setupDragAndDrop(categoryId) {
+        // السحب والإفلات
+        window.setupDragAndDrop = function(categoryId) {
             const area = document.getElementById(`upload-area-${categoryId}`);
             if(!area) return;
             area.addEventListener('dragover', (e) => { e.preventDefault(); area.classList.add('drag-over'); });
             area.addEventListener('dragleave', () => { area.classList.remove('drag-over'); });
-            area.addEventListener('drop', (e) => { e.preventDefault(); area.classList.remove('drag-over'); processFiles(e.dataTransfer.files, categoryId); });
-        }
+            area.addEventListener('drop', (e) => { e.preventDefault(); area.classList.remove('drag-over'); window.processFiles(e.dataTransfer.files, categoryId); });
+        };
 
-        function handleFileSelect(event, category) { processFiles(event.target.files, category); event.target.value = ""; }
+        window.handleFileSelect = function(event, category) { window.processFiles(event.target.files, category); event.target.value = ""; };
 
-        function processFiles(files, category) {
-            if(files.length === 0) return;
+        window.processFiles = function(files, category) {
+            if(!windowUserUid || files.length === 0) return;
             const captionInput = document.getElementById(`caption-${category}`);
             const captionText = captionInput ? captionInput.value.trim() : "";
             const loader = document.getElementById(`loader-${category}`);
-            loader.style.display = "block"; // إظهار شريط التحميل
+            loader.style.display = "block";
+            document.getElementById('sync-status').innerText = "⚡ جاري رفع الصور للسحابة...";
 
             let processedCount = 0;
             for (let i = 0; i < files.length; i++) {
@@ -378,111 +459,49 @@
                 
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    // استخدام نظام الضغط قبل الحفظ
-                    compressImage(e.target.result, function(compressedBase64) {
-                        saveImageToDB(category, compressedBase64, captionText);
-                        processedCount++;
-                        if(processedCount === files.length) {
-                            loader.style.display = "none"; // إخفاء شريط التحميل
-                            if(captionInput) captionInput.value = "";
-                            showToast(`تم إضافة ${files.length} صورة بنجاح!`, "success");
-                        }
+                    window.compressImage(e.target.result, function(compressedBase64) {
+                        push(ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid + '/images'), {
+                            category: category, data: compressedBase64, caption: captionText
+                        }).then(() => {
+                            processedCount++;
+                            if(processedCount === files.length) {
+                                loader.style.display = "none";
+                                if(captionInput) captionInput.value = "";
+                                window.showToast(`تم رفع ${files.length} صورة للسحابة بنجاح!`, "success");
+                            }
+                        });
                     });
                 }
                 reader.readAsDataURL(files[i]);
             }
-        }
+        };
 
-        // ==========================================
-        // قاعدة البيانات IndexedDB
-        // ==========================================
-        let db;
-        const request = window.indexedDB.open("GalleryProDB", 2);
-
-        request.onupgradeneeded = function(event) {
-            db = event.target.result;
-            if (!db.objectStoreNames.contains("images")) {
-                const objectStore = db.createObjectStore("images", { keyPath: "id", autoIncrement: true });
-                objectStore.createIndex("category", "category", { unique: false });
+        window.deleteSingleImageFromDB = function(imageId) {
+            if(!windowUserUid) return;
+            if(confirm("تمسح الصورة دي من السحابة؟")) {
+                document.getElementById('sync-status').innerText = "⚡ جاري الحذف...";
+                remove(ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid + '/images/' + imageId)).then(() => {
+                    window.showToast("تم حذف الصورة من السحابة.", "success");
+                });
             }
         };
 
-        request.onsuccess = function(event) {
-            db = event.target.result;
-            initializeCategories();
-            loadAllSavedImages();
-        };
-
-        function saveImageToDB(category, base64Image, caption) {
-            const store = db.transaction(["images"], "readwrite").objectStore("images");
-            store.add({ category: category, data: base64Image, caption: caption }).onsuccess = function(e) {
-                renderSingleImageInGrid(category, base64Image, caption, e.target.result);
-            };
-        }
-
-        function renderSingleImageInGrid(category, imageSrc, captionText, imageId) {
-            const grid = document.getElementById("grid-" + category);
-            if(!grid) return;
-
-            const wrapper = document.createElement("div");
-            wrapper.className = "img-wrapper";
-            wrapper.id = "img-wrap-" + imageId;
-
-            const img = document.createElement("img");
-            img.src = imageSrc;
-            img.onclick = function() { openFullscreen(imageSrc, captionText); };
-
-            const delBtn = document.createElement("button");
-            delBtn.className = "delete-single-btn";
-            delBtn.innerHTML = "🗑️";
-            delBtn.title = "حذف الصورة";
-            delBtn.onclick = function(e) { e.stopPropagation(); deleteSingleImageFromDB(imageId, wrapper.id); };
-
-            wrapper.appendChild(img);
-            wrapper.appendChild(delBtn);
-            if(captionText) {
-                const cap = document.createElement("div"); cap.className = "img-caption"; cap.innerText = captionText; wrapper.appendChild(cap);
-            }
-            // Add new image at the beginning (top)
-            grid.insertBefore(wrapper, grid.firstChild);
-        }
-
-        function loadAllSavedImages() {
-            db.transaction(["images"], "readonly").objectStore("images").openCursor().onsuccess = function(e) {
-                const cursor = e.target.result;
-                if (cursor) {
-                    renderSingleImageInGrid(cursor.value.category, cursor.value.data, cursor.value.caption, cursor.value.id);
-                    cursor.continue();
-                }
-            };
-        }
-
-        function deleteSingleImageFromDB(imageId, wrapperElementId) {
-            if(confirm("تمسح الصورة دي؟")) {
-                db.transaction(["images"], "readwrite").objectStore("images").delete(imageId).onsuccess = function() {
-                    document.getElementById(wrapperElementId).remove();
-                    showToast("تم حذف الصورة.", "success");
-                };
-            }
-        }
-
-        function clearAllImagesInCategory(category) {
-            if(confirm("هتمسح كل الصور في القسم ده، متأكد؟")) {
-                db.transaction(["images"], "readwrite").objectStore("images").index("category").openCursor(IDBKeyRange.only(category)).onsuccess = function(e) {
-                    const cursor = e.target.result;
-                    if (cursor) { e.target.source.objectStore.delete(cursor.primaryKey); cursor.continue(); }
-                    else {
-                        document.getElementById("grid-" + category).innerHTML = '';
-                        showToast("تم تفريغ القسم بنجاح.", "success");
+        window.clearAllImagesInCategory = function(category) {
+            if(!windowUserUid) return;
+            if(confirm("هتمسح كل الصور السحابية في القسم ده، متأكد؟")) {
+                document.getElementById('sync-status').innerText = "⚡ جاري التفريغ...";
+                Object.keys(window.galleryImages).forEach(imgKey => {
+                    if(window.galleryImages[imgKey].category === category) {
+                        remove(ref(fdb, 'backups/farah_souer_gallery/' + windowUserUid + '/images/' + imgKey));
                     }
-                };
+                });
+                window.showToast("تم تفريغ صور القسم من السحابة.", "success");
             }
-        }
+        };
 
-        // ==========================================
-        // التنقل والنوافذ
-        // ==========================================
-        function openCategory(evt, categoryName) {
+        // التنقل ونافذة العرض
+        window.openCategory = function(evt, categoryName) {
+            currentActiveTab = categoryName;
             let sections = document.getElementsByClassName("gallery-section");
             for (let i = 0; i < sections.length; i++) sections[i].style.display = "none";
             let btns = document.getElementsByClassName("tab-btn");
@@ -492,27 +511,25 @@
             const btn = document.getElementById('btn-' + categoryName);
             if(section) section.style.display = "block";
             if(btn) btn.classList.add("active");
-        }
+        };
 
-        function openFullscreen(imageSrc, captionText) {
+        window.openFullscreen = function(imageSrc, captionText) {
             const modal = document.getElementById("imageModal");
             document.getElementById("fullImage").src = imageSrc;
             document.getElementById("fullImageCaption").innerText = captionText || "";
             
-            // تحديث زر التحميل
             const downloadBtn = document.getElementById("downloadLink");
             downloadBtn.href = imageSrc;
-            // تسمية الملف المحمل بناءً على الوصف أو اسم افتراضي
             downloadBtn.download = captionText ? captionText + ".jpg" : "finishing-work.jpg";
 
             modal.style.display = "block";
-        }
+        };
 
-        function closeFullscreen(event) {
+        window.closeFullscreen = function(event) {
             if (event.target.id === "imageModal" || event.target.className === "close-btn") {
                 document.getElementById("imageModal").style.display = "none";
             }
-        }
+        };
     </script>
 </body>
 </html>
