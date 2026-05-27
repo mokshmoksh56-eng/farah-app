@@ -3,24 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دفتر عناوين الزبائن</title>
+    <title>دفتر عناوين الزبائن - متصل</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        #sync-status { font-size: 12px; background: rgba(0,0,0,0.1); padding: 5px 10px; border-radius: 20px; }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
 
     <div id="auth-loader" class="fixed inset-0 bg-gray-50 z-[9999] flex flex-col justify-center items-center text-blue-600 font-bold text-center p-5">
         <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-        ⏳ جاري فحص الحساب والمزامنة...
+        ⏳ جاري فحص الحساب والمزامنة السحابية...
     </div>
 
-    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg hidden z-50 text-sm font-bold whitespace-nowrap">✅ تم الحفظ بنجاح</div>
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg hidden z-50 text-sm font-bold whitespace-nowrap">✅ تم الحفظ والمزامنة بنجاح</div>
 
     <div id="app-screen" style="display:none;" class="max-w-md mx-auto px-4 pt-6 pb-20">
         
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl mb-6 text-center">
-            <h1 class="text-2xl font-bold">دفتر الزبائن</h1>
-            <p class="text-xs opacity-80 mt-1">سجل عناوين الزبائن ومواقعهم</p>
+            <h1 class="text-xl font-bold">دفتر الزبائن (Azemaa Pro)</h1>
+            <div id="sync-status" class="mt-2 inline-block">🔄 جاري المزامنة...</div>
         </div>
 
         <div class="flex gap-2 mb-4">
@@ -43,7 +46,7 @@
                     <i class="fas fa-location-dot"></i> تحديد الموقع الحالي
                 </button>
                 <input type="hidden" id="lat"><input type="hidden" id="lng">
-                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg">حفظ البيانات</button>
+                <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg">حفظ ومزامنة ✅</button>
             </form>
         </div>
 
@@ -78,6 +81,13 @@
         
         let customersData = {}, windowUserUid, customersRef;
 
+        // دالة المزامنة الموحدة
+        window.updateSyncStatus = (msg, isSuccess = true) => {
+            const status = document.getElementById('sync-status');
+            status.innerText = msg;
+            status.style.background = isSuccess ? "rgba(39, 174, 96, 0.2)" : "rgba(231, 76, 60, 0.2)";
+        };
+
         window.showTab = function(tab) {
             document.getElementById('addTab').classList.toggle('hidden', tab !== 'add');
             document.getElementById('listTab').classList.toggle('hidden', tab !== 'list');
@@ -100,7 +110,7 @@
             const container = document.getElementById(containerId);
             const arr = Object.keys(data).map(k => ({id: k, ...data[k]})).reverse();
             container.innerHTML = arr.length ? arr.map(cus => `
-                <div class="p-4 bg-gray-50 rounded-xl border">
+                <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <h3 class="font-bold text-gray-800">${cus.name}</h3>
                     <p class="text-sm text-gray-600 mt-1">${cus.address}</p>
                     <a href="https://www.google.com/maps/search/?api=1&query=${cus.lat},${cus.lng}" target="_blank" class="text-blue-600 text-xs font-bold mt-2 block">📍 عرض على الخريطة</a>
@@ -110,6 +120,8 @@
 
         document.getElementById("customerForm").addEventListener("submit", (e) => {
             e.preventDefault();
+            window.updateSyncStatus("⚡ جاري الحفظ والمزامنة...");
+            
             push(customersRef, {
                 name: document.getElementById("name").value,
                 address: document.getElementById("address").value,
@@ -118,9 +130,12 @@
             }).then(() => {
                 document.getElementById("customerForm").reset();
                 window.showTab('list');
+                window.updateSyncStatus("✅ مزامن لحظياً");
                 const t = document.getElementById('toast');
                 t.classList.remove('hidden');
                 setTimeout(() => t.classList.add('hidden'), 2000);
+            }).catch(err => {
+                window.updateSyncStatus("⚠️ خطأ في المزامنة", false);
             });
         });
 
@@ -133,16 +148,17 @@
         onAuthStateChanged(auth, user => {
             if (user) {
                 windowUserUid = user.uid;
-                // تم تعديل المسار هنا ليكون متوافقاً مع الـ Rules
                 customersRef = ref(fdb, 'gbs/' + windowUserUid);
+                
                 onValue(customersRef, (snap) => {
                     customersData = snap.val() || {};
                     renderCustomers();
                     document.getElementById('auth-loader').style.display = 'none';
                     document.getElementById('app-screen').style.display = 'block';
+                    window.updateSyncStatus("✅ مزامن لحظياً");
                 });
             } else {
-                document.body.innerHTML = '<div class="p-10 text-center text-red-600 font-bold">يرجى تسجيل الدخول أولاً</div>';
+                document.body.innerHTML = '<div class="p-10 text-center text-red-600 font-bold">⚠️ حظر أمني: يرجى تسجيل الدخول أولاً!</div>';
             }
         });
     </script>
