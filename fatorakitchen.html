@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         :root {
@@ -117,7 +117,6 @@
         button.action-btn { padding: 10px 24px; font-size: 14px; font-weight: 700; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .btn-save { background-color: #475569; color: white; }
         .btn-pdf-print { background-color: #1e3a8a; color: white; } 
-        .btn-img-download { background-color: #16a34a; color: white; }
         .btn-delete { background-color: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
         .btn-new-row-trigger, .btn-new-extra-trigger { background-color: #475569; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
@@ -214,7 +213,7 @@
         <div class="btn-container" id="main-action-buttons">
             <button type="button" class="action-btn btn-save" onclick="archiveCustomerData()">☁️ حفظ وأرشفة</button>
             <button type="button" class="action-btn btn-pdf-print" onclick="window.print()">🖨️ طباعة تقليدية</button>
-            <button type="button" class="action-btn btn-img-download" onclick="downloadImage()">🖼️ حفظ كصورة (للاستوديو)</button>
+            <button type="button" class="action-btn" style="background-color: #0284c7; color: white;" onclick="downloadPDF()">📥 تنزيل العقد (PDF)</button>
         </div>
         <div class="card card-summary">
             <h3>📑 جدول ملخص البنود المالية والمسؤوليات القانونية</h3>
@@ -333,49 +332,25 @@
     function clearAllArchive() { if(!confirm('هل أنت متأكد من مسح كافة العقود السحابية؟')) return; contractsRef.remove().then(()=>{ alert('🗑️ تم تفريغ قاعدة البيانات السحابية'); }); }
 
     // ------------------------------------------------------------------
-    // دالة حفظ الصورة المحسّنة مع شريط تقدم وتحميل مباشر
+    // دالة تنزيل العقد كملف PDF
     // ------------------------------------------------------------------
-    function downloadImage() {
+    function downloadPDF() {
         const name = document.getElementById('customerName').value.trim() || 'بدون_اسم';
         if (!name) {
-            alert('❌ يرجى إدخال اسم العميل أولاً قبل حفظ الصورة.');
+            alert('❌ يرجى إدخال اسم العميل أولاً قبل تنزيل العقد.');
             return;
         }
 
-        // إنشاء شريط تقدم متحرك
-        let progressDiv = document.createElement('div');
-        progressDiv.innerHTML = `
-            <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999999; display:flex; justify-content:center; align-items:center; flex-direction:column;">
-                <div style="background:white; padding:25px; border-radius:20px; text-align:center; width:85%; max-width:320px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-                    <div style="font-size:40px; margin-bottom:15px;">📸</div>
-                    <div style="font-weight:bold; margin-bottom:12px; font-size:18px;">جاري تجهيز وتحميل صورة العقد</div>
-                    <div style="background:#e2e8f0; border-radius:10px; height:10px; width:100%; overflow:hidden;">
-                        <div id="progress-bar-inner" style="background:#16a34a; width:0%; height:100%; transition:width 0.3s;"></div>
-                    </div>
-                    <div style="margin-top:12px; font-size:13px; color:#475569;">يرجى الانتظار...</div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(progressDiv);
-        
-        const updateProgress = (percent) => {
-            const bar = document.getElementById('progress-bar-inner');
-            if (bar) bar.style.width = percent + '%';
-        };
-        
-        updateProgress(10);
-
-        // إخفاء العناصر غير المرغوب فيها
+        // إخفاء الأزرار والعناصر التي لا يجب أن تظهر في ملف الـ PDF
         const elementsToHide = document.querySelectorAll(
             '#main-action-buttons, .card-archive, .card-actions-wrapper, .btn-new-row-trigger, .btn-new-extra-trigger, .btn-delete'
         );
         elementsToHide.forEach(el => el.style.display = 'none');
+        
         const syncStatus = document.getElementById('sync-status');
         if (syncStatus) syncStatus.style.display = 'none';
 
-        updateProgress(30);
-
-        // تعيين قيم الحقول الحالية في السمات لضمان ظهورها في الصورة
+        // تعيين قيم الحقول الحالية في السمات لضمان طباعتها في الـ PDF
         document.querySelectorAll('input, textarea, select').forEach(input => {
             if (input.tagName === 'INPUT') {
                 input.setAttribute('value', input.value);
@@ -384,51 +359,38 @@
                 input.setAttribute('value', input.value);
             } else if (input.tagName === 'SELECT') {
                 Array.from(input.options).forEach(opt => {
-                    opt.selected = (opt.value === input.value);
-                    if (opt.selected) opt.setAttribute('selected', 'selected');
-                    else opt.removeAttribute('selected');
+                    if (opt.value === input.value) {
+                        opt.setAttribute('selected', 'selected');
+                    } else {
+                        opt.removeAttribute('selected');
+                    }
                 });
             }
         });
 
-        updateProgress(50);
-        window.scrollTo(0, 0);
         const element = document.getElementById('app-screen');
+        
+        // إعدادات ملف الـ PDF
+        const opt = {
+            margin:       10,
+            filename:     `عقد_مطبخ_${name}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
 
-        setTimeout(() => {
-            updateProgress(70);
-            html2canvas(element, {
-                scale: 2.5,
-                useCORS: false,
-                backgroundColor: '#ffffff',
-                logging: false,
-                windowWidth: element.scrollWidth
-            }).then(canvas => {
-                updateProgress(90);
-                // تحويل اللوحة إلى رابط بيانات وتحميل مباشر
-                const imgData = canvas.toDataURL('image/png');
-                
-                const link = document.createElement('a');
-                link.download = `عقد_مطبخ_${name}.png`;
-                link.href = imgData;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                updateProgress(100);
-                setTimeout(() => {
-                    if (progressDiv) progressDiv.remove();
-                    alert('✅ تم حفظ الصورة بنجاح في جهازك! ابحث عنها في مجلد "التنزيلات" أو "Downloads".');
-                }, 500);
-            }).catch(err => {
-                console.error(err);
-                if (progressDiv) progressDiv.remove();
-                alert('❌ حدث خطأ أثناء التقاط الصورة: ' + err.message);
-            }).finally(() => {
-                elementsToHide.forEach(el => el.style.display = '');
-                if (syncStatus) syncStatus.style.display = 'inline-block';
-            });
-        }, 200);
+        // تحويل وتنزيل الملف
+        html2pdf().set(opt).from(element).save().then(() => {
+            // إعادة إظهار الأزرار بعد التنزيل
+            elementsToHide.forEach(el => el.style.display = '');
+            if (syncStatus) syncStatus.style.display = 'inline-block';
+            alert('✅ تم تنزيل العقد بنجاح!');
+        }).catch(err => {
+            console.error(err);
+            elementsToHide.forEach(el => el.style.display = '');
+            if (syncStatus) syncStatus.style.display = 'inline-block';
+            alert('❌ حدث خطأ أثناء تنزيل الملف.');
+        });
     }
 </script>
 </body>
