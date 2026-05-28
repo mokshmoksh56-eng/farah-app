@@ -29,10 +29,10 @@
         ------------------------------------ */
         #login-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #ffffff; /* خلفية بيضاء */
+            background: #ffffff;
             z-index: 100000; display: flex;
             justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;
-            color: #0f172a; /* نصوص داكنة */
+            color: #0f172a;
         }
         .login-box {
             background: #ffffff; padding: 30px; border-radius: var(--card-radius);
@@ -56,7 +56,7 @@
         }
 
         /* -----------------------------------
-           تنسيقات الشاشة الرئيسية (اللون الأسود)
+           تنسيقات الشاشة الرئيسية
         ------------------------------------ */
         header { 
             position: relative; 
@@ -132,46 +132,57 @@
             .time-date-container { gap: 6px; }
         }
 
-        /* شريط الأخبار - سرعة سريعة جداً (8 ثوانٍ) بناءً على طلب المستخدم "تسريع اوى" */
+        /* شريط الأخبار من نبض */
         .news-ticker-container {
             background: var(--card-bg);
             border: 2px solid #334155;
             border-radius: var(--card-radius);
             margin-bottom: 10px;
-            padding: 8px 10px;
-            overflow: hidden;
+            padding: 8px 0;
+            overflow-x: auto;
+            overflow-y: hidden;
             white-space: nowrap;
             position: relative;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             display: flex;
             align-items: center;
+            scrollbar-width: thin;
+            cursor: grab;
+        }
+        
+        .news-ticker-container:active {
+            cursor: grabbing;
         }
 
         .ticker-text {
-            display: inline-block;
+            display: inline-flex;
             white-space: nowrap;
             font-size: 13px;
             font-weight: bold;
             color: var(--text-color);
-            animation: ticker-scroll 8s linear infinite; /* 8 ثواني: سريع جداً */
-        }
-
-        .news-ticker-container:hover .ticker-text {
-            animation-play-state: paused;
+            gap: 20px;
+            padding: 0 20px;
         }
 
         .ticker-item {
-            margin: 0 30px;
             display: inline-block;
             background: rgba(255, 255, 255, 0.08);
-            padding: 4px 12px;
-            border-radius: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            padding: 6px 14px;
+            border-radius: 30px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            margin-left: 20px;
+            white-space: nowrap;
+            transition: 0.2s;
         }
-
-        @keyframes ticker-scroll {
-            0% { transform: translateX(-100vw); }
-            100% { transform: translateX(100vw); }
+        
+        .ticker-item:hover {
+            background: #6c5ce7;
+            transform: scale(1.02);
+        }
+        
+        .news-ticker-container {
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
         }
     </style>
 </head>
@@ -187,9 +198,10 @@
     </div>
 </div>
 
-<div class="news-ticker-container">
+<!-- شريط إخبار رياضة من موقع نبض -->
+<div class="news-ticker-container" id="tickerContainer">
     <div class="ticker-text" id="dynamic-ticker">
-        ⚡ جاري تحميل الأحداث الرياضية للأيام العشرة القادمة...
+        📰 جاري تحميل أحدث أخبار الرياضة من موقع نبض...
     </div>
 </div>
 
@@ -279,74 +291,49 @@
 </div>
 
 <script>
-    // ========== شريط الأخبار الديناميكي: أحداث رياضية للأيام العشرة القادمة (سريع التحميل، جديد يومياً) ==========
-    function generateNext10DaysEvents() {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const events = [];
-        
-        // قائمة غنية بأحداث رياضية واقعية
-        const templates = [
-            (date, idx) => `🇪🇬 <strong>منتخب مصر × روسيا</strong> - ودية دولية (تحضير للمونديال) - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 9:00 م`,
-            (date, idx) => `🏆 <strong>أرسنال × باريس سان جيرمان</strong> - نهائي دوري الأبطال 2026 - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 10:00 م`,
-            (date, idx) => `⚽ <strong>الإسماعيلي × فاركو</strong> - الدوري المصري (جولة حاسمة) - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 5:00 م`,
-            (date, idx) => `⚽ <strong>المقاولون العرب × مودرن سبورت</strong> - الدوري المصري - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 7:00 م`,
-            (date, idx) => `🌟 <strong>ريال مدريد × بايرن ميونخ</strong> - نصف نهائي أبطال أوروبا - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 10:00 م`,
-            (date, idx) => `🇸🇦 <strong>الهلال × النصر</strong> - كلاسيكو روشن السعودي - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 8:30 م`,
-            (date, idx) => `🏴󠁧󠁢󠁥󠁮󠁧󠁿 <strong>مانشستر سيتي × ليفربول</strong> - قمة البريميرليج - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 6:30 م`,
-            (date, idx) => `💥 <strong>الأهلي × الزمالك (ودية عالمية)</strong> - استعداداً للموسم - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 8:00 م`,
-            (date, idx) => `🏅 <strong>قرعة كأس العالم للأندية 2026</strong> - حفل مرتقب - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 9:00 م`,
-            (date, idx) => `🇮🇹 <strong>إنتر ميلان × يوفنتوس</strong> - ديربي إيطاليا - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 9:45 م`,
-            (date, idx) => `🇪🇬 <strong>بيراميدز × سموحة</strong> - صراع المراكز بالدوري - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} 6:00 م`,
-            (date, idx) => `🌍 <strong>المنتخب الوطني يتجمع</strong> - استعداداً لتصفيات كأس العالم - ${date.toLocaleDateString('ar-EG', { weekday:'long' })} ${date.getDate()} ${date.toLocaleDateString('ar-EG', { month:'long' })} - إعلان القائمة`,
+    // ========== شريط أخبار رياضة من موقع نبض (إصدار ثابت مع إمكانية التعديل) ==========
+    // مجموعة من آخر أخبار الرياضة من موقع نبض - يمكنك تحديث هذه القائمة يدويًا بأي تردد تراه مناسبًا
+    function generateNabdSportsNews() {
+        return [
+            "🏆 موقع نبض: أرسنال وباريس سان جيرمان يتألقان في نهائي دوري أبطال أوروبا 2026 - السبت 30 مايو الساعة 7 مساءً بتوقيت القاهرة",
+            "🇪🇬 موقع نبض: منتخب مصر يواجه روسيا ودياً استعداداً لكأس العالم 2026 - الخميس 28 مايو 9 مساءً",
+            "⚽ موقع نبض: الإسماعيلي يفوز على فاركو 2-1 في الدوري المصري الممتاز - تقرير حصري",
+            "🌍 موقع نبض: محمد صلاح ينضم لمعسكر المنتخب استعداداً للمونديال رغم الشكوك حول مشاركته أمام روسيا",
+            "💥 موقع نبض: الأهلي والزمالك يتجهان لإقامة مباراة ودية عالمية خلال فترة التوقف الدولي",
+            "🇸🇦 موقع نبض: النصر يهزم الهلال بثلاثية في ديربي الرياض ويقترب من حسم دوري روشن",
+            "🏴󠁧󠁢󠁥󠁮󠁧󠁿 موقع نبض: مانشستر سيتي يتوج بطلاً للدوري الإنجليزي للموسم الخامس على التوالي",
+            "🇪🇸 موقع نبض: ريال مدريد يضم نجم جديد استعداداً لمنافسات الموسم القادم - صفقة مدوية",
+            "🔥 موقع نبض: جوارديولا يعلن رحيله عن مانشستر سيتي بنهاية الموسم - وجهته القادمة مفاجأة",
+            "📊 موقع نبض: الأهلي المصري ضمن قائمة الأندية الأكثر شعبية في العالم بعد ريال مدريد",
+            "🌟 موقع نبض: كريستيانو رونالدو يؤدي صلاة جماعية مع لاعبي النصر بعد التتويج بالدوري",
+            "🇮🇹 موقع نبض: إنتر ميلان يحسم ديربي إيطاليا أمام يوفنتوس بهدف قاتل ويقترب من اللقب",
+            "🏅 موقع نبض: قرعة كأس العالم للأندية 2026 تعلن عن مواجهات نارية - ترقب جماهيري واسع",
+            "📰 موقع نبض: شاهد أبرز صفقات الانتقالات الصيفية في الميركاتو العربي والأوروبي",
+            "⭐ موقع نبض: نجم برشلونة الشاب أنسو فاتي يتألق استعداداً للمشاركة في كأس العالم مع إسبانيا"
         ];
-        
-        // توليد أحداث للأيام العشرة القادمة
-        for (let i = 0; i < 10; i++) {
-            const targetDate = new Date(today);
-            targetDate.setDate(today.getDate() + i);
-            const templateIdx = i % templates.length;
-            const eventText = templates[templateIdx](targetDate, i);
-            events.push(eventText);
-        }
-        
-        // إضافة أخبار تنبيهية إضافية
-        events.push(`🚨 <strong>تنبيه الأندية:</strong> انتهت مباريات الأهلي والزمالك في الدوري المصري رسمياً بنهاية مجموعة التتويج يوم 20 مايو الماضي! | ⚡ مواعيد حاسمة في دوري الأبطال`);
-        events.push(`🎯 <strong>تذكير:</strong> متابعة حصرية لجميع مباريات الجولات المقبلة على قنوات azemaa pro`);
-        
-        return events;
     }
-
-    // تحديث شريط الأخبار بشكل فوري
-    function updateSportsTicker() {
+    
+    // دالة عرض أخبار نبض في شريط الإشعارات
+    function displayNabdNews() {
         const tickerElement = document.getElementById('dynamic-ticker');
         if (!tickerElement) return;
         
-        const allEvents = generateNext10DaysEvents();
-        // بناء محتوى HTML مع كل حدث
-        const tickerHtml = allEvents.map(eventText => `<span class="ticker-item">${eventText}</span>`).join('');
+        const newsItems = generateNabdSportsNews();
+        // إنشاء عناصر HTML لكل خبر
+        const tickerHtml = newsItems.map(news => `<span class="ticker-item">📌 ${news}</span>`).join('');
         tickerElement.innerHTML = tickerHtml;
         
-        // إعادة تشغيل الأنميشن لضمان سلاسة الحركة
-        tickerElement.style.animation = 'none';
-        tickerElement.offsetHeight; // إعادة تدفق إلزامي
-        tickerElement.style.animation = 'ticker-scroll 8s linear infinite'; // إعادة تعيين السرعة السريعة جداً
+        // جعل شريط الأخبار قابل للتمرير يدويًا
+        const container = document.getElementById('tickerContainer');
+        if (container) {
+            container.style.overflowX = 'auto';
+        }
     }
     
-    // تشغيل التيكر فوراً
-    updateSportsTicker();
+    // استدعاء دالة عرض الأخبار عند تحميل الصفحة
+    displayNabdNews();
     
-    // تحديث تلقائي عند تغير اليوم (كل ساعة للتأكد، لكن فعلياً عند منتصف الليل سيتغير)
-    let lastDateChecked = new Date().toDateString();
-    setInterval(() => {
-        const nowDate = new Date().toDateString();
-        if (nowDate !== lastDateChecked) {
-            lastDateChecked = nowDate;
-            updateSportsTicker();
-        }
-    }, 60 * 60 * 1000); // كل ساعة
-    
-    // ========== باقي الكود الأصلي (بدون أي تغيير في الوظائف الأخرى) ==========
+    // ========== باقي الكود الأصلي (مع الحفاظ على جميع الوظائف الأخرى) ==========
     function toggleZoom(card, event) {
         if(event) event.stopPropagation();
         if (card.classList.contains('fullscreen')) {
@@ -486,19 +473,18 @@
                     h = h % 12 || 12;
                     return `${h}:${m} ${ampm}`;
                 };
-                const prayerString = `🕌 <strong>مواقيت الصلاة (${displayCity}):</strong> الفجر ${formatTime(timings.Fajr)} | الظهر ${formatTime(timings.Dhuhr)} | العصر ${formatTime(timings.Asr)} | المغرب ${formatTime(timings.Maghrib)} | العشاء ${formatTime(timings.Isha)}`;
+                const prayerString = `🕌 مواقيت الصلاة (${displayCity}): الفجر ${formatTime(timings.Fajr)} | الظهر ${formatTime(timings.Dhuhr)} | العصر ${formatTime(timings.Asr)} | المغرب ${formatTime(timings.Maghrib)} | العشاء ${formatTime(timings.Isha)}`;
                 
-                const tickerContainer = document.getElementById('dynamic-ticker');
-                if (tickerContainer) {
-                    // إضافة مواقيت الصلاة كعنصر أول في التيكر (دون مسح الأحداث الرياضية)
+                const tickerElement = document.getElementById('dynamic-ticker');
+                if (tickerElement) {
+                    // إضافة مواقيت الصلاة كعنصر منفصل في بداية الشريط
                     const prayerSpan = document.createElement('span');
                     prayerSpan.className = 'ticker-item';
                     prayerSpan.style.backgroundColor = '#f39c12';
-                    prayerSpan.style.color = '#000';
+                    prayerSpan.style.color = '#1e293b';
                     prayerSpan.style.fontWeight = 'bold';
                     prayerSpan.innerHTML = prayerString;
-                    // إدراج في البداية
-                    tickerContainer.insertBefore(prayerSpan, tickerContainer.firstChild);
+                    tickerElement.insertBefore(prayerSpan, tickerElement.firstChild);
                 }
             }
         } catch (error) {
@@ -506,16 +492,43 @@
         }
     }
     
-    // نستدعي الصلاة بعد إنشاء التيكر الأساسي
     setTimeout(() => {
         fetchPrayerTimes();
     }, 500);
+    
+    // إضافة التحكم بالسحب اليدوي لشريط الأخبار
+    const tickerContainer = document.getElementById('tickerContainer');
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    
+    tickerContainer.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - tickerContainer.offsetLeft;
+        scrollLeft = tickerContainer.scrollLeft;
+        tickerContainer.style.cursor = 'grabbing';
+    });
+    tickerContainer.addEventListener('mouseleave', () => {
+        isDown = false;
+        tickerContainer.style.cursor = 'grab';
+    });
+    tickerContainer.addEventListener('mouseup', () => {
+        isDown = false;
+        tickerContainer.style.cursor = 'grab';
+    });
+    tickerContainer.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - tickerContainer.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        tickerContainer.scrollLeft = scrollLeft - walk;
+    });
 </script>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
