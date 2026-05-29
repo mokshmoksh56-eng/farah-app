@@ -25,7 +25,6 @@
         window.db = getDatabase(app);
         window.auth = getAuth(app);
 
-        // ربط الدوال بالـ window لاستخدامها في السكريبت العادي
         window.ref = ref;
         window.update = update;
         window.remove = remove;
@@ -55,7 +54,6 @@
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #dfe4ea; margin: 0; padding: 0; color: var(--primary); font-weight: 700; padding-bottom: 60px; transition: background 0.3s, color 0.3s; }
         
-        /* واجهة انتظار للتحقق من الهوية السحابية */
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #dfe4ea;
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -65,8 +63,11 @@
         .top-bar { background: #072d48; color: #1abc9c; padding: 8px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         .header { background: var(--primary); color: white; padding: 10px; text-align: center; border-radius: 0 0 30px 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .header h1 { margin: 0; font-size: 20px; font-weight: 900; }
-        .toolbar { max-width: 1100px; margin: 8px auto; padding: 0 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        #companyNameInput, #searchInput, .archive-search { padding: 10px; border-radius: 12px; border: 2px solid var(--primary); font-size: 15px; font-weight: 900; outline: none; width: 100%; box-sizing: border-box; }
+        
+        .toolbar { max-width: 1100px; margin: 8px auto; padding: 0 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        @media (max-width: 700px) { .toolbar { grid-template-columns: 1fr; } }
+        
+        #companyNameInput, #countrySelect, #searchInput, .archive-search { padding: 10px; border-radius: 12px; border: 2px solid var(--primary); font-size: 13px; font-weight: 900; outline: none; width: 100%; box-sizing: border-box; background: white; color: var(--primary); }
         .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 1100px; margin: 8px auto; padding: 0 10px; }
         .stat-card { background: white; padding: 6px; border-radius: 12px; text-align: center; border-bottom: 4px solid var(--accent); transition: background 0.3s; }
         .stat-card h4 { margin: 0; font-size: 11px; }
@@ -100,7 +101,7 @@
         input, textarea { width: 100%; padding: 7px; border-radius: 8px; border: 1px solid #cbd5e0; box-sizing: border-box; font-size: 13px; font-weight: 900; margin-bottom: 3px; direction: ltr !important; text-align: left; font-family: Arial, sans-serif !important; }
         textarea.c-notes { direction: rtl !important; text-align: right; font-family: 'Segoe UI', Tahoma, sans-serif !important; resize: none; overflow: hidden; min-height: 38px; margin-bottom: 6px; }
         
-        .c-name, #companyNameInput, #searchInput, .archive-search { direction: rtl !important; text-align: right; font-family: 'Segoe UI', Tahoma, sans-serif !important; }
+        .c-name, #companyNameInput, #countrySelect, #searchInput, .archive-search { direction: rtl !important; text-align: right; font-family: 'Segoe UI', Tahoma, sans-serif !important; cursor: pointer; }
         .date-input-group { display: flex; flex-direction: row-reverse; align-items: center; background: #fff0f0; border: 1.5px solid #e74c3c; border-radius: 8px; padding: 2px 5px; direction: ltr !important; }
         .date-input-group input { border: none !important; background: transparent !important; text-align: center; color: #c0392b; width: 100%; margin: 0; padding: 2px; }
         
@@ -164,7 +165,7 @@
         body.dark-theme .stat-card { background: #2f3542; color: #ffffff; border-bottom: 4px solid #57606f; }
         body.dark-theme .card { background: #2f3542; border-color: #57606f; color: #ffffff; }
         body.dark-theme label { color: #dcdde1; }
-        body.dark-theme input, body.dark-theme textarea { background: #353b48; color: #ffffff; border-color: #57606f; }
+        body.dark-theme input, body.dark-theme textarea, body.dark-theme select { background: #353b48; color: #ffffff; border-color: #57606f; }
         body.dark-theme .date-input-group { background: #4d2323; border-color: #ff4d4d; color: #ffffff; }
         body.dark-theme .date-input-group input { color: #ffffff !important; background: transparent !important; }
         body.dark-theme .card.locked-mode { background-color: #2b303c; border-color: #485460; }
@@ -202,6 +203,30 @@
 
 <div class="toolbar">
     <input type="text" id="companyNameInput" placeholder="🏢 اسم شركتك..." oninput="saveSettings()">
+    <select id="countrySelect" onchange="saveSettings()" title="اختر الدولة لتغيير العملة تلقائياً">
+        <option value="EG" data-sym="ج.م" data-name="جنيهاً مصرياً">🇪🇬 مصر (جنيه)</option>
+        <option value="SA" data-sym="ر.س" data-name="ريالاً سعودياً">🇸🇦 السعودية (ريال)</option>
+        <option value="AE" data-sym="د.إ" data-name="درهماً إماراتياً">🇦🇪 الإمارات (درهم)</option>
+        <option value="KW" data-sym="د.ك" data-name="ديناراً كويتياً">🇰🇼 الكويت (دينار)</option>
+        <option value="QA" data-sym="ر.ق" data-name="ريالاً قطرياً">🇶🇦 قطر (ريال)</option>
+        <option value="BH" data-sym="د.ب" data-name="ديناراً بحرينياً">🇧🇭 البحرين (دينار)</option>
+        <option value="OM" data-sym="ر.ع" data-name="ريالاً عمانياً">🇴🇲 عمان (ريال)</option>
+        <option value="JO" data-sym="د.أ" data-name="ديناراً أردنياً">🇯🇴 الأردن (دينار)</option>
+        <option value="LB" data-sym="ل.ل" data-name="ليرة لبنانية">🇱🇧 لبنان (ليرة)</option>
+        <option value="IQ" data-sym="د.ع" data-name="ديناراً عراقياً">🇮🇶 العراق (دينار)</option>
+        <option value="DZ" data-sym="د.ج" data-name="ديناراً جزائرياً">🇩🇿 الجزائر (دينار)</option>
+        <option value="MA" data-sym="د.م" data-name="درهماً مغربياً">🇲🇦 المغرب (درهم)</option>
+        <option value="TN" data-sym="د.ت" data-name="ديناراً تونسياً">🇹🇳 تونس (دينار)</option>
+        <option value="LY" data-sym="د.ل" data-name="ديناراً ليبياً">🇱🇾 ليبيا (دينار)</option>
+        <option value="SD" data-sym="ج.س" data-name="جنيهاً سودانياً">🇸🇩 السودان (جنيه)</option>
+        <option value="SY" data-sym="ل.س" data-name="ليرة سورية">🇸🇾 سوريا (ليرة)</option>
+        <option value="YE" data-sym="ر.ي" data-name="ريالاً يمنياً">🇾🇪 اليمن (ريال)</option>
+        <option value="PS" data-sym="شيكل" data-name="شيكلاً">🇵🇸 فلسطين (شيكل)</option>
+        <option value="SO" data-sym="ش.ص" data-name="شلناً صومالياً">🇸🇴 الصومال (شلن)</option>
+        <option value="DJ" data-sym="ف.ج" data-name="فرنكاً جيبوتياً">🇩🇯 جيبوتي (فرنك)</option>
+        <option value="MR" data-sym="أ.م" data-name="أوقية موريتانية">🇲🇷 موريتانيا (أوقية)</option>
+        <option value="KM" data-sym="ف.ق" data-name="فرنكاً قمرياً">🇰🇲 جزر القمر (فرنك)</option>
+    </select>
     <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو التليفون..." onkeyup="filterAll()">
 </div>
 
@@ -286,7 +311,7 @@
     const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
 
     function tafqit(n) {
-        n = Math.floor(n); if (n <= 0) return 'صفر جنيهاً';
+        n = Math.floor(n); if (n <= 0) return 'صفر';
         let res = '', k = Math.floor(n / 1000);
         if (k > 0) {
             if (k === 1) res += 'ألف '; else if (k === 2) res += 'ألفان ';
@@ -309,6 +334,18 @@
             }
         }
         return text;
+    }
+
+    function getCurrentCurrency() {
+        const select = document.getElementById('countrySelect');
+        if (select && select.options[select.selectedIndex]) {
+            const opt = select.options[select.selectedIndex];
+            return {
+                sym: opt.getAttribute('data-sym'),
+                name: opt.getAttribute('data-name')
+            };
+        }
+        return { sym: "ج.م", name: "جنيهاً مصرياً" };
     }
 
     function toggleCardLock(id) {
@@ -393,26 +430,37 @@
     function updateLogic(id) {
         const card = document.getElementById(`card-${id}`);
         if(!card) return;
+        
+        const curr = getCurrentCurrency();
+
         const total = parseFloat(card.querySelector('.c-total').value) || 0;
-        document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? "فقط " + tafqit(total) + " جنيهاً لا غير" : "";
+        document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? "فقط " + tafqit(total) + " " + curr.name + " لا غير" : "";
         let paid = 0;
         card.querySelectorAll('.p-val').forEach((p, idx) => {
             let v = parseFloat(p.value) || 0;
             paid += v;
-            document.getElementById(`tafqit-pay-${id}-${idx+1}`).innerText = v > 0 ? "فقط " + tafqit(v) + " جنيهاً لا غير" : "";
+            document.getElementById(`tafqit-pay-${id}-${idx+1}`).innerText = v > 0 ? "فقط " + tafqit(v) + " " + curr.name + " لا غير" : "";
         });
         const rem = total - paid;
-        document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString('en-US')} ج.م`;
-        document.getElementById(`rem-w-${id}`).innerText = rem > 0 ? "فقط " + tafqit(rem) + " جنيهاً لا غير" : (total > 0 ? "خالص ✓" : "");
+        document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString('en-US')} ${curr.sym}`;
+        document.getElementById(`rem-w-${id}`).innerText = rem > 0 ? "فقط " + tafqit(rem) + " " + curr.name + " لا غير" : (total > 0 ? "خالص ✓" : "");
         if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
     }
 
     function saveSettings() { 
         const cName = document.getElementById('companyNameInput').value;
+        const country = document.getElementById('countrySelect').value;
+        
         localStorage.setItem('azemaa_company_name', cName); 
+        localStorage.setItem('azemaa_country', country);
+        
         if (window.currentUid) {
-            window.update(window.ref(window.db, `backups/users/${window.currentUid}/settings`), { companyName: cName });
+            window.update(window.ref(window.db, `backups/users/${window.currentUid}/settings`), { 
+                companyName: cName,
+                country: country
+            });
         }
+        visibleCards.forEach(id => updateLogic(id));
     }
 
     function saveToCloud(id) {
@@ -480,8 +528,9 @@
         window.onValue(window.ref(window.db, `backups/users/${window.currentUid}`), (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
-                if (allData.settings && allData.settings.companyName) {
-                    document.getElementById('companyNameInput').value = allData.settings.companyName;
+                if (allData.settings) {
+                    if(allData.settings.companyName) document.getElementById('companyNameInput').value = allData.settings.companyName;
+                    if(allData.settings.country) document.getElementById('countrySelect').value = allData.settings.country;
                 }
 
                 visibleCards = [];
@@ -560,6 +609,8 @@
         const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
         const company = document.getElementById('companyNameInput').value || 'azemaa proo';
+        
+        const curr = getCurrentCurrency();
 
         if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
 
@@ -576,7 +627,7 @@
             let d = pDates[idx].value || "---";
             if (v > 0) {
                 paid += v;
-                paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ج.م\n`;
+                paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ${curr.sym}\n`;
             }
         });
 
@@ -587,11 +638,11 @@
                     `أهلاً أ/ *${name}*\n` +
                     `نحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n` +
                     `━━━━━━━━━━━━━━\n` +
-                    `💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ج.م\n` +
-                    `✍️ *فقط:* ${totalWord} جنيهاً مصرياً لا غير\n\n` +
+                    `💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ${curr.sym}\n` +
+                    `✍️ *فقط:* ${totalWord} ${curr.name} لا غير\n\n` +
                     `📅 *تفاصيل الدفعات:* \n${paymentsMsg || "━ لا توجد دفعات مسجلة بعد\n"}\n` +
-                    `📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ج.م\n` +
-                    `✍️ *فقط:* ${remWord} ${remVal > 0 ? 'جنيهاً مصرياً لا غير' : ''}\n` +
+                    `📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ${curr.sym}\n` +
+                    `✍️ *فقط:* ${remWord} ${remVal > 0 ? curr.name + ' لا غير' : ''}\n` +
                     `━━━━━━━━━━━━━━\n\n` +
                     `شكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`;
 
