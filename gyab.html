@@ -57,13 +57,15 @@
         @media (max-width: 550px) { #cardsList { grid-template-columns: 1fr; } }
         
         .worker-card { background: var(--white); border-radius: 15px; padding: 12px; border-top: 5px solid var(--gold); box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative;}
-        .card-name { font-size: 16px; color: var(--dark-green); text-align: center; margin-bottom: 10px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
         
+        .card-name { display: flex; justify-content: space-between; align-items: center; font-size: 16px; color: var(--dark-green); margin-bottom: 10px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
+        .lock-btn { background: var(--danger); color: white; border: none; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; cursor: pointer; transition: 0.3s; }
+        .lock-btn.unlocked { background: var(--whatsapp-green); }
+
         .salary-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; background: #fffcf0; padding: 5px; border-radius: 8px; }
         .salary-input { width: 80px; padding: 5px; border-radius: 5px; border: 1.5px solid #ddd; font-weight: 900; text-align: center; }
 
         .day-row { display: flex; align-items: center; background: #fdfdfd; border: 1px solid #eee; border-radius: 8px; padding: 5px; gap: 4px; margin-bottom: 4px; transition: all 0.2s ease; }
-        /* توهج اليوم الحالي */
         .day-row.today-glow {
             background: linear-gradient(145deg, #fff9e6, #fff6e0);
             border: 1px solid var(--gold);
@@ -71,7 +73,7 @@
             position: relative;
         }
         .day-info { flex: 1.2; font-size: 12px; font-weight: 900; text-align: right; }
-        .day-date { font-size: 9px; color: #555; display: block; font-weight: normal; }
+        .day-date { font-size: 10px; color: #555; display: block; font-weight: bold; }
         
         .att-btns { display: flex; gap: 2px; flex: 2; }
         .btn-tgl { flex: 1; border: 1px solid #ccc; background: #fff; font-size: 11px; font-weight: 900; padding: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s;}
@@ -79,6 +81,15 @@
         .btn-tgl.active[data-v="0.5"] { background: var(--warning); color: white; border-color: var(--warning); }
         .btn-tgl.active[data-v="0"] { background: var(--danger); color: white; border-color: var(--danger); }
         .loan-input { width: 55px; border: 1px solid #ddd; border-radius: 5px; padding: 8px 0; text-align: center; font-weight: 900; color: var(--danger); background: #fff; }
+
+        /* ستايل الخانات المقفلة (للحماية) */
+        input:disabled, textarea:disabled, button.btn-tgl:disabled {
+            background-color: #e9ecef !important;
+            color: #6c757d !important;
+            cursor: not-allowed !important;
+            border-color: #dee2e6 !important;
+            opacity: 0.8;
+        }
 
         .note-input { 
             width: 100%; 
@@ -110,13 +121,11 @@
 
         .attendance-details { background: #fafafa; margin-top: 15px; border-radius: 12px; padding: 10px; border-right: 4px solid var(--gold); }
         .att-row-detail { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin: 6px 0; padding: 4px; background: white; border-radius: 8px; }
-        .day-badge { font-weight: 900; color: var(--dark-green); min-width: 70px; text-align: right; }
+        .day-badge { font-weight: 900; color: var(--dark-green); text-align: right; }
         .status-badge { font-weight: bold; }
         .status-h { color: var(--whatsapp-green); }
         .status-half { color: var(--warning); }
         .status-a { color: var(--danger); }
-        
-        .gold-badge { background: var(--gold); color: #3b2a0f; padding: 2px 8px; border-radius: 20px; font-size: 10px; display: inline-block; margin-right: 6px; vertical-align: middle; }
     </style>
 
     <script type="module">
@@ -145,7 +154,7 @@
                 window.currentUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
                 initSystem();
-                scheduleThursdayArchive();
+                scheduleDailyArchive(); 
             }
         });
     </script>
@@ -201,12 +210,11 @@
 </div>
 
 <script>
-    // أيام الأسبوع من اليمين لليسار: السبت أولاً ثم الأحد ... الخميس
     const weekdays = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
     let masterWorkers = [];
     let currentWeekID = "";
-    let currentWeekDates = [];     // will store full date strings "d/m/yyyy"
-    let currentFullDates = [];     // store Date objects for reference
+    let currentWeekDates = [];     
+    let currentFullDates = [];     
     let allArchiveData = {};
 
     function initSystem() {
@@ -268,15 +276,17 @@
         
         currentWeekDates = [];
         currentFullDates = [];
-        // الأسبوع من السبت إلى الخميس (6 أيام)
         for(let i=0; i<6; i++) {
             let tmp = new Date(saturday);
             tmp.setDate(saturday.getDate() + i);
             currentFullDates.push(tmp);
-            let dayNum = tmp.getDate();
-            let monthNum = tmp.getMonth() + 1;
+            
+            let dayNum = tmp.getDate().toString().padStart(2, '0');
+            let monthNum = (tmp.getMonth() + 1).toString().padStart(2, '0');
             let yearNum = tmp.getFullYear();
-            let fullDateStr = `${dayNum}/${monthNum}/${yearNum}`;
+            
+            // ترتيب التاريخ ليظهر: اليوم ثم الشهر ثم السنة
+            let fullDateStr = `${yearNum}/${monthNum}/${dayNum}`;
             currentWeekDates.push(fullDateStr);
         }
         document.getElementById('weekRangeDisplay').innerText = `أسبوع السبت ${currentWeekDates[0]}`;
@@ -308,7 +318,7 @@
     function addNewWorker() {
         const name = document.getElementById('workerNameInp').value.trim();
         if(!name) return;
-        masterWorkers.push({ name: name, inst_weekly: 0 });
+        masterWorkers.push({ name: name, inst_weekly: 0, sal: '' });
         document.getElementById('workerNameInp').value = "";
         saveMasterWorkers();
         
@@ -353,12 +363,12 @@
         
         document.getElementById('cardsList').innerHTML = masterWorkers.map((worker, idx) => {
             let d = saved[idx] || {};
-            let sal = d.sal || '';
+            
+            let sal = (d.sal !== undefined && d.sal !== '') ? d.sal : (worker.sal || '');
             let att = d.att || [1,1,1,1,1,1];
             let loans = d.loans || ['','','','','',''];
             let note = d.note || '';
 
-            // بناء أيام الأسبوع من اليمين لليسار (السبت أولاً)
             let daysHtml = '';
             for(let di = 0; di < 6; di++) {
                 const isToday = isDateToday(di);
@@ -370,26 +380,29 @@
                             <span class="day-date">${currentWeekDates[di]}</span>
                         </div>
                         <div class="att-btns">
-                            <button class="btn-tgl ${att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx},${di})">ح</button>
-                            <button class="btn-tgl ${att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx},${di})">½</button>
-                            <button class="btn-tgl ${att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx},${di})">غ</button>
+                            <button disabled class="btn-tgl ${att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx},${di})">ح</button>
+                            <button disabled class="btn-tgl ${att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx},${di})">½</button>
+                            <button disabled class="btn-tgl ${att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx},${di})">غ</button>
                         </div>
-                        <input type="number" class="loan-input" value="${loans[di]}" placeholder="سلفة" onchange="syncArrayData(${idx}, 'loans', ${di}, this.value)">
+                        <input disabled type="number" class="loan-input" value="${loans[di]}" placeholder="سلفة" onchange="syncArrayData(${idx}, 'loans', ${di}, this.value)">
                     </div>
                 `;
             }
 
             return `
-                <div class="worker-card" id="card-${idx}">
-                    <div class="card-name">💰 ${worker.name}</div>
+                <div class="worker-card" id="card-${idx}" data-locked="true">
+                    <div class="card-name">
+                        <span>💰 ${worker.name}</span>
+                        <button class="lock-btn" onclick="toggleEditCard(${idx})">🔒 تعديل</button>
+                    </div>
                     <div class="salary-row">
-                        <label style="font-size:12px;">الراتب الأساسي:</label>
-                        <input type="number" class="salary-input" value="${sal}" placeholder="الراتب" onchange="syncData(${idx}, 'sal', this.value)">
+                        <label style="font-size:12px;">الراتب الأساسي (ثابت):</label>
+                        <input disabled type="number" class="salary-input" value="${sal}" placeholder="الراتب" onchange="syncSalary(${idx}, this.value)">
                     </div>
                     <div class="days-grid">
                         ${daysHtml}
                     </div>
-                    <textarea class="note-input" placeholder="ملاحظات ومسحوبات أخرى..." onblur="syncData(${idx}, 'note', this.value)" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';">${note}</textarea>
+                    <textarea disabled class="note-input" placeholder="ملاحظات ومسحوبات أخرى..." onblur="syncData(${idx}, 'note', this.value)" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';">${note}</textarea>
                     
                     <div class="card-footer">
                         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -418,7 +431,27 @@
         masterWorkers.forEach((_, i) => recalc(i));
     }
 
+    function toggleEditCard(idx) {
+        const card = document.getElementById(`card-${idx}`);
+        const isLocked = card.getAttribute('data-locked') === 'true';
+        const lockBtn = card.querySelector('.lock-btn');
+        
+        if (isLocked) {
+            card.setAttribute('data-locked', 'false');
+            lockBtn.innerHTML = '🔓 مفتوح';
+            lockBtn.classList.add('unlocked');
+            card.querySelectorAll('input, textarea, button.btn-tgl').forEach(el => el.removeAttribute('disabled'));
+        } else {
+            card.setAttribute('data-locked', 'true');
+            lockBtn.innerHTML = '🔒 تعديل';
+            lockBtn.classList.remove('unlocked');
+            card.querySelectorAll('input, textarea, button.btn-tgl').forEach(el => el.setAttribute('disabled', 'true'));
+            manualSaveWorker(idx); 
+        }
+    }
+
     function toggleAtt(btn, wIdx, dIdx) {
+        if (btn.hasAttribute('disabled')) return; 
         Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         syncArrayData(wIdx, 'att', dIdx, btn.dataset.v);
@@ -427,6 +460,14 @@
     function syncData(wIdx, field, val) {
         setSyncStatus(true);
         update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}`), { [field]: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
+        recalc(wIdx);
+    }
+
+    function syncSalary(wIdx, val) {
+        setSyncStatus(true);
+        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}`), { sal: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
+        masterWorkers[wIdx].sal = val;
+        update(ref(window.db, `backups/workers_master/${window.currentUid}/${wIdx}`), { sal: val });
         recalc(wIdx);
     }
 
@@ -464,16 +505,19 @@
             att: att,
             name: masterWorkers[idx].name
         }).then(() => {
-            setSyncStatus(false);
-            recalc(idx);
-            const saveBtn = card.querySelector('.btn-save-manual');
-            const originalText = saveBtn.innerText;
-            saveBtn.innerText = "تم الحفظ 💰";
-            saveBtn.style.background = "var(--whatsapp-green)";
-            setTimeout(() => {
-                saveBtn.innerText = originalText;
-                saveBtn.style.background = "var(--teal)";
-            }, 1500);
+            masterWorkers[idx].sal = sal;
+            update(ref(window.db, `backups/workers_master/${window.currentUid}/${idx}`), { sal: sal }).then(() => {
+                setSyncStatus(false);
+                recalc(idx);
+                const saveBtn = card.querySelector('.btn-save-manual');
+                const originalText = saveBtn.innerText;
+                saveBtn.innerText = "تم الحفظ 💰";
+                saveBtn.style.background = "var(--whatsapp-green)";
+                setTimeout(() => {
+                    saveBtn.innerText = originalText;
+                    saveBtn.style.background = "var(--teal)";
+                }, 1500);
+            });
         });
     }
 
@@ -542,25 +586,23 @@
         dropdown.value = currentSelection;
     }
 
-    function scheduleThursdayArchive() {
-        async function performArchiveIfThursday() {
+    function scheduleDailyArchive() {
+        async function performArchiveIfMidnight() {
             const now = new Date();
             const currentHour = now.getHours();
-            const isThursday = (now.getDay() === 4);
             const isMidnight = (currentHour >= 0 && currentHour < 3);
-            if(isThursday && isMidnight) {
+            if(isMidnight) {
                 await archiveCurrentWeekSnapshots();
             }
         }
-        performArchiveIfThursday();
+        performArchiveIfMidnight();
         setInterval(async () => {
             const now = new Date();
-            const isThursday = (now.getDay() === 4);
             const isMidnight = (now.getHours() >= 0 && now.getHours() < 3);
-            if(isThursday && isMidnight) {
+            if(isMidnight) {
                 await archiveCurrentWeekSnapshots();
             }
-        }, 3600000);
+        }, 3600000); 
     }
 
     async function archiveCurrentWeekSnapshots() {
@@ -575,10 +617,10 @@
         if(snapshot.exists()) {
             const weekData = snapshot.val();
             await window.set(archiveRef, weekData);
-            console.log(`تم أرشفة أسبوع ${currentWeekSnapshotID} تلقائياً ليلة الخميس`);
+            console.log(`تم تحديث أرشيف أسبوع ${currentWeekSnapshotID} بنجاح (حفظ يومي)`);
             const statusDiv = document.getElementById('syncStatus');
             const originalText = statusDiv.innerText;
-            statusDiv.innerText = "📦 تم أرشفة الأسبوع تلقائياً";
+            statusDiv.innerText = "📦 تم الحفظ اليومي للأرشيف";
             statusDiv.style.background = "var(--gold)";
             statusDiv.style.color = "#3b2a0f";
             setTimeout(() => {
@@ -621,15 +663,34 @@
                 let salaryBase = parseFloat(workerRecord.sal || 0);
                 let net = Math.round(((salaryBase/6)*attSum) - loansSum);
                 
+                // تجهيز تواريخ الأسبوع المعكوسة للأرشيف
+                let wParts = weekKey.split('-');
+                let archiveStartDate = new Date(parseInt(wParts[0]), parseInt(wParts[1])-1, parseInt(wParts[2]));
+                let displayWeekKey = wParts.length === 3 ? `${wParts[0]}/${wParts[1]}/${wParts[2]}` : weekKey;
+                
                 let detailsHtml = `<div class="attendance-details"><strong>📋 تفاصيل الحضور والغياب:</strong><div style="margin-top:8px;">`;
                 for(let i=0; i<weekdays.length; i++) {
+                    
+                    // حساب يوم الأرشيف المحدد وتنسيقه
+                    let tmp = new Date(archiveStartDate);
+                    tmp.setDate(archiveStartDate.getDate() + i);
+                    let d = tmp.getDate().toString().padStart(2, '0');
+                    let m = (tmp.getMonth() + 1).toString().padStart(2, '0');
+                    let y = tmp.getFullYear();
+                    let dateStr = `${y}/${m}/${d}`; // معكوس ليظهر يمين-لليسار: يوم/شهر/سنة
+
                     let statusVal = attArray[i];
                     let statusText = (statusVal == 1) ? "✔️ حاضر" : (statusVal == 0.5 ? "⚠️ نصف يوم" : "❌ غائب");
                     let statusClass = (statusVal == 1) ? "status-h" : (statusVal == 0.5 ? "status-half" : "status-a");
                     let loanVal = (workerRecord.loans && workerRecord.loans[i]) ? parseFloat(workerRecord.loans[i]) || 0 : 0;
+                    
+                    // إضافة التاريخ تحت اليوم في الأرشيف
                     detailsHtml += `
                         <div class="att-row-detail">
-                            <span class="day-badge">${weekdays[i]}</span>
+                            <div style="text-align: right; min-width: 70px;">
+                                <span class="day-badge" style="display:block;">${weekdays[i]}</span>
+                                <span style="font-size: 9px; color: #777; font-weight: bold;">${dateStr}</span>
+                            </div>
                             <span class="status-badge ${statusClass}">${statusText}</span>
                             ${loanVal > 0 ? `<span style="color:var(--danger);">💸 سلفة: ${loanVal}</span>` : '<span style="color:#aaa;">لا توجد سلفة</span>'}
                         </div>
@@ -640,7 +701,7 @@
                 html += `
                     <div style="background:white; border-radius: 20px; padding: 12px; margin-bottom: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border-right: 3px solid var(--gold);">
                         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--gold); padding-bottom: 6px; margin-bottom: 10px;">
-                            <h4 style="margin:0; color: var(--dark-green);">📅 أسبوع: ${weekKey} 💰</h4>
+                            <h4 style="margin:0; color: var(--dark-green);">📅 أسبوع: ${displayWeekKey} 💰</h4>
                             <span style="background:#eee; padding:4px 8px; border-radius:12px;">${attSum} أيام عمل</span>
                         </div>
                         <table class="archive-table" style="width:100%; margin-bottom:12px;">
@@ -655,12 +716,13 @@
             }
         }
         
-        display.innerHTML = hasRecords ? html : "<p style='text-align:center; color:#777; font-size:13px;'>🚫 لا توجد سجلات مؤرشفة سابقة لهذا العامل (سيتم الأرشفة كل خميس تلقائياً).</p>";
+        display.innerHTML = hasRecords ? html : "<p style='text-align:center; color:#777; font-size:13px;'>🚫 لا توجد سجلات مؤرشفة سابقة لهذا العامل (سيتم الأرشفة يومياً بشكل تلقائي).</p>";
     }
     
     window.toggleAtt = toggleAtt;
     window.syncData = syncData;
     window.syncArrayData = syncArrayData;
+    window.syncSalary = syncSalary;
     window.manualSaveWorker = manualSaveWorker;
     window.addNewWorker = addNewWorker;
     window.removeWorker = removeWorker;
@@ -668,6 +730,7 @@
     window.handleDateChange = handleDateChange;
     window.shareToWhatsApp = shareToWhatsApp;
     window.fetchAndBuildArchive = fetchAndBuildArchive;
+    window.toggleEditCard = toggleEditCard;
 </script>
 </body>
 </html>
