@@ -205,6 +205,9 @@
         <div class="time-date-container">
             <div id="digital-clock" style="font-weight:bold; font-size: 1.2rem;">00:00</div>
             <div id="digital-date" style="font-size: 0.9rem; font-weight: bold; opacity: 0.9;">0000/00/00</div>
+            
+            <div id="hijri-date-moon" style="font-size: 0.85rem; font-weight: bold; color: #ffdd59; margin: 0 5px;">🌙 0000/00/00</div>
+            
             <span id="network-status" style="padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: bold; background: #2ecc71; color: white; user-select: none;">متصل 🟢</span>
         </div>
         <div id="countdown" onclick="toggleHolidaysDropdown(event)" style="font-size: 0.75rem; cursor: pointer; padding-top: 4px;">جاري التحميل...</div>
@@ -360,6 +363,34 @@
         const dd = now.toLocaleDateString('ar-EG', { day: '2-digit' });
         document.getElementById('digital-date').innerText = weekday + ' ' + yyyy + '/' + mm + '/' + dd;
         
+        // --- الإضافة الجديدة: حساب التاريخ الهجري ومراحل القمر ---
+        try {
+            const hijriOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+            const hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', hijriOptions).format(now);
+            
+            // حساب مرحلة القمر تقريبياً
+            const synodicMonth = 29.53058867; // طول الشهر القمري بالأيام
+            const knownNewMoon = new Date("2000-01-06T18:14:00Z").getTime(); // تاريخ محاق معروف
+            const diffDays = (now.getTime() - knownNewMoon) / (1000 * 60 * 60 * 24);
+            const currentLunarAge = diffDays % synodicMonth;
+            const phase = currentLunarAge / synodicMonth;
+            
+            let moonEmoji = "🌑";
+            if (phase < 0.03 || phase > 0.97) moonEmoji = "🌑"; // محاق
+            else if (phase < 0.22) moonEmoji = "🌒"; // هلال متزايد
+            else if (phase < 0.28) moonEmoji = "🌓"; // تربيع أول
+            else if (phase < 0.47) moonEmoji = "🌔"; // أحدب متزايد
+            else if (phase < 0.53) moonEmoji = "🌕"; // بدر
+            else if (phase < 0.72) moonEmoji = "🌖"; // أحدب متناقص
+            else if (phase < 0.78) moonEmoji = "🌗"; // تربيع ثاني
+            else moonEmoji = "🌘"; // هلال متناقص
+
+            document.getElementById('hijri-date-moon').innerText = `${moonEmoji} ${hijriDate}`;
+        } catch (e) {
+            console.error("خطأ في حساب التاريخ الهجري", e);
+        }
+        // --- نهاية الإضافة ---
+
         let next = holidays.find(h => h.date > now.getTime()) || holidays[0];
         let diff = Math.ceil((next.date - now.getTime()) / (1000 * 60 * 60 * 24));
         document.getElementById('countdown').innerText = "⏳ باقي " + diff + " يوم على " + next.name;
