@@ -136,10 +136,9 @@
             position: relative;
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
             cursor: default;
-            direction: ltr;    /* الاتجاه من اليسار لليمين */
+            direction: ltr;
         }
         
-        /* الحاوية الداخلية - الحركة من اليسار إلى اليمين */
         .ticker-marquee {
             display: inline-block;
             white-space: nowrap;
@@ -147,7 +146,6 @@
             will-change: transform;
         }
         
-        /* عنصر الشريط الواحد */
         .ticker-item {
             display: inline-block;
             background: rgba(255, 255, 255, 0.1);
@@ -163,7 +161,6 @@
             letter-spacing: 0.3px;
         }
         
-        /* إضافة توهج خاص بمواقيت الصلاة */
         .ticker-item.prayer-highlight {
             background: linear-gradient(135deg, #f39c12, #e67e22);
             color: #1e1e2f;
@@ -171,17 +168,11 @@
             border-right: 3px solid #ffd966;
         }
         
-        /* حركة من الشمال (اليسار) إلى اليمين */
         @keyframes scrollTickerRight {
-            0% {
-                transform: translateX(-100%);
-            }
-            100% {
-                transform: translateX(0%);
-            }
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(0%); }
         }
         
-        /* توقف مؤقت عند المرور بالماوس */
         .news-ticker-container:hover .ticker-marquee {
             animation-play-state: paused;
         }
@@ -203,7 +194,6 @@
     </div>
 </div>
 
-<!-- شريط الإشعارات المتطور - يتحرك أوتوماتيكياً من اليسار إلى اليمين -->
 <div class="news-ticker-container" id="tickerContainer">
     <div class="ticker-marquee" id="tickerMarquee">
         <span class="ticker-item">🕋 جاري تحميل البلد ومواقيت الصلاة...</span>
@@ -411,11 +401,9 @@
     
     const tickerMarquee = document.getElementById('tickerMarquee');
     
-    // دالة عرض العناصر في الشريط (مع نسختين لاستمرارية الحركة)
     function renderTickerWithItems(itemsArray) {
         if (!tickerMarquee) return;
         let fullHTML = '';
-        // نكرر المحتوى مرتين حتى تكون الحركة متصلة بسلاسة
         for (let copy = 0; copy < 2; copy++) {
             itemsArray.forEach(item => {
                 let classAttr = 'ticker-item';
@@ -425,25 +413,22 @@
         }
         tickerMarquee.innerHTML = fullHTML;
         
-        // حساب مدة الحركة بناءً على طول المحتوى (حركة سلسة)
         const container = document.querySelector('.news-ticker-container');
         const containerWidth = container?.offsetWidth || window.innerWidth;
         const contentWidth = tickerMarquee.scrollWidth;
-        let duration = 20; // ثانية
+        let duration = 20;
         if (contentWidth > 0 && containerWidth > 0) {
-            // سرعة 70 بكسل لكل ثانية تقريبًا، للحصول على انسيابية
-            const speed = 70;
+            // تم تغيير السرعة من 70 إلى 40 بكسل لكل ثانية (أبطأ)
+            const speed = 40;  // السرعة الجديدة (أبطأ بحوالي 43%)
             duration = (contentWidth / 2) / speed;
-            duration = Math.min(40, Math.max(12, duration));
+            duration = Math.min(50, Math.max(18, duration));  // مدى أطول قليلاً
         }
         tickerMarquee.style.animationDuration = `${duration}s`;
-        // إعادة تشغيل الأنيميشن
         tickerMarquee.style.animation = 'none';
         tickerMarquee.offsetHeight;
         tickerMarquee.style.animation = `scrollTickerRight linear ${duration}s infinite`;
     }
     
-    // تنسيق الوقت بصيغة عربية 12 ساعة
     function formatPrayerTime(timeStr) {
         if (!timeStr) return "--:--";
         let [hour, minute] = timeStr.split(':');
@@ -453,14 +438,12 @@
         return `${hour12}:${minute} ${period}`;
     }
     
-    // جلب مواقيت الصلاة بشكل كامل وعرض الفجر والظهر والعصر والمغرب والعشاء
     async function fetchAndUpdatePrayerTicker() {
         try {
             let city = 'Mansoura';
             let country = 'Egypt';
             let displayCity = 'المنصورة';
             
-            // تحديد الموقع عبر ipapi
             try {
                 const locationResponse = await fetch('https://ipapi.co/json/');
                 if (locationResponse.ok) {
@@ -474,28 +457,21 @@
                     }
                 }
             } catch (locErr) {
-                console.warn("استخدام الموقع الافتراضي (المنصورة) لتعذر تحديد الموقع", locErr);
+                console.warn("استخدام الموقع الافتراضي", locErr);
             }
             
-            // استدعاء API المواقيت مع تحديث شامل
             const apiURL = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=5`;
             const response = await fetch(apiURL);
             const data = await response.json();
             
             if (data && data.code === 200 && data.data && data.data.timings) {
                 const timings = data.data.timings;
-                
-                // استخراج جميع الصلوات الخمس
                 const fajr = formatPrayerTime(timings.Fajr);
                 const dhuhr = formatPrayerTime(timings.Dhuhr);
                 const asr = formatPrayerTime(timings.Asr);
                 const maghrib = formatPrayerTime(timings.Maghrib);
                 const isha = formatPrayerTime(timings.Isha);
-                
-                // بناء النص الرئيسي الذي يحتوي على جميع الصلوات الخمسة
                 const fullPrayerText = `🕌 مواقيت الصلاة • ${displayCity} (${currentCountry}) : الفجر ${fajr} | الظهر ${dhuhr} | العصر ${asr} | المغرب ${maghrib} | العشاء ${isha}`;
-                
-                // إضافة تذكير ديني وفق الوقت الحالي
                 const now = new Date();
                 const currentHour = now.getHours();
                 let reminderText = "🌟 سبحان الله وبحمده";
@@ -505,24 +481,20 @@
                 else if (currentHour >= 17 && currentHour < 19) reminderText = "🌙 بادر بصلاة المغرب";
                 else if (currentHour >= 19 && currentHour < 23) reminderText = "✨ العشاء نور القلوب";
                 
-                // عناصر الشريط المتعددة
                 const tickerElements = [
                     { text: fullPrayerText, isPrayer: true },
                     { text: `📿 تذكير: ${reminderText}`, isPrayer: false },
                     { text: `🤲 الدعاء: ربنا آتنا في الدنيا حسنة`, isPrayer: false },
                     { text: `📍 ${displayCity} • توقيت محلي دقيق`, isPrayer: false }
                 ];
-                
                 renderTickerWithItems(tickerElements);
-                console.log(`تم تحديث الشريط بنجاح: ${displayCity} - جميع الأوقات ظهرت`);
             } else {
-                throw new Error("استجابة غير مكتملة من API المواقيت");
+                throw new Error("استجابة غير مكتملة");
             }
         } catch (error) {
-            console.error("خطأ في جلب مواقيت الصلاة:", error);
-            const fallbackMsg = `⚠️ تعذر جلب المواقيت حاليًا • ${currentCity} • حاول لاحقًا`;
+            console.error("خطأ:", error);
             const fallbackItems = [
-                { text: fallbackMsg, isPrayer: false },
+                { text: `⚠️ تعذر جلب المواقيت • ${currentCity}`, isPrayer: false },
                 { text: "🕋 صلِّ في وقتها تنعم بالطمأنينة", isPrayer: false },
                 { text: `📅 ${new Date().toLocaleDateString('ar-EG')} • azemaa pro`, isPrayer: false }
             ];
@@ -530,24 +502,10 @@
         }
     }
     
-    // بدء تشغيل الشريط بعد تحميل الصفحة
-    setTimeout(() => {
-        fetchAndUpdatePrayerTicker();
-    }, 500);
+    setTimeout(() => { fetchAndUpdatePrayerTicker(); }, 500);
+    setInterval(() => { if (navigator.onLine) fetchAndUpdatePrayerTicker(); }, 3600000);
+    window.addEventListener('online', () => { fetchAndUpdatePrayerTicker(); });
     
-    // تحديث كل ساعة لضمان دقة المواقيت (3600000 مللي)
-    setInterval(() => {
-        if (navigator.onLine) {
-            fetchAndUpdatePrayerTicker();
-        }
-    }, 3600000);
-    
-    // إعادة التحديث عند العودة للإنترنت
-    window.addEventListener('online', () => {
-        fetchAndUpdatePrayerTicker();
-    });
-    
-    // معالجة تغيير حجم الشاشة لإعادة حساب سرعة الشريط بشكل سلس
     let resizeTimer;
     window.addEventListener('resize', () => {
         if (resizeTimer) clearTimeout(resizeTimer);
@@ -557,21 +515,13 @@
                 const items = Array.from(currentSpans).slice(0, currentSpans.length / 2);
                 const textItems = items.map(span => ({ text: span.innerText, isPrayer: span.classList.contains('prayer-highlight') }));
                 if (textItems.length) renderTickerWithItems(textItems);
-            } else {
-                fetchAndUpdatePrayerTicker();
-            }
+            } else { fetchAndUpdatePrayerTicker(); }
         }, 200);
     });
     
-    // دعم اللمس للموبايل: توقف مؤقت أثناء اللمس
     const tickerContainerDiv = document.getElementById('tickerContainer');
-    tickerContainerDiv.addEventListener('touchstart', () => {
-        tickerMarquee.style.animationPlayState = 'paused';
-    });
-    tickerContainerDiv.addEventListener('touchend', () => {
-        tickerMarquee.style.animationPlayState = 'running';
-    });
-    
+    tickerContainerDiv.addEventListener('touchstart', () => { tickerMarquee.style.animationPlayState = 'paused'; });
+    tickerContainerDiv.addEventListener('touchend', () => { tickerMarquee.style.animationPlayState = 'running'; });
 </script>
 
 <script type="module">
@@ -635,6 +585,58 @@
             });
         }
     });
+</script>
+
+<!-- ========== إضافة صوت نقر واحد فقط (بدون تغيير الأكواد) ========== -->
+<script>
+    (function() {
+        let lastClickTime = 0;
+        let audioContext = null;
+        
+        function playSingleClick() {
+            const now = Date.now();
+            if (now - lastClickTime < 150) return;
+            lastClickTime = now;
+            
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') audioContext.resume();
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 880;
+                gainNode.gain.value = 0.12;
+                oscillator.type = 'sine';
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.12);
+                oscillator.stop(audioContext.currentTime + 0.12);
+            } catch(e) { console.log("صوت غير مدعوم"); }
+        }
+        
+        document.addEventListener('click', function(event) {
+            let target = event.target;
+            let isClickable = false;
+            const clickableSelectors = [
+                'button', '.btn', '.zoom-btn', '.card', '.overlay', 
+                '.h', '.sidebar-item', '#countdown', '#logout-btn',
+                'header button', '.sync-group button', '.ticker-item',
+                '.news-ticker-container', '.holiday-item', '.login-box button'
+            ];
+            for (let selector of clickableSelectors) {
+                if (target.matches(selector) || (target.closest && target.closest(selector))) {
+                    isClickable = true;
+                    break;
+                }
+            }
+            if (target.hasAttribute && target.hasAttribute('onclick')) isClickable = true;
+            if (target.tagName === 'BUTTON' || target.tagName === 'A' || target.tagName === 'INPUT') isClickable = true;
+            if (isClickable) playSingleClick();
+        });
+    })();
 </script>
 </body>
 </html>
