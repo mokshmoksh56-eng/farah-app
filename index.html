@@ -163,7 +163,6 @@
         
         /* تم إزالة اللون البرتقالي الخاص بالصلاة - أصبح بنفس لون باقي العناصر */
         .ticker-item.prayer-highlight {
-            /* اللون البرتقالي تم إزالته */
             background: rgba(255, 255, 255, 0.1);
             color: #f8fafc;
             font-weight: 600;
@@ -198,7 +197,7 @@
 
 <div class="news-ticker-container" id="tickerContainer">
     <div class="ticker-marquee" id="tickerMarquee">
-        <span class="ticker-item">🕋 جاري تحميل البلد ومواقيت الصلاة...</span>
+        <span class="ticker-item">🕋 جاري تحديد الموقع عبر الـ GPS وجلب مواقيت الصلاة...</span>
     </div>
 </div>
 
@@ -397,9 +396,9 @@
     setInterval(updateHeader, 60000);
     updateHeader();
 
-    // =================== الشريط الذاتي الحركة + مواقيت الصلاة الكاملة ===================
-    let currentCity = "القاهرة";  // تم التغيير من "المنصورة" إلى "القاهرة"
-    let currentCountry = "مصر";
+    // =================== الشريط الذاتي الحركة + مواقيت الصلاة الكاملة عبر الـ GPS ===================
+    let currentCity = "الموقع الحالي";
+    let currentCountry = "";
     
     const tickerMarquee = document.getElementById('tickerMarquee');
     
@@ -439,31 +438,28 @@
         return `${hour12}:${minute} ${period}`;
     }
     
-    async function fetchAndUpdatePrayerTicker() {
+    function fetchAndUpdatePrayerTicker() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    await getPrayerTimesByCoords(lat, lng, "نظام الـ GPS الفعلي");
+                },
+                async (error) => {
+                    console.warn("تم رفض إذن الـ GPS أو تعذر الوصول إليه، يتم الانتقال للحل الاحتياطي الجغرافي", error);
+                    await fetchFallbackLocationAndTimes();
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        } else {
+            fetchFallbackLocationAndTimes();
+        }
+    }
+
+    async function getPrayerTimesByCoords(lat, lng, locationLabel) {
         try {
-            // تم تغيير المدينة من المنصورة إلى القاهرة
-            let city = 'Cairo';
-            let country = 'Egypt';
-            let displayCity = 'القاهرة';
-            
-            try {
-                const locationResponse = await fetch('https://ipapi.co/json/');
-                if (locationResponse.ok) {
-                    const locationData = await locationResponse.json();
-                    if (locationData && locationData.city && locationData.country_name) {
-                        // نستخدم القاهرة بدلاً من الموقع الفعلي
-                        city = 'Cairo';
-                        country = 'Egypt';
-                        displayCity = 'القاهرة';
-                        currentCity = displayCity;
-                        currentCountry = country;
-                    }
-                }
-            } catch (locErr) {
-                console.warn("استخدام الموقع الافتراضي (القاهرة)", locErr);
-            }
-            
-            const apiURL = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=5`;
+            const apiURL = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=5`;
             const response = await fetch(apiURL);
             const data = await response.json();
             
@@ -474,7 +470,9 @@
                 const asr = formatPrayerTime(timings.Asr);
                 const maghrib = formatPrayerTime(timings.Maghrib);
                 const isha = formatPrayerTime(timings.Isha);
-                const fullPrayerText = `🕌 مواقيت الصلاة • ${displayCity} (${currentCountry}) : الفجر ${fajr} | الظهر ${dhuhr} | العصر ${asr} | المغرب ${maghrib} | العشاء ${isha}`;
+                
+                const fullPrayerText = `🕌 مواقيت الصلاة • تحديث دقيق عبر (${locationLabel}) : الفجر ${fajr} | الظهر ${dhuhr} | العصر ${asr} | المغرب ${maghrib} | العشاء ${isha}`;
+                
                 const now = new Date();
                 const currentHour = now.getHours();
                 let reminderText = "🌟 سبحان الله وبحمده";
@@ -488,7 +486,7 @@
                     { text: fullPrayerText, isPrayer: true },
                     { text: `📿 تذكير: ${reminderText}`, isPrayer: false },
                     { text: `🤲 الدعاء: ربنا آتنا في الدنيا حسنة`, isPrayer: false },
-                    { text: `📍 ${displayCity} • توقيت محلي دقيق`, isPrayer: false }
+                    { text: `📍 تم التحديد التلقائي للبلد • توقيت محلي دقيق`, isPrayer: false }
                 ];
                 renderTickerWithItems(tickerElements);
             } else {
@@ -496,13 +494,35 @@
             }
         } catch (error) {
             console.error("خطأ:", error);
-            const fallbackItems = [
-                { text: `⚠️ تعذر جلب المواقيت • ${currentCity}`, isPrayer: false },
-                { text: "🕋 صلِّ في وقتها تنعم بالطمأنينة", isPrayer: false },
-                { text: `📅 ${new Date().toLocaleDateString('ar-EG')} • azemaa pro`, isPrayer: false }
-            ];
-            renderTickerWithItems(fallbackItems);
+            showFallbackTicker();
         }
+    }
+    
+    async function fetchFallbackLocationAndTimes() {
+        try {
+            const locationResponse = await fetch('https://ipapi.co/json/');
+            if (locationResponse.ok) {
+                const locationData = await locationResponse.json();
+                if (locationData && locationData.latitude && locationData.longitude) {
+                    const displayCity = locationData.city || "موقعك الحالي";
+                    await getPrayerTimesByCoords(locationData.latitude, locationData.longitude, displayCity);
+                    return;
+                }
+            }
+            throw new Error("فشل حل الـ IP الاحتياطي");
+        } catch (locErr) {
+            console.warn("جاري استخدام الإحداثيات الافتراضية", locErr);
+            await getPrayerTimesByCoords(30.0444, 31.2357, "القاهرة - افتراضي");
+        }
+    }
+
+    function showFallbackTicker() {
+        const fallbackItems = [
+            { text: `⚠️ تعذر جلب المواقيت تلقائياً • تحقق من الشبكة`, isPrayer: false },
+            { text: "🕋 صلِّ في وقتها تنعم بالطمأنينة", isPrayer: false },
+            { text: `📅 ${new Date().toLocaleDateString('ar-EG')} • azemaa pro`, isPrayer: false }
+        ];
+        renderTickerWithItems(fallbackItems);
     }
     
     setTimeout(() => { fetchAndUpdatePrayerTicker(); }, 500);
@@ -590,7 +610,6 @@
     });
 </script>
 
-<!-- ========== إضافة صوت نقر واحد فقط ========== -->
 <script>
     (function() {
         let lastClickTime = 0;
