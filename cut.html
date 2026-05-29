@@ -53,7 +53,6 @@
 
         #boardsRenderContainer { margin-top: 15px; }
         .print-page { margin-bottom: 40px; }
-        /* تم إزالة overflow: hidden لحل مشكلة قص الجدول */
         .board-detail-container { margin-bottom: 15px; border: 2px solid #2c3e50; border-radius: 6px; page-break-inside: avoid; }
         .board-title { background: #2c3e50; color: white; padding: 12px; margin: 0; text-align: center; font-size: 18px; font-weight: bold; }
         
@@ -86,6 +85,32 @@
 
         canvas { touch-action: pinch-zoom pan-x pan-y; }
 
+        /* تنسيق زر التقطيع العائم الجديد الدائري */
+        .fab-calc {
+            position: fixed;
+            bottom: 30px;
+            right: 30px; /* تم نقله لليمين */
+            background-color: #4CAF50; /* لون أخضر مشابه للصورة */
+            color: white;
+            border: none;
+            border-radius: 50%; /* لجعل الزر دائرياً */
+            width: 65px;
+            height: 65px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            z-index: 10000;
+            transition: transform 0.2s, background-color 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+        }
+
+        .fab-calc:hover {
+            background-color: #388E3C;
+            transform: scale(1.05);
+        }
+
         @media (max-width: 600px) {
             body { padding: 5px; }
             .container { padding: 10px; }
@@ -96,12 +121,24 @@
             .archive-item { flex-direction: column; align-items: flex-start; }
             .archive-item-actions { width: 100%; justify-content: space-between; }
             .archive-item-actions button { flex: 1; }
+            
+            /* تصغير حجم الزر العائم على شاشات الموبايل */
+            .fab-calc {
+                bottom: 20px;
+                right: 20px;
+                width: 55px;
+                height: 55px;
+            }
+            .fab-calc svg {
+                width: 24px;
+                height: 24px;
+            }
         }
 
         @media print {
             body { background-color: #fff; padding: 0; }
             .container { box-shadow: none; border: none; padding: 0; margin: 0; max-width: 100%; }
-            .sticky-panel, .table-responsive, #addButtonsDiv, .archive-controls, .action-buttons, #syncStatus, h1, #resultStats, #zoomControls, .board-detail-container { display: none !important; }
+            .sticky-panel, .table-responsive, #addButtonsDiv, .archive-controls, .action-buttons, #syncStatus, h1, #resultStats, #zoomControls, .board-detail-container, .fab-calc { display: none !important; }
             .print-page { page-break-after: always; break-after: page; display: block; margin-bottom: 0; }
             .print-page:last-child { page-break-after: auto; break-after: auto; }
             canvas { border: 2px solid #000 !important; margin-bottom: 15px; max-height: 95vh !important; width: 100% !important; max-width: 100% !important; display: block; margin-left: auto; margin-right: auto; }
@@ -174,8 +211,7 @@
             <div class="input-group"><label>حز المنشار</label><input type="number" id="kerf" value="0.4" step="0.1" oninput="saveData()"></div>
             <div class="input-group required-boards"><label>الألواح المطلوبة</label><input type="text" id="totalBoardsNeeded" readonly value="0"></div>
         </div>
-        <button class="btn-calc" onclick="calculateAndDraw()">بدء التقطيع وتوفير الهالك</button>
-    </div>
+        </div>
 
     <div class="table-responsive">
         <table id="piecesTable">
@@ -244,6 +280,12 @@
         <button class="btn-calc" style="margin-top: 15px;" onclick="processPastedData()">استخراج المقاسات ✔️</button>
     </div>
 </div>
+
+<button class="fab-calc" onclick="calculateAndDraw()" title="بدء التقطيع">
+    <svg viewBox="0 0 24 24" fill="white" width="30px" height="30px">
+        <path d="M8 5v14l11-7z"/>
+    </svg>
+</button>
 
 <script>
     let saveTimeout;
@@ -732,7 +774,6 @@
             const tableWrapper = document.createElement('div');
             tableWrapper.className = 'board-detail-container';
             
-            // تم إضافة الـ div الداخلي بخاصية overflow-x: auto لمنع اختفاء العرض والعدد على الموبايل
             let html = `
                 <h3 class="board-title">تفاصيل مقاسات اللوح رقم ${index + 1}</h3>
                 <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
