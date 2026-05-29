@@ -288,12 +288,17 @@
 </div>
 
 <script>
-    // --------------------- إدارة التكبير والتصغير ---------------------
+    // --------------------- إدارة التكبير والتصغير والاحتفاظ بالكارت المفتوح ---------------------
     function toggleZoom(card, event) {
         if(event) event.stopPropagation();
+        const iframe = card.querySelector('iframe');
+        const src = iframe ? iframe.getAttribute('src') : '';
+
         if (card.classList.contains('fullscreen')) {
             card.classList.remove('fullscreen');
             card.querySelector('.zoom-btn').innerText = "تكبير";
+            // حذف من الذاكرة عند الإغلاق اليدوي
+            localStorage.removeItem('openedCardSrc');
         } else {
             document.querySelectorAll('.card.fullscreen').forEach(c => {
                 c.classList.remove('fullscreen');
@@ -301,8 +306,24 @@
             });
             card.classList.add('fullscreen');
             card.querySelector('.zoom-btn').innerText = "إغلاق";
+            // حفظ القسم المفتوح في الذاكرة لتجنب الخروج عند الـ Refresh
+            if(src) localStorage.setItem('openedCardSrc', src);
         }
     }
+
+    // استرجاع الكارت المفتوح تلقائياً عند إعادة التحميل (Refresh)
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedSrc = localStorage.getItem('openedCardSrc');
+        if (savedSrc) {
+            document.querySelectorAll('iframe').forEach(iframe => {
+                if (iframe.getAttribute('src') === savedSrc) {
+                    const card = iframe.closest('.card');
+                    card.classList.add('fullscreen');
+                    card.querySelector('.zoom-btn').innerText = "إغلاق";
+                }
+            });
+        }
+    });
 
     document.querySelectorAll('iframe').forEach(iframe => {
         iframe.addEventListener('load', function() {
@@ -363,33 +384,30 @@
         const dd = now.toLocaleDateString('ar-EG', { day: '2-digit' });
         document.getElementById('digital-date').innerText = weekday + ' ' + yyyy + '/' + mm + '/' + dd;
         
-        // --- الإضافة الجديدة: حساب التاريخ الهجري ومراحل القمر ---
         try {
             const hijriOptions = { day: 'numeric', month: 'long', year: 'numeric' };
             const hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', hijriOptions).format(now);
             
-            // حساب مرحلة القمر تقريبياً
-            const synodicMonth = 29.53058867; // طول الشهر القمري بالأيام
-            const knownNewMoon = new Date("2000-01-06T18:14:00Z").getTime(); // تاريخ محاق معروف
+            const synodicMonth = 29.53058867; 
+            const knownNewMoon = new Date("2000-01-06T18:14:00Z").getTime(); 
             const diffDays = (now.getTime() - knownNewMoon) / (1000 * 60 * 60 * 24);
             const currentLunarAge = diffDays % synodicMonth;
             const phase = currentLunarAge / synodicMonth;
             
             let moonEmoji = "🌑";
-            if (phase < 0.03 || phase > 0.97) moonEmoji = "🌑"; // محاق
-            else if (phase < 0.22) moonEmoji = "🌒"; // هلال متزايد
-            else if (phase < 0.28) moonEmoji = "🌓"; // تربيع أول
-            else if (phase < 0.47) moonEmoji = "🌔"; // أحدب متزايد
-            else if (phase < 0.53) moonEmoji = "🌕"; // بدر
-            else if (phase < 0.72) moonEmoji = "🌖"; // أحدب متناقص
-            else if (phase < 0.78) moonEmoji = "🌗"; // تربيع ثاني
-            else moonEmoji = "🌘"; // هلال متناقص
+            if (phase < 0.03 || phase > 0.97) moonEmoji = "🌑"; 
+            else if (phase < 0.22) moonEmoji = "🌒"; 
+            else if (phase < 0.28) moonEmoji = "🌓"; 
+            else if (phase < 0.47) moonEmoji = "🌔"; 
+            else if (phase < 0.53) moonEmoji = "🌕"; 
+            else if (phase < 0.72) moonEmoji = "🌖"; 
+            else if (phase < 0.78) moonEmoji = "🌗"; 
+            else moonEmoji = "🌘"; 
 
             document.getElementById('hijri-date-moon').innerText = `${moonEmoji} ${hijriDate}`;
         } catch (e) {
             console.error("خطأ في حساب التاريخ الهجري", e);
         }
-        // --- نهاية الإضافة ---
 
         let next = holidays.find(h => h.date > now.getTime()) || holidays[0];
         let diff = Math.ceil((next.date - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -426,7 +444,7 @@
     setInterval(updateHeader, 60000);
     updateHeader();
 
-    // =================== شريط الحركة + جلب اسم المدينة الفعلي من الـ GPS (gbs) ===================
+    // =================== شريط الحركة + جلب اسم المدينة الفعلي ===================
     let currentCity = "الموقع الحالي";
     const tickerMarquee = document.getElementById('tickerMarquee');
     
@@ -475,7 +493,6 @@
                     
                     let cityName = "موقعك الحالي";
                     try {
-                        // تحويل خطوط الطول والعرض (GPS) إلى اسم مدينة حقيقي وعربي
                         const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
                         if (geoResponse.ok) {
                             const geoData = await geoResponse.json();
@@ -646,6 +663,8 @@
 
     document.getElementById('logout-btn').addEventListener('click', () => {
         if(confirm("هل تريد تسجيل الخروج وقفل المنظومة؟")) {
+            // نأمن مسح الذاكرة عند الخروج
+            localStorage.removeItem('openedCardSrc');
             signOut(auth).then(() => {
                 window.location.reload();
             });
