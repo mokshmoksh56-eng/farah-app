@@ -185,6 +185,27 @@
 
 <div class="main-container">
     <div class="config-box">
+        
+        <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #f0f7f4; padding: 10px; border-radius: 12px; border: 1px dashed var(--teal);">
+            <label style="font-weight: 900; color: var(--dark-green);">🌍 دولة الحساب:</label>
+            <select id="countryCurrency" onchange="updateCurrency()" style="padding: 8px 12px; border-radius: 8px; border: 2px solid var(--teal); font-weight: 900; background: #fff; cursor: pointer;">
+                <option value="ج.م">🇪🇬 مصر (ج.م)</option>
+                <option value="ر.س">🇸🇦 السعودية (ر.س)</option>
+                <option value="د.إ">🇦🇪 الإمارات (د.إ)</option>
+                <option value="د.ك">🇰🇼 الكويت (د.ك)</option>
+                <option value="ر.ق">🇶🇦 قطر (ر.ق)</option>
+                <option value="ر.ع">🇴🇲 عمان (ر.ع)</option>
+                <option value="د.ب">🇧🇭 البحرين (د.ب)</option>
+                <option value="د.أ">🇯🇴 الأردن (د.أ)</option>
+                <option value="د.ل">🇱🇾 ليبيا (د.ل)</option>
+                <option value="د.ع">🇮🇶 العراق (د.ع)</option>
+                <option value="د.ج">🇩🇿 الجزائر (د.ج)</option>
+                <option value="د.م">🇲🇦 المغرب (د.م)</option>
+                <option value="$">🇺🇸 دولار ($)</option>
+                <option value="€">🇪🇺 يورو (€)</option>
+            </select>
+        </div>
+
         <div class="date-selectors">
             <select id="dayPicker" onchange="updateDateFromSelectors()"></select>
             <select id="monthPicker" onchange="updateDateFromSelectors()">
@@ -225,11 +246,34 @@
     let currentWeekDates = [];     
     let currentFullDates = [];     
     let allArchiveData = {};
+    
+    // تعريف متغير العملة العالمي واستدعاؤه من الذاكرة
+    let currentCurrency = localStorage.getItem('workerCurrency') || 'ج.م';
 
     function initSystem() {
+        initCurrency();
         initDateSelectors();
         loadMasterWorkers();
         applyGlowToCurrentDayPicker();
+    }
+
+    // تهيئة قائمة اختيار العملة
+    function initCurrency() {
+        document.getElementById('countryCurrency').value = currentCurrency;
+    }
+
+    // تحديث العملة عند تغييرها من القائمة
+    function updateCurrency() {
+        currentCurrency = document.getElementById('countryCurrency').value;
+        localStorage.setItem('workerCurrency', currentCurrency);
+        
+        // إعادة حساب وعرض جميع الكروت لتحديث الرموز
+        masterWorkers.forEach((_, i) => recalc(i));
+        
+        // تحديث الأرشيف إذا كان مفتوحاً
+        if (document.getElementById('archiveContent').innerHTML !== "") {
+            fetchAndBuildArchive();
+        }
     }
 
     function initDateSelectors() {
@@ -294,7 +338,6 @@
             let monthNum = (tmp.getMonth() + 1).toString().padStart(2, '0');
             let yearNum = tmp.getFullYear();
             
-            // ترتيب التاريخ ليظهر: اليوم ثم الشهر ثم السنة
             let fullDateStr = `${yearNum}/${monthNum}/${dayNum}`;
             currentWeekDates.push(fullDateStr);
         }
@@ -420,7 +463,7 @@
                         </div>
                         <div style="display:flex; justify-content:space-between; border-top:1px solid #ddd; padding-top:5px;">
                             <span style="color:var(--dark-green);">الصافي المستحق:</span>
-                            <span class="sum-n" style="color:var(--gold); font-size:16px;">0</span>
+                            <span class="sum-n" data-val="0" style="color:var(--gold); font-size:16px;">0</span>
                         </div>
                     </div>
                     <div class="card-buttons">
@@ -547,9 +590,15 @@
         c.querySelectorAll('.btn-tgl.active').forEach(b => aTotal += parseFloat(b.dataset.v));
         
         let net = Math.round(((sal / 6) * aTotal) - lTotal);
+        let finalNet = net > 0 ? net : 0;
+        
         c.querySelector('.sum-a').innerText = aTotal;
         c.querySelector('.sum-l').innerText = lTotal; 
-        c.querySelector('.sum-n').innerText = (net > 0 ? net : 0) + " ج.م";
+        
+        let sumN = c.querySelector('.sum-n');
+        sumN.innerText = finalNet + " " + currentCurrency;
+        sumN.setAttribute('data-val', finalNet);
+        
         refreshStats();
     }
 
@@ -557,7 +606,7 @@
         let gL = 0, gN = 0, gS = 0;
         document.querySelectorAll('.worker-card').forEach(c => {
             gL += parseFloat(c.querySelector('.sum-l').innerText) || 0;
-            gN += parseFloat(c.querySelector('.sum-n').innerText.replace(' ج.م', '')) || 0;
+            gN += parseFloat(c.querySelector('.sum-n').getAttribute('data-val')) || 0;
             gS += parseFloat(c.querySelector('.salary-input').value) || 0;
         });
         document.getElementById('stat-sal').innerText = gS; 
@@ -569,7 +618,7 @@
         const c = document.getElementById(`card-${idx}`);
         const name = masterWorkers[idx].name;
         const sal = c.querySelector('.salary-input').value || 0;
-        const net = c.querySelector('.sum-n').innerText;
+        const net = c.querySelector('.sum-n').innerText; // تأخذ النص المنسق بالعملة
         const note = c.querySelector('.note-input').value || "لا يوجد";
         
         let details = "";
@@ -580,10 +629,10 @@
             const date = currentWeekDates[i];
             const status = row.querySelector('.btn-tgl.active').innerText;
             const loan = row.querySelector('.loan-input').value || 0;
-            details += `━ ${day} (${date}): [${status}] ${loan > 0 ? `| سلفة: ${loan}` : ''}\n`;
+            details += `━ ${day} (${date}): [${status}] ${loan > 0 ? `| سلفة: ${loan} ${currentCurrency}` : ''}\n`;
         }
 
-        const msg = `*azemaa proo* 💰\n*العامل:* ${name}\n*أسبوع:* ${currentWeekID}\n*الراتب الأساسي:* ${sal}\n━━━━━━━━━━━━━━━\n*تفاصيل الحضور والسلف:*\n${details}\n*ملاحظات:* ${note}\n━━━━━━━━━━━━━━━\n*الصافي المستحق:* *${net}*`;
+        const msg = `*azemaa proo* 💰\n*العامل:* ${name}\n*أسبوع:* ${currentWeekID}\n*الراتب الأساسي:* ${sal} ${currentCurrency}\n━━━━━━━━━━━━━━━\n*تفاصيل الحضور والسلف:*\n${details}\n*ملاحظات:* ${note}\n━━━━━━━━━━━━━━━\n*الصافي المستحق:* *${net}*`;
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
@@ -698,7 +747,7 @@
                                 <span style="font-size: 9px; color: #777; font-weight: bold;">${dateStr}</span>
                             </div>
                             <span class="status-badge ${statusClass}">${statusText}</span>
-                            ${loanVal > 0 ? `<span style="color:var(--danger);">💸 سلفة: ${loanVal}</span>` : '<span style="color:#aaa;">لا توجد سلفة</span>'}
+                            ${loanVal > 0 ? `<span style="color:var(--danger);">💸 سلفة: ${loanVal} ${currentCurrency}</span>` : '<span style="color:#aaa;">لا توجد سلفة</span>'}
                         </div>
                     `;
                 }
@@ -712,7 +761,7 @@
                         </div>
                         <table class="archive-table" style="width:100%; margin-bottom:12px;">
                             <thead><tr><th>الراتب</th><th>إجمالي السلف</th><th>صافي المستحق</th></tr></thead>
-                            <tbody><tr><td style="font-weight:bold;">${salaryBase || 0} ج.م</td><td style="color:var(--danger);">${loansSum} ج.م</td><td style="color:var(--gold); font-weight:bold;">${net > 0 ? net : 0} ج.م</td></tr>
+                            <tbody><tr><td style="font-weight:bold;">${salaryBase || 0} ${currentCurrency}</td><td style="color:var(--danger);">${loansSum} ${currentCurrency}</td><td style="color:var(--gold); font-weight:bold;">${net > 0 ? net : 0} ${currentCurrency}</td></tr>
                             </tbody>
                         </table>
                         ${detailsHtml}
@@ -737,6 +786,7 @@
     window.shareToWhatsApp = shareToWhatsApp;
     window.fetchAndBuildArchive = fetchAndBuildArchive;
     window.toggleEditCard = toggleEditCard;
+    window.updateCurrency = updateCurrency; // تصدير الدالة للمتصفح
 </script>
 </body>
 </html>
