@@ -77,18 +77,27 @@
         
         .att-btns { display: flex; gap: 2px; flex: 2; }
         .btn-tgl { flex: 1; border: 1px solid #ccc; background: #fff; font-size: 11px; font-weight: 900; padding: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s;}
+        
+        /* ألوان الأزرار النشطة */
         .btn-tgl.active[data-v="1"] { background: var(--whatsapp-green); color: white; border-color: var(--whatsapp-green); }
         .btn-tgl.active[data-v="0.5"] { background: var(--warning); color: white; border-color: var(--warning); }
         .btn-tgl.active[data-v="0"] { background: var(--danger); color: white; border-color: var(--danger); }
+        
         .loan-input { width: 55px; border: 1px solid #ddd; border-radius: 5px; padding: 8px 0; text-align: center; font-weight: 900; color: var(--danger); background: #fff; }
 
         /* ستايل الخانات المقفلة (للحماية) */
-        input:disabled, textarea:disabled, button.btn-tgl:disabled {
+        input:disabled, textarea:disabled, button.btn-tgl:disabled:not(.active) {
             background-color: #e9ecef !important;
             color: #6c757d !important;
             cursor: not-allowed !important;
             border-color: #dee2e6 !important;
             opacity: 0.8;
+        }
+
+        /* الاحتفاظ بلون الزر النشط حتى وهو مقفل */
+        button.btn-tgl.active:disabled {
+            cursor: not-allowed !important;
+            opacity: 0.9; 
         }
 
         .note-input { 
@@ -663,7 +672,6 @@
                 let salaryBase = parseFloat(workerRecord.sal || 0);
                 let net = Math.round(((salaryBase/6)*attSum) - loansSum);
                 
-                // تجهيز تواريخ الأسبوع المعكوسة للأرشيف
                 let wParts = weekKey.split('-');
                 let archiveStartDate = new Date(parseInt(wParts[0]), parseInt(wParts[1])-1, parseInt(wParts[2]));
                 let displayWeekKey = wParts.length === 3 ? `${wParts[0]}/${wParts[1]}/${wParts[2]}` : weekKey;
@@ -671,20 +679,18 @@
                 let detailsHtml = `<div class="attendance-details"><strong>📋 تفاصيل الحضور والغياب:</strong><div style="margin-top:8px;">`;
                 for(let i=0; i<weekdays.length; i++) {
                     
-                    // حساب يوم الأرشيف المحدد وتنسيقه
                     let tmp = new Date(archiveStartDate);
                     tmp.setDate(archiveStartDate.getDate() + i);
                     let d = tmp.getDate().toString().padStart(2, '0');
                     let m = (tmp.getMonth() + 1).toString().padStart(2, '0');
                     let y = tmp.getFullYear();
-                    let dateStr = `${y}/${m}/${d}`; // معكوس ليظهر يمين-لليسار: يوم/شهر/سنة
+                    let dateStr = `${y}/${m}/${d}`;
 
                     let statusVal = attArray[i];
                     let statusText = (statusVal == 1) ? "✔️ حاضر" : (statusVal == 0.5 ? "⚠️ نصف يوم" : "❌ غائب");
                     let statusClass = (statusVal == 1) ? "status-h" : (statusVal == 0.5 ? "status-half" : "status-a");
                     let loanVal = (workerRecord.loans && workerRecord.loans[i]) ? parseFloat(workerRecord.loans[i]) || 0 : 0;
                     
-                    // إضافة التاريخ تحت اليوم في الأرشيف
                     detailsHtml += `
                         <div class="att-row-detail">
                             <div style="text-align: right; min-width: 70px;">
