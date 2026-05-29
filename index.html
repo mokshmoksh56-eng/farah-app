@@ -125,7 +125,7 @@
             .holidays-dropdown { width: 90vw; right: 5vw; }
         }
 
-        /* ========== شريط الأخبار المتقدم: من الشمال إلى اليمين ========== */
+        /* ========== شريط الأخبار المتقدم ========== */
         .news-ticker-container {
             background: var(--card-bg);
             border: 2px solid #334155;
@@ -288,40 +288,53 @@
 </div>
 
 <script>
-    // --------------------- إدارة التكبير والتصغير والاحتفاظ بالكارت المفتوح ---------------------
+    // --------------------- إدارة التكبير والتصغير ونظام الحفظ الذكي (الرابط) ---------------------
+    
+    function openCardBySrc(src) {
+        // إغلاق أي كارت مفتوح
+        document.querySelectorAll('.card.fullscreen').forEach(c => {
+            c.classList.remove('fullscreen');
+            c.querySelector('.zoom-btn').innerText = "تكبير";
+        });
+        
+        // فتح الكارت المطلوب إذا تم تمرير الرابط
+        if (src) {
+            document.querySelectorAll('iframe').forEach(iframe => {
+                if (iframe.getAttribute('src') === src) {
+                    const card = iframe.closest('.card');
+                    card.classList.add('fullscreen');
+                    card.querySelector('.zoom-btn').innerText = "إغلاق";
+                }
+            });
+        }
+    }
+
     function toggleZoom(card, event) {
         if(event) event.stopPropagation();
         const iframe = card.querySelector('iframe');
         const src = iframe ? iframe.getAttribute('src') : '';
 
         if (card.classList.contains('fullscreen')) {
-            card.classList.remove('fullscreen');
-            card.querySelector('.zoom-btn').innerText = "تكبير";
-            // حذف من الذاكرة عند الإغلاق اليدوي
-            localStorage.removeItem('openedCardSrc');
+            // إغلاق الكارت ومسح الرابط من المتصفح بدون إعادة تحميل
+            history.pushState('', document.title, window.location.pathname + window.location.search);
+            openCardBySrc(''); 
         } else {
-            document.querySelectorAll('.card.fullscreen').forEach(c => {
-                c.classList.remove('fullscreen');
-                c.querySelector('.zoom-btn').innerText = "تكبير";
-            });
-            card.classList.add('fullscreen');
-            card.querySelector('.zoom-btn').innerText = "إغلاق";
-            // حفظ القسم المفتوح في الذاكرة لتجنب الخروج عند الـ Refresh
-            if(src) localStorage.setItem('openedCardSrc', src);
+            // فتح الكارت وإضافة اسم القسم للرابط بالمتصفح ليتم حفظه
+            window.location.hash = src;
         }
     }
 
-    // استرجاع الكارت المفتوح تلقائياً عند إعادة التحميل (Refresh)
+    // قراءة الرابط عند تحميل الصفحة أو تحديثها أو ضغط زر (رجوع/للخلف) في الهاتف
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.replace('#', '');
+        openCardBySrc(hash);
+    });
+
+    // العمل عند فتح التطبيق أول مرة
     window.addEventListener('DOMContentLoaded', () => {
-        const savedSrc = localStorage.getItem('openedCardSrc');
-        if (savedSrc) {
-            document.querySelectorAll('iframe').forEach(iframe => {
-                if (iframe.getAttribute('src') === savedSrc) {
-                    const card = iframe.closest('.card');
-                    card.classList.add('fullscreen');
-                    card.querySelector('.zoom-btn').innerText = "إغلاق";
-                }
-            });
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+            openCardBySrc(hash);
         }
     });
 
@@ -347,15 +360,6 @@
             dropdown.classList.remove('show');
         }
     });
-
-    window.addEventListener('popstate', (e) => {
-        const fullCard = document.querySelector('.card.fullscreen');
-        if (fullCard) {
-            toggleZoom(fullCard);
-            history.pushState(null, null, window.location.href);
-        }
-    });
-    history.pushState(null, null, window.location.href);
 
     // --------------------- قائمة المناسبات ---------------------
     const holidays = [
@@ -632,7 +636,7 @@
         if (user) {
             currentUserUid = user.uid;
             document.getElementById('login-overlay').style.display = 'none';
-            document.querySelectorAll('iframe').forEach(f => f.src = f.src);
+            // تم إزالة السطر الذي يعيد تحميل الإطارات إجبارياً هنا ❌
         } else {
             currentUserUid = null;
             document.getElementById('login-overlay').style.display = 'flex';
@@ -663,8 +667,8 @@
 
     document.getElementById('logout-btn').addEventListener('click', () => {
         if(confirm("هل تريد تسجيل الخروج وقفل المنظومة؟")) {
-            // نأمن مسح الذاكرة عند الخروج
-            localStorage.removeItem('openedCardSrc');
+            // تصفير الرابط عند الخروج
+            history.pushState('', document.title, window.location.pathname + window.location.search);
             signOut(auth).then(() => {
                 window.location.reload();
             });
