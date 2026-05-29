@@ -161,7 +161,6 @@
             letter-spacing: 0.3px;
         }
         
-        /* تم إزالة اللون البرتقالي الخاص بالصلاة - أصبح بنفس لون باقي العناصر */
         .ticker-item.prayer-highlight {
             background: rgba(255, 255, 255, 0.1);
             color: #f8fafc;
@@ -197,7 +196,7 @@
 
 <div class="news-ticker-container" id="tickerContainer">
     <div class="ticker-marquee" id="tickerMarquee">
-        <span class="ticker-item">🕋 جاري تحديد الموقع عبر الـ GPS وجلب مواقيت الصلاة...</span>
+        <span class="ticker-item">🕋 جاري تحديد المدينة عبر الـ GPS وجلب مواقيت الصلاة...</span>
     </div>
 </div>
 
@@ -396,10 +395,8 @@
     setInterval(updateHeader, 60000);
     updateHeader();
 
-    // =================== الشريط الذاتي الحركة + مواقيت الصلاة الكاملة عبر الـ GPS ===================
+    // =================== شريط الحركة + جلب اسم المدينة الفعلي من الـ GPS (gbs) ===================
     let currentCity = "الموقع الحالي";
-    let currentCountry = "";
-    
     const tickerMarquee = document.getElementById('tickerMarquee');
     
     function renderTickerWithItems(itemsArray) {
@@ -444,10 +441,25 @@
                 async (position) => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-                    await getPrayerTimesByCoords(lat, lng, "نظام الـ GPS الفعلي");
+                    
+                    let cityName = "موقعك الحالي";
+                    try {
+                        // تحويل خطوط الطول والعرض (GPS) إلى اسم مدينة حقيقي وعربي
+                        const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
+                        if (geoResponse.ok) {
+                            const geoData = await geoResponse.json();
+                            if (geoData && geoData.address) {
+                                cityName = geoData.address.city || geoData.address.town || geoData.address.state || geoData.address.governorate || "موقعك";
+                            }
+                        }
+                    } catch (geoErr) {
+                        console.warn("تعذر ترجمة الاسم الجغرافي، سيتم استخدام التحديد التقديري", geoErr);
+                    }
+                    
+                    await getPrayerTimesByCoords(lat, lng, cityName);
                 },
                 async (error) => {
-                    console.warn("تم رفض إذن الـ GPS أو تعذر الوصول إليه، يتم الانتقال للحل الاحتياطي الجغرافي", error);
+                    console.warn("تم رفض الـ GPS، جاري الانتقال للحل الاحتياطي الجغرافي للشبكة", error);
                     await fetchFallbackLocationAndTimes();
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
@@ -457,7 +469,7 @@
         }
     }
 
-    async function getPrayerTimesByCoords(lat, lng, locationLabel) {
+    async function getPrayerTimesByCoords(lat, lng, cityName) {
         try {
             const apiURL = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=5`;
             const response = await fetch(apiURL);
@@ -471,7 +483,7 @@
                 const maghrib = formatPrayerTime(timings.Maghrib);
                 const isha = formatPrayerTime(timings.Isha);
                 
-                const fullPrayerText = `🕌 مواقيت الصلاة • تحديث دقيق عبر (${locationLabel}) : الفجر ${fajr} | الظهر ${dhuhr} | العصر ${asr} | المغرب ${maghrib} | العشاء ${isha}`;
+                const fullPrayerText = `🕌 مواقيت الصلاة • مدينة ${cityName} : الفجر ${fajr} | الظهر ${dhuhr} | العصر ${asr} | المغرب ${maghrib} | العشاء ${isha}`;
                 
                 const now = new Date();
                 const currentHour = now.getHours();
@@ -486,7 +498,7 @@
                     { text: fullPrayerText, isPrayer: true },
                     { text: `📿 تذكير: ${reminderText}`, isPrayer: false },
                     { text: `🤲 الدعاء: ربنا آتنا في الدنيا حسنة`, isPrayer: false },
-                    { text: `📍 تم التحديد التلقائي للبلد • توقيت محلي دقيق`, isPrayer: false }
+                    { text: `📍 موقعك الحالي دقيق عبر الـ GPS`, isPrayer: false }
                 ];
                 renderTickerWithItems(tickerElements);
             } else {
@@ -512,7 +524,7 @@
             throw new Error("فشل حل الـ IP الاحتياطي");
         } catch (locErr) {
             console.warn("جاري استخدام الإحداثيات الافتراضية", locErr);
-            await getPrayerTimesByCoords(30.0444, 31.2357, "القاهرة - افتراضي");
+            await getPrayerTimesByCoords(30.0444, 31.2357, "القاهرة");
         }
     }
 
