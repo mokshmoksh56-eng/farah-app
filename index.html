@@ -291,13 +291,11 @@
     // --------------------- إدارة التكبير والتصغير ونظام الحفظ الذكي (الرابط) ---------------------
     
     function openCardBySrc(src) {
-        // إغلاق أي كارت مفتوح
         document.querySelectorAll('.card.fullscreen').forEach(c => {
             c.classList.remove('fullscreen');
             c.querySelector('.zoom-btn').innerText = "تكبير";
         });
         
-        // فتح الكارت المطلوب إذا تم تمرير الرابط
         if (src) {
             document.querySelectorAll('iframe').forEach(iframe => {
                 if (iframe.getAttribute('src') === src) {
@@ -315,22 +313,18 @@
         const src = iframe ? iframe.getAttribute('src') : '';
 
         if (card.classList.contains('fullscreen')) {
-            // إغلاق الكارت ومسح الرابط من المتصفح بدون إعادة تحميل
             history.pushState('', document.title, window.location.pathname + window.location.search);
             openCardBySrc(''); 
         } else {
-            // فتح الكارت وإضافة اسم القسم للرابط بالمتصفح ليتم حفظه
             window.location.hash = src;
         }
     }
 
-    // قراءة الرابط عند تحميل الصفحة أو تحديثها أو ضغط زر (رجوع/للخلف) في الهاتف
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.replace('#', '');
         openCardBySrc(hash);
     });
 
-    // العمل عند فتح التطبيق أول مرة
     window.addEventListener('DOMContentLoaded', () => {
         const hash = window.location.hash.replace('#', '');
         if (hash) {
@@ -379,17 +373,46 @@
         { name: "شم النسيم 🐟", date: new Date("May 3, 2027").getTime() }
     ];
 
+    // --------------------- تحديث الساعة والتاريخ بناءً على الدولة المختارة ---------------------
     function updateHeader() {
         const now = new Date();
-        document.getElementById('digital-clock').innerText = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
-        const weekday = now.toLocaleDateString('ar-EG', { weekday: 'long' });
-        const yyyy = now.toLocaleDateString('ar-EG', { year: 'numeric' });
-        const mm = now.toLocaleDateString('ar-EG', { month: '2-digit' });
-        const dd = now.toLocaleDateString('ar-EG', { day: '2-digit' });
+        
+        // جلب العملة (الدولة) من الذاكرة لضبط المنطقة الزمنية
+        const savedCurrency = localStorage.getItem('workerCurrency') || 'ج.م';
+        const tzMap = {
+            "ج.م": "Africa/Cairo",
+            "ر.س": "Asia/Riyadh",
+            "د.إ": "Asia/Dubai",
+            "د.ك": "Asia/Kuwait",
+            "ر.ق": "Asia/Qatar",
+            "ر.ع": "Asia/Muscat",
+            "د.ب": "Asia/Bahrain",
+            "د.أ": "Asia/Amman",
+            "د.ل": "Africa/Tripoli",
+            "د.ع": "Asia/Baghdad",
+            "د.ج": "Africa/Algiers",
+            "د.م": "Africa/Casablanca",
+            "$": "America/New_York",
+            "€": "Europe/Paris"
+        };
+        
+        // تحديد المنطقة الزمنية أو الرجوع للمنطقة الافتراضية للجهاز
+        const targetTZ = tzMap[savedCurrency] || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timeZoneOpts = { timeZone: targetTZ };
+
+        // تحديث الساعة بالتوقيت الجديد
+        document.getElementById('digital-clock').innerText = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute:'2-digit', ...timeZoneOpts });
+        
+        // تحديث التاريخ الميلادي بالتوقيت الجديد
+        const weekday = now.toLocaleDateString('ar-EG', { weekday: 'long', ...timeZoneOpts });
+        const yyyy = now.toLocaleDateString('ar-EG', { year: 'numeric', ...timeZoneOpts });
+        const mm = now.toLocaleDateString('ar-EG', { month: '2-digit', ...timeZoneOpts });
+        const dd = now.toLocaleDateString('ar-EG', { day: '2-digit', ...timeZoneOpts });
         document.getElementById('digital-date').innerText = weekday + ' ' + yyyy + '/' + mm + '/' + dd;
         
+        // تحديث التاريخ الهجري ومرحلة القمر بالتوقيت الجديد
         try {
-            const hijriOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+            const hijriOptions = { day: 'numeric', month: 'long', year: 'numeric', ...timeZoneOpts };
             const hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', hijriOptions).format(now);
             
             const synodicMonth = 29.53058867; 
@@ -413,6 +436,7 @@
             console.error("خطأ في حساب التاريخ الهجري", e);
         }
 
+        // تحديث العد التنازلي للمناسبات
         let next = holidays.find(h => h.date > now.getTime()) || holidays[0];
         let diff = Math.ceil((next.date - now.getTime()) / (1000 * 60 * 60 * 24));
         document.getElementById('countdown').innerText = "⏳ باقي " + diff + " يوم على " + next.name;
@@ -436,6 +460,13 @@
         status.style.background = "#e74c3c";
     });
 
+    // استماع التغييرات في الـ LocalStorage (لو تم تغيير الدولة من الإطار الداخلي سيتم تحديث الساعة فوراً)
+    window.addEventListener('storage', function(e) {
+        if(e.key === 'workerCurrency') {
+            updateHeader();
+        }
+    });
+
     function toggleHolidaysDropdown(event) {
         if(event) event.stopPropagation();
         const drop = document.getElementById('holidaysDropdown');
@@ -448,7 +479,7 @@
     setInterval(updateHeader, 60000);
     updateHeader();
 
-    // =================== شريط الحركة + جلب اسم المدينة الفعلي ===================
+    // =================== شريط الحركة + جلب اسم المدينة الفعلي للصلاة ===================
     let currentCity = "الموقع الحالي";
     const tickerMarquee = document.getElementById('tickerMarquee');
     
@@ -636,7 +667,6 @@
         if (user) {
             currentUserUid = user.uid;
             document.getElementById('login-overlay').style.display = 'none';
-            // تم إزالة السطر الذي يعيد تحميل الإطارات إجبارياً هنا ❌
         } else {
             currentUserUid = null;
             document.getElementById('login-overlay').style.display = 'flex';
@@ -667,7 +697,6 @@
 
     document.getElementById('logout-btn').addEventListener('click', () => {
         if(confirm("هل تريد تسجيل الخروج وقفل المنظومة؟")) {
-            // تصفير الرابط عند الخروج
             history.pushState('', document.title, window.location.pathname + window.location.search);
             signOut(auth).then(() => {
                 window.location.reload();
