@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Azemaa Pro - الإصدار الذكي التفاعلي</title>
+    <style>
+        :root {
+            --bg-main: #f0f4f8; 
+            --panel-bg: #ffffff; 
+            --primary: #0f766e; 
+            --primary-light: #14b8a6;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --highlight: #ea580c; 
+            --diag-color: #7c3aed; 
+            
+            --border-radius: 16px;
+            --shadow-md: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-dark);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #auth-loader {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-main);
+            z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 17px; color: var(--text-dark); font-weight: bold; text-align: center; padding: 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 850px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .header h2 {
+            color: var(--primary);
+            margin: 0 0 5px 0;
+            font-size: 1.8rem;
+        }
+
+        #syncStatus { 
+            width: 100%;
+            text-align: center; 
+            font-size: 13px; 
+            color: var(--primary); 
+            font-weight: bold; 
+            margin-bottom: 10px;
+            height: 15px; 
+        }
+
+        /* تنسيق أزرار التحكم العلوية لتدعم المحمول بشكل ممتاز */
+        .header-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            background: #fff;
+            padding: 12px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 15px;
+        }
+
+        .input-project-name { 
+            grid-column: span 3;
+            padding: 10px; 
+            border: 2px solid var(--primary); 
+            border-radius: 8px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            text-align: right; 
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .btn-control {
+            color: white; 
+            border: none; 
+            padding: 10px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 14px;
+            transition: transform 0.1s;
+            width: 100%;
+        }
+        .btn-control:active { transform: scale(0.96); }
+        .bg-primary { background-color: var(--primary); }
+        .bg-purple { background-color: #8b5cf6; }
+        .bg-orange { background-color: #f39c12; }
+
+        /* اللوحة التفاعلية */
+        .interactive-canvas-wrapper {
+            position: relative; 
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* مربعات الإدخال العائمة */
+        .floating-input-container {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none; 
+        }
+
+        .floating-input-container input {
+            pointer-events: auto;
+            width: 60px; 
+            padding: 4px;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            color: #000;
+            background-color: #ffffff;
+            font-size: 1.05rem;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+
+        .floating-input-container input:focus {
+            outline: none;
+            border-color: var(--highlight);
+            box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.25);
+            width: 70px;
+        }
+
+        .floating-input-container input.diag-input {
+            border-color: var(--diag-color);
+            width: 70px;
+        }
+        .floating-input-container input.diag-input:focus { width: 80px; }
+
+        /* كارت مؤشرات الزوايا */
+        .angles-card {
+            background-color: var(--panel-bg);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-top: 15px;
+            box-shadow: var(--shadow-md);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .input-row { display: flex; flex-direction: column; gap: 5px; }
+        .input-row label { font-size: 0.85rem; font-weight: bold; }
+        .control-item { display: flex; align-items: center; gap: 10px; }
+        .control-item input[type="number"] {
+            width: 55px; padding: 6px; background-color: var(--bg-main);
+            border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; text-align: center; font-weight: bold;
+        }
+        input[type="range"] { flex: 1; accent-color: var(--primary); cursor: pointer; }
+
+        /* نافذة الأرشيف */
+        #archiveModal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; right: 0; bottom: 0; 
+            width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.85); 
+            z-index: 1000000; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 15px; 
+            box-sizing: border-box; 
+        }
+        .archive-content { 
+            background: #fff; width: 100%; max-width: 500px; padding: 20px; 
+            border-radius: 16px; max-height: 85vh; overflow-y: auto; direction: rtl; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .archive-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .archive-header h2 { margin: 0; color: var(--primary); font-size: 1.3rem; font-weight: bold; }
+        .close-modal { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #searchArchive { width: 100%; padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; margin-bottom: 15px; font-size: 15px; font-weight: bold; box-sizing: border-box; }
+        .archive-item { background: #f8f9fa; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .archive-item-info { flex: 1; min-width: 150px; }
+        .archive-item-info strong { color: var(--primary); display: block; font-size: 16px; margin-bottom: 4px; font-weight: bold; }
+        .archive-item-info span { color: var(--text-muted); font-size: 12px; font-weight: bold; }
+        .archive-item-actions { display: flex; gap: 5px; width: 100%; justify-content: flex-end;}
+        .archive-item-actions button { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; flex: 1;}
+        .btn-load { background: #10b981; }
+        .btn-delete { background: #e74c3c; }
+
+        /* شاشات المحمول */
+        @media (max-width: 600px) {
+            .header-controls { grid-template-columns: 1fr 1fr; }
+            .btn-new-project { grid-column: span 2; }
+            .floating-input-container input { width: 45px; padding: 3px; font-size: 0.9rem; border-width: 1.5px; border-radius: 6px; }
+            .floating-input-container input.diag-input { width: 55px; }
+            .floating-input-container input:focus { width: 55px; }
+            .floating-input-container input.diag-input:focus { width: 65px; }
+        }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, set, get, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const auth = getAuth(app);
+
+        window.currentUid = null;
+        window.fbDB = db; window.fbRef = ref; window.fbSet = set; window.fbGet = get; window.fbPush = push; window.fbRemove = remove; window.fbOnValue = onValue;
+        
+        window.allZwayaArchive = {};
+        window.currentZwayaProjectId = null;
+        window.loadedZwayaProjectName = null;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUid = user.uid;
+                document.getElementById('auth-loader').style.display = 'none';
+                window.loadZwayaData();
+            } else {
+                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
+            }
+        });
+    </script>
+</head>
+<body>
+
+    <div id="auth-loader">⏳ جاري تحميل ومزامنة أبعاد الغرفة والزوايا السحابية...</div>
+
+    <div class="app-container">
+        
+        <div class="header"><h2>Azemaa Pro</h2></div>
+
+        <div id="syncStatus">جاري الاتصال بالسحابة...</div>
+
+        <div class="header-controls">
+            <input type="text" id="projectName" class="input-project-name" placeholder="اسم الزبون (مثال: محمد أحمد)">
+            <button class="btn-control bg-primary" onclick="saveToZwayaArchive()">💾 حفظ للأرشيف</button>
+            <button class="btn-control bg-purple" onclick="openZwayaArchive()">📂 الأرشيف</button>
+            <button class="btn-control bg-orange btn-new-project" onclick="startNewZwayaProject()">🆕 مشروع جديد</button>
+        </div>
+
+        <div class="interactive-canvas-wrapper" id="canvasWrapper">
+            <canvas id="layoutCanvas" width="850" height="580"></canvas>
+
+            <div id="inputContainerA" class="floating-input-container"><input type="number" id="wA" value="65" title="الجدار الأيسر A"></div>
+            <div id="inputContainerB" class="floating-input-container"><input type="number" id="wB" value="65" title="الجدار العلوي B"></div>
+            <div id="inputContainerC" class="floating-input-container"><input type="number" id="wC" value="35" title="الجدار الأيمن C"></div>
+            <div id="inputContainerD" class="floating-input-container"><input type="number" id="wD" value="35" title="الجدار السفلي D"></div>
+            <div id="inputContainerDiag" class="floating-input-container"><input type="number" id="diag1Input" step="0.1" class="diag-input" title="الوتر A-B"></div>
+        </div>
+
+        <div class="angles-card">
+            <div class="input-row">
+                <label style="color:#ef4444;">مؤشر زاوية A-B (اليسار العلوي):</label>
+                <div class="control-item">
+                    <input type="range" id="sliderAB" min="45" max="135" value="94">
+                    <input type="number" id="angAB" value="94">
+                </div>
+            </div>
+
+            <div class="input-row">
+                <label style="color:#3b82f6;">مؤشر زاوية B-C (اليمين العلوي):</label>
+                <div class="control-item">
+                    <input type="range" id="sliderBC" min="45" max="135" value="90">
+                    <input type="number" id="angBC" value="90">
+                </div>
+            </div>
+
+            <div class="input-row">
+                <label style="color:#10b981;">مؤشر زاوية A-D (اليسار السفلي):</label>
+                <div class="control-item">
+                    <input type="range" id="sliderAD" min="45" max="135" value="90">
+                    <input type="number" id="angAD" value="90">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="archiveModal">
+        <div class="archive-content">
+            <div class="archive-header">
+                <h2>📂 أرشيف الزوايا</h2>
+                <button class="close-modal" onclick="closeZwayaArchive()">إغلاق ❌</button>
+            </div>
+            <input type="text" id="searchArchive" placeholder="🔍 ابحث عن اسم الزبون..." onkeyup="filterZwayaArchive()">
+            <div id="archiveList"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('layoutCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvasWrapper');
+        
+        const inputs = {
+            wA: document.getElementById('wA'), wB: document.getElementById('wB'),
+            wC: document.getElementById('wC'), wD: document.getElementById('wD'),
+            aAB: document.getElementById('angAB'), aBC: document.getElementById('angBC'), aAD: document.getElementById('angAD'),
+            sAB: document.getElementById('sliderAB'), sBC: document.getElementById('sliderBC'), sAD: document.getElementById('sliderAD'),
+            diag1: document.getElementById('diag1Input'), projectName: document.getElementById('projectName')
+        };
+
+        const containers = {
+            wA: document.getElementById('inputContainerA'), wB: document.getElementById('inputContainerB'),
+            wC: document.getElementById('inputContainerC'), wD: document.getElementById('inputContainerD'),
+            diag1: document.getElementById('inputContainerDiag')
+        };
+
+        function syncAngle(numInput, sliderInput) {
+            sliderInput.addEventListener('input', () => { numInput.value = sliderInput.value; update(); });
+            numInput.addEventListener('change', () => { sliderInput.value = numInput.value; update(); });
+        }
+        syncAngle(inputs.aAB, inputs.sAB); syncAngle(inputs.aBC, inputs.sBC); syncAngle(inputs.aAD, inputs.sAD);
+
+        ['wA', 'wB', 'wC', 'wD'].forEach(id => inputs[id].addEventListener('change', () => update()));
+        inputs.projectName.addEventListener('change', () => window.saveZwayaData());
+
+        inputs.diag1.addEventListener('change', function() {
+            let wA = parseFloat(inputs.wA.value) || 1; let wB = parseFloat(inputs.wB.value) || 1; let d1 = parseFloat(this.value) || 1;
+            if (wA + wB > d1 && wA + d1 > wB && wB + d1 > wA) {
+                let cosAB = (Math.pow(wA, 2) + Math.pow(wB, 2) - Math.pow(d1, 2)) / (2 * wA * wB);
+                inputs.aAB.value = Math.round(Math.acos(Math.max(-1, Math.min(1, cosAB))) * 180 / Math.PI);
+                inputs.sAB.value = inputs.aAB.value;
+                update(); 
+            }
+        });
+
+        window.startNewZwayaProject = function() {
+            if(confirm("هل تريد إفراغ الشاشة وبدء رسمة لزبون جديد؟")) {
+                window.currentZwayaProjectId = null; window.loadedZwayaProjectName = null;
+                inputs.projectName.value = "";
+                inputs.wA.value = 65; inputs.wB.value = 65; inputs.wC.value = 35; inputs.wD.value = 35;
+                inputs.aAB.value = 90; inputs.sAB.value = 90; inputs.aBC.value = 90; inputs.sBC.value = 90; inputs.aAD.value = 90; inputs.sAD.value = 90;
+                update(true);
+                document.getElementById('syncStatus').innerText = "✨ تم بدء مشروع جديد";
+            }
+        };
+
+        let saveTimeout;
+        window.saveZwayaData = function() {
+            if(!window.currentUid) return; 
+            const syncStatus = document.getElementById('syncStatus');
+            syncStatus.innerText = "جاري حفظ مسودة الرسمة..."; syncStatus.style.color = "#f39c12";
+            
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                const data = {
+                    projectName: inputs.projectName.value, currentArchiveId: window.currentZwayaProjectId,
+                    wA: inputs.wA.value, wB: inputs.wB.value, wC: inputs.wC.value, wD: inputs.wD.value,
+                    angAB: inputs.aAB.value, angBC: inputs.aBC.value, angAD: inputs.aAD.value, diag1: inputs.diag1.value
+                };
+                window.fbSet(window.fbRef(window.fbDB, `backups/zwaya_projects/${window.currentUid}`), data).then(() => { 
+                    syncStatus.innerText = "✔️ تم حفظ الرسمة كمسودة"; syncStatus.style.color = "#27ae60"; 
+                }).catch((err) => { 
+                    syncStatus.innerText = "❌ خطأ في الاتصال بالسحابة"; syncStatus.style.color = "#e74c3c"; 
+                });
+            }, 1000);
+        };
+
+        window.loadZwayaData = function() {
+            if(!window.currentUid) return; 
+            const syncStatus = document.getElementById('syncStatus');
+            window.fbGet(window.fbRef(window.fbDB, `backups/zwaya_projects/${window.currentUid}`)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    if(data.projectName) inputs.projectName.value = data.projectName;
+                    if(data.currentArchiveId) window.currentZwayaProjectId = data.currentArchiveId;
+                    if(data.projectName) window.loadedZwayaProjectName = data.projectName;
+                    
+                    if(data.wA) inputs.wA.value = data.wA; if(data.wB) inputs.wB.value = data.wB;
+                    if(data.wC) inputs.wC.value = data.wC; if(data.wD) inputs.wD.value = data.wD;
+                    if(data.diag1) inputs.diag1.value = data.diag1;
+                    
+                    if(data.angAB) { inputs.aAB.value = data.angAB; inputs.sAB.value = data.angAB; }
+                    if(data.angBC) { inputs.aBC.value = data.angBC; inputs.sBC.value = data.angBC; }
+                    if(data.angAD) { inputs.aAD.value = data.angAD; inputs.sAD.value = data.angAD; }
+                    
+                    syncStatus.innerText = "✔️ تم استرجاع مسودة الرسمة"; syncStatus.style.color = "#27ae60"; update(false);
+                } else { update(false); }
+            }).catch(() => { update(false); });
+        };
+
+        window.saveToZwayaArchive = function() {
+            if(!window.currentUid) return;
+            const name = inputs.projectName.value.trim();
+            if(!name) { alert("⚠️ يرجى إدخال اسم الزبون أولاً لحفظ الرسمة باسمه!"); return; }
+            if (window.currentZwayaProjectId && window.loadedZwayaProjectName && window.loadedZwayaProjectName !== name) { window.currentZwayaProjectId = null; }
+
+            const syncStatus = document.getElementById('syncStatus');
+            syncStatus.innerText = "جاري الحفظ في الأرشيف الدائم..."; syncStatus.style.color = "#f39c12";
+            
+            const data = {
+                projectName: name, date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                wA: inputs.wA.value, wB: inputs.wB.value, wC: inputs.wC.value, wD: inputs.wD.value,
+                angAB: inputs.aAB.value, angBC: inputs.aBC.value, angAD: inputs.aAD.value, diag1: inputs.diag1.value
+            };
+            
+            const targetPath = window.currentZwayaProjectId ? `backups/zwaya_archive/${window.currentUid}/${window.currentZwayaProjectId}` : null;
+            const archiveRef = targetPath ? window.fbRef(window.fbDB, targetPath) : window.fbPush(window.fbRef(window.fbDB, `backups/zwaya_archive/${window.currentUid}`));
+            
+            window.fbSet(archiveRef, data).then(() => {
+                window.currentZwayaProjectId = archiveRef.key; window.loadedZwayaProjectName = name;
+                syncStatus.innerText = "✔️ تم الحفظ بنجاح في الأرشيف"; syncStatus.style.color = "#27ae60";
+                alert(`✅ تم حفظ رسمة الزبون (${name}) بنجاح في الأرشيف!`); window.saveZwayaData(); 
+            });
+        };
+
+        window.openZwayaArchive = function() {
+            if(!window.currentUid) return;
+            document.getElementById('archiveModal').style.display = 'flex'; 
+            const archiveList = document.getElementById('archiveList');
+            archiveList.innerHTML = "<p style='text-align:center; font-weight:bold;'>⏳ جاري جلب الأرشيف...</p>";
+            
+            window.fbOnValue(window.fbRef(window.fbDB, `backups/zwaya_archive/${window.currentUid}`), (snapshot) => {
+                archiveList.innerHTML = "";
+                if (snapshot.exists()) { 
+                    window.allZwayaArchive = snapshot.val(); window.renderZwayaArchive(window.allZwayaArchive); 
+                } else { 
+                    archiveList.innerHTML = "<p style='text-align:center; color:#e74c3c; font-weight:bold;'>لا توجد رسومات محفوظة حالياً في الأرشيف.</p>"; window.allZwayaArchive = {}; 
+                }
+            }, { onlyOnce: true });
+        };
+
+        window.closeZwayaArchive = function() { document.getElementById('archiveModal').style.display = 'none'; };
+
+        window.renderZwayaArchive = function(projectsMap) {
+            const archiveList = document.getElementById('archiveList'); archiveList.innerHTML = "";
+            Object.keys(projectsMap).map(key => ({ id: key, ...projectsMap[key] })).reverse().forEach(proj => {
+                const div = document.createElement('div'); div.className = 'archive-item';
+                div.innerHTML = `<div class="archive-item-info"><strong>${proj.projectName || 'زبون بدون اسم'}</strong><span>📅 ${proj.date || '-'} | A:${proj.wA} B:${proj.wB} C:${proj.wC} D:${proj.wD}</span></div>
+                    <div class="archive-item-actions"><button class="btn-load" onclick="loadArchivedZwayaProject('${proj.id}')">⬇️ استدعاء</button><button class="btn-delete" onclick="deleteArchivedZwayaProject('${proj.id}')">🗑️ حذف</button></div>`;
+                archiveList.appendChild(div);
+            });
+        };
+
+        window.filterZwayaArchive = function() {
+            const term = document.getElementById('searchArchive').value.toLowerCase();
+            const filtered = {};
+            for (const key in window.allZwayaArchive) { if ((window.allZwayaArchive[key].projectName || "").toLowerCase().includes(term)) { filtered[key] = window.allZwayaArchive[key]; } }
+            window.renderZwayaArchive(filtered);
+        };
+
+        window.loadArchivedZwayaProject = function(id) {
+            const proj = window.allZwayaArchive[id]; if (!proj) return;
+            window.currentZwayaProjectId = id; window.loadedZwayaProjectName = proj.projectName || "";
+            inputs.projectName.value = proj.projectName || "";
+            inputs.wA.value = proj.wA || 150; inputs.wB.value = proj.wB || 200; inputs.wC.value = proj.wC || 100; inputs.wD.value = proj.wD || 80; inputs.diag1.value = proj.diag1 || "";
+            if(proj.angAB) { inputs.aAB.value = proj.angAB; inputs.sAB.value = proj.angAB; }
+            if(proj.angBC) { inputs.aBC.value = proj.angBC; inputs.sBC.value = proj.angBC; }
+            if(proj.angAD) { inputs.aAD.value = proj.angAD; inputs.sAD.value = proj.angAD; }
+            closeZwayaArchive(); update(true); document.getElementById('syncStatus').innerText = "✔️ تم استدعاء الرسمة بنجاح";
+        };
+
+        window.deleteArchivedZwayaProject = function(id) {
+            if(confirm("هل أنت متأكد من حذف هذه الرسمة نهائياً؟")) {
+                window.fbRemove(window.fbRef(window.fbDB, `backups/zwaya_archive/${window.currentUid}/${id}`)).then(() => { 
+                    openZwayaArchive(); if (window.currentZwayaProjectId === id) { window.currentZwayaProjectId = null; window.loadedZwayaProjectName = null; }
+                });
+            }
+        };
+
+        function drawGrid() {
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 1; ctx.strokeStyle = '#f1f5f9'; const gridSize = 40; ctx.beginPath();
+            for (let x = 0; x <= canvas.width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for (let y = 0; y <= canvas.height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            ctx.stroke(); ctx.strokeStyle = '#e2e8f0'; ctx.beginPath();
+            for (let x = 0; x <= canvas.width; x += gridSize * 4) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for (let y = 0; y <= canvas.height; y += gridSize * 4) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            ctx.stroke();
+        }
+
+        let currentPositions = {};
+
+        function updatePositionElements() {
+            if (!currentPositions.c1) return;
+            const scaleX = canvas.getBoundingClientRect().width / canvas.width; const scaleY = canvas.getBoundingClientRect().height / canvas.height;
+            const setElPos = (el, pos) => { el.style.left = (pos.x * scaleX) + 'px'; el.style.top = (pos.y * scaleY) + 'px'; };
+
+            setElPos(containers.wA, { x: (currentPositions.c1.x + currentPositions.c2.x)/2 - 30, y: (currentPositions.c1.y + currentPositions.c2.y)/2 });
+            setElPos(containers.wB, { x: (currentPositions.c2.x + currentPositions.c3.x)/2, y: currentPositions.c2.y - 25 }); 
+            setElPos(containers.wC, { x: (currentPositions.c3.x + currentPositions.c4.x)/2 + 30, y: (currentPositions.c3.y + currentPositions.c4.y)/2 });
+            setElPos(containers.wD, { x: (currentPositions.c1.x + currentPositions.c5.x)/2, y: currentPositions.c1.y + 25 }); 
+            setElPos(containers.diag1, { x: (currentPositions.c1.x + currentPositions.c3.x)/2 - 25, y: (currentPositions.c1.y + currentPositions.c3.y)/2 - 20 });
+        }
+
+        function update(triggerSave = true) {
+            let wA = parseFloat(inputs.wA.value) || 1; let wB = parseFloat(inputs.wB.value) || 1;
+            let wC = parseFloat(inputs.wC.value) || 1; let wD = parseFloat(inputs.wD.value) || 1;
+            let radAB = (parseFloat(inputs.aAB.value) || 90) * Math.PI / 180;
+            let radBC = (parseFloat(inputs.aBC.value) || 90) * Math.PI / 180;
+            let radAD = (parseFloat(inputs.aAD.value) || 90) * Math.PI / 180;
+
+            let P2 = { x: 0, y: 0 }; 
+            let P3 = { x: wB, y: 0 }; 
+            let P1 = { x: P2.x + wA * Math.cos(-radAB), y: P2.y + wA * Math.sin(-radAB) };
+            let P4 = { x: P3.x + wC * Math.cos(Math.PI + radBC), y: P3.y + wC * Math.sin(Math.PI + radBC) };
+            let P5 = { x: P1.x + wD * Math.cos(Math.PI - radAB - radAD), y: P1.y + wD * Math.sin(Math.PI - radAB - radAD) };
+            
+            let dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+            let diag1 = dist(P1, P3); if (document.activeElement !== inputs.diag1) { inputs.diag1.value = diag1.toFixed(1); }
+
+            let aE = Math.PI + radBC - Math.PI / 2; 
+            let aF = Math.PI - radAB - radAD + Math.PI / 2; 
+            let dxE = Math.cos(aE), dyE = Math.sin(aE); let dxF = Math.cos(aF), dyF = Math.sin(aF);
+            let det = dxE * dyF - dyE * dxF; let P6 = { x: 0, y: 0 };
+            
+            if (Math.abs(det) > 0.0001) {
+                let tE = ((P5.x - P4.x) * dyF - (P5.y - P4.y) * dxF) / det;
+                P6.x = P4.x + tE * dxE; P6.y = P4.y + tE * dyE;
+            } else {
+                P6.x = P4.x - Math.abs(wB - wD); P6.y = P4.y; 
+            }
+            
+            let wE = dist(P6, P4); let wF = dist(P6, P5);
+
+            let aAB_val = parseFloat(inputs.aAB.value) || 90;
+            let aBC_val = parseFloat(inputs.aBC.value) || 90;
+            let aAD_val = parseFloat(inputs.aAD.value) || 90;
+            
+            let angleInnerCorner = Math.round(aAB_val + aBC_val + aAD_val - 180);
+            let angleE_auto = 90; 
+            let angleF_auto = 90; 
+
+            let minX = Math.min(P1.x, P2.x, P3.x, P4.x, P5.x, P6.x); let maxX = Math.max(P1.x, P2.x, P3.x, P4.x, P5.x, P6.x);
+            let minY = Math.min(P1.y, P2.y, P3.y, P4.y, P5.y, P6.y); let maxY = Math.max(P1.y, P2.y, P3.y, P4.y, P5.y, P6.y);
+
+            let scale = Math.min((canvas.width - 200) / (maxX - minX || 1), (canvas.height - 200) / (maxY - minY || 1));
+            let cx = canvas.width / 2 - (minX + maxX) * scale / 2; let cy = canvas.height / 2 + (minY + maxY) * scale / 2;
+
+            function toC(p) { return { x: cx + p.x * scale, y: cy - p.y * scale }; }
+            currentPositions.c1 = toC(P1); currentPositions.c2 = toC(P2); currentPositions.c3 = toC(P3);
+            currentPositions.c4 = toC(P4); currentPositions.c5 = toC(P5); currentPositions.c6 = toC(P6);
+
+            drawLayout(wE, wF, angleInnerCorner, angleE_auto, angleF_auto);
+            updatePositionElements();
+            if (triggerSave && typeof window.saveZwayaData === 'function') { window.saveZwayaData(); }
+        }
+
+        function drawSmartArc(center, pStart, pEnd, color) {
+            let a1 = Math.atan2(pStart.y - center.y, pStart.x - center.x);
+            let a2 = Math.atan2(pEnd.y - center.y, pEnd.x - center.x);
+            let diff = a2 - a1;
+            while (diff <= -Math.PI) diff += 2 * Math.PI; while (diff > Math.PI) diff -= 2 * Math.PI;
+            ctx.beginPath(); ctx.arc(center.x, center.y, 25, a1, a2, diff < 0);
+            ctx.lineWidth = 2.5; ctx.strokeStyle = color; ctx.stroke();
+            ctx.lineTo(center.x, center.y); ctx.fillStyle = color + '20'; ctx.fill();
+        }
+
+        function drawLayout(wE, wF, angleInnerCorner, angleE_auto, angleF_auto) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); drawGrid();
+            let c1 = currentPositions.c1, c2 = currentPositions.c2, c3 = currentPositions.c3;
+            let c4 = currentPositions.c4, c5 = currentPositions.c5, c6 = currentPositions.c6;
+
+            // رسم الوتر الرئيسي البنفسجي
+            ctx.beginPath(); ctx.setLineDash([6, 6]);
+            ctx.moveTo(c1.x, c1.y); ctx.lineTo(c3.x, c3.y);
+            ctx.lineWidth = 2.5; ctx.strokeStyle = '#8b5cf6'; ctx.stroke(); ctx.setLineDash([]);
+
+            // رسم الحوائط الستة باللون الأساسي (مغلق ومحكم)
+            ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0f766e';
+            ctx.beginPath(); ctx.moveTo(c5.x, c5.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); 
+            ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y); ctx.lineTo(c6.x, c6.y); ctx.lineTo(c5.x, c5.y); ctx.stroke(); 
+
+            // رسم الزوايا الداخلية
+            drawSmartArc(c2, c1, c3, '#ef4444');  
+            drawSmartArc(c3, c2, c4, '#3b82f6');  
+            drawSmartArc(c1, c5, c2, '#10b981');  
+            drawSmartArc(c4, c3, c6, '#3b82f6'); // قوس C-E
+            drawSmartArc(c5, c6, c1, '#10b981'); // قوس D-F
+            drawSmartArc(c6, c4, c5, '#d97706'); // قوس الكسرة E-F
+
+            function drawTextWithBg(text, x, y, color, font = 'bold 14px Arial', boxStyle = false) {
+                ctx.font = font; let metrics = ctx.measureText(text); let padding = 4;
+                if (boxStyle) {
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - metrics.width/2 - padding, y - 10 - padding, metrics.width + padding*2, 20 + padding*2);
+                    ctx.strokeStyle = '#0f766e'; ctx.lineWidth = 1.5; ctx.strokeRect(x - metrics.width/2 - padding, y - 10 - padding, metrics.width + padding*2, 20 + padding*2);
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; ctx.fillRect(x - metrics.width/2 - padding, y - 10 - padding, metrics.width + padding*2, 20 + padding*2);
+                }
+                ctx.fillStyle = color; ctx.fillText(text, x, y);
+            }
+
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+            // طباعة المقاسات الأوتوماتيكية E و F بأمان بعيداً عن الخطوط
+            drawTextWithBg(wE.toFixed(1), (c4.x + c6.x)/2, c4.y - 25, '#0f766e', 'bold 16px Arial', true);
+            drawTextWithBg(wF.toFixed(1), c6.x + 35, (c6.y + c5.y)/2, '#0f766e', 'bold 16px Arial', true);
+
+            // طباعة جميع درجات الزوايا الخمسة بوضوح
+            drawTextWithBg(inputs.aAB.value + "°", c2.x + 35, c2.y + 25, '#ef4444', 'bold 13px Arial');
+            drawTextWithBg(inputs.aBC.value + "°", c3.x - 35, c3.y + 25, '#3b82f6', 'bold 13px Arial');
+            drawTextWithBg(inputs.aAD.value + "°", c1.x + 35, c1.y - 25, '#10b981', 'bold 13px Arial');
+            drawTextWithBg(angleInnerCorner + "°", c6.x + 35, c6.y + 35, '#d97706', 'bold 13px Arial');
+            drawTextWithBg(angleE_auto + "°", c4.x - 35, c4.y - 20, '#3b82f6', 'bold 13px Arial');
+            drawTextWithBg(angleF_auto + "°", c5.x + 35, c5.y - 20, '#10b981', 'bold 13px Arial');
+        }
+
+        window.addEventListener('resize', () => updatePositionElements());
+        setInterval(updatePositionElements, 300);
+    </script>
+</body>
+</html>
