@@ -177,6 +177,25 @@
             border-color: var(--highlight);
         }
 
+        /* تصغير الخانات تلقائياً على شاشات الموبايل */
+        @media (max-width: 600px) {
+            .floating-input-container input {
+                width: 55px;
+                padding: 4px;
+                font-size: 0.95rem;
+                border-width: 2px;
+                border-radius: 6px;
+            }
+            .floating-input-container input:focus {
+                width: 65px;
+            }
+            .header-controls {
+                flex-direction: column;
+            }
+            .input-project-name { width: 100%; box-sizing: border-box; }
+            .btn-save-archive, .btn-open-archive { width: 100%; }
+        }
+
         /* كارت التحكم السفلي */
         .angles-card {
             background-color: var(--panel-bg);
@@ -403,7 +422,7 @@
             }
         });
 
-        // ------------------ المزامنة السحابية الأساسية (مسودة العمل) ------------------
+        // ------------------ المزامنة السحابية الأساسية ------------------
         let saveTimeout;
         window.saveZwayaData = function() {
             if(!window.currentUid) return; 
@@ -573,7 +592,7 @@
             if(proj.angAD) { inputs.aAD.value = proj.angAD; inputs.sAD.value = proj.angAD; }
             
             closeZwayaArchive(); 
-            update(true); // تحديث الرسمة وإرسالها للمسودة فوراً
+            update(true); 
             document.getElementById('syncStatus').innerText = "✔️ تم استدعاء الرسمة بنجاح";
         };
 
@@ -581,7 +600,7 @@
             if(confirm("هل أنت متأكد من حذف رسمة هذا الزبون نهائياً من الأرشيف؟")) {
                 const targetPath = `backups/zwaya_archive/${window.currentUid}/${id}`;
                 window.fbRemove(window.fbRef(window.fbDB, targetPath)).then(() => { 
-                    openZwayaArchive(); // إعادة تحميل القائمة بعد الحذف
+                    openZwayaArchive(); 
                 });
             }
         };
@@ -618,11 +637,12 @@
                 el.style.top = (pos.y * scaleY) + 'px';
             };
 
-            setElPos(containers.wA, { x: (currentPositions.c1.x + currentPositions.c2.x)/2 - 35, y: (currentPositions.c1.y + currentPositions.c2.y)/2 });
-            setElPos(containers.wB, { x: (currentPositions.c2.x + currentPositions.c3.x)/2, y: currentPositions.c2.y + 25 });
-            setElPos(containers.wC, { x: (currentPositions.c3.x + currentPositions.c4.x)/2 + 35, y: (currentPositions.c3.y + currentPositions.c4.y)/2 });
-            setElPos(containers.wD, { x: (currentPositions.c1.x + currentPositions.c5.x)/2, y: (currentPositions.c1.y + currentPositions.c5.y)/2 - 25 });
-            setElPos(containers.diag1, { x: (currentPositions.c1.x + currentPositions.c3.x)/2 - 30, y: (currentPositions.c1.y + currentPositions.c3.y)/2 - 20 });
+            // تعديل مسافات المربعات لتكون أقرب قليلاً للخطوط وأفضل للموبايل
+            setElPos(containers.wA, { x: (currentPositions.c1.x + currentPositions.c2.x)/2 - 30, y: (currentPositions.c1.y + currentPositions.c2.y)/2 });
+            setElPos(containers.wB, { x: (currentPositions.c2.x + currentPositions.c3.x)/2, y: currentPositions.c2.y + 20 });
+            setElPos(containers.wC, { x: (currentPositions.c3.x + currentPositions.c4.x)/2 + 30, y: (currentPositions.c3.y + currentPositions.c4.y)/2 });
+            setElPos(containers.wD, { x: (currentPositions.c1.x + currentPositions.c5.x)/2, y: (currentPositions.c1.y + currentPositions.c5.y)/2 - 20 });
+            setElPos(containers.diag1, { x: (currentPositions.c1.x + currentPositions.c3.x)/2 - 25, y: (currentPositions.c1.y + currentPositions.c3.y)/2 - 20 });
         }
 
         function update(triggerSave = true) {
@@ -744,6 +764,37 @@
             drawArc(c4, c3, c5, '#d97706', false);  
             drawArc(c5, c4, c1, '#d97706', false);  
 
+            // كتابة مقاس الفتحة بشكل مائل وعمل إزاحة (Offset) لعدم التداخل
+            ctx.save();
+            let midX = (c4.x + c5.x) / 2;
+            let midY = (c4.y + c5.y) / 2;
+            let dx = c5.x - c4.x;
+            let dy = c5.y - c4.y;
+            let angle = Math.atan2(dy, dx);
+            
+            if (angle > Math.PI / 2) angle -= Math.PI;
+            else if (angle < -Math.PI / 2) angle += Math.PI;
+
+            ctx.translate(midX, midY);
+            ctx.rotate(angle);
+
+            let offsetY = -22; // إبعاد النص 22 بيكسل عن الخط المنقط
+
+            let gapText = "الفتحة: " + gap.toFixed(1) + " سم";
+            ctx.font = 'bold 16px Arial';
+            let textMetrics = ctx.measureText(gapText);
+            let tPad = 6;
+            
+            // خلفية بيضاء تحت النص لقطع أي خطوط متداخلة
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(-textMetrics.width/2 - tPad, offsetY - 10 - tPad, textMetrics.width + tPad*2, 20 + tPad*2);
+            
+            ctx.fillStyle = '#ea580c';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(gapText, 0, offsetY);
+            ctx.restore();
+
             function drawTextWithBg(text, x, y, color, font = 'bold 15px Arial') {
                 ctx.font = font;
                 let metrics = ctx.measureText(text);
@@ -757,14 +808,12 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            drawTextWithBg("الفتحة (التقفيلة): " + gap.toFixed(1) + " سم", (c4.x + c5.x)/2, (c4.y + c5.y)/2 - 25, '#ea580c', 'bold 16px Arial');
-
             drawTextWithBg(inputs.aAB.value + "°", c2.x + 45, c2.y - 25, '#ef4444');
             drawTextWithBg(inputs.aBC.value + "°", c3.x - 45, c3.y - 25, '#3b82f6');
             drawTextWithBg(inputs.aAD.value + "°", c1.x + 45, c1.y + 35, '#10b981');
             
-            drawTextWithBg(angleC_auto + "°", c4.x - 45, c4.y + 35, '#d97706');
-            drawTextWithBg(angleD_auto + "°", c5.x + 45, c5.y + 35, '#d97706');
+            drawTextWithBg(angleC_auto + "°", c4.x - 40, c4.y + 30, '#d97706');
+            drawTextWithBg(angleD_auto + "°", c5.x + 40, c5.y + 30, '#d97706');
         }
 
         window.addEventListener('resize', () => {
