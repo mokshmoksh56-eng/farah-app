@@ -52,7 +52,7 @@
 
         .input-project-name { 
             flex: 2; 
-            min-width: 200px; 
+            min-width: 150px; 
             padding: 10px; 
             border: 2px solid var(--primary); 
             border-radius: 8px; 
@@ -63,7 +63,7 @@
 
         .btn-save-archive { 
             flex: 1; 
-            min-width: 100px; 
+            min-width: 90px; 
             background-color: var(--primary); 
             color: white; 
             border: none; 
@@ -71,12 +71,12 @@
             border-radius: 8px; 
             font-weight: bold; 
             cursor: pointer; 
-            font-size: 15px;
+            font-size: 14px;
         }
         
         .btn-open-archive { 
             flex: 1; 
-            min-width: 100px; 
+            min-width: 90px; 
             background-color: #8b5cf6; 
             color: white; 
             border: none; 
@@ -84,10 +84,23 @@
             border-radius: 8px; 
             font-weight: bold; 
             cursor: pointer; 
-            font-size: 15px;
+            font-size: 14px;
+        }
+
+        .btn-new-project { 
+            flex: 1; 
+            min-width: 90px; 
+            background-color: #f39c12; 
+            color: white; 
+            border: none; 
+            padding: 10px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 14px;
         }
         
-        .btn-save-archive:active, .btn-open-archive:active { transform: scale(0.98); }
+        .btn-save-archive:active, .btn-open-archive:active, .btn-new-project:active { transform: scale(0.98); }
 
         #syncStatus { 
             width: 100%;
@@ -148,13 +161,13 @@
 
         .floating-input-container input {
             pointer-events: auto;
-            width: 80px;
-            padding: 6px;
+            width: 65px; 
+            padding: 5px;
             border: 2px solid var(--primary);
             border-radius: 8px;
             color: #000;
             background-color: #ffffff;
-            font-size: 1.1rem;
+            font-size: 1rem;
             text-align: center;
             font-weight: bold;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -166,7 +179,7 @@
             border-color: var(--highlight);
             box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.25);
             background-color: #fff;
-            width: 90px;
+            width: 75px;
         }
 
         /* تمييز إدخال الوتر */
@@ -177,23 +190,23 @@
             border-color: var(--highlight);
         }
 
-        /* تصغير الخانات تلقائياً على شاشات الموبايل */
+        /* تصغير الخانات تلقائياً على شاشات الموبايل بشكل أكبر */
         @media (max-width: 600px) {
             .floating-input-container input {
-                width: 55px;
-                padding: 4px;
-                font-size: 0.95rem;
+                width: 48px; 
+                padding: 3px;
+                font-size: 0.85rem; 
                 border-width: 2px;
                 border-radius: 6px;
             }
             .floating-input-container input:focus {
-                width: 65px;
+                width: 55px;
             }
             .header-controls {
                 flex-direction: column;
             }
             .input-project-name { width: 100%; box-sizing: border-box; }
-            .btn-save-archive, .btn-open-archive { width: 100%; }
+            .btn-save-archive, .btn-open-archive, .btn-new-project { width: 100%; }
         }
 
         /* كارت التحكم السفلي */
@@ -289,6 +302,8 @@
         window.fbOnValue = onValue;
         
         window.allZwayaArchive = {};
+        window.currentZwayaProjectId = null;
+        window.loadedZwayaProjectName = null;
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -315,6 +330,7 @@
             <input type="text" id="projectName" class="input-project-name" placeholder="اسم الزبون (مثال: محمد أحمد)">
             <button class="btn-save-archive" onclick="saveToZwayaArchive()">💾 حفظ للأرشيف</button>
             <button class="btn-open-archive" onclick="openZwayaArchive()">📂 الأرشيف</button>
+            <button class="btn-new-project" onclick="startNewZwayaProject()">🆕 مشروع جديد</button>
             <div id="syncStatus">جاري الاتصال بالسحابة...</div>
         </div>
 
@@ -422,6 +438,24 @@
             }
         });
 
+        // ------------------ مشروع جديد ------------------
+        window.startNewZwayaProject = function() {
+            if(confirm("هل تريد إفراغ الشاشة وبدء رسمة لزبون جديد؟")) {
+                window.currentZwayaProjectId = null;
+                window.loadedZwayaProjectName = null;
+                inputs.projectName.value = "";
+                inputs.wA.value = 150;
+                inputs.wB.value = 200;
+                inputs.wC.value = 100;
+                inputs.wD.value = 100;
+                inputs.aAB.value = 90; inputs.sAB.value = 90;
+                inputs.aBC.value = 90; inputs.sBC.value = 90;
+                inputs.aAD.value = 90; inputs.sAD.value = 90;
+                update(true);
+                document.getElementById('syncStatus').innerText = "✨ تم بدء مشروع جديد";
+            }
+        };
+
         // ------------------ المزامنة السحابية الأساسية ------------------
         let saveTimeout;
         window.saveZwayaData = function() {
@@ -433,6 +467,7 @@
             saveTimeout = setTimeout(() => {
                 const data = {
                     projectName: inputs.projectName.value,
+                    currentArchiveId: window.currentZwayaProjectId, // لحفظ حالة الاستدعاء المؤقتة
                     wA: inputs.wA.value,
                     wB: inputs.wB.value,
                     wC: inputs.wC.value,
@@ -463,6 +498,9 @@
                 if (snapshot.exists()) {
                     const data = snapshot.val();
                     if(data.projectName) inputs.projectName.value = data.projectName;
+                    if(data.currentArchiveId) window.currentZwayaProjectId = data.currentArchiveId;
+                    if(data.projectName) window.loadedZwayaProjectName = data.projectName;
+                    
                     if(data.wA) inputs.wA.value = data.wA;
                     if(data.wB) inputs.wB.value = data.wB;
                     if(data.wC) inputs.wC.value = data.wC;
@@ -491,6 +529,11 @@
             const name = inputs.projectName.value.trim();
             if(!name) { alert("⚠️ يرجى إدخال اسم الزبون أولاً لحفظ الرسمة باسمه!"); return; }
             
+            // إذا تغير اسم الزبون بعد الاستدعاء، احفظه كمشروع جديد بدلاً من الكتابة فوق القديم
+            if (window.currentZwayaProjectId && window.loadedZwayaProjectName && window.loadedZwayaProjectName !== name) {
+                window.currentZwayaProjectId = null;
+            }
+
             const syncStatus = document.getElementById('syncStatus');
             syncStatus.innerText = "جاري الحفظ في الأرشيف الدائم..."; syncStatus.style.color = "#f39c12";
             
@@ -507,11 +550,17 @@
                 diag1: inputs.diag1.value
             };
             
-            const archiveRef = window.fbPush(window.fbRef(window.fbDB, `backups/zwaya_archive/${window.currentUid}`));
+            // إذا كان هناك ID محفوظ مسبقاً للرسمة، قم بتحديثه. وإلا، أنشئ مسار جديد.
+            const targetPath = window.currentZwayaProjectId ? `backups/zwaya_archive/${window.currentUid}/${window.currentZwayaProjectId}` : null;
+            const archiveRef = targetPath ? window.fbRef(window.fbDB, targetPath) : window.fbPush(window.fbRef(window.fbDB, `backups/zwaya_archive/${window.currentUid}`));
+            
             window.fbSet(archiveRef, data).then(() => {
+                window.currentZwayaProjectId = archiveRef.key;
+                window.loadedZwayaProjectName = name;
                 syncStatus.innerText = "✔️ تم الحفظ بنجاح في الأرشيف";
                 syncStatus.style.color = "#27ae60";
                 alert(`✅ تم حفظ رسمة الزبون (${name}) بنجاح في الأرشيف!`);
+                window.saveZwayaData(); // لتحديث حالة الـ ID في المسودة أيضاً
             }).catch((err) => {
                 syncStatus.innerText = "❌ خطأ أثناء الحفظ في الأرشيف";
                 syncStatus.style.color = "#e74c3c";
@@ -580,6 +629,10 @@
             const proj = window.allZwayaArchive[id]; 
             if (!proj) return;
             
+            // حفظ الـ ID لكي يتم التعديل عليه عند حفظ الأرشيف القادم
+            window.currentZwayaProjectId = id;
+            window.loadedZwayaProjectName = proj.projectName || "";
+            
             inputs.projectName.value = proj.projectName || "";
             inputs.wA.value = proj.wA || 150;
             inputs.wB.value = proj.wB || 200;
@@ -601,6 +654,10 @@
                 const targetPath = `backups/zwaya_archive/${window.currentUid}/${id}`;
                 window.fbRemove(window.fbRef(window.fbDB, targetPath)).then(() => { 
                     openZwayaArchive(); 
+                    if (window.currentZwayaProjectId === id) {
+                        window.currentZwayaProjectId = null;
+                        window.loadedZwayaProjectName = null;
+                    }
                 });
             }
         };
@@ -637,7 +694,6 @@
                 el.style.top = (pos.y * scaleY) + 'px';
             };
 
-            // تعديل مسافات المربعات لتكون أقرب قليلاً للخطوط وأفضل للموبايل
             setElPos(containers.wA, { x: (currentPositions.c1.x + currentPositions.c2.x)/2 - 30, y: (currentPositions.c1.y + currentPositions.c2.y)/2 });
             setElPos(containers.wB, { x: (currentPositions.c2.x + currentPositions.c3.x)/2, y: currentPositions.c2.y + 20 });
             setElPos(containers.wC, { x: (currentPositions.c3.x + currentPositions.c4.x)/2 + 30, y: (currentPositions.c3.y + currentPositions.c4.y)/2 });
@@ -778,10 +834,10 @@
             ctx.translate(midX, midY);
             ctx.rotate(angle);
 
-            let offsetY = -22; // إبعاد النص 22 بيكسل عن الخط المنقط
+            let offsetY = -35; 
 
             let gapText = "الفتحة: " + gap.toFixed(1) + " سم";
-            ctx.font = 'bold 16px Arial';
+            ctx.font = 'bold 15px Arial'; 
             let textMetrics = ctx.measureText(gapText);
             let tPad = 6;
             
