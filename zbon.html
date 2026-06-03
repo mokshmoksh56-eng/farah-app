@@ -284,7 +284,7 @@
                 <td>---</td>
             </tr>
         </tfoot>
-    </table>
+     </table>
 </div>
 
 <div class="summary-section archive-section" id="archiveTableSection" style="background: #cfd8dc; border: 2px dashed #607d8b;">
@@ -305,7 +305,7 @@
             </tr>
         </thead>
         <tbody id="archive-body"></tbody>
-    </table>
+     </table>
 </div>
 
 <button class="btn-add-client" onclick="addNewCard()">+</button>
@@ -531,6 +531,22 @@
         }
     }
 
+    // دالة لحذف جميع دفعات العميل من yom
+    async function deleteClientPaymentsFromYom(clientId) {
+        if (!window.currentUid) return;
+        const yomRef = window.ref(window.db, `backups/yomya_users/${window.currentUid}`);
+        const snapshot = await window.get(yomRef);
+        const allYom = snapshot.val() || {};
+        const deletePromises = [];
+        Object.keys(allYom).forEach(key => {
+            if (key.startsWith(`payment_${clientId}_`)) {
+                deletePromises.push(window.remove(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${key}`)));
+            }
+        });
+        await Promise.all(deletePromises);
+        console.log(`تم حذف دفعات العميل ${clientId} من اليومية`);
+    }
+
     // دالة الحفظ المعدلة لتشمل مزامنة اليومية
     window.saveToCloud = async function(id) {
         if(!window.currentUid) return;
@@ -667,17 +683,25 @@
         }
     }
 
-    function deleteCard(id) { 
+    // دالة الحذف المعدلة لحذف الدفعات المرتبطة من yom
+    async function deleteCard(id) { 
         if(!window.currentUid) return;
-        if(confirm('سيتم الحذف نهائياً؟')) { 
-            window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`)).then(() => {
+        if(confirm('سيتم حذف العميل نهائياً وجميع دفعاته المسجلة في اليومية. هل أنت متأكد؟')) { 
+            try {
+                // حذف الدفعات المرتبطة من yom
+                await deleteClientPaymentsFromYom(id);
+                // حذف العميل من zbon
+                await window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`));
                 const card = document.getElementById(`card-${id}`);
                 card.classList.remove('visible');
                 card.querySelectorAll('input').forEach(i => i.value = "");
                 card.querySelector('textarea').value = "";
                 card.querySelector('.c-code').value = parseInt(id);
                 refreshStats();
-            }).catch(err => alert("❌ خطأ في الحذف: " + err.message)); 
+                alert("تم حذف العميل ودفعاته بنجاح");
+            } catch(err) {
+                alert("❌ خطأ في الحذف: " + err.message);
+            }
         } 
     }
 
@@ -778,8 +802,8 @@
 
                 if (d.isArchived || isPaid) {
                     archiveBody.innerHTML += `<tr class="row-paid">
-                        <td>${d.code || id}</td>
-                        <td>${d.n || '---'}</td>
+                         <td>${d.code || id}</td>
+                         <td>${d.n || '---'}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
                         <td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
                         <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
@@ -790,7 +814,7 @@
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
                     const rowHTML = `<tr class="${rowClass}">
-                        <td>${d.code || id}</td><td>${d.n}</td>
+                         <td>${d.code || id}</td><td>${d.n}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td>
                         <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
