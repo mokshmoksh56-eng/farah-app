@@ -8,7 +8,7 @@
         * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #ffffff; /* تم تغيير الخلفية للأبيض */
+            background-color: #ffffff; 
             margin: 0;
             padding: 0;
             display: flex;
@@ -59,11 +59,18 @@
             padding: 4px 10px;
             border-radius: 20px;
         }
+        .connection-status {
+            font-size: 11px;
+            color: #ffeb3b;
+            width: 100%;
+            text-align: center;
+            margin-top: 4px;
+        }
         .chat-messages {
             flex: 1;
             padding: 12px;
             overflow-y: auto;
-            background-color: #ffffff; /* تم تغيير خلفية الشات للأبيض */
+            background-color: #ffffff; 
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -85,7 +92,7 @@
             border-top-left-radius: 5px;
         }
         .sender-other {
-            background-color: #f1f1f1; /* لون رمادي فاتح جدا لرسائل الآخرين عشان تظهر على الأبيض */
+            background-color: #f1f1f1; 
             align-self: flex-end;
             border-top-right-radius: 5px;
         }
@@ -213,6 +220,7 @@
         <div>
             <span id="onlineCount" class="online-count">🟢 0</span>
         </div>
+        <div id="connStatus" class="connection-status">جاري الاتصال بالسيرفر...</div>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
     <div id="typingIndicator" class="typing-indicator"></div>
@@ -246,15 +254,19 @@
         messagingSenderId: "787350492977",
         appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
-    firebase.initializeApp(firebaseConfig);
+    
+    try {
+        firebase.initializeApp(firebaseConfig);
+    } catch(e) {
+        alert("خطأ في تهيئة فايربيز: " + e.message);
+    }
+    
     const db = firebase.database();
     const storage = firebase.storage();
 
     const ROOM_NAME = "public_chat";
 
-    // تم إزالة localStorage بالكامل لمنع تعطل الكود في تطبيقات الموبايل
     let currentUser = "فني_" + Math.floor(Math.random() * 10000);
-    
     let typingTimeout = null;
     let isWindowActive = true;
     let currentReplyTo = null;
@@ -264,7 +276,6 @@
 
     document.getElementById("userNameDisplay").innerText = currentUser;
 
-    // تعديل الاسم مؤقتاً للجلسة الحالية
     document.getElementById("editNameBtn").addEventListener("click", () => {
         let newName = prompt("أدخل اسمك الجديد:", currentUser);
         if(newName && newName.trim() !== "") {
@@ -329,29 +340,37 @@
         if(replyDiv) replyDiv.remove();
     };
 
+    // إضافة تحذيرات للإرسال لاكتشاف الأخطاء
     window.sendTextMessage = () => {
-        const input = document.getElementById("messageInput");
-        const text = input.value.trim();
-        if(text === "" && !currentReplyTo) return;
+        try {
+            const input = document.getElementById("messageInput");
+            const text = input.value.trim();
+            if(text === "" && !currentReplyTo) return;
 
-        const messageData = {
-            name: currentUser,
-            text: text || " ",
-            type: 'text',
-            timestamp: firebase.database.ServerValue.TIMESTAMP,
-            replyTo: currentReplyTo ? { 
-                id: currentReplyTo.id, 
-                name: currentReplyTo.name, 
-                textPreview: (currentReplyTo.text || "صورة").substring(0,50) 
-            } : null
-        };
-        db.ref(`chats/${ROOM_NAME}/messages`).push(messageData)
-            .then(() => {
-                input.value = "";
-                cancelReply();
-                input.focus();
-            })
-            .catch(err => alert("خطأ في الإرسال: " + err.message));
+            const messageData = {
+                name: currentUser,
+                text: text || " ",
+                type: 'text',
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                replyTo: currentReplyTo ? { 
+                    id: currentReplyTo.id, 
+                    name: currentReplyTo.name, 
+                    textPreview: (currentReplyTo.text || "صورة").substring(0,50) 
+                } : null
+            };
+            
+            db.ref(`chats/${ROOM_NAME}/messages`).push(messageData)
+                .then(() => {
+                    input.value = "";
+                    cancelReply();
+                    input.focus();
+                })
+                .catch(err => {
+                    alert("⚠️ تم الرفض من قاعدة البيانات: " + err.message);
+                });
+        } catch (error) {
+            alert("⚠️ خطأ في الكود أو التطبيق يمنع الإرسال: " + error.message);
+        }
     };
 
     window.uploadMultipleFiles = async (event) => {
@@ -489,12 +508,23 @@
         currentPresenceRef = userStatusRef;
         const connectedRef = db.ref(".info/connected");
         connectedRef.off();
+        
+        // نظام مراقبة الاتصال بالسيرفر
         connectedRef.on("value", (snap) => {
+            const statusDiv = document.getElementById("connStatus");
             if(snap.val() === true) {
                 userStatusRef.set(true);
                 userStatusRef.onDisconnect().remove();
+                statusDiv.innerText = "متصل بنجاح ✓";
+                statusDiv.style.color = "#a5d6a7";
+                setTimeout(() => statusDiv.style.display = 'none', 3000);
+            } else {
+                statusDiv.style.display = 'block';
+                statusDiv.innerText = "غير متصل بفايربيز.. يرجى التحقق من الإنترنت والمحرر";
+                statusDiv.style.color = "#ffc107";
             }
         });
+        
         db.ref(`presence/${ROOM_NAME}`).on("value", (snap) => {
             const count = snap.val() ? Object.keys(snap.val()).length : 0;
             document.getElementById("onlineCount").innerHTML = `🟢 ${count}`;
