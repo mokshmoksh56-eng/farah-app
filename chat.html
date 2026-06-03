@@ -141,20 +141,6 @@
             margin-bottom: 6px;
             border-right: 3px solid #075e54;
         }
-        .message img {
-            max-width: 100%;
-            border-radius: 12px;
-            margin-top: 5px;
-        }
-        .file-link {
-            display: inline-block;
-            background: #f0f0f0;
-            padding: 6px 12px;
-            border-radius: 20px;
-            text-decoration: none;
-            color: #075e54;
-            font-size: 13px;
-        }
         .chat-input {
             background: #f0f0f0;
             padding: 10px;
@@ -194,13 +180,6 @@
             background: none;
             border: none;
         }
-        .icon-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #128c7e;
-        }
         .send-btn {
             background-color: #128c7e;
             color: white;
@@ -217,7 +196,6 @@
             color: #555;
             font-style: italic;
         }
-        #fileInput { display: none; }
         audio { display: none; }
     </style>
 </head>
@@ -242,8 +220,6 @@
     <div class="chat-messages" id="chatMessages"></div>
     <div id="typingIndicator" class="typing-indicator"></div>
     <div class="chat-input">
-        <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📎</button>
-        <input type="file" id="fileInput" multiple style="display:none" onchange="window.uploadMultipleFiles(event)">
         <div class="input-wrapper">
             <input type="text" id="messageInput" placeholder="اكتب رسالة...">
             <div class="emoji-picker">
@@ -263,7 +239,6 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, push, onValue, onChildAdded, onChildRemoved, set, onDisconnect, remove, serverTimestamp, get, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
@@ -275,18 +250,16 @@
         appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
     
-    let app, db, storage;
+    let app, db;
     try {
         app = initializeApp(firebaseConfig);
         db = getDatabase(app);
-        storage = getStorage(app);
     } catch(e) {
         alert("خطأ في تهيئة فايربيز: " + e.message);
     }
 
     const ROOM_NAME = "public_chat";
 
-    // جلب الاسم المحفوظ أو إنشاء اسم جديد وحفظه
     let currentUser = localStorage.getItem("technicianName");
     if (!currentUser) {
         currentUser = "فني_" + Math.floor(Math.random() * 10000);
@@ -307,7 +280,7 @@
         let newName = prompt("أدخل اسمك الجديد:", currentUser);
         if(newName && newName.trim() !== "") {
             currentUser = newName.trim();
-            localStorage.setItem("technicianName", currentUser); // تحديث الاسم في الذاكرة
+            localStorage.setItem("technicianName", currentUser); 
             document.getElementById("userNameDisplay").innerText = currentUser;
             updatePresenceAfterNameChange();
         }
@@ -359,8 +332,8 @@
         input.focus();
     };
 
-    window.setReplyTo = (msgId, name, text, type, imageUrl) => {
-        currentReplyTo = { id: msgId, name, text, type, imageUrl };
+    window.setReplyTo = (msgId, name, text) => {
+        currentReplyTo = { id: msgId, name, text };
         let replyDiv = document.getElementById("replyPreview");
         if(!replyDiv) {
             replyDiv = document.createElement("div");
@@ -368,7 +341,7 @@
             replyDiv.style.cssText = "background:#e1f5fe; border-radius:12px; padding:5px 10px; margin-bottom:5px; font-size:12px; display:flex; justify-content:space-between;";
             document.querySelector(".input-wrapper").parentNode.insertBefore(replyDiv, document.querySelector(".input-wrapper"));
         }
-        let previewText = `الرد على ${name}: ` + (type === 'image' ? "📷 صورة" : (text || "").substring(0, 50));
+        let previewText = `الرد على ${name}: ` + (text || "").substring(0, 50);
         replyDiv.innerHTML = `<span>${escapeHtml(previewText)}</span> <button onclick="window.cancelReply()" style="background:none;border:none;color:red;cursor:pointer;">✖</button>`;
     };
 
@@ -393,7 +366,7 @@
                 replyTo: currentReplyTo ? { 
                     id: currentReplyTo.id, 
                     name: currentReplyTo.name, 
-                    textPreview: (currentReplyTo.text || "صورة").substring(0,50) 
+                    textPreview: (currentReplyTo.text || "").substring(0,50) 
                 } : null
             };
             
@@ -408,35 +381,6 @@
         } catch (error) {
             alert("⚠️ خطأ في الكود: " + error.message);
         }
-    };
-
-    window.uploadMultipleFiles = async (event) => {
-        if(!db || !storage) return;
-        const files = Array.from(event.target.files);
-        for(const file of files) {
-            if(file.size > 5 * 1024 * 1024) { 
-                alert(`حجم الملف ${file.name} كبير جداً. الحد الأقصى 5 ميجابايت.`);
-                continue;
-            }
-
-            const isImage = file.type.startsWith("image/");
-            const fileStorageRef = storageRef(storage, `chat_files/${ROOM_NAME}/${Date.now()}_${file.name}`);
-            try {
-                const snapshot = await uploadBytes(fileStorageRef, file);
-                const downloadURL = await getDownloadURL(snapshot.ref);
-                const messageData = {
-                    name: currentUser,
-                    type: isImage ? 'image' : 'file',
-                    [isImage ? 'imageUrl' : 'fileUrl']: downloadURL,
-                    fileName: file.name,
-                    timestamp: serverTimestamp()
-                };
-                await push(ref(db, `chats/${ROOM_NAME}/messages`), messageData);
-            } catch(err) {
-                alert("خطأ في رفع الملف: " + err.message);
-            }
-        }
-        document.getElementById("fileInput").value = "";
     };
 
     function loadMessages() {
@@ -466,20 +410,13 @@
             replyHtml = `<div class="reply-badge">↩️ رد على ${escapeHtml(msg.replyTo.name)}: ${escapeHtml(msg.replyTo.textPreview)}</div>`;
         }
         
-        let content = "";
-        if(msg.type === 'image') {
-            content = `<img src="${msg.imageUrl}" alt="صورة" onload="document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight" style="max-width:100%; border-radius:12px;">`;
-        } else if(msg.type === 'file') {
-            content = `<a href="${msg.fileUrl}" target="_blank" class="file-link">📄 ${escapeHtml(msg.fileName)}</a>`;
-        } else {
-            content = escapeHtml(msg.text); 
-        }
+        let content = escapeHtml(msg.text); 
         
         const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ar', {hour:'2-digit', minute:'2-digit'}) : "";
         const deleteBtn = (msg.name === currentUser) ? `<span class="delete-msg" onclick="window.deleteMessage('${msg.id}')">🗑️</span>` : "";
         
         const safeText = encodeURIComponent(msg.text || "");
-        const replyBtn = `<span class="delete-msg" style="color:#128c7e;" onclick="window.setReplyTo('${msg.id}', '${escapeHtml(msg.name)}', decodeURIComponent('${safeText}'), '${msg.type}', '${msg.imageUrl || ""}')">↩️ رد</span>`;
+        const replyBtn = `<span class="delete-msg" style="color:#128c7e;" onclick="window.setReplyTo('${msg.id}', '${escapeHtml(msg.name)}', decodeURIComponent('${safeText}'))">↩️ رد</span>`;
         
         div.innerHTML = `
             <span class="message-name">${escapeHtml(msg.name)}</span>
@@ -512,17 +449,6 @@
         if(confirm("هل تريد حذف هذه الرسالة؟")) {
             const msgRef = ref(db, `chats/${ROOM_NAME}/messages/${msgId}`);
             try {
-                const snap = await get(msgRef);
-                if(snap.exists()) {
-                    const msgData = snap.val();
-                    if(msgData.type === 'image' || msgData.type === 'file') {
-                        const fileUrl = msgData.imageUrl || msgData.fileUrl;
-                        try {
-                            const fileRef = storageRef(storage, fileUrl);
-                            await deleteObject(fileRef);
-                        } catch(e) { console.log("رابط غير صالح للستوريدج"); }
-                    }
-                }
                 await remove(msgRef);
             } catch(err) {
                 alert("خطأ في الحذف: " + err.message);
