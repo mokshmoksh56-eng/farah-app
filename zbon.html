@@ -312,6 +312,7 @@
 
 <script>
     let visibleCards = []; 
+    let isSyncingTslem = false; // لمنع التكرار
 
     const monthColors = {
         1: "#ffdde1", 2: "#ee9ca7", 3: "#d4fc79", 4: "#96e6a1",
@@ -490,9 +491,11 @@
     }
 
     // ----------------------------------------------
-    // التكامل مع جدول التسليمات tslem: ترحيل الأسماء تلقائياً
+    // التكامل مع جدول التسليمات tslem - ترحيل الأسماء تلقائياً
     async function syncToTslem() {
         if (!window.currentUid) return;
+        if (isSyncingTslem) return;
+        isSyncingTslem = true;
         try {
             const snapshot = await window.get(window.ref(window.db, `backups/users/${window.currentUid}`));
             const all = snapshot.val() || {};
@@ -500,7 +503,7 @@
             for (let id in all) {
                 if (id === 'settings') continue;
                 const c = all[id];
-                if (c.isArchived) continue; // المؤرشف لا يظهر في جدول التسليمات (مخالص)
+                if (c.isArchived) continue; // المؤرشف لا يظهر في جدول التسليمات
                 if (c.dd && c.dm && c.dy && c.n && c.n.trim() !== "") {
                     const dateKey = `${c.dd}-${c.dm}-${c.dy}`;
                     clients.push({ dateKey, name: c.n.trim(), id });
@@ -532,10 +535,12 @@
             }
             if (Object.keys(updates).length) {
                 await window.update(window.ref(window.db), updates);
-                console.log("تم مزامنة الأسماء مع جدول التسليمات (tslem)");
+                console.log("✅ تم مزامنة الأسماء مع جدول التسليمات (tslem)");
             }
         } catch (err) {
-            console.error("فشل مزامنة tslem:", err);
+            console.error("❌ فشل مزامنة tslem:", err);
+        } finally {
+            isSyncingTslem = false;
         }
     }
     // ----------------------------------------------
@@ -608,7 +613,7 @@
                     await syncPaymentToYom(id, idx, parseFloat(pay.v), pay.d);
                 }
             }
-            // بعد حفظ العميل، نقوم بمزامنة الأسماء مع tslem
+            // مزامنة tslem بعد الحفظ
             await syncToTslem();
             if (!card.classList.contains('locked-mode')) toggleCardLock(id);
             saveBtn.innerText = "💾 حفظ وقفل";
@@ -627,7 +632,7 @@
         if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) {
             window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: true }).then(async () => {
                 document.getElementById(`card-${id}`).classList.remove('visible');
-                await syncToTslem();  // تحديث الجدول بعد الأرشفة
+                await syncToTslem();
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
@@ -638,7 +643,7 @@
         if(confirm('هل تريد استعادة هذا الزبون؟')) {
             window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: false }).then(async () => {
                 document.getElementById(`card-${id}`).classList.add('visible');
-                await syncToTslem();  // تحديث الجدول بعد الاستعادة
+                await syncToTslem();
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
@@ -649,7 +654,10 @@
             document.body.classList.add('dark-theme');
             document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
         }
-        window.onValue(window.ref(window.db, `backups/users/${window.currentUid}`), async (snapshot) => {
+        
+        // مراقبة تغييرات العملاء وتحديث tslem تلقائياً
+        const clientsRef = window.ref(window.db, `backups/users/${window.currentUid}`);
+        window.onValue(clientsRef, async (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
                 if (allData.settings) {
@@ -684,7 +692,8 @@
                     }
                 }
                 initKeyboardListener();
-                await syncToTslem();  // مزامنة أولية لجدول التسليمات
+                // مزامنة tslem عند أي تغيير في العملاء
+                await syncToTslem();
                 refreshStats();
             }
         });
@@ -698,7 +707,7 @@
                 card.classList.add('visible');
                 window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(async () => {
                     if (card.classList.contains('locked-mode')) toggleCardLock(i);
-                    await syncToTslem();  // تحديث بعد إضافة عميل جديد
+                    await syncToTslem();
                 }).catch(err => alert("❌ خطأ: " + err.message));
                 return;
             }
@@ -716,7 +725,7 @@
                 card.querySelectorAll('input').forEach(i => i.value = "");
                 card.querySelector('textarea').value = "";
                 card.querySelector('.c-code').value = parseInt(id);
-                await syncToTslem();  // تحديث الجدول بعد الحذف
+                await syncToTslem();
                 refreshStats();
                 alert("تم حذف العميل ودفعاته بنجاح");
             } catch(err) {
@@ -812,7 +821,7 @@
                         <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
                         <td>${stars}</td>
                         <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
-                    </tr>`;
+                     </tr>`;
                     if(isPaid) paidC++;
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
@@ -823,7 +832,7 @@
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
                         <td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td>
                         <td>${stars}</td>
-                    </tr>`;
+                     </tr>`;
                     if (isOverdue) summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
                     else summaryBody.innerHTML += rowHTML;
                     debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem;
