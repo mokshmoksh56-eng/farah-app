@@ -54,14 +54,13 @@
         .row-today { background-color: var(--row-today) !important; border: 2px solid #f1c40f !important; }
         .row-done { background-color: #27ae60 !important; color: white !important; }
         
-        /* --- التعديل المطلوب: جعل خلفية اسم العميل خضراء ونص أبيض عند اكتمال التسليم --- */
-        .row-done .name-input {
-            background-color: #1e8449 !important;   /* لون أخضر غامق جميل */
+        /* تلوين اسم العميل عند التسليم المكتمل (خالص) */
+        .name-input.paid-name {
+            background-color: #1e8449 !important;
             color: white !important;
             border-color: #145a32 !important;
         }
-        /* دعم الوضع الليلي */
-        [data-theme="dark"] .row-done .name-input {
+        [data-theme="dark"] .name-input.paid-name {
             background-color: #0e5c2e !important;
             color: #f0f0f0 !important;
             border-color: #0a4220 !important;
@@ -188,7 +187,7 @@
     let currentOverdueTrackIndex = 0;
     let windowUserUid = null;
 
-    // 🔒 قفل الغرفة البرمجية: مراقبة الـ Auth لربط بيانات المشتري بمساره المعزول
+    // 🔒 مراقبة Auth
     auth.onAuthStateChanged((user) => {
         if (user) {
             windowUserUid = user.uid;
@@ -271,18 +270,21 @@
         element.style.height = (element.scrollHeight) + "px";
     }
 
-    // 🔒 التوجيه المعزول: الحفظ داخل الفولدر الخاص بالـ UID فقط لمنع تداخل الزبائن
+    // حفظ البيانات مع الحفاظ على حقول c1_paid و c2_paid (لا يتم تغييرها من هنا)
     function save(id, field, val) {
         if(!windowUserUid) return;
         document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
-        db.ref(`backups/deliveries_users/${windowUserUid}/${id}`).update({ [field]: val }).then(() => {
+        const updateObj = {};
+        updateObj[field] = val;
+        // لا نمرر c1_paid/c2_paid لأنها تدار من zbon
+        db.ref(`backups/deliveries_users/${windowUserUid}/${id}`).update(updateObj).then(() => {
             document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
             updateRowStyle(id);
             updateFloatingBadge();
         });
     }
 
-    // 🔒 جلب البيانات المخصصة للمشترك الحالي فقط
+    // جلب البيانات
     function loadData() {
         if(!windowUserUid) return;
         db.ref(`backups/deliveries_users/${windowUserUid}`).on('value', snap => {
@@ -296,16 +298,30 @@
         const activeElId = document.activeElement ? document.activeElement.id : null;
 
         for (let id in globalData) {
+            const entry = globalData[id];
             const c1 = document.getElementById(id+'-c1');
             const c2 = document.getElementById(id+'-c2');
             const s = document.getElementById(id+'-s');
             
-            if(c1 && activeElId !== id+'-c1') { c1.value = globalData[id].c1 || ''; autoGrow(c1); }
-            if(c2 && activeElId !== id+'-c2') { c2.value = globalData[id].c2 || ''; autoGrow(c2); }
-            if(s) { s.value = globalData[id].s || 'pending'; }
+            // تعيين النصوص
+            if(c1 && activeElId !== id+'-c1') { 
+                c1.value = entry.c1 || ''; 
+                autoGrow(c1);
+                // تطبيق class paid إذا كان العلم true
+                if(entry.c1_paid === true) c1.classList.add('paid-name');
+                else c1.classList.remove('paid-name');
+            }
+            if(c2 && activeElId !== id+'-c2') { 
+                c2.value = entry.c2 || ''; 
+                autoGrow(c2);
+                if(entry.c2_paid === true) c2.classList.add('paid-name');
+                else c2.classList.remove('paid-name');
+            }
+            if(s) { s.value = entry.s || 'pending'; }
             updateRowStyle(id);
         }
         
+        // تحديث باقي الصفوف التي ليس لها بيانات
         const allSelects = document.querySelectorAll('#tableBody select');
         allSelects.forEach(s => {
             const id = s.id.replace('-s', '');
