@@ -210,8 +210,26 @@
             <div class="input-group"><label>حز المنشار</label><input type="number" id="kerf" value="0.4" step="0.1" oninput="saveData()"></div>
             <div class="input-group required-boards"><label>الألواح المطلوبة</label><input type="text" id="totalBoardsNeeded" readonly value="0"></div>
         </div>
-        </div>
+    </div>
 
+    <div class="sticky-panel" style="background-color: #fdf3e7; border: 2px solid #e67e22; margin-bottom: 15px; position: relative;">
+        <h3 style="margin-top: 0; text-align: center; color: #d35400; font-size: 18px; margin-bottom: 5px;">♻️ الفضلات المتاحة للاستخدام أولاً</h3>
+        <div class="table-responsive" style="margin-top: 0; border-color: #e67e22;">
+            <table id="offcutsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; background: #d35400;">م</th>
+                        <th style="background: #d35400;">طول الفضلة (سم)</th>
+                        <th style="background: #d35400;">عرض الفضلة (سم)</th>
+                        <th style="width: 70px; background: #d35400;">العدد</th>
+                        <th style="width: 50px; background: #d35400;">حذف</th>
+                    </tr>
+                </thead>
+                <tbody id="offcutsBody"></tbody>
+            </table>
+        </div>
+        <button class="btn-add" onclick="addOffcutRow()" style="background-color: #e67e22; margin-top: 10px; font-weight: bold; display: block; margin-left: auto; margin-right: auto; width: 100%;">+ إضافة فضلة متوفرة</button>
+    </div>
     <div class="table-responsive">
         <table id="piecesTable">
             <thead>
@@ -313,8 +331,13 @@
             window.currentProjectId = null; window.loadedProjectName = null;
             document.getElementById('projectName').value = ""; 
             document.getElementById('customerCode').value = ""; 
+            
             document.getElementById('piecesBody').innerHTML = "";
-            window.addRow(); document.getElementById('totalBoardsNeeded').value = "0";
+            window.addRow(); 
+            
+            document.getElementById('offcutsBody').innerHTML = "";
+            
+            document.getElementById('totalBoardsNeeded').value = "0";
             document.getElementById('kerf').value = "0.4"; 
             document.getElementById('resultStats').innerText = "المخطط يظهر هنا بعد الحساب";
             document.getElementById('zoomControls').style.display = "none";
@@ -333,8 +356,9 @@
                 boardType: document.getElementById('boardType').value,
                 woodPattern: document.getElementById('woodPattern').value,
                 boardL: document.getElementById('boardL').value, boardW: document.getElementById('boardW').value, 
-                kerf: document.getElementById('kerf').value, pieces: []
+                kerf: document.getElementById('kerf').value, pieces: [], offcuts: []
             };
+            
             document.querySelectorAll('#piecesBody tr').forEach(row => {
                 data.pieces.push({
                     name: row.querySelector('.p-name').value, len: row.querySelector('.p-len').value, 
@@ -342,6 +366,15 @@
                     rot: row.querySelector('.p-rot').checked
                 });
             });
+
+            document.querySelectorAll('#offcutsBody tr').forEach(row => {
+                data.offcuts.push({
+                    len: row.querySelector('.o-len').value, 
+                    wid: row.querySelector('.o-wid').value, 
+                    qty: row.querySelector('.o-qty').value
+                });
+            });
+
             const dbRefStr = `backups/cut_projects/${window.currentUid}`;
             window.fbSet(window.fbRef(window.fbDB, dbRefStr), data).then(() => { syncStatus.innerText = "✔️ تم حفظ المسودة تلقائياً"; syncStatus.style.color = "#27ae60"; }).catch((err) => { syncStatus.innerText = "❌ خطأ في الاتصال بالخادم"; syncStatus.style.color = "#e74c3c"; console.error("Draft Save Error:", err); });
         }, 1000);
@@ -359,7 +392,7 @@
                 document.getElementById('boardL').value = data.boardL || 244; document.getElementById('boardW').value = data.boardW || 122;
                 document.getElementById('kerf').value = data.kerf !== undefined ? data.kerf : 0.4;
 
-                const tbody = document.getElementById('piecesBody'); tbody.innerHTML = '';
+                const tbodyPieces = document.getElementById('piecesBody'); tbodyPieces.innerHTML = '';
                 if(data.pieces && data.pieces.length > 0) {
                     data.pieces.forEach((p, i) => {
                         const tr = document.createElement('tr');
@@ -371,9 +404,23 @@
                         <td><input type="number" class="p-qty" value="${p.qty}" oninput="saveData()"></td>
                         <td class="rot-col"><input type="checkbox" class="p-rot" ${isRotChecked ? 'checked' : ''} onchange="saveData()"></td>
                         <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">X</button></td>`;
-                        tbody.appendChild(tr);
+                        tbodyPieces.appendChild(tr);
                     });
                 } else { window.addRow(); }
+
+                const tbodyOffcuts = document.getElementById('offcutsBody'); tbodyOffcuts.innerHTML = '';
+                if(data.offcuts && data.offcuts.length > 0) {
+                    data.offcuts.forEach((o, i) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td class="offcut-num" style="font-weight:bold;">${i+1}</td>
+                        <td><input type="number" class="o-len" value="${o.len}" placeholder="طول" oninput="saveData()"></td>
+                        <td><input type="number" class="o-wid" value="${o.wid}" placeholder="عرض" oninput="saveData()"></td>
+                        <td><input type="number" class="o-qty" value="${o.qty}" oninput="saveData()"></td>
+                        <td><button onclick="deleteOffcutRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">X</button></td>`;
+                        tbodyOffcuts.appendChild(tr);
+                    });
+                }
+
                 syncStatus.innerText = "✔️ تم استرجاع مسودة العمل"; syncStatus.style.color = "#27ae60";
             } else { syncStatus.innerText = "مشروع جديد."; window.addRow(); }
         }).catch((err) => { syncStatus.innerText = "❌ فشل التحميل"; syncStatus.style.color = "#e74c3c"; window.addRow(); });
@@ -388,13 +435,18 @@
         const data = {
             projectName: projectName,
             customerCode: document.getElementById('customerCode').value.trim(), 
-            totalBoards: parseInt(document.getElementById('totalBoardsNeeded').value) || 0, // تم إضافة هذا السطر لحفظ عدد الألواح
+            totalBoards: parseInt(document.getElementById('totalBoardsNeeded').value) || 0,
             date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
             boardType: document.getElementById('boardType').value, woodPattern: document.getElementById('woodPattern').value,
-            boardL: document.getElementById('boardL').value, boardW: document.getElementById('boardW').value, kerf: document.getElementById('kerf').value, pieces: []
+            boardL: document.getElementById('boardL').value, boardW: document.getElementById('boardW').value, kerf: document.getElementById('kerf').value, pieces: [], offcuts: []
         };
+        
         document.querySelectorAll('#piecesBody tr').forEach(row => {
             data.pieces.push({ name: row.querySelector('.p-name').value, len: row.querySelector('.p-len').value, wid: row.querySelector('.p-wid').value, qty: row.querySelector('.p-qty').value, rot: row.querySelector('.p-rot').checked });
+        });
+
+        document.querySelectorAll('#offcutsBody tr').forEach(row => {
+            data.offcuts.push({ len: row.querySelector('.o-len').value, wid: row.querySelector('.o-wid').value, qty: row.querySelector('.o-qty').value });
         });
 
         const targetPath = window.currentProjectId ? `backups/cut_archive/${window.currentUid}/${window.currentProjectId}` : null;
@@ -423,7 +475,7 @@
         const sortedProjects = Object.keys(projectsMap).map(key => ({ id: key, ...projectsMap[key] })).reverse();
         sortedProjects.forEach(proj => {
             const div = document.createElement('div'); div.className = 'archive-item';
-            div.innerHTML = `<div class="archive-item-info"><strong>${proj.projectName || 'مشروع بدون اسم'} <span style="color:#e67e22; font-size: 14px;">(العميل: ${proj.customerCode || 'غير محدد'})</span></strong><span>📅 ${proj.date || '-'} | 📐 عدد القطع: ${proj.pieces ? proj.pieces.length : 0} | 🪵 ${proj.totalBoards || 0} لوح</span></div><div class="archive-item-actions"><button class="btn-load" onclick="loadArchivedProject('${proj.id}')">⬇️ استدعاء</button><button class="btn-delete" onclick="deleteArchivedProject('${proj.id}')">🗑️ حذف</button></div></div>`;
+            div.innerHTML = `<div class="archive-item-info"><strong>${proj.projectName || 'مشروع بدون اسم'} <span style="color:#e67e22; font-size: 14px;">(العميل: ${proj.customerCode || 'غير محدد'})</span></strong><span>📅 ${proj.date || '-'} | 📐 عدد القطع: ${proj.pieces ? proj.pieces.length : 0} | 🪵 ${proj.totalBoards || 0} لوح كامل</span></div><div class="archive-item-actions"><button class="btn-load" onclick="loadArchivedProject('${proj.id}')">⬇️ استدعاء</button><button class="btn-delete" onclick="deleteArchivedProject('${proj.id}')">🗑️ حذف</button></div></div>`;
             archiveList.appendChild(div);
         });
     };
@@ -453,7 +505,7 @@
         document.getElementById('boardW').value = proj.boardW || 122;
         document.getElementById('kerf').value = proj.kerf !== undefined ? proj.kerf : 0.4;
 
-        const tbody = document.getElementById('piecesBody'); tbody.innerHTML = '';
+        const tbodyPieces = document.getElementById('piecesBody'); tbodyPieces.innerHTML = '';
         if(proj.pieces && proj.pieces.length > 0) {
             proj.pieces.forEach((p, i) => {
                 const tr = document.createElement('tr');
@@ -465,10 +517,23 @@
                 <td><input type="number" class="p-qty" value="${p.qty}" oninput="saveData()"></td>
                 <td class="rot-col"><input type="checkbox" class="p-rot" ${isRotChecked ? 'checked' : ''} onchange="saveData()"></td>
                 <td><button onclick="deleteRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">X</button></td>`;
-                tbody.appendChild(tr);
+                tbodyPieces.appendChild(tr);
             });
         } else { window.addRow(); }
-        
+
+        const tbodyOffcuts = document.getElementById('offcutsBody'); tbodyOffcuts.innerHTML = '';
+        if(proj.offcuts && proj.offcuts.length > 0) {
+            proj.offcuts.forEach((o, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="offcut-num" style="font-weight:bold;">${i+1}</td>
+                <td><input type="number" class="o-len" value="${o.len}" placeholder="طول" oninput="saveData()"></td>
+                <td><input type="number" class="o-wid" value="${o.wid}" placeholder="عرض" oninput="saveData()"></td>
+                <td><input type="number" class="o-qty" value="${o.qty}" oninput="saveData()"></td>
+                <td><button onclick="deleteOffcutRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">X</button></td>`;
+                tbodyOffcuts.appendChild(tr);
+            });
+        }
+
         closeArchive(); window.saveData(); syncStatus.innerText = "✔️ تم استدعاء المشروع بنجاح"; syncStatus.style.color = "#27ae60";
         setTimeout(() => { window.calculateAndDraw(); }, 100);
     };
@@ -501,6 +566,21 @@
 
     window.deleteRow = function(btn) { btn.closest('tr').remove(); window.updateRowNumbers(); window.saveData(); };
     window.updateRowNumbers = function() { document.querySelectorAll('.row-num').forEach((td, i) => td.innerText = i + 1); };
+
+    window.addOffcutRow = function() {
+        const tbody = document.getElementById('offcutsBody'); 
+        const count = tbody.children.length + 1; 
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="offcut-num" style="font-weight:bold;">${count}</td>
+        <td><input type="number" class="o-len" placeholder="طول" oninput="saveData()"></td>
+        <td><input type="number" class="o-wid" placeholder="عرض" oninput="saveData()"></td>
+        <td><input type="number" class="o-qty" value="1" oninput="saveData()"></td>
+        <td><button onclick="deleteOffcutRow(this)" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">X</button></td>`;
+        tbody.appendChild(tr); window.updateOffcutNumbers(); window.saveData();
+    };
+
+    window.deleteOffcutRow = function(btn) { btn.closest('tr').remove(); window.updateOffcutNumbers(); window.saveData(); };
+    window.updateOffcutNumbers = function() { document.querySelectorAll('.offcut-num').forEach((td, i) => td.innerText = i + 1); };
 
     window.processPastedData = function() {
         const text = document.getElementById('pasteInput').value.trim();
@@ -584,6 +664,7 @@
         const isGrain = document.getElementById('woodPattern').value === 'grain';
         let blocks = [];
         
+        // استخراج المقاسات المطلوبة
         document.querySelectorAll('#piecesBody tr').forEach((row) => {
             let name = row.querySelector('.p-name').value; 
             let l = parseFloat(row.querySelector('.p-len').value); 
@@ -597,35 +678,77 @@
         });
         
         if(blocks.length === 0) { alert("الرجاء إدخال أبعاد القطع أولاً"); return; }
-        
         blocks.sort((a, b) => (b.w * b.h) - (a.w * a.h)); 
         let boards = []; let remaining = [...blocks];
-        
+
+        // قراءة الفضلات المتاحة المدخلة
+        let availableOffcuts = [];
+        document.querySelectorAll('#offcutsBody tr').forEach(row => {
+            let l = parseFloat(row.querySelector('.o-len').value);
+            let w = parseFloat(row.querySelector('.o-wid').value);
+            let q = parseInt(row.querySelector('.o-qty').value);
+            if (l > 0 && w > 0 && q > 0) {
+                for(let i=0; i<q; i++) { availableOffcuts.push({l: l, w: w}); }
+            }
+        });
+        // ترتيب الفضلات من الأصغر للأكبر
+        availableOffcuts.sort((a, b) => (a.l * a.w) - (b.l * b.w));
+
+        // محاولة الحشو داخل الفضلات المتاحة أولاً
+        for (let offcut of availableOffcuts) {
+            if (remaining.length === 0) break;
+            let packer = new MaxRectsPacker(offcut.l, offcut.w, kerf);
+            packer.isOffcut = true; packer.origL = offcut.l; packer.origW = offcut.w;
+            let anyPlaced = false;
+            for (let i = 0; i < remaining.length; i++) {
+                let fit = packer.insert(remaining[i].w, remaining[i].h, remaining[i].name, remaining[i].allowRot);
+                if (fit) { anyPlaced = true; remaining.splice(i, 1); i--; }
+            }
+            if (anyPlaced) { boards.push(packer); }
+        }
+
+        // إكمال باقي القطع في ألواح كاملة جديدة
         while (remaining.length > 0) {
-            let packer = new MaxRectsPacker(bL, bW, kerf); let anyPlaced = false;
+            let packer = new MaxRectsPacker(bL, bW, kerf);
+            packer.isOffcut = false; packer.origL = bL; packer.origW = bW;
+            let anyPlaced = false;
             for (let i = 0; i < remaining.length; i++) { 
                 let fit = packer.insert(remaining[i].w, remaining[i].h, remaining[i].name, remaining[i].allowRot); 
                 if (fit) { anyPlaced = true; remaining.splice(i, 1); i--; } 
             }
-            if (!anyPlaced) { alert("تنبيه: القطعة '" + remaining[0].name + "' أكبر من مقاس اللوح!"); break; }
+            if (!anyPlaced) { alert("تنبيه: القطعة '" + remaining[0].name + "' أكبر من مقاس اللوح المتاح (" + bL + "×" + bW + ")!"); break; }
             boards.push(packer);
         }
-        document.getElementById('totalBoardsNeeded').value = boards.length;
-        document.getElementById('resultStats').innerText = "عدد الألواح المطلوبة: " + boards.length;
+        
+        let fullBoardsCount = boards.filter(b => !b.isOffcut).length;
+        let usedOffcutsCount = boards.filter(b => b.isOffcut).length;
+
+        document.getElementById('totalBoardsNeeded').value = fullBoardsCount;
+        
+        let statsText = `النتيجة النهائية: ${fullBoardsCount} لوح كامل`;
+        if (usedOffcutsCount > 0) { statsText += ` + تم استهلاك ${usedOffcutsCount} فضلة`; }
+        document.getElementById('resultStats').innerText = statsText;
         
         document.getElementById('zoomControls').style.display = 'flex';
         
         renderBoardsAndTables(bL, bW, boards, isGrain);
     };
 
-    window.renderBoardsAndTables = function(boardW, boardH, boards, isGrain) {
+    window.renderBoardsAndTables = function(defaultW, defaultH, boards, isGrain) {
         const container = document.getElementById('boardsRenderContainer');
         container.innerHTML = '';
 
-        let topText = boardW; 
-        if (isGrain) { topText += "   ( ↔️ اتجاه السمرة بالطول ↔️ )"; }
+        let boardCounter = 1;
+        let offcutCounter = 1;
 
         boards.forEach((packer, index) => {
+            let currentW = packer.origL || defaultW;
+            let currentH = packer.origW || defaultH;
+            let isOffcut = packer.isOffcut;
+
+            let topText = currentW; 
+            if (isGrain) { topText += "   ( ↔️ اتجاه السمرة بالطول ↔️ )"; }
+
             const pageWrapper = document.createElement('div');
             pageWrapper.className = 'print-page';
             
@@ -637,33 +760,33 @@
             const canvas = document.createElement('canvas');
             canvas.style.width = window.currentCanvasWidth + '%';
             canvas.style.marginTop = '10px';
-            canvas.style.border = '2px solid #000';
+            canvas.style.border = isOffcut ? '2px solid #e67e22' : '2px solid #000';
             canvas.style.background = '#fff';
             
             const ctx = canvas.getContext('2d');
             const padding = 80; 
             canvas.width = 1100; 
-            const scale = (canvas.width - padding * 2) / boardW; 
-            const drawH = boardH * scale; 
+            const scale = (canvas.width - padding * 2) / currentW; 
+            const drawH = currentH * scale; 
             canvas.height = drawH + padding * 2; 
             
             ctx.fillStyle = "#fff"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            ctx.fillStyle = "#f5f5f5"; 
-            ctx.fillRect(padding, padding, boardW * scale, drawH); 
-            ctx.strokeStyle = "#000"; 
+            ctx.fillStyle = isOffcut ? "#fdf3e7" : "#f5f5f5"; 
+            ctx.fillRect(padding, padding, currentW * scale, drawH); 
+            ctx.strokeStyle = isOffcut ? "#e67e22" : "#000"; 
             ctx.lineWidth = 3; 
-            ctx.strokeRect(padding, padding, boardW * scale, drawH);
+            ctx.strokeRect(padding, padding, currentW * scale, drawH);
             
             ctx.fillStyle = isGrain ? "#c0392b" : "#000"; 
             ctx.font = "bold 32px Arial"; ctx.textAlign = "center"; 
-            ctx.fillText(topText, padding + (boardW * scale) / 2, padding / 2 + 10);
+            ctx.fillText(topText, padding + (currentW * scale) / 2, padding / 2 + 10);
             
             ctx.fillStyle = "#000";
             ctx.save(); ctx.translate(padding/2, padding + drawH/2); ctx.rotate(-Math.PI/2); 
             ctx.font = "bold 32px Arial"; 
-            ctx.fillText(boardH, 0, 0); 
+            ctx.fillText(currentH, 0, 0); 
             ctx.restore();
             
             packer.usedRects.forEach(r => {
@@ -770,8 +893,11 @@
                 }
             });
 
-            ctx.fillStyle = "#000"; ctx.font = "bold 34px Arial"; ctx.textAlign = "right"; 
-            ctx.fillText("اللوح رقم " + (index + 1), padding + (boardW * scale), padding - 20);
+            ctx.fillStyle = isOffcut ? "#d35400" : "#000"; 
+            ctx.font = "bold 34px Arial"; ctx.textAlign = "right"; 
+            
+            let titleText = isOffcut ? `فضلة مستخدمة رقم ${offcutCounter}` : `اللوح الكامل رقم ${boardCounter}`;
+            ctx.fillText(titleText, padding + (currentW * scale), padding - 20);
 
             scrollWrapper.appendChild(canvas);
             pageWrapper.appendChild(scrollWrapper);
@@ -787,9 +913,13 @@
 
             const tableWrapper = document.createElement('div');
             tableWrapper.className = 'board-detail-container';
+            if (isOffcut) tableWrapper.style.borderColor = '#e67e22';
             
+            let tableTitle = isOffcut ? `تفاصيل مقاسات الفضلة رقم ${offcutCounter} (بمقاس ${currentW} × ${currentH})` : `تفاصيل مقاسات اللوح رقم ${boardCounter}`;
+            let bgStyle = isOffcut ? `background: #d35400;` : '';
+
             let html = `
-                <h3 class="board-title">تفاصيل مقاسات اللوح رقم ${index + 1}</h3>
+                <h3 class="board-title" style="${bgStyle}">${tableTitle}</h3>
                 <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
                 <table class="board-table">
                     <thead>
@@ -817,6 +947,8 @@
             
             pageWrapper.appendChild(tableWrapper);
             container.appendChild(pageWrapper);
+
+            if (isOffcut) offcutCounter++; else boardCounter++;
         });
     };
 </script>
