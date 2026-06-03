@@ -409,7 +409,6 @@
         initReport(parseInt(e.target.value));
     });
 
-    // الدالة المطورة لجلب وبناء الجدول القابل للطي مع تعديل الألواح
     window.fetchMasterClientData = async function() {
         const code = document.getElementById('master-search-code').value.trim();
         let uidPath = currentUid || "default_user";
@@ -505,19 +504,19 @@
             if(snapCut.exists()) {
                 let dataCut = snapCut.val();
                 Object.values(dataCut).forEach((proj) => {
-                    if(proj.projectName && (proj.projectName.includes(`كود ${code}`) || proj.projectName.includes(`(${code})`) || proj.projectName == code)) {
+                    // الشرط الجديد المطابق لكود العميل
+                    if(proj.customerCode === code || (proj.projectName && proj.projectName.includes(code))) {
                         hasInvoicesData = true;
                         rowIdCounter++;
                         let rowId = `details-row-${rowIdCounter}`;
 
-                        // استخراج عدد الألواح الفعلي بطريقة دقيقة ومباشرة
                         let boardsCount = 0;
                         let boardsCountDisplay = "";
 
-                        if (typeof proj.boardsCount === 'number') {
-                            boardsCount = proj.boardsCount;
-                        } else if (typeof proj.totalBoards === 'number') {
+                        if (typeof proj.totalBoards === 'number') {
                             boardsCount = proj.totalBoards;
+                        } else if (typeof proj.boardsCount === 'number') {
+                            boardsCount = proj.boardsCount;
                         } else if (proj.boards) {
                             boardsCount = Array.isArray(proj.boards) ? proj.boards.length : Object.keys(proj.boards).length;
                         } else if (proj.layouts) {
@@ -527,7 +526,7 @@
                         } else if (proj.sheetCount) {
                             boardsCount = proj.sheetCount;
                         } else {
-                            boardsCount = null; // غير مسجل بالداتا
+                            boardsCount = null;
                         }
 
                         if (boardsCount !== null) {
@@ -549,7 +548,7 @@
                                 onclick="const r = document.getElementById('${rowId}'); r.style.display = (r.style.display === 'none' ? 'table-row' : 'none');">
                                 
                                 <td style="padding:10px; text-align:center;">🧩 مخطط تقطيع</td>
-                                <td style="padding:10px; text-align:right;"><b>${proj.projectName}</b></td>
+                                <td style="padding:10px; text-align:right;"><b>${proj.projectName || 'بدون اسم'}</b></td>
                                 <td style="padding:10px; text-align:center; color:var(--warning);">-</td>
                                 <td style="padding:10px; text-align:center; color:var(--accent);">👇 اضغط للتفاصيل</td>
                             </tr>
