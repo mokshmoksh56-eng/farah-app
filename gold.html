@@ -8,7 +8,7 @@
         * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #ece5dd;
+            background-color: #ffffff; /* تم تغيير الخلفية للأبيض */
             margin: 0;
             padding: 0;
             display: flex;
@@ -63,7 +63,7 @@
             flex: 1;
             padding: 12px;
             overflow-y: auto;
-            background-color: #e5ddd5;
+            background-color: #ffffff; /* تم تغيير خلفية الشات للأبيض */
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -85,7 +85,7 @@
             border-top-left-radius: 5px;
         }
         .sender-other {
-            background-color: white;
+            background-color: #f1f1f1; /* لون رمادي فاتح جدا لرسائل الآخرين عشان تظهر على الأبيض */
             align-self: flex-end;
             border-top-right-radius: 5px;
         }
@@ -150,6 +150,7 @@
             border-radius: 30px;
             padding: 5px 12px;
             align-items: center;
+            border: 1px solid #ccc;
         }
         #messageInput {
             flex: 1;
@@ -251,19 +252,9 @@
 
     const ROOM_NAME = "public_chat";
 
-    // جلب الاسم المحفوظ أو إنشاء اسم جديد (مع حماية ضد أخطاء المحررات المحلية)
+    // تم إزالة localStorage بالكامل لمنع تعطل الكود في تطبيقات الموبايل
     let currentUser = "فني_" + Math.floor(Math.random() * 10000);
-    try {
-        let savedName = localStorage.getItem("technicianName");
-        if (savedName) {
-            currentUser = savedName;
-        } else {
-            localStorage.setItem("technicianName", currentUser);
-        }
-    } catch (e) {
-        console.log("التخزين المحلي غير مدعوم في هذا المحرر، سيتم استخدام اسم عشوائي مؤقت.");
-    }
-
+    
     let typingTimeout = null;
     let isWindowActive = true;
     let currentReplyTo = null;
@@ -273,14 +264,11 @@
 
     document.getElementById("userNameDisplay").innerText = currentUser;
 
-    // تعديل الاسم وحفظه بأمان
+    // تعديل الاسم مؤقتاً للجلسة الحالية
     document.getElementById("editNameBtn").addEventListener("click", () => {
         let newName = prompt("أدخل اسمك الجديد:", currentUser);
         if(newName && newName.trim() !== "") {
             currentUser = newName.trim();
-            try {
-                localStorage.setItem("technicianName", currentUser);
-            } catch (e) {}
             document.getElementById("userNameDisplay").innerText = currentUser;
             updatePresenceAfterNameChange();
         }
@@ -366,7 +354,6 @@
             .catch(err => alert("خطأ في الإرسال: " + err.message));
     };
 
-    // رفع الملفات مع تحديد الحد الأقصى للحجم (5 ميجابايت)
     window.uploadMultipleFiles = async (event) => {
         const files = Array.from(event.target.files);
         for(const file of files) {
@@ -396,7 +383,6 @@
         document.getElementById("fileInput").value = "";
     };
 
-    // تحميل آخر 100 رسالة فقط لتحسين الأداء
     function loadMessages() {
         const messagesRef = db.ref(`chats/${ROOM_NAME}/messages`).limitToLast(100);
         messagesRef.off(); 
@@ -425,18 +411,16 @@
         
         let content = "";
         if(msg.type === 'image') {
-            // إضافة onload لضمان التمرير للأسفل بعد اكتمال تحميل الصورة
             content = `<img src="${msg.imageUrl}" alt="صورة" onload="document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight" style="max-width:100%; border-radius:12px;">`;
         } else if(msg.type === 'file') {
             content = `<a href="${msg.fileUrl}" target="_blank" class="file-link">📄 ${escapeHtml(msg.fileName)}</a>`;
         } else {
-            content = escapeHtml(msg.text); // حماية XSS
+            content = escapeHtml(msg.text); 
         }
         
         const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ar', {hour:'2-digit', minute:'2-digit'}) : "";
         const deleteBtn = (msg.name === currentUser) ? `<span class="delete-msg" onclick="deleteMessage('${msg.id}')">🗑️</span>` : "";
         
-        // تشفير النص لتفادي كسر كود HTML بالمسافات أو علامات التنصيص
         const safeText = encodeURIComponent(msg.text || "");
         const replyBtn = `<span class="delete-msg" style="color:#128c7e;" onclick="setReplyTo('${msg.id}', '${escapeHtml(msg.name)}', decodeURIComponent('${safeText}'), '${msg.type}', '${msg.imageUrl || ""}')">↩️ رد</span>`;
         
@@ -466,7 +450,6 @@
         });
     }
 
-    // حذف الرسالة وملفها من الـ Storage إن وجد لمنع تراكم الملفات
     window.deleteMessage = (msgId) => {
         if(confirm("هل تريد حذف هذه الرسالة؟")) {
             db.ref(`chats/${ROOM_NAME}/messages/${msgId}`).once('value').then(snap => {
