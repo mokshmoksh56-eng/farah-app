@@ -7,7 +7,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, update, remove, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, update, remove, get, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -30,6 +30,7 @@
         window.remove = remove;
         window.get = get;
         window.onValue = onValue;
+        window.set = set;
 
         onAuthStateChanged(window.auth, (user) => {
             if (user) {
@@ -445,7 +446,6 @@
             return;
         }
 
-        // تم تغيير الرابط هنا ليفتح صفحة التقارير الشاملة
         const targetPage = "takarer.html"; 
         window.open(`${targetPage}?code=${encodeURIComponent(code)}`, '_blank');
     }
@@ -503,7 +503,36 @@
         visibleCards.forEach(id => updateLogic(id));
     }
 
-    function saveToCloud(id) {
+    // دالة لمزامنة دفعة العميل مع يومية yom
+    async function syncPaymentToYom(clientId, paymentIndex, paymentValue, paymentDate) {
+        if (!window.currentUid) return;
+        if (!paymentValue || paymentValue === 0) return;
+
+        const yomRef = window.ref(window.db, `backups/yomya_users/${window.currentUid}`);
+        const uniqueKey = `payment_${clientId}_${paymentIndex}`;
+        const desc = `دفعة من عميل كود ${clientId}`;
+        
+        const entryData = {
+            id: uniqueKey,
+            shop: "زبون",
+            customer: `كود ${clientId}`,
+            date: paymentDate || new Date().toISOString(),
+            desc: desc,
+            inVal: paymentValue,
+            outVal: 0,
+            source: "zbon"
+        };
+        
+        try {
+            await window.set(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${uniqueKey}`), entryData);
+            console.log(`تم تسجيل دفعة العميل ${clientId} في اليومية`);
+        } catch(e) {
+            console.error("فشل تسجيل الدفعة في اليومية:", e);
+        }
+    }
+
+    // دالة الحفظ المعدلة لتشمل مزامنة اليومية
+    window.saveToCloud = async function(id) {
         if(!window.currentUid) return;
         const card = document.getElementById(`card-${id}`);
         const data = {
@@ -526,19 +555,31 @@
         const saveBtn = card.querySelector('.btn-save');
         saveBtn.innerText = "⏳ جاري الحفظ...";
 
-        window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), data).then(() => {
+        try {
+            // حفظ بيانات العميل
+            await window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), data);
+            
+            // مزامنة كل دفعة مع اليومية
+            for (let idx = 0; idx < data.pays.length; idx++) {
+                const pay = data.pays[idx];
+                if (pay.v && parseFloat(pay.v) !== 0) {
+                    await syncPaymentToYom(id, idx, parseFloat(pay.v), pay.d);
+                }
+            }
+            
             if (!card.classList.contains('locked-mode')) {
                 toggleCardLock(id);
             }
             saveBtn.innerText = "💾 حفظ وقفل";
             const t = document.getElementById('toast');
-            t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2000);
+            t.style.display = 'block'; 
+            setTimeout(() => t.style.display = 'none', 2000);
             refreshStats();
-        }).catch(err => {
+        } catch(err) {
             saveBtn.innerText = "💾 حفظ وقفل";
-            alert("❌ فشل الحفظ! راجع الاتصال وقواعد الأمان.\nالسبب: " + err.message);
-        });
-    }
+            alert("❌ فشل الحفظ! راجع الاتصال.\nالسبب: " + err.message);
+        }
+    };
 
     function archiveCardManual(id) {
         if(!window.currentUid) return;
@@ -744,7 +785,7 @@
                         <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
                         <td>${stars}</td>
                         <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
-                    </tr>`;
+                     </tr>`;
                     if(isPaid) paidC++;
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
@@ -755,7 +796,7 @@
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
                         <td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td>
                         <td>${stars}</td>
-                    </tr>`;
+                     </tr>`;
 
                     if (isOverdue) {
                         summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
