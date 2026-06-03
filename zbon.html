@@ -1,3 +1,4 @@
+<!-- ملف zbon.html -->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -182,7 +183,6 @@
 
         .hide-tables { opacity: 0 !important; max-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; visibility: hidden !important; border: none !important; }
 
-        /* تيمات الوضع الليلي */
         body.dark-theme { background: #1e272e; color: #ffffff; }
         body.dark-theme .stat-card { background: #2f3542; color: #ffffff; border-bottom: 4px solid #57606f; }
         body.dark-theme .card { background: #2f3542; border-color: #57606f; color: #ffffff; }
@@ -264,234 +264,54 @@
     <h2 style="text-align: center; color: var(--primary); font-size: 15px; margin: 5px 0;">🗓️ جدول المديونيات (مرتب زمنياً)</h2>
     <table class="summary-table">
         <thead>
-            <tr>
-                <th>#</th>
-                <th>اسم الزبون</th>
-                <th style="background: #4b6584;">📅 الاستلام</th>
-                <th style="background: var(--col-total);">💰 الإجمالي</th>
-                <th style="background: var(--col-paid);">✅ المدفوع</th>
-                <th style="background: var(--col-rem);">📉 المتبقي</th>
-                <th style="width: 60px;">⭐</th>
-            </tr>
+            <tr><th>#</th><th>اسم الزبون</th><th style="background: #4b6584;">📅 الاستلام</th><th style="background: var(--col-total);">💰 الإجمالي</th><th style="background: var(--col-paid);">✅ المدفوع</th><th style="background: var(--col-rem);">📉 المتبقي</th><th style="width: 60px;">⭐</th></tr>
         </thead>
         <tbody id="summary-body"></tbody>
-        <tfoot>
-            <tr class="summary-footer">
-                <td colspan="3" style="text-align:center; color: #00d2ff; padding: 5px;">الإجمالي العام</td>
-                <td id="total-all-sum" style="direction: ltr;">0</td>
-                <td id="total-paid-sum" style="direction: ltr;">0</td>
-                <td id="total-rem-sum" style="direction: ltr;">0</td>
-                <td>---</td>
-            </tr>
-        </tfoot>
+        <tfoot><tr class="summary-footer"><td colspan="3" style="text-align:center; color: #00d2ff; padding: 5px;">الإجمالي العام</td><td id="total-all-sum" style="direction: ltr;">0</td><td id="total-paid-sum" style="direction: ltr;">0</td><td id="total-rem-sum" style="direction: ltr;">0</td><td>---</td></tr></tfoot>
     </table>
 </div>
 
 <div class="summary-section archive-section" id="archiveTableSection" style="background: #cfd8dc; border: 2px dashed #607d8b;">
     <h2 style="background: #607d8b; color: white; padding: 5px; text-align: center; margin: 0; border-radius: 15px 15px 0 0; font-size: 15px;">📁 أرشيف الزبائن (الخالص والمؤرشف)</h2>
-    <div style="padding: 10px;">
-        <input type="text" class="archive-search" id="archiveSearch" placeholder="🔍 بحث في الأرشيف..." onkeyup="filterArchive()">
-    </div>
-    <table class="summary-table">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>اسم الزبون</th>
-                <th>📅 تاريخ الانتهاء</th>
-                <th>💰 المبلغ المسدد</th>
-                <th>📝 ملاحظات</th>
-                <th>⭐</th>
-                <th>إجراء</th>
-            </tr>
-        </thead>
-        <tbody id="archive-body"></tbody>
-    </table>
+    <div style="padding: 10px;"><input type="text" class="archive-search" id="archiveSearch" placeholder="🔍 بحث في الأرشيف..." onkeyup="filterArchive()"></div>
+    <table class="summary-table"><thead><tr><th>#</th><th>اسم الزبون</th><th>📅 تاريخ الانتهاء</th><th>💰 المبلغ المسدد</th><th>📝 ملاحظات</th><th>⭐</th><th>إجراء</th></tr></thead><tbody id="archive-body"></tbody></table>
 </div>
 
 <button class="btn-add-client" onclick="addNewCard()">+</button>
 
 <script>
     let visibleCards = []; 
-    let isSyncingTslem = false; // لمنع التكرار
+    let isSyncingTslem = false;
 
-    const monthColors = {
-        1: "#ffdde1", 2: "#ee9ca7", 3: "#d4fc79", 4: "#96e6a1",
-        5: "#84fab0", 6: "#8fd3f4", 7: "#a1c4fd", 8: "#c2e9fb",
-        9: "#fccb90", 10: "#d5dbe5", 11: "#e0c3fc", 12: "#cfd9df"
-    };
-
+    const monthColors = {1:"#ffdde1",2:"#ee9ca7",3:"#d4fc79",4:"#96e6a1",5:"#84fab0",6:"#8fd3f4",7:"#a1c4fd",8:"#c2e9fb",9:"#fccb90",10:"#d5dbe5",11:"#e0c3fc",12:"#cfd9df"};
     function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
-
     function forceEN(el) {
         const map = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         let val = el.value;
-        for(let key in map) { val = val.replace(new RegExp(key, 'g'), map[key]); }
+        for(let key in map) val = val.replace(new RegExp(key, 'g'), map[key]);
         el.value = val;
     }
-
     const units = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
     const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
     const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
-
-    function tafqit(n) {
-        n = Math.floor(n); if (n <= 0) return 'صفر';
-        let res = '', k = Math.floor(n / 1000);
-        if (k > 0) {
-            if (k === 1) res += 'ألف '; else if (k === 2) res += 'ألفان ';
-            else if (k <= 10) res += units[k] + ' آلاف '; else res += tafqitBasic(k) + ' ألفاً ';
-            n %= 1000;
-        }
-        res += tafqitBasic(n);
-        return `${res.trim()}`;
-    }
-
-    function tafqitBasic(n) {
-        let text = '';
-        if (n >= 100) { text += hundreds[Math.floor(n / 100)] + ' '; n %= 100; }
-        if (n > 0) {
-            if (text !== '') text += 'و ';
-            if (n < 20) text += units[n];
-            else {
-                if (n % 10 > 0) text += units[n % 10] + ' و ' + tens[Math.floor(n / 10)];
-                else text += tens[Math.floor(n / 10)];
-            }
-        }
-        return text;
-    }
-
-    function getCurrentCurrency() {
-        const select = document.getElementById('countrySelect');
-        if (select && select.options[select.selectedIndex]) {
-            const opt = select.options[select.selectedIndex];
-            return {
-                sym: opt.getAttribute('data-sym'),
-                name: opt.getAttribute('data-name')
-            };
-        }
-        return { sym: "ج.م", name: "جنيهاً مصرياً" };
-    }
-
-    function toggleCardLock(id) {
-        const card = document.getElementById(`card-${id}`);
-        const btn = document.getElementById(`btn-lock-${id}`);
-        const isLocked = card.classList.contains('locked-mode');
-        
-        if (isLocked) {
-            card.classList.remove('locked-mode');
-            card.querySelectorAll('input, textarea').forEach(el => el.removeAttribute('disabled'));
-            btn.innerHTML = '🔓 تعديل مفتوح';
-            btn.style.color = 'var(--danger)';
-        } else {
-            card.classList.add('locked-mode');
-            card.querySelectorAll('input, textarea').forEach(el => el.setAttribute('disabled', 'true'));
-            btn.innerHTML = '🔒 اضغط للتعديل';
-            btn.style.color = 'var(--accent)';
-        }
-    }
-
+    function tafqit(n) { n = Math.floor(n); if (n <= 0) return 'صفر'; let res = '', k = Math.floor(n / 1000); if (k > 0) { if (k === 1) res += 'ألف '; else if (k === 2) res += 'ألفان '; else if (k <= 10) res += units[k] + ' آلاف '; else res += tafqitBasic(k) + ' ألفاً '; n %= 1000; } res += tafqitBasic(n); return res.trim(); }
+    function tafqitBasic(n) { let text = ''; if (n >= 100) { text += hundreds[Math.floor(n / 100)] + ' '; n %= 100; } if (n > 0) { if (text !== '') text += 'و '; if (n < 20) text += units[n]; else { if (n % 10 > 0) text += units[n % 10] + ' و ' + tens[Math.floor(n / 10)]; else text += tens[Math.floor(n / 10)]; } } return text; }
+    function getCurrentCurrency() { const select = document.getElementById('countrySelect'); if (select && select.options[select.selectedIndex]) { return { sym: select.options[select.selectedIndex].getAttribute('data-sym'), name: select.options[select.selectedIndex].getAttribute('data-name') }; } return { sym: "ج.م", name: "جنيهاً مصرياً" }; }
+    function toggleCardLock(id) { const card = document.getElementById(`card-${id}`); const btn = document.getElementById(`btn-lock-${id}`); const isLocked = card.classList.contains('locked-mode'); if (isLocked) { card.classList.remove('locked-mode'); card.querySelectorAll('input, textarea').forEach(el => el.removeAttribute('disabled')); btn.innerHTML = '🔓 تعديل مفتوح'; btn.style.color = 'var(--danger)'; } else { card.classList.add('locked-mode'); card.querySelectorAll('input, textarea').forEach(el => el.setAttribute('disabled', 'true')); btn.innerHTML = '🔒 اضغط للتعديل'; btn.style.color = 'var(--accent)'; } }
     function createCardElement(i) {
         const card = document.createElement('div');
         card.className = `card locked-mode`;
         card.id = `card-${i}`;
-        card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
-                <div style="display: flex; gap: 5px; align-items: center;">
-                    <span style="direction:rtl; font-size: 13px; font-weight: bold;">👤 كود:</span>
-                    <input type="text" class="c-code" value="${i}" placeholder="اكتب الكود" oninput="forceEN(this); updateLogic(${i})" disabled style="width: 75px; height: 26px; padding: 0 5px; font-size: 13px; margin: 0; text-align: center; border-radius: 5px; font-weight: bold; font-family: monospace; border: 1.5px solid var(--accent); color: var(--primary);">
-                    <button onclick="openClientPage(${i})" style="background: var(--accent); color: white; border: none; border-radius: 5px; cursor: pointer; padding: 3px 6px; font-size: 12px;" title="فتح صفحة العميل المربوطة">🔗 انتقال</button>
-                </div>
-                <div style="display: flex; align-items: center;">
-                    <button id="btn-lock-${i}" onclick="toggleCardLock(${i})" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button>
-                    <button onclick="archiveCardManual(${i})" class="btn-archive-icon" title="أرشفة">📁</button>
-                    <button onclick="deleteCard(${i})" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button>
-                </div>
-            </div>
-            <label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic(${i})" disabled>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                <div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic(${i})" disabled></div>
-                <div>
-                    <label>📅 الاستلام:</label>
-                    <div class="date-input-group">
-                        <input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
-                        <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> /
-                        <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic(${i})" disabled>
-                    </div>
-                </div>
-            </div>
-            <div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${i}" name="rating-${i}" value="${s}" onclick="updateLogic(${i})" disabled><label for="star${s}-${i}">★</label>`).join('')}</div>
-            <label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic(${i})" disabled>
-            <div class="tafqit-box" id="tafqit-total-${i}"></div>
-            <div class="payment-section">
-                ${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic(${i})" disabled><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic(${i})" disabled></div><div class="tafqit-mini" id="tafqit-pay-${i}-${n}"></div></div>`).join('')}
-            </div>
-            <textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic(${i}); autoResize(this)" disabled></textarea>
-            <div class="result-box"><div id="rem-n-${i}" style="direction:ltr; font-size:14px;">المتبقي: 0</div><div id="rem-w-${i}" style="font-size:9px; color:#00d2ff;"></div></div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
-                <button class="btn-card btn-save" onclick="saveToCloud(${i})">💾 حفظ وقفل</button>
-                <button class="btn-card btn-wa-direct" onclick="sendDirectWA(${i})">واتس مباشر</button>
-                <button class="btn-card btn-wa-invoice" onclick="sendWA(${i})">واتس فاتورة</button>
-            </div>
-        `;
+        card.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;"><div style="display: flex; gap: 5px; align-items: center;"><span style="direction:rtl; font-size: 13px; font-weight: bold;">👤 كود:</span><input type="text" class="c-code" value="${i}" placeholder="اكتب الكود" oninput="forceEN(this); updateLogic(${i})" disabled style="width: 75px; height: 26px; padding: 0 5px; font-size: 13px; margin: 0; text-align: center; border-radius: 5px; font-weight: bold; font-family: monospace; border: 1.5px solid var(--accent); color: var(--primary);"><button onclick="openClientPage(${i})" style="background: var(--accent); color: white; border: none; border-radius: 5px; cursor: pointer; padding: 3px 6px; font-size: 12px;" title="فتح صفحة العميل المربوطة">🔗 انتقال</button></div><div style="display: flex; align-items: center;"><button id="btn-lock-${i}" onclick="toggleCardLock(${i})" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button><button onclick="archiveCardManual(${i})" class="btn-archive-icon" title="أرشفة">📁</button><button onclick="deleteCard(${i})" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;">🗑️</button></div></div><label>الاسم:</label><input type="text" class="c-name" oninput="updateLogic(${i})" disabled><div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;"><div><label>الموبايل:</label><input type="tel" inputmode="tel" class="c-phone" oninput="forceEN(this); updateLogic(${i})" disabled></div><div><label>📅 الاستلام:</label><div class="date-input-group"><input type="text" inputmode="numeric" class="d-day" placeholder="DD" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> / <input type="text" inputmode="numeric" class="d-month" placeholder="MM" maxlength="2" oninput="forceEN(this); updateLogic(${i})" disabled> / <input type="text" inputmode="numeric" class="d-year" placeholder="YYYY" maxlength="4" oninput="forceEN(this); updateLogic(${i})" disabled></div></div></div><div class="rating-area">${[5,4,3,2,1].map(s => `<input type="radio" id="star${s}-${i}" name="rating-${i}" value="${s}" onclick="updateLogic(${i})" disabled><label for="star${s}-${i}">★</label>`).join('')}</div><label>💰 الإجمالي:</label><input type="text" inputmode="decimal" class="c-total" oninput="forceEN(this); updateLogic(${i})" disabled><div class="tafqit-box" id="tafqit-total-${i}"></div><div class="payment-section">${[1,2,3,4].map(n => `<div style="margin-bottom:3px;"><div class="pay-row"><input type="date" class="p-date" oninput="updateLogic(${i})" disabled><input type="text" inputmode="decimal" class="p-val" placeholder="مبلغ ${n}" oninput="forceEN(this); updateLogic(${i})" disabled></div><div class="tafqit-mini" id="tafqit-pay-${i}-${n}"></div></div>`).join('')}</div><textarea class="c-notes" placeholder="ملاحظات..." oninput="updateLogic(${i}); autoResize(this)" disabled></textarea><div class="result-box"><div id="rem-n-${i}" style="direction:ltr; font-size:14px;">المتبقي: 0</div><div id="rem-w-${i}" style="font-size:9px; color:#00d2ff;"></div></div><div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;"><button class="btn-card btn-save" onclick="saveToCloud(${i})">💾 حفظ وقفل</button><button class="btn-card btn-wa-direct" onclick="sendDirectWA(${i})">واتس مباشر</button><button class="btn-card btn-wa-invoice" onclick="sendWA(${i})">واتس فاتورة</button></div>`;
         document.getElementById('mainGrid').appendChild(card);
     }
-
     for (let i = 1; i <= 50; i++) createCardElement(i);
+    function openClientPage(id) { const card = document.getElementById(`card-${id}`); const code = card.querySelector('.c-code').value.trim(); if (!code) { alert("⚠️ يرجى كتابة كود العميل أولاً."); return; } window.open(`takarer.html?code=${encodeURIComponent(code)}`, '_blank'); }
+    function initKeyboardListener() { const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea'); const debtTable = document.getElementById('debtTableSection'); const archiveTable = document.getElementById('archiveTableSection'); targetInputs.forEach(input => { input.addEventListener('focus', () => { debtTable.classList.add('hide-tables'); archiveTable.classList.add('hide-tables'); }); input.addEventListener('blur', () => { debtTable.classList.remove('hide-tables'); archiveTable.classList.remove('hide-tables'); }); }); }
+    function updateLogic(id) { const card = document.getElementById(`card-${id}`); if(!card) return; const curr = getCurrentCurrency(); const total = parseFloat(card.querySelector('.c-total').value) || 0; document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? "فقط " + tafqit(total) + " " + curr.name + " لا غير" : ""; let paid = 0; card.querySelectorAll('.p-val').forEach((p, idx) => { let v = parseFloat(p.value) || 0; paid += v; document.getElementById(`tafqit-pay-${id}-${idx+1}`).innerText = v > 0 ? "فقط " + tafqit(v) + " " + curr.name + " لا غير" : ""; }); const rem = total - paid; document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString('en-US')} ${curr.sym}`; document.getElementById(`rem-w-${id}`).innerText = rem > 0 ? "فقط " + tafqit(rem) + " " + curr.name + " لا غير" : (total > 0 ? "خالص ✓" : ""); if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid'); }
+    function saveSettings() { const cName = document.getElementById('companyNameInput').value; const country = document.getElementById('countrySelect').value; localStorage.setItem('azemaa_company_name', cName); localStorage.setItem('azemaa_country', country); if (window.currentUid) { window.update(window.ref(window.db, `backups/users/${window.currentUid}/settings`), { companyName: cName, country: country }); } visibleCards.forEach(id => updateLogic(id)); }
 
-    function openClientPage(id) {
-        const card = document.getElementById(`card-${id}`);
-        const code = card.querySelector('.c-code').value.trim();
-        if (!code) { alert("⚠️ يرجى كتابة كود العميل أولاً."); return; }
-        const targetPage = "takarer.html"; 
-        window.open(`${targetPage}?code=${encodeURIComponent(code)}`, '_blank');
-    }
-
-    function initKeyboardListener() {
-        const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
-        const debtTable = document.getElementById('debtTableSection');
-        const archiveTable = document.getElementById('archiveTableSection');
-        targetInputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                debtTable.classList.add('hide-tables');
-                archiveTable.classList.add('hide-tables');
-            });
-            input.addEventListener('blur', () => {
-                debtTable.classList.remove('hide-tables');
-                archiveTable.classList.remove('hide-tables');
-            });
-        });
-    }
-
-    function updateLogic(id) {
-        const card = document.getElementById(`card-${id}`);
-        if(!card) return;
-        const curr = getCurrentCurrency();
-        const total = parseFloat(card.querySelector('.c-total').value) || 0;
-        document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? "فقط " + tafqit(total) + " " + curr.name + " لا غير" : "";
-        let paid = 0;
-        card.querySelectorAll('.p-val').forEach((p, idx) => {
-            let v = parseFloat(p.value) || 0;
-            paid += v;
-            document.getElementById(`tafqit-pay-${id}-${idx+1}`).innerText = v > 0 ? "فقط " + tafqit(v) + " " + curr.name + " لا غير" : "";
-        });
-        const rem = total - paid;
-        document.getElementById(`rem-n-${id}`).innerText = `المتبقي: ${rem.toLocaleString('en-US')} ${curr.sym}`;
-        document.getElementById(`rem-w-${id}`).innerText = rem > 0 ? "فقط " + tafqit(rem) + " " + curr.name + " لا غير" : (total > 0 ? "خالص ✓" : "");
-        if (rem <= 0 && total > 0) card.classList.add('paid'); else card.classList.remove('paid');
-    }
-
-    function saveSettings() { 
-        const cName = document.getElementById('companyNameInput').value;
-        const country = document.getElementById('countrySelect').value;
-        localStorage.setItem('azemaa_company_name', cName); 
-        localStorage.setItem('azemaa_country', country);
-        if (window.currentUid) {
-            window.update(window.ref(window.db, `backups/users/${window.currentUid}/settings`), { companyName: cName, country: country });
-        }
-        visibleCards.forEach(id => updateLogic(id));
-    }
-
-    // ----------------------------------------------
-    // التكامل مع جدول التسليمات tslem - ترحيل الأسماء تلقائياً
+    // ========== مزامنة tslem مع حالة الخالص ==========
     async function syncToTslem() {
         if (!window.currentUid) return;
         if (isSyncingTslem) return;
@@ -503,167 +323,82 @@
             for (let id in all) {
                 if (id === 'settings') continue;
                 const c = all[id];
-                if (c.isArchived) continue; // المؤرشف لا يظهر في جدول التسليمات
+                if (c.isArchived) continue;
                 if (c.dd && c.dm && c.dy && c.n && c.n.trim() !== "") {
+                    let paid = 0;
+                    if (c.pays) c.pays.forEach(p => paid += parseFloat(p.v || 0));
+                    const total = parseFloat(c.t) || 0;
+                    const isFullyPaid = (total > 0 && (total - paid) <= 0);
                     const dateKey = `${c.dd}-${c.dm}-${c.dy}`;
-                    clients.push({ dateKey, name: c.n.trim(), id });
+                    clients.push({ dateKey, name: c.n.trim(), isFullyPaid, id });
                 }
             }
-            // تجميع حسب التاريخ
             const grouped = {};
             for (let cl of clients) {
                 if (!grouped[cl.dateKey]) grouped[cl.dateKey] = [];
-                grouped[cl.dateKey].push(cl.name);
+                grouped[cl.dateKey].push(cl);
             }
             const updates = {};
             for (let dateKey in grouped) {
-                let names = grouped[dateKey];
-                let c1 = names[0] || "";
-                let c2 = names[1] ? names.slice(1).join("، ") : "";
-                updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c1`] = c1;
-                updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c2`] = c2;
-                // لا نمسح الحالة (s) حتى لا نفقد تقدم التسليم
+                let list = grouped[dateKey];
+                let c1 = list[0];
+                let c2 = list[1] || null;
+                updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c1`] = c1.name;
+                updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c1_paid`] = c1.isFullyPaid;
+                if (c2) {
+                    updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c2`] = c2.name;
+                    updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c2_paid`] = c2.isFullyPaid;
+                } else {
+                    updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c2`] = "";
+                    updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c2_paid`] = false;
+                }
             }
-            // مسح التواريخ التي لم يعد بها أي عميل
             const deliveriesSnap = await window.get(window.ref(window.db, `backups/deliveries_users/${window.currentUid}`));
             const existingKeys = deliveriesSnap.val() ? Object.keys(deliveriesSnap.val()) : [];
             for (let key of existingKeys) {
                 if (!grouped[key]) {
                     updates[`backups/deliveries_users/${window.currentUid}/${key}/c1`] = "";
+                    updates[`backups/deliveries_users/${window.currentUid}/${key}/c1_paid`] = false;
                     updates[`backups/deliveries_users/${window.currentUid}/${key}/c2`] = "";
+                    updates[`backups/deliveries_users/${window.currentUid}/${key}/c2_paid`] = false;
                 }
             }
             if (Object.keys(updates).length) {
                 await window.update(window.ref(window.db), updates);
-                console.log("✅ تم مزامنة الأسماء مع جدول التسليمات (tslem)");
+                console.log("✅ تم مزامنة الأسماء وحالة الخالص مع جدول التسليمات");
             }
-        } catch (err) {
-            console.error("❌ فشل مزامنة tslem:", err);
-        } finally {
-            isSyncingTslem = false;
-        }
+        } catch (err) { console.error("❌ فشل مزامنة tslem:", err); }
+        finally { isSyncingTslem = false; }
     }
-    // ----------------------------------------------
+    // =============================================
 
-    async function syncPaymentToYom(clientId, paymentIndex, paymentValue, paymentDate) {
-        if (!window.currentUid) return;
-        if (!paymentValue || paymentValue === 0) return;
-
-        const clientRef = window.ref(window.db, `backups/users/${window.currentUid}/${clientId}`);
-        const snapshot = await window.get(clientRef);
-        const clientData = snapshot.val();
-        const clientName = (clientData && clientData.n) ? clientData.n : `كود ${clientId}`;
-        const uniqueKey = `payment_${clientId}_${paymentIndex}`;
-        const desc = `كود ${clientId} - ${clientName}`;
-        const entryData = {
-            id: uniqueKey,
-            shop: "زبون",
-            customer: clientName,
-            date: paymentDate || new Date().toISOString(),
-            desc: desc,
-            inVal: paymentValue,
-            outVal: 0,
-            source: "zbon"
-        };
-        try {
-            await window.set(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${uniqueKey}`), entryData);
-        } catch(e) { console.error("فشل تسجيل الدفعة في اليومية:", e); }
-    }
-
-    async function deleteClientPaymentsFromYom(clientId) {
-        if (!window.currentUid) return;
-        const yomRef = window.ref(window.db, `backups/yomya_users/${window.currentUid}`);
-        const snapshot = await window.get(yomRef);
-        const allYom = snapshot.val() || {};
-        const deletePromises = [];
-        Object.keys(allYom).forEach(key => {
-            if (key.startsWith(`payment_${clientId}_`)) {
-                deletePromises.push(window.remove(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${key}`)));
-            }
-        });
-        await Promise.all(deletePromises);
-    }
-
+    async function syncPaymentToYom(clientId, paymentIndex, paymentValue, paymentDate) { if (!window.currentUid) return; if (!paymentValue || paymentValue === 0) return; const clientRef = window.ref(window.db, `backups/users/${window.currentUid}/${clientId}`); const snapshot = await window.get(clientRef); const clientData = snapshot.val(); const clientName = (clientData && clientData.n) ? clientData.n : `كود ${clientId}`; const uniqueKey = `payment_${clientId}_${paymentIndex}`; const desc = `كود ${clientId} - ${clientName}`; const entryData = { id: uniqueKey, shop: "زبون", customer: clientName, date: paymentDate || new Date().toISOString(), desc: desc, inVal: paymentValue, outVal: 0, source: "zbon" }; try { await window.set(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${uniqueKey}`), entryData); } catch(e) { console.error("فشل تسجيل الدفعة في اليومية:", e); } }
+    async function deleteClientPaymentsFromYom(clientId) { if (!window.currentUid) return; const yomRef = window.ref(window.db, `backups/yomya_users/${window.currentUid}`); const snapshot = await window.get(yomRef); const allYom = snapshot.val() || {}; const deletePromises = []; Object.keys(allYom).forEach(key => { if (key.startsWith(`payment_${clientId}_`)) { deletePromises.push(window.remove(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${key}`))); } }); await Promise.all(deletePromises); }
     window.saveToCloud = async function(id) {
         if(!window.currentUid) return;
         const card = document.getElementById(`card-${id}`);
-        const data = {
-            code: card.querySelector('.c-code').value || id.toString(),
-            n: card.querySelector('.c-name').value || "",
-            p: card.querySelector('.c-phone').value || "",
-            dd: card.querySelector('.d-day').value || "",
-            dm: card.querySelector('.d-month').value || "",
-            dy: card.querySelector('.d-year').value || "",
-            r: card.querySelector(`input[name="rating-${id}"]:checked`)?.value || 0,
-            t: card.querySelector('.c-total').value || 0,
-            notes: card.querySelector('.c-notes').value || "",
-            pays: Array.from(card.querySelectorAll('.p-val')).map((p, idx) => ({
-                v: p.value || 0,
-                d: card.querySelectorAll('.p-date')[idx].value || ""
-            })),
-            isArchived: false
-        };
+        const data = { code: card.querySelector('.c-code').value || id.toString(), n: card.querySelector('.c-name').value || "", p: card.querySelector('.c-phone').value || "", dd: card.querySelector('.d-day').value || "", dm: card.querySelector('.d-month').value || "", dy: card.querySelector('.d-year').value || "", r: card.querySelector(`input[name="rating-${id}"]:checked`)?.value || 0, t: card.querySelector('.c-total').value || 0, notes: card.querySelector('.c-notes').value || "", pays: Array.from(card.querySelectorAll('.p-val')).map((p, idx) => ({ v: p.value || 0, d: card.querySelectorAll('.p-date')[idx].value || "" })), isArchived: false };
         const saveBtn = card.querySelector('.btn-save');
         saveBtn.innerText = "⏳ جاري الحفظ...";
         try {
             await window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), data);
-            for (let idx = 0; idx < data.pays.length; idx++) {
-                const pay = data.pays[idx];
-                if (pay.v && parseFloat(pay.v) !== 0) {
-                    await syncPaymentToYom(id, idx, parseFloat(pay.v), pay.d);
-                }
-            }
-            // مزامنة tslem بعد الحفظ
+            for (let idx = 0; idx < data.pays.length; idx++) { const pay = data.pays[idx]; if (pay.v && parseFloat(pay.v) !== 0) { await syncPaymentToYom(id, idx, parseFloat(pay.v), pay.d); } }
             await syncToTslem();
             if (!card.classList.contains('locked-mode')) toggleCardLock(id);
             saveBtn.innerText = "💾 حفظ وقفل";
-            const t = document.getElementById('toast');
-            t.style.display = 'block'; 
-            setTimeout(() => t.style.display = 'none', 2000);
+            const t = document.getElementById('toast'); t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2000);
             refreshStats();
-        } catch(err) {
-            saveBtn.innerText = "💾 حفظ وقفل";
-            alert("❌ فشل الحفظ! راجع الاتصال.\nالسبب: " + err.message);
-        }
+        } catch(err) { saveBtn.innerText = "💾 حفظ وقفل"; alert("❌ فشل الحفظ! راجع الاتصال.\nالسبب: " + err.message); }
     };
-
-    function archiveCardManual(id) {
-        if(!window.currentUid) return;
-        if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) {
-            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: true }).then(async () => {
-                document.getElementById(`card-${id}`).classList.remove('visible');
-                await syncToTslem();
-                refreshStats();
-            }).catch(err => alert("❌ خطأ: " + err.message));
-        }
-    }
-
-    function restoreFromArchive(id) {
-        if(!window.currentUid) return;
-        if(confirm('هل تريد استعادة هذا الزبون؟')) {
-            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: false }).then(async () => {
-                document.getElementById(`card-${id}`).classList.add('visible');
-                await syncToTslem();
-                refreshStats();
-            }).catch(err => alert("❌ خطأ: " + err.message));
-        }
-    }
-
+    function archiveCardManual(id) { if(!window.currentUid) return; if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) { window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: true }).then(async () => { document.getElementById(`card-${id}`).classList.remove('visible'); await syncToTslem(); refreshStats(); }).catch(err => alert("❌ خطأ: " + err.message)); } }
+    function restoreFromArchive(id) { if(!window.currentUid) return; if(confirm('هل تريد استعادة هذا الزبون؟')) { window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: false }).then(async () => { document.getElementById(`card-${id}`).classList.add('visible'); await syncToTslem(); refreshStats(); }).catch(err => alert("❌ خطأ: " + err.message)); } }
     function startSyncingData() {
-        if (localStorage.getItem('azemaa_dark_mode') === 'enabled') {
-            document.body.classList.add('dark-theme');
-            document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
-        }
-        
-        // مراقبة تغييرات العملاء وتحديث tslem تلقائياً
+        if (localStorage.getItem('azemaa_dark_mode') === 'enabled') { document.body.classList.add('dark-theme'); document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري'; }
         const clientsRef = window.ref(window.db, `backups/users/${window.currentUid}`);
         window.onValue(clientsRef, async (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
-                if (allData.settings) {
-                    if(allData.settings.companyName) document.getElementById('companyNameInput').value = allData.settings.companyName;
-                    if(allData.settings.country) document.getElementById('countrySelect').value = allData.settings.country;
-                }
+                if (allData.settings) { if(allData.settings.companyName) document.getElementById('companyNameInput').value = allData.settings.companyName; if(allData.settings.country) document.getElementById('countrySelect').value = allData.settings.country; }
                 visibleCards = [];
                 for (let id in allData) {
                     if (id === 'settings') continue;
@@ -671,10 +406,7 @@
                     const card = document.getElementById(`card-${id}`);
                     if (card) {
                         if (d.isArchived) card.classList.remove('visible');
-                        else {
-                            card.classList.add('visible');
-                            visibleCards.push(parseInt(id));
-                        }
+                        else { card.classList.add('visible'); visibleCards.push(parseInt(id)); }
                         if (card.classList.contains('locked-mode')) {
                             card.querySelector('.c-code').value = d.code || parseInt(id);
                             card.querySelector('.c-name').value = d.n || '';
@@ -692,195 +424,20 @@
                     }
                 }
                 initKeyboardListener();
-                // مزامنة tslem عند أي تغيير في العملاء
                 await syncToTslem();
                 refreshStats();
             }
         });
     }
-
-    function addNewCard() {
-        if(!window.currentUid) return;
-        for (let i = 1; i <= 50; i++) {
-            const card = document.getElementById(`card-${i}`);
-            if (!card.classList.contains('visible')) {
-                card.classList.add('visible');
-                window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(async () => {
-                    if (card.classList.contains('locked-mode')) toggleCardLock(i);
-                    await syncToTslem();
-                }).catch(err => alert("❌ خطأ: " + err.message));
-                return;
-            }
-        }
-    }
-
-    async function deleteCard(id) { 
-        if(!window.currentUid) return;
-        if(confirm('سيتم حذف العميل نهائياً وجميع دفعاته المسجلة في اليومية. هل أنت متأكد؟')) { 
-            try {
-                await deleteClientPaymentsFromYom(id);
-                await window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`));
-                const card = document.getElementById(`card-${id}`);
-                card.classList.remove('visible');
-                card.querySelectorAll('input').forEach(i => i.value = "");
-                card.querySelector('textarea').value = "";
-                card.querySelector('.c-code').value = parseInt(id);
-                await syncToTslem();
-                refreshStats();
-                alert("تم حذف العميل ودفعاته بنجاح");
-            } catch(err) {
-                alert("❌ خطأ في الحذف: " + err.message);
-            }
-        } 
-    }
-
-    function sendDirectWA(id) {
-        const card = document.getElementById(`card-${id}`);
-        const phone = card.querySelector('.c-phone').value;
-        if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
-        window.open(`https://wa.me/2${phone}`, '_blank');
-    }
-
-    function sendWA(id) {
-        const card = document.getElementById(`card-${id}`);
-        const name = card.querySelector('.c-name').value || "عميلنا العزيز";
-        const phone = card.querySelector('.c-phone').value;
-        const company = document.getElementById('companyNameInput').value || 'azemaa proo';
-        const curr = getCurrentCurrency();
-        if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
-        const totalVal = parseFloat(card.querySelector('.c-total').value) || 0;
-        const totalWord = tafqit(totalVal);
-        let paymentsMsg = "";
-        const pVals = card.querySelectorAll('.p-val');
-        const pDates = card.querySelectorAll('.p-date');
-        let paid = 0;
-        pVals.forEach((p, idx) => {
-            let v = parseFloat(p.value) || 0;
-            let d = pDates[idx].value || "---";
-            if (v > 0) {
-                paid += v;
-                paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ${curr.sym}\n`;
-            }
-        });
-        const remVal = totalVal - paid;
-        const remWord = remVal > 0 ? tafqit(remVal) : "تم السداد بالكامل ✓";
-        const msg = `*تحية طيبة من ${company}* 🌸\n\n` +
-                    `أهلاً أ/ *${name}*\n` +
-                    `نحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n` +
-                    `━━━━━━━━━━━━━━\n` +
-                    `💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ${curr.sym}\n` +
-                    `✍️ *فقط:* ${totalWord} ${curr.name} لا غير\n\n` +
-                    `📅 *تفاصيل الدفعات:* \n${paymentsMsg || "━ لا توجد دفعات مسجلة بعد\n"}\n` +
-                    `📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ${curr.sym}\n` +
-                    `✍️ *فقط:* ${remWord} ${remVal > 0 ? curr.name + ' لا غير' : ''}\n` +
-                    `━━━━━━━━━━━━━━\n\n` +
-                    `شكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`;
-        window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    function refreshStats() {
-        if(!window.currentUid) return;
-        let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0;
-        const summaryBody = document.getElementById('summary-body');
-        const archiveBody = document.getElementById('archive-body');
-        summaryBody.innerHTML = '';
-        archiveBody.innerHTML = '';
-        window.get(window.ref(window.db, `backups/users/${window.currentUid}`)).then((snapshot) => {
-            const data = snapshot.exists() ? snapshot.val() : null;
-            if (!data) return;
-            let clientsArr = [];
-            Object.keys(data).forEach(id => { if (id !== 'settings') clientsArr.push({id, ...data[id]}); });
-            clientsArr.sort((a, b) => {
-                const dateA = new Date(a.dy || 2000, (a.dm || 1) - 1, a.dd || 1);
-                const dateB = new Date(b.dy || 2000, (b.dm || 1) - 1, b.dd || 1);
-                return dateA - dateB;
-            });
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            clientsArr.forEach(d => {
-                const id = d.id;
-                let pVal = 0; 
-                if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0));
-                const total = parseFloat(d.t) || 0;
-                const rem = total - pVal;
-                const isPaid = (total > 0 && rem <= 0);
-                const stars = `<span class="star-table">${'★'.repeat(d.r || 0)}${'☆'.repeat(5-(d.r || 0))}</span>`;
-                const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6";
-                const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---";
-                let isOverdue = false;
-                if (d.dd && d.dm && d.dy && !isPaid) {
-                    const deliveryDate = new Date(d.dy, d.dm - 1, d.dd);
-                    if (deliveryDate < now) isOverdue = true;
-                }
-                if (d.isArchived || isPaid) {
-                    archiveBody.innerHTML += `<tr class="row-paid">
-                        <td>${d.code || id}</td>
-                        <td>${d.n || '---'}</td>
-                        <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
-                        <td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
-                        <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
-                        <td>${stars}</td>
-                        <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
-                     </tr>`;
-                    if(isPaid) paidC++;
-                } else if (d.n || total > 0) {
-                    const rowClass = isOverdue ? 'pulse-row' : '';
-                    const rowHTML = `<tr class="${rowClass}">
-                        <td>${d.code || id}</td><td>${d.n}</td>
-                        <td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td>
-                        <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
-                        <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
-                        <td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td>
-                        <td>${stars}</td>
-                     </tr>`;
-                    if (isOverdue) summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
-                    else summaryBody.innerHTML += rowHTML;
-                    debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem;
-                }
-            });
-            document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); 
-            document.getElementById('stat-cust').innerText = cust; 
-            document.getElementById('stat-paid').innerText = paidC;
-            document.getElementById('total-all-sum').innerText = totalAll.toLocaleString('en-US'); 
-            document.getElementById('total-paid-sum').innerText = totalPaid.toLocaleString('en-US'); 
-            document.getElementById('total-rem-sum').innerText = totalRem.toLocaleString('en-US');
-        });
-    }
-
-    function filterAll() {
-        let q = document.getElementById('searchInput').value.toLowerCase();
-        const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
-        for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
-        visibleCards.forEach(id => { 
-            const card = document.getElementById(`card-${id}`); 
-            const code = card.querySelector('.c-code').value.toLowerCase();
-            const name = card.querySelector('.c-name').value.toLowerCase();
-            const phone = card.querySelector('.c-phone').value.toLowerCase();
-            card.style.display = (code.includes(q) || name.includes(q) || phone.includes(q)) ? "block" : "none"; 
-        });
-    }
-
-    function filterArchive() {
-        let q = document.getElementById('archiveSearch').value.toLowerCase();
-        const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
-        for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
-        let rows = document.querySelectorAll('#archive-body tr');
-        rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none"; });
-    }
-    
-    function toggleDarkMode() {
-        const isDark = document.body.classList.toggle('dark-theme');
-        const btn = document.getElementById('darkModeBtn');
-        if (isDark) { btn.innerHTML = '☀️ المظهر النهاري'; localStorage.setItem('azemaa_dark_mode', 'enabled'); } 
-        else { btn.innerHTML = '🌙 المظهر الليلي'; localStorage.setItem('azemaa_dark_mode', 'disabled'); }
-    }
-
-    setInterval(() => {
-        const now = new Date();
-        document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-US');
-        document.getElementById('liveDate').innerText = now.toLocaleDateString('ar-EG', {day:'numeric', month:'long', year:'numeric'});
-        document.getElementById('currentYear').innerText = now.getFullYear();
-    }, 1000);
+    function addNewCard() { if(!window.currentUid) return; for (let i = 1; i <= 50; i++) { const card = document.getElementById(`card-${i}`); if (!card.classList.contains('visible')) { card.classList.add('visible'); window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(async () => { if (card.classList.contains('locked-mode')) toggleCardLock(i); await syncToTslem(); }).catch(err => alert("❌ خطأ: " + err.message)); return; } } }
+    async function deleteCard(id) { if(!window.currentUid) return; if(confirm('سيتم حذف العميل نهائياً وجميع دفعاته المسجلة في اليومية. هل أنت متأكد؟')) { try { await deleteClientPaymentsFromYom(id); await window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`)); const card = document.getElementById(`card-${id}`); card.classList.remove('visible'); card.querySelectorAll('input').forEach(i => i.value = ""); card.querySelector('textarea').value = ""; card.querySelector('.c-code').value = parseInt(id); await syncToTslem(); refreshStats(); alert("تم حذف العميل ودفعاته بنجاح"); } catch(err) { alert("❌ خطأ في الحذف: " + err.message); } } }
+    function sendDirectWA(id) { const card = document.getElementById(`card-${id}`); const phone = card.querySelector('.c-phone').value; if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); window.open(`https://wa.me/2${phone}`, '_blank'); }
+    function sendWA(id) { const card = document.getElementById(`card-${id}`); const name = card.querySelector('.c-name').value || "عميلنا العزيز"; const phone = card.querySelector('.c-phone').value; const company = document.getElementById('companyNameInput').value || 'azemaa proo'; const curr = getCurrentCurrency(); if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); const totalVal = parseFloat(card.querySelector('.c-total').value) || 0; const totalWord = tafqit(totalVal); let paymentsMsg = ""; const pVals = card.querySelectorAll('.p-val'); const pDates = card.querySelectorAll('.p-date'); let paid = 0; pVals.forEach((p, idx) => { let v = parseFloat(p.value) || 0; let d = pDates[idx].value || "---"; if (v > 0) { paid += v; paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ${curr.sym}\n`; } }); const remVal = totalVal - paid; const remWord = remVal > 0 ? tafqit(remVal) : "تم السداد بالكامل ✓"; const msg = `*تحية طيبة من ${company}* 🌸\n\nأهلاً أ/ *${name}*\nنحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n━━━━━━━━━━━━━━\n💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${totalWord} ${curr.name} لا غير\n\n📅 *تفاصيل الدفعات:* \n${paymentsMsg || "━ لا توجد دفعات مسجلة بعد\n"}\n📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${remWord} ${remVal > 0 ? curr.name + ' لا غير' : ''}\n━━━━━━━━━━━━━━\n\nشكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`; window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank'); }
+    function refreshStats() { if(!window.currentUid) return; let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0; const summaryBody = document.getElementById('summary-body'); const archiveBody = document.getElementById('archive-body'); summaryBody.innerHTML = ''; archiveBody.innerHTML = ''; window.get(window.ref(window.db, `backups/users/${window.currentUid}`)).then((snapshot) => { const data = snapshot.exists() ? snapshot.val() : null; if (!data) return; let clientsArr = []; Object.keys(data).forEach(id => { if (id !== 'settings') clientsArr.push({id, ...data[id]}); }); clientsArr.sort((a, b) => { const dateA = new Date(a.dy || 2000, (a.dm || 1) - 1, a.dd || 1); const dateB = new Date(b.dy || 2000, (b.dm || 1) - 1, b.dd || 1); return dateA - dateB; }); const now = new Date(); now.setHours(0, 0, 0, 0); clientsArr.forEach(d => { const id = d.id; let pVal = 0; if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0)); const total = parseFloat(d.t) || 0; const rem = total - pVal; const isPaid = (total > 0 && rem <= 0); const stars = `<span class="star-table">${'★'.repeat(d.r || 0)}${'☆'.repeat(5-(d.r || 0))}</span>`; const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6"; const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---"; let isOverdue = false; if (d.dd && d.dm && d.dy && !isPaid) { const deliveryDate = new Date(d.dy, d.dm - 1, d.dd); if (deliveryDate < now) isOverdue = true; } if (d.isArchived || isPaid) { archiveBody.innerHTML += `<tr class="row-paid"><td>${d.code || id}</td><td>${d.n || '---'}</td><td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td><td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td><td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td><td>${stars}</td><td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td></tr>`; if(isPaid) paidC++; } else if (d.n || total > 0) { const rowClass = isOverdue ? 'pulse-row' : ''; const rowHTML = `<tr class="${rowClass}"><td>${d.code || id}</td><td>${d.n}</td><td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td><td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td><td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td><td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td><td>${stars}</td></tr>`; if (isOverdue) summaryBody.insertAdjacentHTML('afterbegin', rowHTML); else summaryBody.innerHTML += rowHTML; debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem; } }); document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); document.getElementById('stat-cust').innerText = cust; document.getElementById('stat-paid').innerText = paidC; document.getElementById('total-all-sum').innerText = totalAll.toLocaleString('en-US'); document.getElementById('total-paid-sum').innerText = totalPaid.toLocaleString('en-US'); document.getElementById('total-rem-sum').innerText = totalRem.toLocaleString('en-US'); }); }
+    function filterAll() { let q = document.getElementById('searchInput').value.toLowerCase(); const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'}; for(let key in arabicMap) q = q.replace(new RegExp(key, 'g'), arabicMap[key]); visibleCards.forEach(id => { const card = document.getElementById(`card-${id}`); const code = card.querySelector('.c-code').value.toLowerCase(); const name = card.querySelector('.c-name').value.toLowerCase(); const phone = card.querySelector('.c-phone').value.toLowerCase(); card.style.display = (code.includes(q) || name.includes(q) || phone.includes(q)) ? "block" : "none"; }); }
+    function filterArchive() { let q = document.getElementById('archiveSearch').value.toLowerCase(); const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'}; for(let key in arabicMap) q = q.replace(new RegExp(key, 'g'), arabicMap[key]); let rows = document.querySelectorAll('#archive-body tr'); rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none"; }); }
+    function toggleDarkMode() { const isDark = document.body.classList.toggle('dark-theme'); const btn = document.getElementById('darkModeBtn'); if (isDark) { btn.innerHTML = '☀️ المظهر النهاري'; localStorage.setItem('azemaa_dark_mode', 'enabled'); } else { btn.innerHTML = '🌙 المظهر الليلي'; localStorage.setItem('azemaa_dark_mode', 'disabled'); } }
+    setInterval(() => { const now = new Date(); document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-US'); document.getElementById('liveDate').innerText = now.toLocaleDateString('ar-EG', {day:'numeric', month:'long', year:'numeric'}); document.getElementById('currentYear').innerText = now.getFullYear(); }, 1000);
 </script>
 </body>
 </html>
