@@ -452,7 +452,6 @@
                             let detailsHtml = `<div style="padding:10px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; margin:5px;">
                                                 <h4 style="margin:0 0 8px 0; color:var(--primary); font-size:11px;">📋 الخامات المستخدمة في (${key}):</h4>`;
                             
-                            // 🟢 التعديل الجديد: إظهار أسعار الألومنيوم والدهان العامة إذا كانت الخامة ألومنيوم
                             if (materialName === 'ألومنيوم' && (invoice.alumPrice || invoice.paintPrice)) {
                                 detailsHtml += `<div style="margin-bottom: 8px; font-size: 11px; color: var(--primary); background: #e0f2fe; padding: 6px; border-radius: 4px; border: 1px solid #bae6fd;">
                                                     <strong>معلومات التسعير:</strong> 
@@ -468,13 +467,34 @@
                                                         <tr style="background:#e2e8f0;">
                                                             <th style="padding:6px; border:1px solid #ccc;">اسم الخامة</th>
                                                             <th style="padding:6px; border:1px solid #ccc;">الكمية</th>
-                                                            <th style="padding:6px; border:1px solid #ccc;">السعر</th>
+                                                            <th style="padding:6px; border:1px solid #ccc;">السعر الإجمالي</th>
                                                         </tr>`;
+                                    
                                     itemsList.forEach(item => {
+                                        // 🟢 تم إضافة هذه المعادلة الذكية لحساب سعر كل صنف بناءً على نوع المقايسة
+                                        let finalItemPrice = 0;
+                                        let q = parseFloat(item.qty || item.quantity || 1);
+
+                                        if (materialName === 'ألومنيوم') {
+                                            let w = parseFloat(item.weight || 0);
+                                            let p = parseFloat(item.itemPrice || item.price || 0);
+                                            let al = parseFloat(invoice.alumPrice || 0);
+                                            let pa = parseFloat(invoice.paintPrice || 0);
+                                            // إذا كان هناك سعر خاص نحسبه، غير ذلك نحسب بالوزن
+                                            finalItemPrice = p > 0 ? (q * p) : ((q * w) * (al + pa));
+                                        } else if (materialName === 'خشب') {
+                                            let p = parseFloat(item.price || item.itemPrice || 0);
+                                            finalItemPrice = q * p;
+                                        } else {
+                                            // افتراضي (للإكسسوارات وغيرها)
+                                            let p = parseFloat(item.price || item.itemPrice || item.total || 0);
+                                            finalItemPrice = p; 
+                                        }
+
                                         detailsHtml += `<tr>
                                                             <td style="padding:6px; border:1px solid #ccc;">${item.name || item.itemName || item.desc || 'بدون اسم'}</td>
-                                                            <td style="padding:6px; border:1px solid #ccc;">${item.qty || item.quantity || 1}</td>
-                                                            <td style="padding:6px; border:1px solid #ccc;">${parseFloat(item.price || item.total || 0).toLocaleString()} ج.م</td>
+                                                            <td style="padding:6px; border:1px solid #ccc;">${q}</td>
+                                                            <td style="padding:6px; border:1px solid #ccc; font-weight:bold; color:var(--primary);">${Number(finalItemPrice.toFixed(2)).toLocaleString()} ج.م</td>
                                                         </tr>`;
                                     });
                                     detailsHtml += `</table>`;
