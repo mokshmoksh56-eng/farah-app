@@ -66,11 +66,26 @@
             text-align: center;
             margin-top: 4px;
         }
+        .sub-header {
+            background-color: #e5ddd5;
+            text-align: center;
+            padding: 5px;
+            font-size: 12px;
+            color: #54656f;
+            font-weight: bold;
+            border-bottom: 1px solid #d1d7db;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            z-index: 2;
+        }
         .chat-messages {
             flex: 1;
             padding: 12px;
             overflow-y: auto;
-            background-color: #ffffff; 
+            /* خلفية منقوشة هادئة */
+            background-color: #e5ddd5; 
+            background-image: radial-gradient(#cad1d7 1.5px, transparent 1.5px), radial-gradient(#cad1d7 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -92,7 +107,7 @@
             border-top-left-radius: 5px;
         }
         .sender-other {
-            background-color: #f1f1f1; 
+            background-color: #ffffff; 
             align-self: flex-end;
             border-top-right-radius: 5px;
         }
@@ -214,11 +229,18 @@
             <span id="userNameDisplay">فني_???</span>
             <button id="editNameBtn" class="edit-name">✏️</button>
         </div>
-        <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="muteBtn" class="edit-name" onclick="window.toggleMute()" title="كتم/تشغيل الصوت">🔊</button>
             <span id="onlineCount" class="online-count">🟢 0</span>
         </div>
         <div id="connStatus" class="connection-status">جاري تهيئة الاتصال...</div>
     </div>
+    
+    <!-- العنوان الصغير المضاف -->
+    <div class="sub-header">
+        تجمع خاص للفنيين 🛠️
+    </div>
+
     <div class="chat-messages" id="chatMessages"></div>
     <div id="typingIndicator" class="typing-indicator"></div>
     <div class="chat-input">
@@ -241,7 +263,6 @@
 </audio>
 
 <script type="module">
-    // استخدام أحدث إصدارات فايربيز (نفس إصدار التطبيق الأساسي لديك)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, push, onValue, onChildAdded, onChildRemoved, set, onDisconnect, remove, serverTimestamp, get, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
@@ -256,9 +277,14 @@
         appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
     
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const storage = getStorage(app);
+    let app, db, storage;
+    try {
+        app = initializeApp(firebaseConfig); // تم تصحيح سطر التهيئة
+        db = getDatabase(app);
+        storage = getStorage(app);
+    } catch(e) {
+        alert("خطأ في تهيئة فايربيز: " + e.message);
+    }
 
     const ROOM_NAME = "public_chat";
 
@@ -266,6 +292,7 @@
     let typingTimeout = null;
     let isWindowActive = true;
     let currentReplyTo = null;
+    let isMuted = false;
 
     window.onfocus = () => { isWindowActive = true; };
     window.onblur = () => { isWindowActive = false; };
@@ -281,15 +308,24 @@
         }
     });
 
+    window.toggleMute = () => {
+        isMuted = !isMuted;
+        const btn = document.getElementById("muteBtn");
+        btn.innerText = isMuted ? "🔇" : "🔊";
+    };
+
     function updatePresenceAfterNameChange() {
+        if(!db) return;
         const pRef = ref(db, `presence/${ROOM_NAME}/${currentUser}`);
         set(pRef, true);
         remove(ref(db, `typing/${ROOM_NAME}/${currentUser}`));
         setupPresence();
     }
 
-    // بدء التطبيق
-    initChat();
+    // الانتظار حتى يتم تحميل فايربيز بنجاح
+    if (app && db) {
+        initChat();
+    }
 
     function initChat() {
         loadMessages();
@@ -313,7 +349,6 @@
         });
     }
 
-    // إتاحة الدوال على مستوى الويندوز لتعمل مع HTML
     window.addEmoji = (emoji) => {
         const input = document.getElementById("messageInput");
         input.value += emoji;
@@ -340,6 +375,7 @@
     };
 
     window.sendTextMessage = () => {
+        if(!db) return;
         try {
             const input = document.getElementById("messageInput");
             const text = input.value.trim();
@@ -371,6 +407,7 @@
     };
 
     window.uploadMultipleFiles = async (event) => {
+        if(!db || !storage) return;
         const files = Array.from(event.target.files);
         for(const file of files) {
             if(file.size > 5 * 1024 * 1024) { 
@@ -449,7 +486,7 @@
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
         
-        if(msg.name !== currentUser && !isWindowActive) {
+        if(msg.name !== currentUser && !isWindowActive && !isMuted) {
             const sound = document.getElementById("notificationSound");
             sound.play().catch(e => console.log("الصوت لم يتم تشغيله تلقائياً"));
         }
@@ -467,6 +504,7 @@
     }
 
     window.deleteMessage = async (msgId) => {
+        if(!db) return;
         if(confirm("هل تريد حذف هذه الرسالة؟")) {
             const msgRef = ref(db, `chats/${ROOM_NAME}/messages/${msgId}`);
             try {
@@ -527,7 +565,7 @@
     }
 
     window.addEventListener("beforeunload", () => {
-        if(currentUser) {
+        if(currentUser && db) {
             remove(ref(db, `presence/${ROOM_NAME}/${currentUser}`));
             remove(ref(db, `typing/${ROOM_NAME}/${currentUser}`));
         }
