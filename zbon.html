@@ -227,7 +227,7 @@
         <option value="MR" data-sym="أ.م" data-name="أوقية موريتانية">🇲🇷 موريتانيا (أوقية)</option>
         <option value="KM" data-sym="ف.ق" data-name="فرنكاً قمرياً">🇰🇲 جزر القمر (فرنك)</option>
     </select>
-    <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم أو التليفون..." onkeyup="filterAll()">
+    <input type="text" id="searchInput" placeholder="🔍 ابحث بالاسم، الكود أو التليفون..." onkeyup="filterAll()">
 </div>
 
 <div class="stats-bar">
@@ -372,7 +372,11 @@
         card.id = `card-${i}`;
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
-                <span style="direction:rtl; font-size: 13px;">👤 عميل رقم ${i}</span>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <span style="direction:rtl; font-size: 13px; font-weight: bold;">👤 كود:</span>
+                    <input type="text" class="c-code" value="${i}" placeholder="اكتب الكود" oninput="forceEN(this); updateLogic(${i})" disabled style="width: 75px; height: 26px; padding: 0 5px; font-size: 13px; margin: 0; text-align: center; border-radius: 5px; font-weight: bold; font-family: monospace; border: 1.5px solid var(--accent); color: var(--primary);">
+                    <button onclick="openClientPage(${i})" style="background: var(--accent); color: white; border: none; border-radius: 5px; cursor: pointer; padding: 3px 6px; font-size: 12px;" title="فتح صفحة العميل المربوطة">🔗 انتقال</button>
+                </div>
                 <div style="display: flex; align-items: center;">
                     <button id="btn-lock-${i}" onclick="toggleCardLock(${i})" class="btn-lock-toggle" title="تعديل البيانات">🔒 اضغط للتعديل</button>
                     <button onclick="archiveCardManual(${i})" class="btn-archive-icon" title="أرشفة">📁</button>
@@ -409,6 +413,21 @@
     }
 
     for (let i = 1; i <= 50; i++) createCardElement(i);
+
+    // دالة لفتح صفحة خارجية مربوطة بكود العميل
+    function openClientPage(id) {
+        const card = document.getElementById(`card-${id}`);
+        const code = card.querySelector('.c-code').value.trim();
+        
+        if (!code) {
+            alert("⚠️ يرجى كتابة كود العميل أولاً.");
+            return;
+        }
+
+        // تم تغيير الرابط هنا ليفتح صفحة التقارير الشاملة
+        const targetPage = "takarer.html"; 
+        window.open(`${targetPage}?code=${encodeURIComponent(code)}`, '_blank');
+    }
 
     function initKeyboardListener() {
         const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
@@ -467,6 +486,7 @@
         if(!window.currentUid) return;
         const card = document.getElementById(`card-${id}`);
         const data = {
+            code: card.querySelector('.c-code').value || id.toString(),
             n: card.querySelector('.c-name').value || "",
             p: card.querySelector('.c-phone').value || "",
             dd: card.querySelector('.d-day').value || "",
@@ -548,6 +568,7 @@
                         }
                         
                         if (card.classList.contains('locked-mode')) {
+                            card.querySelector('.c-code').value = d.code || parseInt(id);
                             card.querySelector('.c-name').value = d.n || '';
                             card.querySelector('.c-phone').value = d.p || '';
                             card.querySelector('.d-day').value = d.dd || '';
@@ -592,6 +613,7 @@
                 card.classList.remove('visible');
                 card.querySelectorAll('input').forEach(i => i.value = "");
                 card.querySelector('textarea').value = "";
+                card.querySelector('.c-code').value = parseInt(id);
                 refreshStats();
             }).catch(err => alert("❌ خطأ في الحذف: " + err.message)); 
         } 
@@ -694,7 +716,7 @@
 
                 if (d.isArchived || isPaid) {
                     archiveBody.innerHTML += `<tr class="row-paid">
-                        <td>${id}</td>
+                        <td>${d.code || id}</td>
                         <td>${d.n || '---'}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
                         <td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
@@ -706,7 +728,7 @@
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
                     const rowHTML = `<tr class="${rowClass}">
-                        <td>${id}</td><td>${d.n}</td>
+                        <td>${d.code || id}</td><td>${d.n}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td>
                         <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
@@ -740,9 +762,10 @@
 
         visibleCards.forEach(id => { 
             const card = document.getElementById(`card-${id}`); 
+            const code = card.querySelector('.c-code').value.toLowerCase();
             const name = card.querySelector('.c-name').value.toLowerCase();
             const phone = card.querySelector('.c-phone').value.toLowerCase();
-            card.style.display = (name.includes(q) || phone.includes(q)) ? "block" : "none"; 
+            card.style.display = (code.includes(q) || name.includes(q) || phone.includes(q)) ? "block" : "none"; 
         });
     }
 
