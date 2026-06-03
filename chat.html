@@ -233,7 +233,8 @@
     </div>
 </div>
 <audio id="notificationSound" preload="auto">
-    <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" type="audio/mpeg">
+    <!-- استخدام مسار صوت مباشر وموثوق -->
+    <source src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" type="audio/mpeg">
 </audio>
 
 <script type="module">
@@ -267,12 +268,9 @@
     }
 
     let typingTimeout = null;
-    let isWindowActive = true;
     let currentReplyTo = null;
     let isMuted = false;
-
-    window.onfocus = () => { isWindowActive = true; };
-    window.onblur = () => { isWindowActive = false; };
+    let isInitialLoad = true; // لمنع رنين الرسائل القديمة عند فتح الشات
 
     document.getElementById("userNameDisplay").innerText = currentUser;
 
@@ -291,6 +289,16 @@
         const btn = document.getElementById("muteBtn");
         btn.innerText = isMuted ? "🔇" : "🔊";
     };
+
+    // فك حظر الصوت في المتصفحات بمجرد لمس الشاشة لأول مرة
+    document.body.addEventListener('click', function unlockAudio() {
+        const sound = document.getElementById("notificationSound");
+        sound.play().then(() => {
+            sound.pause();
+            sound.currentTime = 0;
+        }).catch(err => {});
+        document.body.removeEventListener('click', unlockAudio);
+    }, { once: true });
 
     function updatePresenceAfterNameChange() {
         if(!db) return;
@@ -324,6 +332,9 @@
                 remove(tRef);
             }, 1500);
         });
+        
+        // إيقاف الرنين للرسائل القديمة بعد ثانيتين من فتح الصفحة
+        setTimeout(() => { isInitialLoad = false; }, 2000);
     }
 
     window.addEmoji = (emoji) => {
@@ -427,9 +438,11 @@
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
         
-        if(msg.name !== currentUser && !isWindowActive && !isMuted) {
+        // تشغيل الصوت للرسائل الجديدة فقط (تجاهل الرسائل القديمة أثناء التحميل)
+        if(!isInitialLoad && msg.name !== currentUser && !isMuted) {
             const sound = document.getElementById("notificationSound");
-            sound.play().catch(e => console.log("الصوت لم يتم تشغيله تلقائياً"));
+            sound.currentTime = 0; // إعادة الصوت من البداية لو كانت هناك رسائل سريعة متتالية
+            sound.play().catch(e => console.log("المتصفح يمنع الصوت التلقائي"));
         }
     }
 
