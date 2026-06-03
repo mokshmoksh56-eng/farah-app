@@ -489,39 +489,81 @@
         visibleCards.forEach(id => updateLogic(id));
     }
 
-    // ========== التعديل المطلوب هنا ==========
+    // ----------------------------------------------
+    // التكامل مع جدول التسليمات tslem: ترحيل الأسماء تلقائياً
+    async function syncToTslem() {
+        if (!window.currentUid) return;
+        try {
+            const snapshot = await window.get(window.ref(window.db, `backups/users/${window.currentUid}`));
+            const all = snapshot.val() || {};
+            const clients = [];
+            for (let id in all) {
+                if (id === 'settings') continue;
+                const c = all[id];
+                if (c.isArchived) continue; // المؤرشف لا يظهر في جدول التسليمات (مخالص)
+                if (c.dd && c.dm && c.dy && c.n && c.n.trim() !== "") {
+                    const dateKey = `${c.dd}-${c.dm}-${c.dy}`;
+                    clients.push({ dateKey, name: c.n.trim(), id });
+                }
+            }
+            // تجميع حسب التاريخ
+            const grouped = {};
+            for (let cl of clients) {
+                if (!grouped[cl.dateKey]) grouped[cl.dateKey] = [];
+                grouped[cl.dateKey].push(cl.name);
+            }
+            const updates = {};
+            for (let dateKey in grouped) {
+                let names = grouped[dateKey];
+                let c1 = names[0] || "";
+                let c2 = names[1] ? names.slice(1).join("، ") : "";
+                updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c1`] = c1;
+                updates[`backups/deliveries_users/${window.currentUid}/${dateKey}/c2`] = c2;
+                // لا نمسح الحالة (s) حتى لا نفقد تقدم التسليم
+            }
+            // مسح التواريخ التي لم يعد بها أي عميل
+            const deliveriesSnap = await window.get(window.ref(window.db, `backups/deliveries_users/${window.currentUid}`));
+            const existingKeys = deliveriesSnap.val() ? Object.keys(deliveriesSnap.val()) : [];
+            for (let key of existingKeys) {
+                if (!grouped[key]) {
+                    updates[`backups/deliveries_users/${window.currentUid}/${key}/c1`] = "";
+                    updates[`backups/deliveries_users/${window.currentUid}/${key}/c2`] = "";
+                }
+            }
+            if (Object.keys(updates).length) {
+                await window.update(window.ref(window.db), updates);
+                console.log("تم مزامنة الأسماء مع جدول التسليمات (tslem)");
+            }
+        } catch (err) {
+            console.error("فشل مزامنة tslem:", err);
+        }
+    }
+    // ----------------------------------------------
+
     async function syncPaymentToYom(clientId, paymentIndex, paymentValue, paymentDate) {
         if (!window.currentUid) return;
         if (!paymentValue || paymentValue === 0) return;
 
-        // جلب اسم العميل
         const clientRef = window.ref(window.db, `backups/users/${window.currentUid}/${clientId}`);
         const snapshot = await window.get(clientRef);
         const clientData = snapshot.val();
         const clientName = (clientData && clientData.n) ? clientData.n : `كود ${clientId}`;
-
         const uniqueKey = `payment_${clientId}_${paymentIndex}`;
-        const desc = `كود ${clientId} - ${clientName}`;  // الكود يظهر في البيان
-        
+        const desc = `كود ${clientId} - ${clientName}`;
         const entryData = {
             id: uniqueKey,
             shop: "زبون",
-            customer: clientName,   // اسم العميل يظهر في عمود "الاسم"
+            customer: clientName,
             date: paymentDate || new Date().toISOString(),
             desc: desc,
             inVal: paymentValue,
             outVal: 0,
             source: "zbon"
         };
-        
         try {
             await window.set(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${uniqueKey}`), entryData);
-            console.log(`تم تسجيل دفعة العميل ${clientId} (${clientName}) في اليومية`);
-        } catch(e) {
-            console.error("فشل تسجيل الدفعة في اليومية:", e);
-        }
+        } catch(e) { console.error("فشل تسجيل الدفعة في اليومية:", e); }
     }
-    // =======================================
 
     async function deleteClientPaymentsFromYom(clientId) {
         if (!window.currentUid) return;
@@ -535,7 +577,6 @@
             }
         });
         await Promise.all(deletePromises);
-        console.log(`تم حذف دفعات العميل ${clientId} من اليومية`);
     }
 
     window.saveToCloud = async function(id) {
@@ -567,6 +608,8 @@
                     await syncPaymentToYom(id, idx, parseFloat(pay.v), pay.d);
                 }
             }
+            // بعد حفظ العميل، نقوم بمزامنة الأسماء مع tslem
+            await syncToTslem();
             if (!card.classList.contains('locked-mode')) toggleCardLock(id);
             saveBtn.innerText = "💾 حفظ وقفل";
             const t = document.getElementById('toast');
@@ -582,8 +625,9 @@
     function archiveCardManual(id) {
         if(!window.currentUid) return;
         if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) {
-            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: true }).then(() => {
+            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: true }).then(async () => {
                 document.getElementById(`card-${id}`).classList.remove('visible');
+                await syncToTslem();  // تحديث الجدول بعد الأرشفة
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
@@ -592,8 +636,9 @@
     function restoreFromArchive(id) {
         if(!window.currentUid) return;
         if(confirm('هل تريد استعادة هذا الزبون؟')) {
-            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: false }).then(() => {
+            window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: false }).then(async () => {
                 document.getElementById(`card-${id}`).classList.add('visible');
+                await syncToTslem();  // تحديث الجدول بعد الاستعادة
                 refreshStats();
             }).catch(err => alert("❌ خطأ: " + err.message));
         }
@@ -604,7 +649,7 @@
             document.body.classList.add('dark-theme');
             document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
         }
-        window.onValue(window.ref(window.db, `backups/users/${window.currentUid}`), (snapshot) => {
+        window.onValue(window.ref(window.db, `backups/users/${window.currentUid}`), async (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
                 if (allData.settings) {
@@ -639,6 +684,7 @@
                     }
                 }
                 initKeyboardListener();
+                await syncToTslem();  // مزامنة أولية لجدول التسليمات
                 refreshStats();
             }
         });
@@ -650,8 +696,9 @@
             const card = document.getElementById(`card-${i}`);
             if (!card.classList.contains('visible')) {
                 card.classList.add('visible');
-                window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(() => {
+                window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(async () => {
                     if (card.classList.contains('locked-mode')) toggleCardLock(i);
+                    await syncToTslem();  // تحديث بعد إضافة عميل جديد
                 }).catch(err => alert("❌ خطأ: " + err.message));
                 return;
             }
@@ -669,6 +716,7 @@
                 card.querySelectorAll('input').forEach(i => i.value = "");
                 card.querySelector('textarea').value = "";
                 card.querySelector('.c-code').value = parseInt(id);
+                await syncToTslem();  // تحديث الجدول بعد الحذف
                 refreshStats();
                 alert("تم حذف العميل ودفعاته بنجاح");
             } catch(err) {
@@ -764,7 +812,7 @@
                         <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
                         <td>${stars}</td>
                         <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
-                      </tr>`;
+                    </tr>`;
                     if(isPaid) paidC++;
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
@@ -775,7 +823,7 @@
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
                         <td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td>
                         <td>${stars}</td>
-                      </tr>`;
+                    </tr>`;
                     if (isOverdue) summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
                     else summaryBody.innerHTML += rowHTML;
                     debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem;
