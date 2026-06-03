@@ -101,7 +101,6 @@
     <div id="ai-insights-content" class="insights-text">جاري تحليل الأرقام وإعداد النصيحة...</div>
 </div>
 
-<!-- أرشيف العملاء الشامل بالبحث عن طريق الكود -->
 <div class="report-card" style="border: 2px solid var(--accent); background: #f8fafc;">
     <h2 style="color: var(--primary);">🔍 الأرشيف الشامل للعميل (بحث بالكود)</h2>
     <div style="display: flex; gap: 8px; margin-bottom: 10px;">
@@ -501,7 +500,7 @@
             await collectInvoicesToTable(`backups/invoices_alum/${uidPath}`, 'ألومنيوم', '🪟');
             await collectInvoicesToTable(`backups/invoices_acc/${uidPath}`, 'إكسسوارات', '🍽️');
 
-            // 3. فحص التقطيع وعرض "عدد الألواح" بشكل مبسط جداً كما طلبت
+            // 3. فحص التقطيع وعرض "عدد الألواح" بناءً على البيانات الدقيقة
             const snapCut = await get(ref(db, `backups/cut_archive/${uidPath}`));
             if(snapCut.exists()) {
                 let dataCut = snapCut.val();
@@ -511,15 +510,36 @@
                         rowIdCounter++;
                         let rowId = `details-row-${rowIdCounter}`;
 
-                        // استخراج عدد الألواح (إن كان مسجلاً بالداتا بيز) أو افتراض 1-2 لوح بناءً على حجم المشروع
-                        let piecesCount = proj.pieces ? proj.pieces.length : 0;
-                        let boardsCount = proj.boardsCount || proj.boards || proj.totalBoards || proj.sheetCount || (piecesCount > 15 ? 2 : 1);
+                        // استخراج عدد الألواح الفعلي بطريقة دقيقة ومباشرة
+                        let boardsCount = 0;
+                        let boardsCountDisplay = "";
 
-                        // رسالة بسيطة لعدد الألواح فقط
+                        if (typeof proj.boardsCount === 'number') {
+                            boardsCount = proj.boardsCount;
+                        } else if (typeof proj.totalBoards === 'number') {
+                            boardsCount = proj.totalBoards;
+                        } else if (proj.boards) {
+                            boardsCount = Array.isArray(proj.boards) ? proj.boards.length : Object.keys(proj.boards).length;
+                        } else if (proj.layouts) {
+                            boardsCount = Array.isArray(proj.layouts) ? proj.layouts.length : Object.keys(proj.layouts).length;
+                        } else if (proj.results) {
+                            boardsCount = Array.isArray(proj.results) ? proj.results.length : Object.keys(proj.results).length;
+                        } else if (proj.sheetCount) {
+                            boardsCount = proj.sheetCount;
+                        } else {
+                            boardsCount = null; // غير مسجل بالداتا
+                        }
+
+                        if (boardsCount !== null) {
+                            boardsCountDisplay = `${boardsCount} لوح`;
+                        } else {
+                            boardsCountDisplay = `غير مسجل بالداتا`;
+                        }
+
                         let detailsHtml = `<div style="padding:15px; background:#fffbeb; border:1px solid #fef3c7; border-radius:6px; margin:5px; text-align:center;">
                                             <h4 style="margin:0 0 5px 0; color:var(--warning); font-size:12px;">✂️ استهلاك الألواح للمشروع:</h4>
                                             <div style="font-size:14px; font-weight:bold; color:var(--primary);">
-                                                إجمالي الألواح المستخدمة: <span style="color:var(--danger); font-size:16px;">${boardsCount} لوح</span> فقط
+                                                إجمالي الألواح المستخدمة: <span style="color:var(--danger); font-size:16px;">${boardsCountDisplay}</span> فقط
                                             </div>
                                            </div>`;
 
