@@ -35,7 +35,7 @@
         .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
         .stat-box { background: white; padding: 10px 5px; border-radius: 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-bottom: 3px solid #eee; }
         .stat-box span { display: block; font-size: 10px; color: #64748b; margin-bottom: 2px; }
-        .stat-box strong { font-size: 15px; letter-spacing: 0.2px; word-break: break-all; }
+        .stat-box strong { font-size: 15px; word-break: break-all; }
 
         .report-card { background: white; padding: 10px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
         .report-card h2 { font-size: 13px; margin-top: 0; border-right: 3px solid var(--accent); padding-right: 6px; margin-bottom: 10px; }
@@ -121,7 +121,6 @@
                 <tr>
                     <th>الشهر</th>
                     <th>🤝 عقود</th>
-                    <th>💰 مدفوع</th>
                     <th>📥 وارد</th>
                     <th>📤 مصروف</th>
                     <th>📊 الاستهلاك</th>
@@ -249,21 +248,15 @@
             return null;
         };
 
+        // تسجيل عدد العقود فقط من العملاء (بدون مدفوعات)
         Object.values(data.clients).forEach(client => {
             if (client.dy == targetYear) {
                 let m = parseInt(client.dm) - 1;
                 if (m >= 0 && m < 12) monthlyStats[m].deals++;
             }
-            if (client.pays) {
-                Object.values(client.pays).forEach(p => {
-                    let pDate = extractDate(p.d);
-                    if (pDate && pDate.year === targetYear && pDate.month >= 0 && pDate.month < 12) {
-                        monthlyStats[pDate.month].custPay += parseFloat(p.v || 0);
-                    }
-                });
-            }
         });
 
+        // جمع الإيرادات والمصروفات من يومية yomya فقط
         const allYomya = [];
         const findYomya = (obj) => {
             if (!obj || typeof obj !== 'object') return;
@@ -283,6 +276,7 @@
             }
         });
 
+        // جمع مصروفات العمال
         Object.keys(data.weeks).forEach(weekKey => {
             let wDate = extractDate(weekKey);
             if (wDate && wDate.year === targetYear && wDate.month >= 0 && wDate.month < 12) {
@@ -354,7 +348,6 @@
                 <tr>
                     <td class="month-name">${monthNames[index]}</td>
                     <td>${m.deals}</td>
-                    <td>${m.custPay.toLocaleString()}</td>
                     <td style="color:var(--success)">${m.yomIn.toLocaleString()}</td>
                     <td style="color:var(--danger)">${m.totalOut.toLocaleString()}</td>
                     <td style="min-width:75px;">
@@ -436,7 +429,6 @@
             let tableRows = "";
             let hasInvoicesData = false;
 
-            // 2. دالة جلب الفواتير مع تفاصيل الخامات
             const collectInvoicesToTable = async (path, materialName, icon) => {
                 const snap = await get(ref(db, path));
                 if(snap.exists()) {
@@ -468,10 +460,9 @@
                                                             <th style="padding:6px; border:1px solid #ccc;">اسم الخامة</th>
                                                             <th style="padding:6px; border:1px solid #ccc;">الكمية</th>
                                                             <th style="padding:6px; border:1px solid #ccc;">السعر الإجمالي</th>
-                                                        </tr>`;
+                                                         </tr>`;
                                     
                                     itemsList.forEach(item => {
-                                        // 🟢 تم إضافة هذه المعادلة الذكية لحساب سعر كل صنف بناءً على نوع المقايسة
                                         let finalItemPrice = 0;
                                         let q = parseFloat(item.qty || item.quantity || 1);
 
@@ -480,13 +471,11 @@
                                             let p = parseFloat(item.itemPrice || item.price || 0);
                                             let al = parseFloat(invoice.alumPrice || 0);
                                             let pa = parseFloat(invoice.paintPrice || 0);
-                                            // إذا كان هناك سعر خاص نحسبه، غير ذلك نحسب بالوزن
                                             finalItemPrice = p > 0 ? (q * p) : ((q * w) * (al + pa));
                                         } else if (materialName === 'خشب') {
                                             let p = parseFloat(item.price || item.itemPrice || 0);
                                             finalItemPrice = q * p;
                                         } else {
-                                            // افتراضي (للإكسسوارات وغيرها)
                                             let p = parseFloat(item.price || item.itemPrice || item.total || 0);
                                             finalItemPrice = p; 
                                         }
@@ -495,7 +484,7 @@
                                                             <td style="padding:6px; border:1px solid #ccc;">${item.name || item.itemName || item.desc || 'بدون اسم'}</td>
                                                             <td style="padding:6px; border:1px solid #ccc;">${q}</td>
                                                             <td style="padding:6px; border:1px solid #ccc; font-weight:bold; color:var(--primary);">${Number(finalItemPrice.toFixed(2)).toLocaleString()} ج.م</td>
-                                                        </tr>`;
+                                                         </tr>`;
                                     });
                                     detailsHtml += `</table>`;
                                 } else {
@@ -515,10 +504,10 @@
                                     <td style="padding:10px; text-align:right;"><b>${key}</b></td>
                                     <td style="padding:10px; text-align:center; color:var(--success); font-weight:bold;">${price.toLocaleString()} ج.م</td>
                                     <td style="padding:10px; text-align:center; color:var(--accent);">👇 اضغط للتفاصيل</td>
-                                </tr>
+                                 </tr>
                                 <tr id="${rowId}" style="display:none; background:#f8fafc;">
                                     <td colspan="4" style="padding:0;">${detailsHtml}</td>
-                                </tr>`;
+                                 </tr>`;
                         }
                     });
                 }
@@ -528,12 +517,10 @@
             await collectInvoicesToTable(`backups/invoices_alum/${uidPath}`, 'ألومنيوم', '🪟');
             await collectInvoicesToTable(`backups/invoices_acc/${uidPath}`, 'إكسسوارات', '🍽️');
 
-            // 3. فحص التقطيع وعرض "عدد الألواح" بناءً على البيانات الدقيقة
             const snapCut = await get(ref(db, `backups/cut_archive/${uidPath}`));
             if(snapCut.exists()) {
                 let dataCut = snapCut.val();
                 Object.values(dataCut).forEach((proj) => {
-                    // الشرط الجديد المطابق لكود العميل
                     if(proj.customerCode === code || (proj.projectName && proj.projectName.includes(code))) {
                         hasInvoicesData = true;
                         rowIdCounter++;
@@ -580,15 +567,14 @@
                                 <td style="padding:10px; text-align:right;"><b>${proj.projectName || 'بدون اسم'}</b></td>
                                 <td style="padding:10px; text-align:center; color:var(--warning);">-</td>
                                 <td style="padding:10px; text-align:center; color:var(--accent);">👇 اضغط للتفاصيل</td>
-                            </tr>
+                             </tr>
                             <tr id="${rowId}" style="display:none; background:#f8fafc;">
                                 <td colspan="4" style="padding:0;">${detailsHtml}</td>
-                            </tr>`;
+                             </tr>`;
                     }
                 });
             }
 
-            // 4. عرض الجدول النهائي
             if (hasInvoicesData) {
                 html += `
                     <div class="table-container" style="margin-top:10px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
@@ -599,12 +585,12 @@
                                     <th style="padding:10px; width:40%; text-align:right;">اسم الملف / المشروع</th>
                                     <th style="padding:10px; width:20%;">السعر الإجمالي</th>
                                     <th style="padding:10px; width:20%;">التفاصيل</th>
-                                </tr>
+                                 </tr>
                             </thead>
                             <tbody>
                                 ${tableRows}
                             </tbody>
-                        </table>
+                         </table>
                     </div>`;
             } else {
                 html += "<div style='text-align:center; padding:20px; font-weight:bold; color:#64748b;'>لا توجد أي مقايسات أو خامات مسجلة لهذا الكود.</div>";
