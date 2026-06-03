@@ -284,7 +284,7 @@
                 <td>---</td>
             </tr>
         </tfoot>
-     </table>
+    </table>
 </div>
 
 <div class="summary-section archive-section" id="archiveTableSection" style="background: #cfd8dc; border: 2px dashed #607d8b;">
@@ -305,7 +305,7 @@
             </tr>
         </thead>
         <tbody id="archive-body"></tbody>
-     </table>
+    </table>
 </div>
 
 <button class="btn-add-client" onclick="addNewCard()">+</button>
@@ -436,16 +436,10 @@
 
     for (let i = 1; i <= 50; i++) createCardElement(i);
 
-    // دالة لفتح صفحة خارجية مربوطة بكود العميل
     function openClientPage(id) {
         const card = document.getElementById(`card-${id}`);
         const code = card.querySelector('.c-code').value.trim();
-        
-        if (!code) {
-            alert("⚠️ يرجى كتابة كود العميل أولاً.");
-            return;
-        }
-
+        if (!code) { alert("⚠️ يرجى كتابة كود العميل أولاً."); return; }
         const targetPage = "takarer.html"; 
         window.open(`${targetPage}?code=${encodeURIComponent(code)}`, '_blank');
     }
@@ -454,7 +448,6 @@
         const targetInputs = document.querySelectorAll('#mainGrid input, #mainGrid textarea');
         const debtTable = document.getElementById('debtTableSection');
         const archiveTable = document.getElementById('archiveTableSection');
-
         targetInputs.forEach(input => {
             input.addEventListener('focus', () => {
                 debtTable.classList.add('hide-tables');
@@ -470,9 +463,7 @@
     function updateLogic(id) {
         const card = document.getElementById(`card-${id}`);
         if(!card) return;
-        
         const curr = getCurrentCurrency();
-
         const total = parseFloat(card.querySelector('.c-total').value) || 0;
         document.getElementById(`tafqit-total-${id}`).innerText = total > 0 ? "فقط " + tafqit(total) + " " + curr.name + " لا غير" : "";
         let paid = 0;
@@ -490,32 +481,32 @@
     function saveSettings() { 
         const cName = document.getElementById('companyNameInput').value;
         const country = document.getElementById('countrySelect').value;
-        
         localStorage.setItem('azemaa_company_name', cName); 
         localStorage.setItem('azemaa_country', country);
-        
         if (window.currentUid) {
-            window.update(window.ref(window.db, `backups/users/${window.currentUid}/settings`), { 
-                companyName: cName,
-                country: country
-            });
+            window.update(window.ref(window.db, `backups/users/${window.currentUid}/settings`), { companyName: cName, country: country });
         }
         visibleCards.forEach(id => updateLogic(id));
     }
 
-    // دالة لمزامنة دفعة العميل مع يومية yom
+    // ========== التعديل المطلوب هنا ==========
     async function syncPaymentToYom(clientId, paymentIndex, paymentValue, paymentDate) {
         if (!window.currentUid) return;
         if (!paymentValue || paymentValue === 0) return;
 
-        const yomRef = window.ref(window.db, `backups/yomya_users/${window.currentUid}`);
+        // جلب اسم العميل
+        const clientRef = window.ref(window.db, `backups/users/${window.currentUid}/${clientId}`);
+        const snapshot = await window.get(clientRef);
+        const clientData = snapshot.val();
+        const clientName = (clientData && clientData.n) ? clientData.n : `كود ${clientId}`;
+
         const uniqueKey = `payment_${clientId}_${paymentIndex}`;
-        const desc = `دفعة من عميل كود ${clientId}`;
+        const desc = `كود ${clientId} - ${clientName}`;  // الكود يظهر في البيان
         
         const entryData = {
             id: uniqueKey,
             shop: "زبون",
-            customer: `كود ${clientId}`,
+            customer: clientName,   // اسم العميل يظهر في عمود "الاسم"
             date: paymentDate || new Date().toISOString(),
             desc: desc,
             inVal: paymentValue,
@@ -525,13 +516,13 @@
         
         try {
             await window.set(window.ref(window.db, `backups/yomya_users/${window.currentUid}/${uniqueKey}`), entryData);
-            console.log(`تم تسجيل دفعة العميل ${clientId} في اليومية`);
+            console.log(`تم تسجيل دفعة العميل ${clientId} (${clientName}) في اليومية`);
         } catch(e) {
             console.error("فشل تسجيل الدفعة في اليومية:", e);
         }
     }
+    // =======================================
 
-    // دالة لحذف جميع دفعات العميل من yom
     async function deleteClientPaymentsFromYom(clientId) {
         if (!window.currentUid) return;
         const yomRef = window.ref(window.db, `backups/yomya_users/${window.currentUid}`);
@@ -547,7 +538,6 @@
         console.log(`تم حذف دفعات العميل ${clientId} من اليومية`);
     }
 
-    // دالة الحفظ المعدلة لتشمل مزامنة اليومية
     window.saveToCloud = async function(id) {
         if(!window.currentUid) return;
         const card = document.getElementById(`card-${id}`);
@@ -567,25 +557,17 @@
             })),
             isArchived: false
         };
-
         const saveBtn = card.querySelector('.btn-save');
         saveBtn.innerText = "⏳ جاري الحفظ...";
-
         try {
-            // حفظ بيانات العميل
             await window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), data);
-            
-            // مزامنة كل دفعة مع اليومية
             for (let idx = 0; idx < data.pays.length; idx++) {
                 const pay = data.pays[idx];
                 if (pay.v && parseFloat(pay.v) !== 0) {
                     await syncPaymentToYom(id, idx, parseFloat(pay.v), pay.d);
                 }
             }
-            
-            if (!card.classList.contains('locked-mode')) {
-                toggleCardLock(id);
-            }
+            if (!card.classList.contains('locked-mode')) toggleCardLock(id);
             saveBtn.innerText = "💾 حفظ وقفل";
             const t = document.getElementById('toast');
             t.style.display = 'block'; 
@@ -622,7 +604,6 @@
             document.body.classList.add('dark-theme');
             document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري';
         }
-
         window.onValue(window.ref(window.db, `backups/users/${window.currentUid}`), (snapshot) => {
             const allData = snapshot.val();
             if (allData) {
@@ -630,21 +611,17 @@
                     if(allData.settings.companyName) document.getElementById('companyNameInput').value = allData.settings.companyName;
                     if(allData.settings.country) document.getElementById('countrySelect').value = allData.settings.country;
                 }
-
                 visibleCards = [];
                 for (let id in allData) {
                     if (id === 'settings') continue;
-
                     const d = allData[id];
                     const card = document.getElementById(`card-${id}`);
                     if (card) {
-                        if (d.isArchived) {
-                            card.classList.remove('visible');
-                        } else {
+                        if (d.isArchived) card.classList.remove('visible');
+                        else {
                             card.classList.add('visible');
                             visibleCards.push(parseInt(id));
                         }
-                        
                         if (card.classList.contains('locked-mode')) {
                             card.querySelector('.c-code').value = d.code || parseInt(id);
                             card.querySelector('.c-name').value = d.n || '';
@@ -674,23 +651,18 @@
             if (!card.classList.contains('visible')) {
                 card.classList.add('visible');
                 window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(() => {
-                    if (card.classList.contains('locked-mode')) {
-                        toggleCardLock(i);
-                    }
+                    if (card.classList.contains('locked-mode')) toggleCardLock(i);
                 }).catch(err => alert("❌ خطأ: " + err.message));
                 return;
             }
         }
     }
 
-    // دالة الحذف المعدلة لحذف الدفعات المرتبطة من yom
     async function deleteCard(id) { 
         if(!window.currentUid) return;
         if(confirm('سيتم حذف العميل نهائياً وجميع دفعاته المسجلة في اليومية. هل أنت متأكد؟')) { 
             try {
-                // حذف الدفعات المرتبطة من yom
                 await deleteClientPaymentsFromYom(id);
-                // حذف العميل من zbon
                 await window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`));
                 const card = document.getElementById(`card-${id}`);
                 card.classList.remove('visible');
@@ -717,19 +689,14 @@
         const name = card.querySelector('.c-name').value || "عميلنا العزيز";
         const phone = card.querySelector('.c-phone').value;
         const company = document.getElementById('companyNameInput').value || 'azemaa proo';
-        
         const curr = getCurrentCurrency();
-
         if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً");
-
         const totalVal = parseFloat(card.querySelector('.c-total').value) || 0;
         const totalWord = tafqit(totalVal);
-
         let paymentsMsg = "";
         const pVals = card.querySelectorAll('.p-val');
         const pDates = card.querySelectorAll('.p-date');
         let paid = 0;
-        
         pVals.forEach((p, idx) => {
             let v = parseFloat(p.value) || 0;
             let d = pDates[idx].value || "---";
@@ -738,10 +705,8 @@
                 paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ${curr.sym}\n`;
             }
         });
-
         const remVal = totalVal - paid;
         const remWord = remVal > 0 ? tafqit(remVal) : "تم السداد بالكامل ✓";
-
         const msg = `*تحية طيبة من ${company}* 🌸\n\n` +
                     `أهلاً أ/ *${name}*\n` +
                     `نحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n` +
@@ -753,7 +718,6 @@
                     `✍️ *فقط:* ${remWord} ${remVal > 0 ? curr.name + ' لا غير' : ''}\n` +
                     `━━━━━━━━━━━━━━\n\n` +
                     `شكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`;
-
         window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
@@ -764,25 +728,18 @@
         const archiveBody = document.getElementById('archive-body');
         summaryBody.innerHTML = '';
         archiveBody.innerHTML = '';
-
         window.get(window.ref(window.db, `backups/users/${window.currentUid}`)).then((snapshot) => {
             const data = snapshot.exists() ? snapshot.val() : null;
             if (!data) return;
-
             let clientsArr = [];
-            Object.keys(data).forEach(id => {
-                if (id !== 'settings') clientsArr.push({id, ...data[id]});
-            });
-
+            Object.keys(data).forEach(id => { if (id !== 'settings') clientsArr.push({id, ...data[id]}); });
             clientsArr.sort((a, b) => {
                 const dateA = new Date(a.dy || 2000, (a.dm || 1) - 1, a.dd || 1);
                 const dateB = new Date(b.dy || 2000, (b.dm || 1) - 1, b.dd || 1);
                 return dateA - dateB;
             });
-
             const now = new Date();
             now.setHours(0, 0, 0, 0);
-
             clientsArr.forEach(d => {
                 const id = d.id;
                 let pVal = 0; 
@@ -793,45 +750,37 @@
                 const stars = `<span class="star-table">${'★'.repeat(d.r || 0)}${'☆'.repeat(5-(d.r || 0))}</span>`;
                 const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6";
                 const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---";
-
                 let isOverdue = false;
                 if (d.dd && d.dm && d.dy && !isPaid) {
                     const deliveryDate = new Date(d.dy, d.dm - 1, d.dd);
                     if (deliveryDate < now) isOverdue = true;
                 }
-
                 if (d.isArchived || isPaid) {
                     archiveBody.innerHTML += `<tr class="row-paid">
-                         <td>${d.code || id}</td>
-                         <td>${d.n || '---'}</td>
+                        <td>${d.code || id}</td>
+                        <td>${d.n || '---'}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td>
                         <td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td>
                         <td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td>
                         <td>${stars}</td>
                         <td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td>
-                     </tr>`;
+                      </tr>`;
                     if(isPaid) paidC++;
                 } else if (d.n || total > 0) {
                     const rowClass = isOverdue ? 'pulse-row' : '';
                     const rowHTML = `<tr class="${rowClass}">
-                         <td>${d.code || id}</td><td>${d.n}</td>
+                        <td>${d.code || id}</td><td>${d.n}</td>
                         <td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td>
                         <td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td>
                         <td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td>
                         <td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td>
                         <td>${stars}</td>
-                     </tr>`;
-
-                    if (isOverdue) {
-                        summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
-                    } else {
-                        summaryBody.innerHTML += rowHTML;
-                    }
-                    
+                      </tr>`;
+                    if (isOverdue) summaryBody.insertAdjacentHTML('afterbegin', rowHTML);
+                    else summaryBody.innerHTML += rowHTML;
                     debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem;
                 }
             });
-
             document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); 
             document.getElementById('stat-cust').innerText = cust; 
             document.getElementById('stat-paid').innerText = paidC;
@@ -845,7 +794,6 @@
         let q = document.getElementById('searchInput').value.toLowerCase();
         const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
-
         visibleCards.forEach(id => { 
             const card = document.getElementById(`card-${id}`); 
             const code = card.querySelector('.c-code').value.toLowerCase();
@@ -859,7 +807,6 @@
         let q = document.getElementById('archiveSearch').value.toLowerCase();
         const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         for(let key in arabicMap) { q = q.replace(new RegExp(key, 'g'), arabicMap[key]); }
-        
         let rows = document.querySelectorAll('#archive-body tr');
         rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none"; });
     }
@@ -867,13 +814,8 @@
     function toggleDarkMode() {
         const isDark = document.body.classList.toggle('dark-theme');
         const btn = document.getElementById('darkModeBtn');
-        if (isDark) {
-            btn.innerHTML = '☀️ المظهر النهاري';
-            localStorage.setItem('azemaa_dark_mode', 'enabled');
-        } else {
-            btn.innerHTML = '🌙 المظهر الليلي';
-            localStorage.setItem('azemaa_dark_mode', 'disabled');
-        }
+        if (isDark) { btn.innerHTML = '☀️ المظهر النهاري'; localStorage.setItem('azemaa_dark_mode', 'enabled'); } 
+        else { btn.innerHTML = '🌙 المظهر الليلي'; localStorage.setItem('azemaa_dark_mode', 'disabled'); }
     }
 
     setInterval(() => {
