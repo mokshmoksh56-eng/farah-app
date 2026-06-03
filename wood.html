@@ -127,10 +127,24 @@
         window.fbSet = set;
         window.fbGet = get;
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 window.currentUid = user.uid;
                 document.getElementById('auth-loader').style.display = 'none';
+                
+                // استقبال الكود والاسم تلقائياً
+                const urlParams = new URLSearchParams(window.location.search);
+                const clientCode = urlParams.get('code');
+                if(clientCode) {
+                    document.getElementById('custCode').value = clientCode;
+                    try {
+                        const snap = await get(ref(db, `backups/users/${window.currentUid}/${clientCode}`));
+                        if(snap.exists()) {
+                            document.getElementById('custName').value = snap.val().n || "";
+                        }
+                    } catch(e) { console.log(e); }
+                }
+
                 startSync();
             } else {
                 document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
