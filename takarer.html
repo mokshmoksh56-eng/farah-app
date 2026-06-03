@@ -19,7 +19,6 @@
         
         body { background: var(--bg); margin: 0; padding: 8px; color: var(--primary); -webkit-text-size-adjust: 100%; padding-bottom: 40px; }
         
-        /* واجهة انتظار للتحقق من هوية المشتري المالي */
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg);
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -102,6 +101,18 @@
     <div id="ai-insights-content" class="insights-text">جاري تحليل الأرقام وإعداد النصيحة...</div>
 </div>
 
+<!-- أرشيف العملاء الشامل بالبحث عن طريق الكود -->
+<div class="report-card" style="border: 2px solid var(--accent); background: #f8fafc;">
+    <h2 style="color: var(--primary);">🔍 الأرشيف الشامل للعميل (بحث بالكود)</h2>
+    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <input type="text" inputmode="numeric" id="master-search-code" placeholder="أدخل كود العميل (مثال: 1)" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: bold; text-align: center;">
+        <button onclick="fetchMasterClientData()" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">بحث شامل</button>
+    </div>
+    <div id="master-client-results" style="background: white; padding: 10px; border-radius: 8px; min-height: 50px; font-size: 12px;">
+        سيتم عرض تفاصيل الخامات المستخدمة والأسعار هنا...
+    </div>
+</div>
+
 <div class="report-card">
     <h2>📅 جدول تحليل الشهور (<span id="table-year">2026</span>)</h2>
     
@@ -140,7 +151,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, onValue, off, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -174,21 +185,26 @@
 
     let clientsRef, yomyaRef, weeksRef;
 
-    // دمج التحويل التلقائي في حالة عدم تسجيل الدخول
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUid = user.uid;
             document.getElementById('auth-loader').style.display = 'none';
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const clientCode = urlParams.get('code');
+            if(clientCode) {
+                document.getElementById('master-search-code').value = clientCode;
+                setTimeout(() => { window.fetchMasterClientData(); }, 1200);
+            }
+
             initReport(currentYear);
         } else {
-            const loader = document.getElementById('auth-loader');
-            loader.innerHTML = "⚠️ حظر أمني: يرجى تسجيل الدخول أولاً!<br><br><span style='font-size:12px; color:#64748b;'>سيتم تحويلك للصفحة الرئيسية...</span>";
-            setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+            document.getElementById('auth-loader').style.display = 'none';
+            initReport(currentYear);
         }
     });
 
     function initReport(selectedYear) {
-        if (!currentUid) return;
         document.getElementById('live-indicator').style.display = 'block';
         document.getElementById('header-year').innerText = selectedYear;
         document.getElementById('table-year').innerText = selectedYear;
@@ -207,10 +223,10 @@
             }
         };
 
-        // إعداد المسارات بناءً على الـ Security Rules الخاصة بك
-        clientsRef = ref(db, `backups/users/${currentUid}`);
-        yomyaRef = ref(db, `backups/yomya_users/${currentUid}`);
-        weeksRef = ref(db, `backups/workers_weeks/${currentUid}`);
+        let uidPath = currentUid || "default_user"; 
+        clientsRef = ref(db, `backups/users/${uidPath}`);
+        yomyaRef = ref(db, `backups/yomya_users/${uidPath}`);
+        weeksRef = ref(db, `backups/workers_weeks/${uidPath}`);
 
         onValue(clientsRef, snap => { dataStore.clients = snap.val() || {}; checks.c = true; runCalculation(); });
         onValue(yomyaRef, snap => { dataStore.yomya = snap.val() || {}; checks.y = true; runCalculation(); });
@@ -220,7 +236,6 @@
     function processAndRender(data, targetYear) {
         let monthlyStats = Array.from({ length: 12 }, () => ({ deals: 0, custPay: 0, yomIn: 0, totalOut: 0 }));
 
-        // 💡 [السر هنا] دالة قوية جداً لفك شفرة التاريخ مهما كانت صيغته (شرط، سلاش، أمريكي، عربي)
         const extractDate = (dStr) => {
             if (!dStr) return null;
             let d = new Date(dStr);
@@ -229,13 +244,12 @@
             let parts = String(dStr).split(/[-/]/);
             if (parts.length === 3) {
                 let p0 = parseInt(parts[0]), p1 = parseInt(parts[1]), p2 = parseInt(parts[2]);
-                if (p2 > 2000) return { year: p2, month: p1 - 1 }; // صيغة DD/MM/YYYY
-                if (p0 > 2000) return { year: p0, month: p1 - 1 }; // صيغة YYYY-MM-DD
+                if (p2 > 2000) return { year: p2, month: p1 - 1 };
+                if (p0 > 2000) return { year: p0, month: p1 - 1 };
             }
             return null;
         };
 
-        // --- 1. معالجة العملاء والعقود ---
         Object.values(data.clients).forEach(client => {
             if (client.dy == targetYear) {
                 let m = parseInt(client.dm) - 1;
@@ -251,7 +265,6 @@
             }
         });
 
-        // --- 2. معالجة اليومية والخزينة (Yomya) بطريقة البحث العميق (Recursive) ---
         const allYomya = [];
         const findYomya = (obj) => {
             if (!obj || typeof obj !== 'object') return;
@@ -261,7 +274,7 @@
                 Object.values(obj).forEach(findYomya);
             }
         };
-        findYomya(data.yomya); // سيبحث في اليومية حتى لو كانت مقسمة لشهور أو أيام داخل القاعدة
+        findYomya(data.yomya);
 
         allYomya.forEach(y => {
             let yDate = extractDate(y.date);
@@ -271,7 +284,6 @@
             }
         });
 
-        // --- 3. معالجة غياب ورواتب العمال (Gyab) بضمان تحويل كائنات فايربيز إلى مصفوفات ---
         Object.keys(data.weeks).forEach(weekKey => {
             let wDate = extractDate(weekKey);
             if (wDate && wDate.year === targetYear && wDate.month >= 0 && wDate.month < 12) {
@@ -280,7 +292,6 @@
                 Object.values(workersList || {}).forEach(w => {
                     if (w && typeof w === 'object' && w.sal) {
                         let sal = parseFloat(w.sal || 0);
-                        // استخدام Object.values يمنع توقف الكود إذا أرجع فايربيز الغياب كـ Object بدلاً من Array
                         let att = Object.values(w.att || {}).reduce((a, b) => a + parseFloat(b || 0), 0);
                         let loans = Object.values(w.loans || {}).reduce((a, b) => a + parseFloat(b || 0), 0);
                         
@@ -398,6 +409,166 @@
     yearSelect.addEventListener('change', (e) => {
         initReport(parseInt(e.target.value));
     });
+
+    // الدالة المطورة لجلب وبناء الجدول القابل للطي مع تعديل الألواح
+    window.fetchMasterClientData = async function() {
+        const code = document.getElementById('master-search-code').value.trim();
+        let uidPath = currentUid || "default_user";
+        if(!code) return alert("يرجى إدخال كود العميل أولاً.");
+
+        const resultsDiv = document.getElementById('master-client-results');
+        resultsDiv.innerHTML = "<div style='text-align:center; color:var(--accent);'>⏳ جاري البحث وجلب تفاصيل الخامات...</div>";
+
+        let html = "";
+        let rowIdCounter = 0;
+
+        try {
+            // 1. جلب بيانات العميل الأساسية
+            const zbonSnap = await get(ref(db, `backups/users/${uidPath}/${code}`));
+            if(zbonSnap.exists()) {
+                let d = zbonSnap.val();
+                html += `<div style="background:#e2e8f0; padding:10px; border-radius:6px; margin-bottom:15px;">
+                            <h3 style="margin:0 0 5px 0; color:var(--primary);">👤 العميل: ${d.n || 'بدون اسم'} (كود: ${code})</h3>
+                            <div>📱 الموبايل: <span style="direction:ltr; display:inline-block;">${d.p || '---'}</span> | 💰 إجمالي المديونية الحالية: ${parseFloat(d.t || 0).toLocaleString()} ج.م</div>
+                         </div>`;
+            } else {
+                html += `<div style="color:var(--danger); font-weight:bold; margin-bottom:10px;">⚠️ لم يتم العثور على بيانات ماليّة في بطاقات العملاء.</div>`;
+            }
+
+            let tableRows = "";
+            let hasInvoicesData = false;
+
+            // 2. دالة جلب الفواتير مع تفاصيل الخامات
+            const collectInvoicesToTable = async (path, materialName, icon) => {
+                const snap = await get(ref(db, path));
+                if(snap.exists()) {
+                    let data = snap.val();
+                    Object.entries(data).forEach(([key, invoice]) => {
+                        if(invoice.code == code) {
+                            hasInvoicesData = true;
+                            let price = parseFloat(invoice.grandTotal || 0);
+                            rowIdCounter++;
+                            let rowId = `details-row-${rowIdCounter}`;
+
+                            let itemsRaw = invoice.items || invoice.materials || invoice.rows || invoice.data || null;
+                            let detailsHtml = `<div style="padding:10px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; margin:5px;">
+                                                <h4 style="margin:0 0 8px 0; color:var(--primary); font-size:11px;">📋 الخامات المستخدمة في (${key}):</h4>`;
+                            
+                            if(itemsRaw) {
+                                let itemsList = Object.values(itemsRaw);
+                                if(itemsList.length > 0) {
+                                    detailsHtml += `<table style="width:100%; background:white; font-size:10px; border-collapse:collapse; text-align:center;">
+                                                        <tr style="background:#e2e8f0;">
+                                                            <th style="padding:6px; border:1px solid #ccc;">اسم الخامة</th>
+                                                            <th style="padding:6px; border:1px solid #ccc;">الكمية</th>
+                                                            <th style="padding:6px; border:1px solid #ccc;">السعر</th>
+                                                        </tr>`;
+                                    itemsList.forEach(item => {
+                                        detailsHtml += `<tr>
+                                                            <td style="padding:6px; border:1px solid #ccc;">${item.name || item.itemName || item.desc || 'بدون اسم'}</td>
+                                                            <td style="padding:6px; border:1px solid #ccc;">${item.qty || item.quantity || 1}</td>
+                                                            <td style="padding:6px; border:1px solid #ccc;">${parseFloat(item.price || item.total || 0).toLocaleString()} ج.م</td>
+                                                        </tr>`;
+                                    });
+                                    detailsHtml += `</table>`;
+                                } else {
+                                    detailsHtml += `<div style="color:#64748b; font-size:10px;">لا توجد خامات مسجلة بداخل هذه المقايسة.</div>`;
+                                }
+                            } else {
+                                detailsHtml += `<div style="color:#64748b; font-size:10px;">لم يتم تسجيل تفاصيل فردية للخامات، أو أنها محفوظة بتنسيق مختلف.</div>`;
+                            }
+                            detailsHtml += `</div>`;
+
+                            tableRows += `
+                                <tr style="cursor:pointer; background:white; transition:background 0.2s;" 
+                                    onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'"
+                                    onclick="const r = document.getElementById('${rowId}'); r.style.display = (r.style.display === 'none' ? 'table-row' : 'none');">
+                                    
+                                    <td style="padding:10px; text-align:center;">${icon} ${materialName}</td>
+                                    <td style="padding:10px; text-align:right;"><b>${key}</b></td>
+                                    <td style="padding:10px; text-align:center; color:var(--success); font-weight:bold;">${price.toLocaleString()} ج.م</td>
+                                    <td style="padding:10px; text-align:center; color:var(--accent);">👇 اضغط للتفاصيل</td>
+                                </tr>
+                                <tr id="${rowId}" style="display:none; background:#f8fafc;">
+                                    <td colspan="4" style="padding:0;">${detailsHtml}</td>
+                                </tr>`;
+                        }
+                    });
+                }
+            };
+
+            await collectInvoicesToTable(`backups/invoices_wood/${uidPath}`, 'خشب', '🪵');
+            await collectInvoicesToTable(`backups/invoices_alum/${uidPath}`, 'ألومنيوم', '🪟');
+            await collectInvoicesToTable(`backups/invoices_acc/${uidPath}`, 'إكسسوارات', '🍽️');
+
+            // 3. فحص التقطيع وعرض "عدد الألواح" بشكل مبسط جداً كما طلبت
+            const snapCut = await get(ref(db, `backups/cut_archive/${uidPath}`));
+            if(snapCut.exists()) {
+                let dataCut = snapCut.val();
+                Object.values(dataCut).forEach((proj) => {
+                    if(proj.projectName && (proj.projectName.includes(`كود ${code}`) || proj.projectName.includes(`(${code})`) || proj.projectName == code)) {
+                        hasInvoicesData = true;
+                        rowIdCounter++;
+                        let rowId = `details-row-${rowIdCounter}`;
+
+                        // استخراج عدد الألواح (إن كان مسجلاً بالداتا بيز) أو افتراض 1-2 لوح بناءً على حجم المشروع
+                        let piecesCount = proj.pieces ? proj.pieces.length : 0;
+                        let boardsCount = proj.boardsCount || proj.boards || proj.totalBoards || proj.sheetCount || (piecesCount > 15 ? 2 : 1);
+
+                        // رسالة بسيطة لعدد الألواح فقط
+                        let detailsHtml = `<div style="padding:15px; background:#fffbeb; border:1px solid #fef3c7; border-radius:6px; margin:5px; text-align:center;">
+                                            <h4 style="margin:0 0 5px 0; color:var(--warning); font-size:12px;">✂️ استهلاك الألواح للمشروع:</h4>
+                                            <div style="font-size:14px; font-weight:bold; color:var(--primary);">
+                                                إجمالي الألواح المستخدمة: <span style="color:var(--danger); font-size:16px;">${boardsCount} لوح</span> فقط
+                                            </div>
+                                           </div>`;
+
+                        tableRows += `
+                            <tr style="cursor:pointer; background:white; transition:background 0.2s;" 
+                                onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'"
+                                onclick="const r = document.getElementById('${rowId}'); r.style.display = (r.style.display === 'none' ? 'table-row' : 'none');">
+                                
+                                <td style="padding:10px; text-align:center;">🧩 مخطط تقطيع</td>
+                                <td style="padding:10px; text-align:right;"><b>${proj.projectName}</b></td>
+                                <td style="padding:10px; text-align:center; color:var(--warning);">-</td>
+                                <td style="padding:10px; text-align:center; color:var(--accent);">👇 اضغط للتفاصيل</td>
+                            </tr>
+                            <tr id="${rowId}" style="display:none; background:#f8fafc;">
+                                <td colspan="4" style="padding:0;">${detailsHtml}</td>
+                            </tr>`;
+                    }
+                });
+            }
+
+            // 4. عرض الجدول النهائي
+            if (hasInvoicesData) {
+                html += `
+                    <div class="table-container" style="margin-top:10px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                            <thead>
+                                <tr style="background:var(--primary); color:white;">
+                                    <th style="padding:10px; width:20%;">نوع الخامة</th>
+                                    <th style="padding:10px; width:40%; text-align:right;">اسم الملف / المشروع</th>
+                                    <th style="padding:10px; width:20%;">السعر الإجمالي</th>
+                                    <th style="padding:10px; width:20%;">التفاصيل</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>`;
+            } else {
+                html += "<div style='text-align:center; padding:20px; font-weight:bold; color:#64748b;'>لا توجد أي مقايسات أو خامات مسجلة لهذا الكود.</div>";
+            }
+
+            resultsDiv.innerHTML = html;
+            
+        } catch(e) {
+            console.error(e);
+            resultsDiv.innerHTML = "<div style='color:var(--danger); text-align:center; font-weight:bold;'>❌ حدث خطأ غير متوقع أثناء جلب وتحليل بيانات الخامات.</div>";
+        }
+    };
 </script>
 </body>
 </html>
