@@ -206,9 +206,6 @@
         #fileInput { display: none; }
         audio { display: none; }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
 </head>
 <body>
 <div class="chat-container">
@@ -220,31 +217,35 @@
         <div>
             <span id="onlineCount" class="online-count">🟢 0</span>
         </div>
-        <div id="connStatus" class="connection-status">جاري الاتصال بالسيرفر...</div>
+        <div id="connStatus" class="connection-status">جاري تهيئة الاتصال...</div>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
     <div id="typingIndicator" class="typing-indicator"></div>
     <div class="chat-input">
         <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📎</button>
-        <input type="file" id="fileInput" multiple style="display:none" onchange="uploadMultipleFiles(event)">
+        <input type="file" id="fileInput" multiple style="display:none" onchange="window.uploadMultipleFiles(event)">
         <div class="input-wrapper">
             <input type="text" id="messageInput" placeholder="اكتب رسالة...">
             <div class="emoji-picker">
-                <button class="emoji-btn" onclick="addEmoji('😊')">😊</button>
-                <button class="emoji-btn" onclick="addEmoji('😂')">😂</button>
-                <button class="emoji-btn" onclick="addEmoji('❤️')">❤️</button>
-                <button class="emoji-btn" onclick="addEmoji('👍')">👍</button>
+                <button class="emoji-btn" onclick="window.addEmoji('😊')">😊</button>
+                <button class="emoji-btn" onclick="window.addEmoji('😂')">😂</button>
+                <button class="emoji-btn" onclick="window.addEmoji('❤️')">❤️</button>
+                <button class="emoji-btn" onclick="window.addEmoji('👍')">👍</button>
             </div>
         </div>
-        <button class="send-btn" onclick="sendTextMessage()">➤</button>
+        <button class="send-btn" onclick="window.sendTextMessage()">➤</button>
     </div>
 </div>
 <audio id="notificationSound" preload="auto">
     <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" type="audio/mpeg">
 </audio>
 
-<script>
-    // ========== إعدادات Firebase ==========
+<script type="module">
+    // استخدام أحدث إصدارات فايربيز (نفس إصدار التطبيق الأساسي لديك)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, onChildAdded, onChildRemoved, set, onDisconnect, remove, serverTimestamp, get, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
@@ -255,14 +256,9 @@
         appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
     
-    try {
-        firebase.initializeApp(firebaseConfig);
-    } catch(e) {
-        alert("خطأ في تهيئة فايربيز: " + e.message);
-    }
-    
-    const db = firebase.database();
-    const storage = firebase.storage();
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
 
     const ROOM_NAME = "public_chat";
 
@@ -286,11 +282,13 @@
     });
 
     function updatePresenceAfterNameChange() {
-        db.ref(`presence/${ROOM_NAME}/${currentUser}`).set(true);
-        db.ref(`typing/${ROOM_NAME}/${currentUser}`).remove();
+        const pRef = ref(db, `presence/${ROOM_NAME}/${currentUser}`);
+        set(pRef, true);
+        remove(ref(db, `typing/${ROOM_NAME}/${currentUser}`));
         setupPresence();
     }
 
+    // بدء التطبيق
     initChat();
 
     function initChat() {
@@ -302,26 +300,27 @@
         inputField.addEventListener("keydown", (e) => {
             if(e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                sendTextMessage();
+                window.sendTextMessage();
             }
         });
         inputField.addEventListener("input", () => {
-            const typingRef = db.ref(`typing/${ROOM_NAME}/${currentUser}`);
-            typingRef.set(true);
+            const tRef = ref(db, `typing/${ROOM_NAME}/${currentUser}`);
+            set(tRef, true);
             if(typingTimeout) clearTimeout(typingTimeout);
             typingTimeout = setTimeout(() => {
-                typingRef.remove();
+                remove(tRef);
             }, 1500);
         });
     }
 
+    // إتاحة الدوال على مستوى الويندوز لتعمل مع HTML
     window.addEmoji = (emoji) => {
         const input = document.getElementById("messageInput");
         input.value += emoji;
         input.focus();
     };
 
-    function setReplyTo(msgId, name, text, type, imageUrl) {
+    window.setReplyTo = (msgId, name, text, type, imageUrl) => {
         currentReplyTo = { id: msgId, name, text, type, imageUrl };
         let replyDiv = document.getElementById("replyPreview");
         if(!replyDiv) {
@@ -331,8 +330,8 @@
             document.querySelector(".input-wrapper").parentNode.insertBefore(replyDiv, document.querySelector(".input-wrapper"));
         }
         let previewText = `الرد على ${name}: ` + (type === 'image' ? "📷 صورة" : (text || "").substring(0, 50));
-        replyDiv.innerHTML = `<span>${escapeHtml(previewText)}</span> <button onclick="cancelReply()" style="background:none;border:none;color:red;cursor:pointer;">✖</button>`;
-    }
+        replyDiv.innerHTML = `<span>${escapeHtml(previewText)}</span> <button onclick="window.cancelReply()" style="background:none;border:none;color:red;cursor:pointer;">✖</button>`;
+    };
 
     window.cancelReply = () => {
         currentReplyTo = null;
@@ -340,7 +339,6 @@
         if(replyDiv) replyDiv.remove();
     };
 
-    // إضافة تحذيرات للإرسال لاكتشاف الأخطاء
     window.sendTextMessage = () => {
         try {
             const input = document.getElementById("messageInput");
@@ -351,7 +349,7 @@
                 name: currentUser,
                 text: text || " ",
                 type: 'text',
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                timestamp: serverTimestamp(),
                 replyTo: currentReplyTo ? { 
                     id: currentReplyTo.id, 
                     name: currentReplyTo.name, 
@@ -359,17 +357,16 @@
                 } : null
             };
             
-            db.ref(`chats/${ROOM_NAME}/messages`).push(messageData)
-                .then(() => {
-                    input.value = "";
-                    cancelReply();
-                    input.focus();
-                })
-                .catch(err => {
-                    alert("⚠️ تم الرفض من قاعدة البيانات: " + err.message);
-                });
+            const msgListRef = ref(db, `chats/${ROOM_NAME}/messages`);
+            push(msgListRef, messageData).then(() => {
+                input.value = "";
+                window.cancelReply();
+                input.focus();
+            }).catch(err => {
+                alert("⚠️ تم الرفض من قاعدة البيانات: " + err.message);
+            });
         } catch (error) {
-            alert("⚠️ خطأ في الكود أو التطبيق يمنع الإرسال: " + error.message);
+            alert("⚠️ خطأ في الكود: " + error.message);
         }
     };
 
@@ -382,19 +379,18 @@
             }
 
             const isImage = file.type.startsWith("image/");
-            const storagePath = `chat_files/${ROOM_NAME}/${Date.now()}_${file.name}`;
-            const storageRef = storage.ref(storagePath);
+            const fileStorageRef = storageRef(storage, `chat_files/${ROOM_NAME}/${Date.now()}_${file.name}`);
             try {
-                const snapshot = await storageRef.put(file);
-                const downloadURL = await snapshot.ref.getDownloadURL();
+                const snapshot = await uploadBytes(fileStorageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
                 const messageData = {
                     name: currentUser,
                     type: isImage ? 'image' : 'file',
                     [isImage ? 'imageUrl' : 'fileUrl']: downloadURL,
                     fileName: file.name,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                    timestamp: serverTimestamp()
                 };
-                await db.ref(`chats/${ROOM_NAME}/messages`).push(messageData);
+                await push(ref(db, `chats/${ROOM_NAME}/messages`), messageData);
             } catch(err) {
                 alert("خطأ في رفع الملف: " + err.message);
             }
@@ -403,14 +399,15 @@
     };
 
     function loadMessages() {
-        const messagesRef = db.ref(`chats/${ROOM_NAME}/messages`).limitToLast(100);
-        messagesRef.off(); 
-        messagesRef.on("child_added", (snapshot) => {
+        const messagesRef = query(ref(db, `chats/${ROOM_NAME}/messages`), limitToLast(100));
+        
+        onChildAdded(messagesRef, (snapshot) => {
             const msg = snapshot.val();
             msg.id = snapshot.key;
             displayMessage(msg);
         });
-        messagesRef.on("child_removed", (snapshot) => {
+        
+        onChildRemoved(messagesRef, (snapshot) => {
             const removedId = snapshot.key;
             const msgElement = document.querySelector(`.message[data-id='${removedId}']`);
             if(msgElement) msgElement.remove();
@@ -438,10 +435,10 @@
         }
         
         const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ar', {hour:'2-digit', minute:'2-digit'}) : "";
-        const deleteBtn = (msg.name === currentUser) ? `<span class="delete-msg" onclick="deleteMessage('${msg.id}')">🗑️</span>` : "";
+        const deleteBtn = (msg.name === currentUser) ? `<span class="delete-msg" onclick="window.deleteMessage('${msg.id}')">🗑️</span>` : "";
         
         const safeText = encodeURIComponent(msg.text || "");
-        const replyBtn = `<span class="delete-msg" style="color:#128c7e;" onclick="setReplyTo('${msg.id}', '${escapeHtml(msg.name)}', decodeURIComponent('${safeText}'), '${msg.type}', '${msg.imageUrl || ""}')">↩️ رد</span>`;
+        const replyBtn = `<span class="delete-msg" style="color:#128c7e;" onclick="window.setReplyTo('${msg.id}', '${escapeHtml(msg.name)}', decodeURIComponent('${safeText}'), '${msg.type}', '${msg.imageUrl || ""}')">↩️ رد</span>`;
         
         div.innerHTML = `
             <span class="message-name">${escapeHtml(msg.name)}</span>
@@ -469,25 +466,30 @@
         });
     }
 
-    window.deleteMessage = (msgId) => {
+    window.deleteMessage = async (msgId) => {
         if(confirm("هل تريد حذف هذه الرسالة؟")) {
-            db.ref(`chats/${ROOM_NAME}/messages/${msgId}`).once('value').then(snap => {
-                const msgData = snap.val();
-                if(msgData && (msgData.type === 'image' || msgData.type === 'file')) {
-                    const fileUrl = msgData.imageUrl || msgData.fileUrl;
-                    try {
-                        const fileRef = storage.refFromURL(fileUrl);
-                        fileRef.delete().catch(err => console.log("ملف التخزين غير موجود أو تم حذفه مسبقاً"));
-                    } catch(e) { console.log("رابط غير صالح للستوريدج"); }
+            const msgRef = ref(db, `chats/${ROOM_NAME}/messages/${msgId}`);
+            try {
+                const snap = await get(msgRef);
+                if(snap.exists()) {
+                    const msgData = snap.val();
+                    if(msgData.type === 'image' || msgData.type === 'file') {
+                        const fileUrl = msgData.imageUrl || msgData.fileUrl;
+                        try {
+                            const fileRef = storageRef(storage, fileUrl);
+                            await deleteObject(fileRef);
+                        } catch(e) { console.log("رابط غير صالح للستوريدج"); }
+                    }
                 }
-                return db.ref(`chats/${ROOM_NAME}/messages/${msgId}`).remove();
-            }).catch(err => alert("خطأ في الحذف: " + err.message));
+                await remove(msgRef);
+            } catch(err) {
+                alert("خطأ في الحذف: " + err.message);
+            }
         }
     };
 
     function setupTyping() {
-        const typingRef = db.ref(`typing/${ROOM_NAME}`);
-        typingRef.on("value", (snapshot) => {
+        onValue(ref(db, `typing/${ROOM_NAME}`), (snapshot) => {
             const typingUsers = snapshot.val() || {};
             const typingList = Object.keys(typingUsers).filter(u => u !== currentUser && typingUsers[u] === true);
             const indicator = document.getElementById("typingIndicator");
@@ -499,42 +501,35 @@
         });
     }
 
-    let currentPresenceRef = null;
     function setupPresence() {
-        if(currentPresenceRef) {
-            currentPresenceRef.onDisconnect().cancel();
-        }
-        const userStatusRef = db.ref(`presence/${ROOM_NAME}/${currentUser}`);
-        currentPresenceRef = userStatusRef;
-        const connectedRef = db.ref(".info/connected");
-        connectedRef.off();
+        const userStatusRef = ref(db, `presence/${ROOM_NAME}/${currentUser}`);
+        const connectedRef = ref(db, ".info/connected");
         
-        // نظام مراقبة الاتصال بالسيرفر
-        connectedRef.on("value", (snap) => {
+        onValue(connectedRef, (snap) => {
             const statusDiv = document.getElementById("connStatus");
             if(snap.val() === true) {
-                userStatusRef.set(true);
-                userStatusRef.onDisconnect().remove();
+                set(userStatusRef, true);
+                onDisconnect(userStatusRef).remove();
                 statusDiv.innerText = "متصل بنجاح ✓";
                 statusDiv.style.color = "#a5d6a7";
                 setTimeout(() => statusDiv.style.display = 'none', 3000);
             } else {
                 statusDiv.style.display = 'block';
-                statusDiv.innerText = "غير متصل بفايربيز.. يرجى التحقق من الإنترنت والمحرر";
+                statusDiv.innerText = "غير متصل بفايربيز.. جاري المحاولة";
                 statusDiv.style.color = "#ffc107";
             }
         });
         
-        db.ref(`presence/${ROOM_NAME}`).on("value", (snap) => {
-            const count = snap.val() ? Object.keys(snap.val()).length : 0;
+        onValue(ref(db, `presence/${ROOM_NAME}`), (snap) => {
+            const count = snap.exists() ? Object.keys(snap.val()).length : 0;
             document.getElementById("onlineCount").innerHTML = `🟢 ${count}`;
         });
     }
 
     window.addEventListener("beforeunload", () => {
         if(currentUser) {
-            db.ref(`presence/${ROOM_NAME}/${currentUser}`).remove();
-            db.ref(`typing/${ROOM_NAME}/${currentUser}`).remove();
+            remove(ref(db, `presence/${ROOM_NAME}/${currentUser}`));
+            remove(ref(db, `typing/${ROOM_NAME}/${currentUser}`));
         }
     });
 </script>
