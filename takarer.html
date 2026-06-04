@@ -40,7 +40,7 @@
         .report-card { background: white; padding: 10px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
         .report-card h2 { font-size: 13px; margin-top: 0; border-right: 3px solid var(--accent); padding-right: 6px; margin-bottom: 10px; }
         
-        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; }
         table { width: 100%; border-collapse: collapse; min-width: 520px; font-size: 11px; }
         th { background: var(--primary); color: white; padding: 8px 4px; font-size: 10px; }
         td { padding: 8px 4px; border: 1px solid #e2e8f0; text-align: center; background: white; }
@@ -69,6 +69,20 @@
         .final-box strong { font-size: 15px; }
         
         #live-indicator { position: absolute; top: 6px; left: 8px; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 20px; font-size: 9px; display: none; }
+
+        /* تحسينات الموبايل للسحب والتمرير */
+        .mobile-scroll-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
+            padding-bottom: 5px;
+        }
+
+        #master-client-results table {
+            table-layout: auto;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -248,7 +262,6 @@
             return null;
         };
 
-        // تسجيل عدد العقود فقط من العملاء (بدون مدفوعات)
         Object.values(data.clients).forEach(client => {
             if (client.dy == targetYear) {
                 let m = parseInt(client.dm) - 1;
@@ -256,7 +269,6 @@
             }
         });
 
-        // جمع الإيرادات والمصروفات من يومية yomya فقط
         const allYomya = [];
         const findYomya = (obj) => {
             if (!obj || typeof obj !== 'object') return;
@@ -276,7 +288,6 @@
             }
         });
 
-        // جمع مصروفات العمال
         Object.keys(data.weeks).forEach(weekKey => {
             let wDate = extractDate(weekKey);
             if (wDate && wDate.year === targetYear && wDate.month >= 0 && wDate.month < 12) {
@@ -348,8 +359,8 @@
                 <tr>
                     <td class="month-name">${monthNames[index]}</td>
                     <td>${m.deals}</td>
-                    <td style="color:var(--success)">${m.yomIn.toLocaleString()}</td>
-                    <td style="color:var(--danger)">${m.totalOut.toLocaleString()}</td>
+                    <td style="color:var(--success)">${m.yomIn.toLocaleString('en-US')}</td>
+                    <td style="color:var(--danger)">${m.totalOut.toLocaleString('en-US')}</td>
                     <td style="min-width:75px;">
                         <div class="progress-bar-container">
                             <div class="progress-bar-fill" style="width: ${barWidth}%; background-color: ${barColor};"></div>
@@ -357,20 +368,20 @@
                         </div>
                     </td>
                     <td class="${monthNet >= 0 ? 'profit-text' : 'loss-text'}">
-                        ${monthNet >= 0 ? '▲' : '▼'}${monthNet.toLocaleString()}
+                        ${monthNet >= 0 ? '▲' : '▼'}${monthNet.toLocaleString('en-US')}
                     </td>
                 </tr>`;
         });
 
-        document.getElementById('total-in').innerText = grandIn.toLocaleString();
-        document.getElementById('total-out').innerText = grandOut.toLocaleString();
+        document.getElementById('total-in').innerText = grandIn.toLocaleString('en-US');
+        document.getElementById('total-out').innerText = grandOut.toLocaleString('en-US');
         
-        document.getElementById('sum-all-profits').innerText = totalProfits.toLocaleString();
-        document.getElementById('sum-all-losses').innerText = totalLosses.toLocaleString();
+        document.getElementById('sum-all-profits').innerText = totalProfits.toLocaleString('en-US');
+        document.getElementById('sum-all-losses').innerText = totalLosses.toLocaleString('en-US');
         
         let finalNet = totalProfits - totalLosses;
         const finalNetElem = document.getElementById('final-net-result');
-        finalNetElem.innerText = finalNet.toLocaleString();
+        finalNetElem.innerText = finalNet.toLocaleString('en-US');
         finalNetElem.className = finalNet >= 0 ? 'profit-text' : 'loss-text';
 
         generateAiInsights(grandIn, grandOut, finalNet, bestMonth, targetYear);
@@ -387,11 +398,11 @@
         let ratio = grandIn > 0 ? ((grandOut / grandIn) * 100).toFixed(1) : 100;
 
         if (finalNet > 0) {
-            advice += `📈 أداء مالي ممتاز لسنة <b>${year}</b>! صافي أرباح: <b class="profit-text">${finalNet.toLocaleString()}</b>. `;
-            if(bestMonth.name) advice += `أفضل شهر: <b>${bestMonth.name}</b> ربح (${bestMonth.net.toLocaleString()}). `;
+            advice += `📈 أداء مالي ممتاز لسنة <b>${year}</b>! صافي أرباح: <b class="profit-text">${finalNet.toLocaleString('en-US')}</b>. `;
+            if(bestMonth.name) advice += `أفضل شهر: <b>${bestMonth.name}</b> ربح (${bestMonth.net.toLocaleString('en-US')}). `;
             advice += ratio > 70 ? `⚠️ تنبيه: المصاريف تستهلك <b>${ratio}%</b> من الوارد.` : `✨ استهلاك آمن للميزانية بنسبة <b>${ratio}%</b>.`;
         } else {
-            advice += `🚨 عجز مالي لسنة <b>${year}</b>! خسارة بقيمة <b class="loss-text">${Math.abs(finalNet).toLocaleString()}</b>. `;
+            advice += `🚨 عجز مالي لسنة <b>${year}</b>! خسارة بقيمة <b class="loss-text">${Math.abs(finalNet).toLocaleString('en-US')}</b>. `;
             advice += `المصاريف تستهلك <b>${ratio}%</b> من السيولة. يرجى مراجعة التحصيلات فوراً.`;
         }
 
@@ -414,13 +425,12 @@
         let rowIdCounter = 0;
 
         try {
-            // 1. جلب بيانات العميل الأساسية
             const zbonSnap = await get(ref(db, `backups/users/${uidPath}/${code}`));
             if(zbonSnap.exists()) {
                 let d = zbonSnap.val();
                 html += `<div style="background:#e2e8f0; padding:10px; border-radius:6px; margin-bottom:15px;">
                             <h3 style="margin:0 0 5px 0; color:var(--primary);">👤 العميل: ${d.n || 'بدون اسم'} (كود: ${code})</h3>
-                            <div>📱 الموبايل: <span style="direction:ltr; display:inline-block;">${d.p || '---'}</span> | 💰 إجمالي المديونية الحالية: ${parseFloat(d.t || 0).toLocaleString()} ج.م</div>
+                            <div>📱 الموبايل: <span style="direction:ltr; display:inline-block;">${d.p || '---'}</span> | 💰 إجمالي المديونية الحالية: ${parseFloat(d.t || 0).toLocaleString('en-US')} ج.م</div>
                          </div>`;
             } else {
                 html += `<div style="color:var(--danger); font-weight:bold; margin-bottom:10px;">⚠️ لم يتم العثور على بيانات ماليّة في بطاقات العملاء.</div>`;
@@ -455,12 +465,14 @@
                             if(itemsRaw) {
                                 let itemsList = Object.values(itemsRaw);
                                 if(itemsList.length > 0) {
-                                    detailsHtml += `<table style="width:100%; background:white; font-size:10px; border-collapse:collapse; text-align:center;">
-                                                        <tr style="background:#e2e8f0;">
-                                                            <th style="padding:6px; border:1px solid #ccc;">اسم الخامة</th>
-                                                            <th style="padding:6px; border:1px solid #ccc;">الكمية</th>
-                                                            <th style="padding:6px; border:1px solid #ccc;">السعر الإجمالي</th>
-                                                         </tr>`;
+                                    // تم التعديل هنا لدعم السحب في الموبايل والأرقام الإنجليزية
+                                    detailsHtml += `<div class="mobile-scroll-wrapper">
+                                                        <table style="min-width: 400px; width:100%; background:white; font-size:11px; border-collapse:collapse; text-align:center;">
+                                                            <tr style="background:#e2e8f0;">
+                                                                <th style="padding:8px; border:1px solid #ccc;">اسم الخامة</th>
+                                                                <th style="padding:8px; border:1px solid #ccc;">الكمية</th>
+                                                                <th style="padding:8px; border:1px solid #ccc;">السعر الإجمالي</th>
+                                                             </tr>`;
                                     
                                     itemsList.forEach(item => {
                                         let finalItemPrice = 0;
@@ -481,12 +493,12 @@
                                         }
 
                                         detailsHtml += `<tr>
-                                                            <td style="padding:6px; border:1px solid #ccc;">${item.name || item.itemName || item.desc || 'بدون اسم'}</td>
-                                                            <td style="padding:6px; border:1px solid #ccc;">${q}</td>
-                                                            <td style="padding:6px; border:1px solid #ccc; font-weight:bold; color:var(--primary);">${Number(finalItemPrice.toFixed(2)).toLocaleString()} ج.م</td>
+                                                            <td style="padding:8px; border:1px solid #ccc;">${item.name || item.itemName || item.desc || 'بدون اسم'}</td>
+                                                            <td style="padding:8px; border:1px solid #ccc;">${Number(q).toLocaleString('en-US')}</td>
+                                                            <td style="padding:8px; border:1px solid #ccc; font-weight:bold; color:var(--primary);">${Number(finalItemPrice.toFixed(2)).toLocaleString('en-US')} ج.م</td>
                                                          </tr>`;
                                     });
-                                    detailsHtml += `</table>`;
+                                    detailsHtml += `</table></div>`;
                                 } else {
                                     detailsHtml += `<div style="color:#64748b; font-size:10px;">لا توجد خامات مسجلة بداخل هذه المقايسة.</div>`;
                                 }
@@ -495,18 +507,22 @@
                             }
                             detailsHtml += `</div>`;
 
+                            // تم التعديل هنا لضمان عمل الضغط في الموبايل
                             tableRows += `
-                                <tr style="cursor:pointer; background:white; transition:background 0.2s;" 
-                                    onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'"
+                                <tr style="cursor:pointer; background:white; border-bottom: 1px solid #e2e8f0;" 
                                     onclick="const r = document.getElementById('${rowId}'); r.style.display = (r.style.display === 'none' ? 'table-row' : 'none');">
                                     
-                                    <td style="padding:10px; text-align:center;">${icon} ${materialName}</td>
-                                    <td style="padding:10px; text-align:right;"><b>${key}</b></td>
-                                    <td style="padding:10px; text-align:center; color:var(--success); font-weight:bold;">${price.toLocaleString()} ج.م</td>
-                                    <td style="padding:10px; text-align:center; color:var(--accent);">👇 اضغط للتفاصيل</td>
+                                    <td style="padding:12px 5px; text-align:center; font-size: 12px;">${icon} ${materialName}</td>
+                                    <td style="padding:12px 5px; text-align:right; font-size: 12px;"><b>${key}</b></td>
+                                    <td style="padding:12px 5px; text-align:center; color:var(--success); font-weight:bold; font-size: 12px;">${Number(price).toLocaleString('en-US')}</td>
+                                    <td style="padding:12px 5px; text-align:center; color:var(--accent); font-size: 11px;">👇 تفاصيل</td>
                                  </tr>
                                 <tr id="${rowId}" style="display:none; background:#f8fafc;">
-                                    <td colspan="4" style="padding:0;">${detailsHtml}</td>
+                                    <td colspan="4" style="padding:0;">
+                                        <div style="padding: 5px; width: 100%; box-sizing: border-box; overflow-x: hidden;">
+                                            ${detailsHtml}
+                                        </div>
+                                    </td>
                                  </tr>`;
                         }
                     });
@@ -559,17 +575,20 @@
                                            </div>`;
 
                         tableRows += `
-                            <tr style="cursor:pointer; background:white; transition:background 0.2s;" 
-                                onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'"
+                            <tr style="cursor:pointer; background:white; border-bottom: 1px solid #e2e8f0;" 
                                 onclick="const r = document.getElementById('${rowId}'); r.style.display = (r.style.display === 'none' ? 'table-row' : 'none');">
                                 
-                                <td style="padding:10px; text-align:center;">🧩 مخطط تقطيع</td>
-                                <td style="padding:10px; text-align:right;"><b>${proj.projectName || 'بدون اسم'}</b></td>
-                                <td style="padding:10px; text-align:center; color:var(--warning);">-</td>
-                                <td style="padding:10px; text-align:center; color:var(--accent);">👇 اضغط للتفاصيل</td>
+                                <td style="padding:12px 5px; text-align:center; font-size: 12px;">🧩 مخطط تقطيع</td>
+                                <td style="padding:12px 5px; text-align:right; font-size: 12px;"><b>${proj.projectName || 'بدون اسم'}</b></td>
+                                <td style="padding:12px 5px; text-align:center; color:var(--warning); font-size: 12px;">-</td>
+                                <td style="padding:12px 5px; text-align:center; color:var(--accent); font-size: 11px;">👇 تفاصيل</td>
                              </tr>
                             <tr id="${rowId}" style="display:none; background:#f8fafc;">
-                                <td colspan="4" style="padding:0;">${detailsHtml}</td>
+                                <td colspan="4" style="padding:0;">
+                                    <div style="padding: 5px; width: 100%; box-sizing: border-box; overflow-x: hidden;">
+                                        ${detailsHtml}
+                                    </div>
+                                </td>
                              </tr>`;
                     }
                 });
@@ -577,13 +596,13 @@
 
             if (hasInvoicesData) {
                 html += `
-                    <div class="table-container" style="margin-top:10px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
-                        <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                    <div class="mobile-scroll-wrapper" style="margin-top:10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:11px; min-width:320px;">
                             <thead>
                                 <tr style="background:var(--primary); color:white;">
-                                    <th style="padding:10px; width:20%;">نوع الخامة</th>
-                                    <th style="padding:10px; width:40%; text-align:right;">اسم الملف / المشروع</th>
-                                    <th style="padding:10px; width:20%;">السعر الإجمالي</th>
+                                    <th style="padding:10px; width:25%;">نوع الخامة</th>
+                                    <th style="padding:10px; width:35%; text-align:right;">المشروع</th>
+                                    <th style="padding:10px; width:20%;">السعر</th>
                                     <th style="padding:10px; width:20%;">التفاصيل</th>
                                  </tr>
                             </thead>
