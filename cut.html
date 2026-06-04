@@ -211,9 +211,8 @@
         const db = getDatabase(app);
         const auth = getAuth(app);
 
-        // 🚀 متغيرات المسارات - قم بتغييرها من هنا لتحديثها في كامل البرنامج
-        window.PATH_PROJECTS = "backups/cut_projects"; // مسار حفظ مسودة العمل الحالية
-        window.PATH_ARCHIVE = "backups/cut_archive";   // مسار حفظ الأرشيف
+        window.PATH_PROJECTS = "backups/cut_projects";
+        window.PATH_ARCHIVE = "backups/cut_archive";
 
         window.currentUid = null;
         window.fbDB = db;
@@ -397,7 +396,6 @@
         }
     });
 
-    // --- دالة حساب التسعير ---
     window.calculatePrices = function() {
         const pL = parseFloat(toEnglishDigits(document.getElementById('priceBoardL').value)) || 0;
         const pW = parseFloat(toEnglishDigits(document.getElementById('priceBoardW').value)) || 0;
@@ -494,7 +492,6 @@
         }
     };
 
-    // 🚀 تحديث مسار حفظ المسودة
     window.saveData = function() {
         if(!window.currentUid) return; syncStatus.innerText = "جاري الحفظ..."; 
         clearTimeout(saveTimeout);
@@ -534,7 +531,6 @@
         }, 1000);
     };
 
-    // 🚀 تحديث مسار جلب المسودة
     window.loadData = function() {
         if(!window.currentUid) return; const dbRefStr = `${window.PATH_PROJECTS}/${window.currentUid}`;
         window.fbGet(window.fbRef(window.fbDB, dbRefStr)).then((snapshot) => {
@@ -588,7 +584,6 @@
         }).catch((err) => { syncStatus.innerText = "فشل التحميل"; window.addRow(); window.addStockRow('', '', '', '', 'board'); });
     };
 
-    // 🚀 تحديث مسار حفظ الأرشيف
     window.saveToArchive = function() {
         if(!window.currentUid) return; const projectName = document.getElementById('projectName').value.trim();
         if(!projectName) { alert("اكتب اسم المشروع أولاً"); return; }
@@ -630,7 +625,6 @@
         }).catch((err) => { syncStatus.innerText = "خطأ أرشفة"; });
     };
 
-    // 🚀 تحديث مسار جلب بيانات الأرشيف
     window.openArchive = function() {
         document.getElementById('archiveModal').style.display = 'flex'; const archiveList = document.getElementById('archiveList');
         archiveList.innerHTML = "<p style='text-align:center;'>تحميل...</p>";
@@ -715,7 +709,6 @@
         setTimeout(() => { window.calculateAndDraw(); }, 100);
     };
 
-    // 🚀 تحديث مسار حذف الأرشيف
     window.deleteArchivedProject = function(id) {
         if(confirm("حذف من الأرشيف نهائياً؟")) {
             const targetPath = `${window.PATH_ARCHIVE}/${window.currentUid}/${id}`;
@@ -928,7 +921,6 @@
         
         renderBoardsAndTables(boards, !globalIsPlain, kerf);
 
-        // --- رسالة التنبيه المخصصة وتوجيه الشاشة ---
         setTimeout(() => {
             let alertMsg = `تم حساب التقطيع بنجاح!\nعدد الألواح الكاملة المستخدمة: ${fullBoardsCount}`;
             if (usedOffcutsCount > 0) {
@@ -956,7 +948,6 @@
             let isOffcut = packer.isOffcut;
             let stockName = packer.stockName;
             
-            // إذا كان اللوح نفسه دوران حر (سادة) لا يتم رسم سمرة عليه حتى لو المشروع العام خشابي
             let drawGrain = isGrain && !packer.stockRot; 
 
             let topText = currentW; 
@@ -1005,7 +996,6 @@
                 const rw = r.w * scale; 
                 const rh = r.h * scale; 
                 
-                // لون المقاسات الأصفر
                 ctx.fillStyle = "#fef08a"; 
                 ctx.fillRect(rx, ry, rw, rh); 
                 
@@ -1133,7 +1123,6 @@
                 
                 let isLargest = (idx === 0);
 
-                // ألوان الفضلات الرصاصي
                 ctx.fillStyle = isLargest ? "rgba(156, 163, 175, 0.5)" : "rgba(226, 232, 240, 0.6)"; 
                 ctx.fillRect(rx, ry, rw, rh); 
                 
@@ -1174,6 +1163,59 @@
             if (isOffcut) offcutCounter++; else boardCounter++;
         });
     };
+
+    // --- التنقل التلقائي بين الخانات باستخدام زر Enter ---
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const target = e.target;
+            
+            // 1. إذا كان العنصر الحالي هو خانة الطول -> انتقل للعرض
+            if (target.classList.contains('p-len')) {
+                e.preventDefault(); 
+                const nextInput = target.closest('tr').querySelector('.p-wid');
+                if (nextInput) {
+                    // استخدام setTimeout لمنع القراءة المزدوجة للزر
+                    setTimeout(() => {
+                        nextInput.focus();
+                        nextInput.select(); 
+                    }, 10);
+                }
+            } 
+            // 2. إذا كان العنصر الحالي هو خانة العرض -> انتقل للكمية
+            else if (target.classList.contains('p-wid')) {
+                e.preventDefault();
+                const nextInput = target.closest('tr').querySelector('.p-qty');
+                if (nextInput) {
+                    setTimeout(() => {
+                        nextInput.focus();
+                        nextInput.select();
+                    }, 10);
+                }
+            }
+            // 3. إذا كان العنصر الحالي هو خانة الكمية -> انتقل للصف التالي (أو أنشئ صف جديد)
+            else if (target.classList.contains('p-qty')) {
+                e.preventDefault();
+                let currentRow = target.closest('tr');
+                let nextRow = currentRow.nextElementSibling;
+                
+                if (!nextRow) {
+                    window.addRow();
+                    nextRow = currentRow.nextElementSibling;
+                }
+                
+                if (nextRow) {
+                    const nextInput = nextRow.querySelector('.p-len');
+                    if (nextInput) {
+                        setTimeout(() => {
+                            nextInput.focus();
+                            nextInput.select();
+                        }, 10);
+                    }
+                }
+            }
+        }
+    });
+
 </script>
 </body>
 </html>
