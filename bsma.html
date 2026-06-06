@@ -31,7 +31,7 @@
         
         .table-wrap { padding: 0 5px; flex-grow: 1; overflow-y: auto; background: #fafafa; border-top: 2px solid var(--turquoise); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
-        thead { display: none; } /* إخفاء العناوين النصية */
+        thead { display: none; }
         td { padding: 10px 2px; border-bottom: 1px solid #eee; font-weight: bold; vertical-align: middle; }
         
         .badge { padding: 5px 8px; border-radius: 8px; color: white; font-size: 11px; display: inline-block; min-width: 90px; font-weight: 800; }
@@ -136,11 +136,20 @@
         const name = document.getElementById('reg-name').value;
         const id = document.getElementById('reg-id').value.trim();
         if(!name || !id) return alert("اكمل البيانات");
+        
         document.getElementById('sync-loader').style.display = 'inline';
         try {
-            await setDoc(doc(fs, "employees", id), { name, baseReg: 30, baseEmg: 7, logs: [] });
-            alert("تم تسجيل الموظف بنجاح ✅");
-            closeRegisterModal();
+            const docRef = doc(fs, "employees", id);
+            const docSnap = await getDoc(docRef);
+            
+            // التحقق من وجود الكود مسبقاً لحماية البيانات القديمة
+            if (docSnap.exists()) {
+                alert("❌ هذا الكود مسجل مسبقاً لموظف آخر! الرجاء اختيار كود مختلف.");
+            } else {
+                await setDoc(docRef, { name, baseReg: 30, baseEmg: 7, logs: [] });
+                alert("تم تسجيل الموظف بنجاح ✅");
+                closeRegisterModal();
+            }
         } catch(e) { alert("حدث خطأ في التسجيل"); }
         document.getElementById('sync-loader').style.display = 'none';
     };
@@ -195,6 +204,26 @@
     let db = JSON.parse(localStorage.getItem('t_db')) || [];
     let baseReg = parseInt(localStorage.getItem('u_base_reg')) || 0;
     let baseEmg = parseInt(localStorage.getItem('u_base_emg')) || 0;
+
+    // دوال مساعدة لمنع التكرار وحساب التصاريح
+    function hasPunchedToday(fullDate) {
+        return db.some(log => log.dDate === fullDate);
+    }
+
+    function getPermitsCount() {
+        return db.filter(log => log.type === 'تصريح').length;
+    }
+
+    // دالة ترتيب السجلات زمنياً بحيث يكون الأحدث بالأعلى
+    function sortLogs() {
+        db.sort((a, b) => {
+            const parseDate = (dateStr) => {
+                const parts = dateStr.split(' / ');
+                return parts.length === 3 ? new Date(parts[2], parts[1] - 1, parts[0]).getTime() : 0;
+            };
+            return parseDate(b.dDate) - parseDate(a.dDate);
+        });
+    }
 
     function init() {
         const id = localStorage.getItem('u_i');
@@ -259,11 +288,12 @@
     function render() {
         const body = document.getElementById('log-body');
         body.innerHTML = '';
-        let lateSum = 0, pUsed = 0;
+        let lateSum = 0;
+        let pUsed = getPermitsCount(); // استخدام الدالة المساعدة
+        
         db.forEach((e, index) => {
             let lateVal = parseInt(e.late || 0);
             if(e.type==='تأخير') lateSum += lateVal;
-            if(e.type==='تصريح') pUsed++;
             
             let cls = e.type === "تأخير" ? "bg-late" : e.type === "تصريح" ? "bg-permit" : e.type.includes("إجازة") ? "bg-holiday" : "bg-regular";
             let txt = (lateVal > 0) ? `${e.type} (${lateVal} د)` : e.type;
@@ -286,34 +316,61 @@
     async function handlePunch() {
         if (new Date().getDay() === 5) return alert("اليوم الجمعة إجازة رسمية");
         if(!localStorage.getItem('u_i')) return alert("ادخل الكود أولاً");
+        
         const now = new Date();
+        const fullDate = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}`;
+        
+        // منع التسجيل المزدوج
+        if (hasPunchedToday(fullDate)) return alert("❌ لقد قمت بتسجيل حركة لهذا اليوم مسبقاً!");
+
         const mins = now.getHours() * 60 + now.getMinutes();
         const s = 7*60, l = 7*60+55, p = 8*60+10, c = 9*60+30;
         let status = "", late = 0;
+        
         if (mins < s) return alert("تفتح 7 صباحاً");
         else if (mins < l) status = "منتظم";
         else if (mins < p) { status = "تأخير"; late = mins - l; }
-        else if (mins <= c) status = "تصريح";
-        else {
-            if(confirm("البصمة مغلقة. تسجيل إجازة؟ (موافق=اعتيادي / إلغاء=عارضة)")) recordHoliday("إجازة اعتيادي");
-            else if(confirm("تسجيل عارضة؟")) recordHoliday("إجازة عارضة");
-            return;
+        else if (mins <= c) {
+            if (getPermitsCount() >= 3) {
+                alert("❌ استنفذت الحد الأقصى للتصاريح (3 تصاريح). يمكنك تسجيل إجازة.");
+                return promptForVacation();
+            }
+            status = "تصريح";
         }
-        const fullDate = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}`;
+        else {
+            return promptForVacation();
+        }
+        
         saveLog({ dDate: fullDate, time: `${now.getHours()%12||12}:${now.getMinutes().toString().padStart(2,'0')} ${now.getHours()>=12?'م':'ص'}`, type: status, late: late });
     }
 
+    function promptForVacation() {
+        if(confirm("البصمة مغلقة. تسجيل إجازة اعتيادية؟ (موافق=اعتيادي / إلغاء=عارضة)")) recordHoliday("إجازة اعتيادي");
+        else if(confirm("تسجيل عارضة؟")) recordHoliday("إجازة عارضة");
+    }
+
     async function recordHoliday(type) {
-        if (type === "إجازة اعتيادي") baseReg = Math.max(0, --baseReg);
-        else baseEmg = Math.max(0, --baseEmg);
-        localStorage.setItem('u_base_reg', baseReg); localStorage.setItem('u_base_emg', baseEmg);
-        const fullDate = `${new Date().getDate()} / ${new Date().getMonth()+1} / ${new Date().getFullYear()}`;
+        // التحقق من الرصيد قبل التسجيل
+        if (type === "إجازة اعتيادي" && baseReg <= 0) return alert("❌ رصيد إجازاتك الاعتيادية غير كافٍ!");
+        if (type === "إجازة عارضة" && baseEmg <= 0) return alert("❌ رصيد إجازاتك العارضة غير كافٍ!");
+
+        if (type === "إجازة اعتيادي") baseReg--;
+        else baseEmg--;
+        
+        localStorage.setItem('u_base_reg', baseReg); 
+        localStorage.setItem('u_base_emg', baseEmg);
+        
+        const now = new Date();
+        const fullDate = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}`;
         saveLog({ dDate: fullDate, time: "--:--", type: type, late: 0 });
     }
 
     async function saveLog(item) {
-        db.unshift(item); localStorage.setItem('t_db', JSON.stringify(db));
-        render(); if(window.syncToCloud) await window.syncToCloud();
+        db.push(item);
+        sortLogs(); // ترتيب السجلات
+        localStorage.setItem('t_db', JSON.stringify(db));
+        render(); 
+        if(window.syncToCloud) await window.syncToCloud();
     }
 
     function submitManual() {
@@ -322,13 +379,36 @@
         const type = document.getElementById('m-type').value;
         const dObj = new Date(d);
         const fullDate = `${dObj.getDate()} / ${dObj.getMonth()+1} / ${dObj.getFullYear()}`;
-        if(type.includes("إجازة")) recordHoliday(type);
-        else {
-            db.unshift({ dDate: fullDate, time: "--:--", type: type, late: document.getElementById('m-late').value || 0 });
+        
+        // منع التسجيل المزدوج في التسجيل اليدوي
+        if (hasPunchedToday(fullDate)) return alert("❌ يوجد سجل لهذا اليوم بالفعل!");
+
+        if (type.includes("إجازة")) {
+            // نمرر التاريخ المختار يدوياً إذا كانت إجازة في يوم ماضي
+            recordManualHoliday(type, fullDate);
+        } else if (type === "تصريح" && getPermitsCount() >= 3) {
+            return alert("❌ استنفذت الحد الأقصى للتصاريح (3 تصاريح)!");
+        } else {
+            db.push({ dDate: fullDate, time: "--:--", type: type, late: document.getElementById('m-late').value || 0 });
+            sortLogs(); // ترتيب السجلات
             localStorage.setItem('t_db', JSON.stringify(db));
-            render(); if(window.syncToCloud) window.syncToCloud();
+            render(); 
+            if(window.syncToCloud) window.syncToCloud();
         }
         closeModal();
+    }
+
+    function recordManualHoliday(type, fullDate) {
+        if (type === "إجازة اعتيادي" && baseReg <= 0) return alert("❌ رصيد إجازاتك الاعتيادية غير كافٍ!");
+        if (type === "إجازة عارضة" && baseEmg <= 0) return alert("❌ رصيد إجازاتك العارضة غير كافٍ!");
+
+        if (type === "إجازة اعتيادي") baseReg--;
+        else baseEmg--;
+        
+        localStorage.setItem('u_base_reg', baseReg); 
+        localStorage.setItem('u_base_emg', baseEmg);
+        
+        saveLog({ dDate: fullDate, time: "--:--", type: type, late: 0 });
     }
 
     function deleteRow(i) { if(confirm("حذف؟")) { db.splice(i,1); localStorage.setItem('t_db', JSON.stringify(db)); render(); if(window.syncToCloud) window.syncToCloud(); } }
