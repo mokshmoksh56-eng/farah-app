@@ -59,7 +59,7 @@
     </div>
 
     <div class="user-info-section">
-        <input type="text" id="u-id" class="info-input" style="border:2px solid var(--info)" placeholder="ادخل الكود للدخول" onchange="loadFromCloud()">
+        <input type="text" id="u-id" class="info-input" style="border:2px solid var(--info)" placeholder="ادخل الكود للدخول" onchange="loadLocalData()">
         <div id="welcome-msg" style="font-size: 13px; font-weight: bold; color: var(--turquoise);"></div>
         <div style="display: flex; justify-content: center; gap: 15px; margin-top: 5px;">
             <button style="background:none; border:none; color:var(--info); font-size:10px; cursor:pointer; text-decoration:underline;" onclick="openRegisterModal()">تسجيل موظف جديد؟</button>
@@ -116,51 +116,44 @@
     </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+<script>
+    // جلب كل الموظفين المسجلين على الجهاز
+    function getAllEmployees() {
+        return JSON.parse(localStorage.getItem('all_employees_db')) || {};
+    }
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyD1MQAAZi8iucZzOrgLG9Fm8_U3_Z6V8m8",
-        authDomain: "farah-8e557.firebaseapp.com",
-        projectId: "farah-8e557",
-        storageBucket: "farah-8e557.appspot.com",
-        messagingSenderId: "927493982518",
-        appId: "1:927493982518:web:9f6874b693df0bd02f8b97"
-    };
+    // حفظ الموظفين على الجهاز
+    function saveAllEmployees(employees) {
+        localStorage.setItem('all_employees_db', JSON.stringify(employees));
+    }
 
-    const app = initializeApp(firebaseConfig);
-    const fs = getFirestore(app);
-
-    window.submitNewEmployee = async function() {
+    // إضافة موظف جديد
+    window.submitNewEmployee = function() {
         const name = document.getElementById('reg-name').value;
         const id = document.getElementById('reg-id').value.trim();
         if(!name || !id) return alert("اكمل البيانات");
         
-        document.getElementById('sync-loader').style.display = 'inline';
-        try {
-            const docRef = doc(fs, "employees", id);
-            const docSnap = await getDoc(docRef);
-            
-            // التحقق من وجود الكود مسبقاً لحماية البيانات القديمة
-            if (docSnap.exists()) {
-                alert("❌ هذا الكود مسجل مسبقاً لموظف آخر! الرجاء اختيار كود مختلف.");
-            } else {
-                await setDoc(docRef, { name, baseReg: 30, baseEmg: 7, logs: [] });
-                alert("تم تسجيل الموظف بنجاح ✅");
-                closeRegisterModal();
-            }
-        } catch(e) { alert("حدث خطأ في التسجيل"); }
-        document.getElementById('sync-loader').style.display = 'none';
+        let employees = getAllEmployees();
+        
+        if (employees[id]) {
+            alert("❌ هذا الكود مسجل مسبقاً لموظف آخر! الرجاء اختيار كود مختلف.");
+        } else {
+            employees[id] = { name: name, baseReg: 30, baseEmg: 7, logs: [] };
+            saveAllEmployees(employees);
+            alert("تم تسجيل الموظف بنجاح ✅");
+            closeRegisterModal();
+        }
     };
 
-    window.loadFromCloud = async function() {
+    // تحميل بيانات موظف عند تسجيل الدخول
+    window.loadLocalData = function() {
         const id = document.getElementById('u-id').value.trim();
         if (!id) return;
-        document.getElementById('sync-loader').style.display = 'inline';
-        const docSnap = await getDoc(doc(fs, "employees", id));
-        if (docSnap.exists()) {
-            const data = docSnap.data();
+        
+        let employees = getAllEmployees();
+        
+        if (employees[id]) {
+            const data = employees[id];
             localStorage.setItem('u_i', id);
             localStorage.setItem('u_n', data.name);
             localStorage.setItem('t_db', JSON.stringify(data.logs || []));
@@ -171,19 +164,24 @@
             alert("الكود غير مسجل!"); 
             document.getElementById('u-id').value = '';
         }
-        document.getElementById('sync-loader').style.display = 'none';
     };
 
-    window.syncToCloud = async function() {
+    // حفظ التغييرات الأوتوماتيكي في قاعدة بيانات الجهاز الرئيسية
+    window.syncLocalData = function() {
         const id = localStorage.getItem('u_i');
         if (!id) return;
+        
         document.getElementById('sync-loader').style.display = 'inline';
-        await setDoc(doc(fs, "employees", id), {
-            logs: JSON.parse(localStorage.getItem('t_db')) || [],
-            baseReg: parseInt(localStorage.getItem('u_base_reg')),
-            baseEmg: parseInt(localStorage.getItem('u_base_emg'))
-        }, { merge: true });
-        setTimeout(() => document.getElementById('sync-loader').style.display = 'none', 1000);
+        
+        let employees = getAllEmployees();
+        if(employees[id]) {
+            employees[id].logs = JSON.parse(localStorage.getItem('t_db')) || [];
+            employees[id].baseReg = parseInt(localStorage.getItem('u_base_reg'));
+            employees[id].baseEmg = parseInt(localStorage.getItem('u_base_emg'));
+            saveAllEmployees(employees);
+        }
+        
+        setTimeout(() => document.getElementById('sync-loader').style.display = 'none', 500);
     };
 </script>
 
@@ -205,7 +203,6 @@
     let baseReg = parseInt(localStorage.getItem('u_base_reg')) || 0;
     let baseEmg = parseInt(localStorage.getItem('u_base_emg')) || 0;
 
-    // دوال مساعدة لمنع التكرار وحساب التصاريح
     function hasPunchedToday(fullDate) {
         return db.some(log => log.dDate === fullDate);
     }
@@ -214,7 +211,6 @@
         return db.filter(log => log.type === 'تصريح').length;
     }
 
-    // دالة ترتيب السجلات زمنياً بحيث يكون الأحدث بالأعلى
     function sortLogs() {
         db.sort((a, b) => {
             const parseDate = (dateStr) => {
@@ -289,7 +285,7 @@
         const body = document.getElementById('log-body');
         body.innerHTML = '';
         let lateSum = 0;
-        let pUsed = getPermitsCount(); // استخدام الدالة المساعدة
+        let pUsed = getPermitsCount(); 
         
         db.forEach((e, index) => {
             let lateVal = parseInt(e.late || 0);
@@ -320,7 +316,6 @@
         const now = new Date();
         const fullDate = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}`;
         
-        // منع التسجيل المزدوج
         if (hasPunchedToday(fullDate)) return alert("❌ لقد قمت بتسجيل حركة لهذا اليوم مسبقاً!");
 
         const mins = now.getHours() * 60 + now.getMinutes();
@@ -350,7 +345,6 @@
     }
 
     async function recordHoliday(type) {
-        // التحقق من الرصيد قبل التسجيل
         if (type === "إجازة اعتيادي" && baseReg <= 0) return alert("❌ رصيد إجازاتك الاعتيادية غير كافٍ!");
         if (type === "إجازة عارضة" && baseEmg <= 0) return alert("❌ رصيد إجازاتك العارضة غير كافٍ!");
 
@@ -365,12 +359,12 @@
         saveLog({ dDate: fullDate, time: "--:--", type: type, late: 0 });
     }
 
-    async function saveLog(item) {
+    function saveLog(item) {
         db.push(item);
-        sortLogs(); // ترتيب السجلات
+        sortLogs();
         localStorage.setItem('t_db', JSON.stringify(db));
         render(); 
-        if(window.syncToCloud) await window.syncToCloud();
+        if(window.syncLocalData) window.syncLocalData(); // حفظ التعديل أوتوماتيك
     }
 
     function submitManual() {
@@ -380,20 +374,18 @@
         const dObj = new Date(d);
         const fullDate = `${dObj.getDate()} / ${dObj.getMonth()+1} / ${dObj.getFullYear()}`;
         
-        // منع التسجيل المزدوج في التسجيل اليدوي
         if (hasPunchedToday(fullDate)) return alert("❌ يوجد سجل لهذا اليوم بالفعل!");
 
         if (type.includes("إجازة")) {
-            // نمرر التاريخ المختار يدوياً إذا كانت إجازة في يوم ماضي
             recordManualHoliday(type, fullDate);
         } else if (type === "تصريح" && getPermitsCount() >= 3) {
             return alert("❌ استنفذت الحد الأقصى للتصاريح (3 تصاريح)!");
         } else {
             db.push({ dDate: fullDate, time: "--:--", type: type, late: document.getElementById('m-late').value || 0 });
-            sortLogs(); // ترتيب السجلات
+            sortLogs(); 
             localStorage.setItem('t_db', JSON.stringify(db));
             render(); 
-            if(window.syncToCloud) window.syncToCloud();
+            if(window.syncLocalData) window.syncLocalData(); // حفظ أوتوماتيك
         }
         closeModal();
     }
@@ -411,14 +403,30 @@
         saveLog({ dDate: fullDate, time: "--:--", type: type, late: 0 });
     }
 
-    function deleteRow(i) { if(confirm("حذف؟")) { db.splice(i,1); localStorage.setItem('t_db', JSON.stringify(db)); render(); if(window.syncToCloud) window.syncToCloud(); } }
+    function deleteRow(i) { if(confirm("حذف؟")) { db.splice(i,1); localStorage.setItem('t_db', JSON.stringify(db)); render(); if(window.syncLocalData) window.syncLocalData(); } }
+    
     window.openRegisterModal = () => document.getElementById('registerModal').style.display = 'flex';
     window.closeRegisterModal = () => document.getElementById('registerModal').style.display = 'none';
     window.openManualModal = () => { document.getElementById('manualModal').style.display='flex'; toggleLateInput(); };
     window.closeModal = () => document.getElementById('manualModal').style.display='none';
+    
+    // التعديل الخاص بالحفظ الأوتوماتيكي للرصيد
     function editBalance(t) { 
         let v = prompt("الرصيد:", t==='reg'?baseReg:baseEmg); 
-        if(v!==null){ localStorage.setItem(t==='reg'?'u_base_reg':'u_base_emg', v); location.reload(); } 
+        if(v !== null && v.trim() !== "") { 
+            let newValue = parseInt(v);
+            if(!isNaN(newValue)) {
+                if(t === 'reg') {
+                    baseReg = newValue;
+                    localStorage.setItem('u_base_reg', baseReg);
+                } else {
+                    baseEmg = newValue;
+                    localStorage.setItem('u_base_emg', baseEmg);
+                }
+                if(window.syncLocalData) window.syncLocalData(); // حفظ أوتوماتيك في قاعدة البيانات الأساسية فوراً
+                render(); // تحديث الأرقام على الشاشة بدون عمل Refresh للصفحة
+            }
+        } 
     }
 </script>
 </body>
