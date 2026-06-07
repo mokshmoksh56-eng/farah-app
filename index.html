@@ -73,7 +73,7 @@
         }
         
         .sync-box { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
-        .sync-group { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        .sync-group { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; } /* تم تعديل الأعمدة لـ 6 */
 
         .btn { 
             border: none; color: #fff; padding: 12px 4px; border-radius: 8px; 
@@ -208,6 +208,7 @@
     <div class="sync-group">
         <button onclick="window.location.href='agheza.html'" class="btn btn-device">📱 أجهزة</button>
         <button onclick="window.location.href='kmatkitchen.html'" class="btn btn-device">📏 مقايسات</button>
+        <button onclick="window.location.href='windoes.html'" class="btn btn-device" style="background: #d35400;">🪟 شبابيك</button>
         <button onclick="window.location.href='gbs.html'" class="btn btn-device" style="background: #e84393;">📍 موقع الزبائن gbs</button>
         <button onclick="window.location.href='fatora.html'" class="btn btn-device" style="background: #0984e3;">📄 العقود والتوريدات</button>
         <button onclick="document.getElementById('zwaya-modal').style.display='flex'" class="btn btn-device" style="background: #0f766e;">📐 زوايا</button>
@@ -295,9 +296,6 @@
 </a>
 
 <script>
-    // =========================================================================
-    // قاعدة بيانات الدول: التوقيت، الإحداثيات الدقيقة للصلاة، والأعياد الوطنية الثابتة والمتحركة
-    // =========================================================================
     const countryConfig = {
         "ج.م": { 
             tz: "Africa/Cairo", lat: 30.0444, lng: 31.2357, city: "القاهرة", flag: "🇪🇬 مصر",
@@ -341,7 +339,6 @@
         "€":   { tz: "Europe/Paris", lat: 48.8566, lng: 2.3522, city: "باريس", flag: "🇪🇺 أوروبا", holidays: [], specificHolidays: [] }
     };
 
-    // الأعياد الإسلامية المشتركة في جميع الدول
     const islamicHolidays = [
         { name: "عيد الأضحى المبارك 🐑", date: new Date("May 27, 2026").getTime() },
         { name: "رأس السنة الهجرية 🌙", date: new Date("June 16, 2026").getTime() },
@@ -351,7 +348,6 @@
     ];
 
     function getCurrentCountryData() {
-        // قراءة الدولة من إعدادات zbon أو gyab المحفوظة في الجهاز
         let savedSymbol = localStorage.getItem('sysCountry') || localStorage.getItem('workerCurrency') || "ج.م";
         return countryConfig[savedSymbol] || countryConfig["ج.م"];
     }
@@ -362,13 +358,11 @@
         const now = new Date();
         const currentYear = now.getFullYear();
 
-        // 1. إضافة الأعياد الثابتة الخاصة بالدولة (باليوم والشهر)
         if (cData.holidays) {
             cData.holidays.forEach(h => {
                 const [month, day] = h.date.split('-');
                 let hDate = new Date(currentYear, parseInt(month)-1, parseInt(day));
                 
-                // إعطاء يوم إضافي سماحية حتى لا يختفي يوم العيد نفسه
                 if (hDate.getTime() < now.getTime() - (24 * 60 * 60 * 1000)) {
                     hDate = new Date(currentYear + 1, parseInt(month)-1, parseInt(day)); 
                 }
@@ -376,24 +370,20 @@
             });
         }
 
-        // 2. إضافة الأعياد المتحركة الخاصة بالدولة (مثل شم النسيم)
         if (cData.specificHolidays) {
             cData.specificHolidays.forEach(h => {
                 if (h.date > now.getTime() - (24 * 60 * 60 * 1000)) { holidaysList.push(h); }
             });
         }
 
-        // 3. إضافة الأعياد الإسلامية الموحدة
         islamicHolidays.forEach(h => {
             if (h.date > now.getTime() - (24 * 60 * 60 * 1000)) { holidaysList.push(h); }
         });
 
-        // ترتيب الأعياد تصاعدياً حسب الأقرب زمناً
         holidaysList.sort((a, b) => a.date - b.date);
         return holidaysList;
     }
 
-    // --------------------- التكبير والروابط ---------------------
     function openCardBySrc(src) {
         document.querySelectorAll('.card.fullscreen').forEach(c => {
             c.classList.remove('fullscreen');
@@ -434,25 +424,20 @@
         updateSystemByCountry();
     });
 
-    // --------------------- تحديث الساعة والبيانات حسب الدولة المختارة ---------------------
     function updateSystemByCountry() {
         const cData = getCurrentCountryData();
         const now = new Date();
         const timeZoneOpts = { timeZone: cData.tz };
 
         document.getElementById('country-badge').innerText = cData.flag;
-
-        // تحديث الساعة بالتوقيت المحلي للدولة
         document.getElementById('digital-clock').innerText = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute:'2-digit', ...timeZoneOpts });
         
-        // تحديث التاريخ
         const weekday = now.toLocaleDateString('ar-EG', { weekday: 'long', ...timeZoneOpts });
         const yyyy = now.toLocaleDateString('ar-EG', { year: 'numeric', ...timeZoneOpts });
         const mm = now.toLocaleDateString('ar-EG', { month: '2-digit', ...timeZoneOpts });
         const dd = now.toLocaleDateString('ar-EG', { day: '2-digit', ...timeZoneOpts });
         document.getElementById('digital-date').innerText = weekday + ' ' + yyyy + '/' + mm + '/' + dd;
         
-        // تحديث الهجري ومرحلة القمر
         try {
             const hijriOptions = { day: 'numeric', month: 'long', year: 'numeric', ...timeZoneOpts };
             const hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', hijriOptions).format(now);
@@ -466,7 +451,6 @@
             document.getElementById('hijri-date-moon').innerText = `${moonEmoji} ${hijriDate}`;
         } catch (e) {}
 
-        // تحديث المناسبات الشاملة (وطنية وإسلامية) بناءً على الدولة المحددة
         const myHolidays = getDynamicHolidays();
         if(myHolidays.length > 0) {
             let next = myHolidays[0];
@@ -478,9 +462,8 @@
         }
     }
 
-    setInterval(updateSystemByCountry, 60000); // تحديث الساعة كل دقيقة
+    setInterval(updateSystemByCountry, 60000);
 
-    // استماع مباشر لتغير الدولة من الأقسام الداخلية لتحديث الشاشة الرئيسية في نفس اللحظة
     window.addEventListener('storage', function(e) {
         if(e.key === 'workerCurrency' || e.key === 'sysCountry') {
             updateSystemByCountry();
@@ -501,7 +484,6 @@
         }
     });
 
-    // =================== شريط الحركة + جلب مواقيت الصلاة حسب الدولة ===================
     const tickerMarquee = document.getElementById('tickerMarquee');
     
     function renderTickerWithItems(itemsArray) {
@@ -543,7 +525,6 @@
     async function fetchAndUpdatePrayerTicker() {
         const cData = getCurrentCountryData();
         try {
-            // جلب أوقات الصلاة بناءً على إحداثيات عاصمة الدولة المختارة من الإعدادات
             const apiURL = `https://api.aladhan.com/v1/timings?latitude=${cData.lat}&longitude=${cData.lng}&method=5`;
             const response = await fetch(apiURL);
             const data = await response.json();
@@ -558,7 +539,6 @@
                 
                 const fullPrayerText = `🕌 مواقيت الصلاة • توقيت ${cData.city} : الفجر ${fajr} | الظهر ${dhuhr} | العصر ${asr} | المغرب ${maghrib} | العشاء ${isha}`;
                 
-                // تحديد وقت الذكر المناسب حالياً بتوقيت الدولة
                 const currentHour = new Date().toLocaleString("en-US", {timeZone: cData.tz, hour: 'numeric', hour12: false});
                 const h = parseInt(currentHour);
                 let reminderText = "🌟 سبحان الله وبحمده";
@@ -589,8 +569,6 @@
     
     setTimeout(() => { fetchAndUpdatePrayerTicker(); }, 500);
     setInterval(() => { if (navigator.onLine) fetchAndUpdatePrayerTicker(); }, 3600000);
-    
-    // =========================================================================
 
     function refreshAllIframes() { document.querySelectorAll('iframe').forEach(f => f.src = f.src); }
 </script>
