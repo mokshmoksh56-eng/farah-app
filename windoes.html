@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>azemaa proo v10 - تخصيمات شبابيك الألوميتال</title>
+    <style>
+        /* --- إعدادات عامة --- */
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5; text-align: center;
+            padding: 40px; margin: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start; min-height: 100vh;
+        }
+        h2 { color: #333; margin-bottom: 5px; }
+        .hint {
+            color: #444; font-size: 15px; margin-bottom: 30px;
+            background-color: #e9ecef; padding: 10px 20px;
+            border-radius: 8px; border: 1px solid #ccc;
+        }
+
+        /* --- حاوية التصميم الكلية --- */
+        .visualizer-wrapper {
+            position: relative; display: inline-block;
+            margin: 20px 60px 60px 60px; direction: ltr;
+        }
+
+        /* --- حقول إدخال المقاسات --- */
+        .dimension-box {
+            position: absolute; display: flex; align-items: center;
+            justify-content: center; gap: 5px; font-size: 22px;
+            font-weight: bold; color: #333; direction: rtl;
+        }
+        .dimension-box input {
+            width: 70px; font-size: 24px; font-weight: bold;
+            text-align: center; color: #0056b3; background: transparent;
+            border: none; border-bottom: 2px dashed #0056b3; outline: none;
+            transition: all 0.3s; padding: 2px; font-family: Arial, sans-serif; 
+        }
+        .dimension-box input:focus {
+            border-bottom-color: #d84315; color: #d84315;
+            background-color: rgba(255, 255, 255, 0.5); border-radius: 4px;
+        }
+        .top-dimension { top: -50px; left: 50%; transform: translateX(-50%); }
+        /* تم إزالة الدوران هنا ليكون الارتفاع بالعرض */
+        .side-dimension { right: -130px; top: 50%; transform: translateY(-50%); }
+
+        /* --- تصميم الإطار الأساسي --- */
+        .window-frame {
+            background-color: #cfd8dc; 
+            border: 15px solid #f5f5f5; border-top-color: #ffffff; border-left-color: #fafafa;
+            border-bottom-color: #e0e0e0; border-right-color: #eeeeee;
+            box-shadow: 0 15px 25px rgba(0,0,0,0.15), inset 0 4px 15px rgba(0,0,0,0.4); 
+            position: relative; border-radius: 2px;
+            transition: width 0.4s ease-in-out, height 0.4s ease-in-out;
+            perspective: 1200px; 
+            width: 600px; height: 360px;
+        }
+
+        .window-sash {
+            position: absolute; top: 0; height: 100%;
+            background-color: #fff; border: 12px solid #f8f9fa;
+            border-top-color: #ffffff; border-left-color: #f0f0f0;
+            border-bottom-color: #e8e8e8; border-right-color: #fdfdfd;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), width 0.4s, height 0.4s, left 0.4s, right 0.4s, top 0.4s, bottom 0.4s; 
+            cursor: pointer; 
+        }
+
+        .window-glass {
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.1) 40%, rgba(200,230,245,0.3) 40%, rgba(200,230,245,0.1) 100%);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.15); border: 2px solid #dcdcdc; 
+        }
+
+        /* --- حالات الشباك --- */
+        .frame-sliding .left-sash { width: 51%; left: 0; z-index: 2; box-shadow: 5px 0 15px rgba(0,0,0,0.25); height: 100%; top: 0; transform-origin: center; }
+        .frame-sliding .right-sash { width: 51%; right: 0; left: auto; z-index: 1; display: block; box-shadow: -2px 0 10px rgba(0,0,0,0.1); height: 100%; top: 0; transform-origin: center; }
+        .frame-sliding .left-sash.is-open { transform: translateX(94%); }
+        .frame-sliding .right-sash.is-open { transform: translateX(-94%); }
+
+        .frame-hinged .left-sash { width: 50%; left: 0; transform-origin: left center; z-index: 2; height: 100%; top: 0; }
+        .frame-hinged .right-sash { width: 50%; right: 0; left: auto; transform-origin: right center; z-index: 2; display: block; height: 100%; top: 0; }
+        .frame-hinged .left-sash.is-open { transform: rotateY(-75deg); }
+        .frame-hinged .right-sash.is-open { transform: rotateY(75deg); }
+
+        .frame-awning .left-sash { width: 100%; left: 0; transform-origin: bottom center; z-index: 2; height: 100%; top: 0; }
+        .frame-awning .right-sash { display: none; }
+        .frame-awning .left-sash.is-open { transform: rotateX(45deg); }
+
+        .frame-awning-double .left-sash { width: 100%; height: 49.5%; left: 0; top: 0; transform-origin: bottom center; z-index: 2; }
+        .frame-awning-double .right-sash { width: 100%; height: 49.5%; left: 0; top: auto; bottom: 0; transform-origin: bottom center; z-index: 2; display: block; }
+        .frame-awning-double .left-sash.is-open { transform: rotateX(45deg); }
+        .frame-awning-double .right-sash.is-open { transform: rotateX(45deg); }
+
+        /* --- قسم التخصيمات والجدول --- */
+        .calculations-section {
+            width: 100%; max-width: 950px; background: #fff; padding: 20px;
+            border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 20px;
+        }
+
+        .controls {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;
+            flex-wrap: wrap; gap: 15px;
+        }
+
+        .controls .select-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+
+        .controls select {
+            padding: 10px; font-size: 16px; border: 1px solid #ccc;
+            border-radius: 5px; background-color: #f9f9f9; cursor: pointer;
+            outline: none; font-family: 'Segoe UI', Tahoma, sans-serif;
+            min-width: 180px;
+        }
+
+        .report-date { font-size: 14px; color: #666; direction: rtl; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background-color: #0056b3; color: white; font-weight: bold; }
+        
+        td.number-cell { font-family: Arial, Helvetica, sans-serif; font-weight: bold; color: #d84315; direction: ltr; }
+        .accessories-list { text-align: right; list-style-type: square; padding-right: 20px; margin: 0; color: #444; }
+        .accessories-list li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <h2>برنامج azemaa proo</h2>
+    <div class="hint">
+        💡 اختر العائلة، ثم نظام الفتح والقطاع، واكتب المقاس لحساب التخصيمات بدقة.
+    </div>
+
+    <div class="visualizer-wrapper">
+        <div class="dimension-box top-dimension">
+            <input type="number" id="inlineWidth" value="100" min="40" max="800">
+            <span>سم</span>
+        </div>
+
+        <div class="dimension-box side-dimension">
+            <input type="number" id="inlineHeight" value="100" min="40" max="800">
+            <span>سم</span>
+        </div>
+
+        <div class="window-frame frame-sliding" id="windowFrame">
+            <div class="window-sash left-sash" id="leftSash" title="اضغط للفتح والإغلاق">
+                <div class="window-glass"></div>
+            </div>
+            <div class="window-sash right-sash" id="rightSash" title="اضغط للفتح والإغلاق">
+                <div class="window-glass"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="calculations-section">
+        <div class="controls">
+            <div class="select-group">
+                <div>
+                    <label for="brandType"><strong>العائلة:</strong> </label>
+                    <select id="brandType">
+                        <option value="bs">عائلة بي إس (BS)</option>
+                        <option value="maxim">مكسيم (Maxim)</option>
+                        <option value="sherif">شريف علي حسن</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="systemType"><strong>نظام الفتح:</strong> </label>
+                    <select id="systemType">
+                        <!-- تُملأ تلقائياً -->
+                    </select>
+                </div>
+                <div>
+                    <label for="profileType"><strong>القطاع:</strong> </label>
+                    <select id="profileType">
+                        <!-- تُملأ تلقائياً -->
+                    </select>
+                </div>
+            </div>
+            <div class="report-date" id="reportDate">تاريخ التقرير: </div>
+        </div>
+
+        <table id="calcTable">
+            <thead>
+                <tr>
+                    <th>البيان</th>
+                    <th>العدد</th>
+                    <th>العرض</th>
+                    <th>الارتفاع</th>
+                    <th>الإكسسوارات المطلوبة</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // --- منع زر الرجوع من إغلاق التطبيق بالكامل ---
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = function () {
+            window.history.pushState(null, null, window.location.href);
+        };
+
+        const inlineWidth = document.getElementById('inlineWidth');
+        const inlineHeight = document.getElementById('inlineHeight');
+        const windowFrame = document.getElementById('windowFrame');
+        const leftSash = document.getElementById('leftSash');
+        const rightSash = document.getElementById('rightSash');
+        
+        const brandType = document.getElementById('brandType');
+        const systemType = document.getElementById('systemType');
+        const profileType = document.getElementById('profileType');
+        const calcTableBody = document.querySelector('#calcTable tbody');
+        
+        const scaleFactor = 3; 
+
+        // تنسيق التاريخ (سنة/شهر/يوم)
+        const dateObj = new Date();
+        const formattedDate = `${dateObj.getFullYear()}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getDate()).padStart(2, '0')}`;
+        document.getElementById('reportDate').innerText += formattedDate;
+
+        const systemLabels = {
+            'sliding': 'شباك جرار',
+            'hinged': 'شباك مفصلي',
+            'awning': 'شباك قلاب (دلفة واحدة)',
+            'awning-double': 'شباك قلاب (2 دلفة فوق بعض)'
+        };
+
+        const windowData = {
+            'bs': {
+                systems: {
+                    'sliding': [
+                        { id: 'bs_small', name: 'بي إس صغير', calc: (w, h) => ({
+                            sashW: (w / 2) + 0.3, sashH: h - 6.5,
+                            glassW: ((w / 2) + 0.3) - 11, glassH: (h - 6.5) - 11,
+                            screenW: (w / 2) + 0, screenH: h - 6.5,
+                            sashCount: 2, sakinaH: h - 6.5,
+                            acc: ['4 عجل سحاب بي إس', '2 سكينة قفل', 'فرش سحاب', 'كاوتش زجاج', 'سلك فايبر', 'مسامير تجميع']
+                        })},
+                        { id: 'bs_large', name: 'بي إس كبير', calc: (w, h) => ({
+                            sashW: (w / 2) - 1.2, sashH: h - 9.5,
+                            glassW: ((w / 2) - 1.2) - 12.5, glassH: (h - 9.5) - 12.5,
+                            screenW: (w / 2) - 1.2, screenH: h - 9.5,
+                            sashCount: 2, sakinaH: h - 9.5,
+                            acc: ['4 عجل بي إس كبير', '2 قفل أوتوماتيك', 'فرش كثيف', 'كاوتش زجاج عريض', 'سلك صلب', 'زوايا تجميع']
+                        })}
+                    ],
+                    'hinged': [
+                        { id: 'bs_small_hinged', name: 'بي إس صغير', calc: (w, h) => {
+                            let sH = h - 4.2, sW = (w / 2) - 2.4;
+                            return {
+                                sashW: sW, sashH: sH, glassW: sW - 9.4, glassH: sH - 9.4,
+                                screenW: 0, screenH: 0, sashCount: 2, sakinaH: 0, 
+                                tStopper: h - 10.4, bead1_val: sH - 12.7, bead2_val: sW - 8.9,
+                                acc: ['4 مفصلات بي إس', '1 أكرة مفصلي', '1 ترباس (سقاطة)', 'كاوتش زجاج', 'زوايا تجميع']
+                            };
+                        }},
+                        { id: 'bs_large_hinged', name: 'بي إس كبير', calc: (w, h) => {
+                            let sH = h - 4.2, sW = (w / 2) - 2.4;
+                            return {
+                                sashW: sW, sashH: sH, glassW: sW - 9.4, glassH: sH - 9.4,
+                                screenW: 0, screenH: 0, sashCount: 2, sakinaH: 0, 
+                                tStopper: h - 10.4, bead1_val: sH - 12.7, bead2_val: sW - 8.9,
+                                acc: ['4 مفصلات بي إس كبير', '1 أكرة مفصلي', '1 ترباس (سقاطة)', 'كاوتش زجاج', 'زوايا تجميع']
+                            };
+                        }}
+                    ],
+                    'awning': [
+                        { id: 'bs_small_awning', name: 'بي إس صغير', calc: (w, h) => ({
+                            sashW: w - 5, sashH: h - 5, glassW: (w - 5) - 9.4, glassH: (h - 5) - 9.4,
+                            screenW: 0, screenH: 0, sashCount: 1, sakinaH: 0,
+                            acc: ['2 مقص قلاب', '1 سقاطة قلاب', '2 مفصلة', 'كاوتش زجاج', 'زوايا تجميع']
+                        })}
+                    ],
+                    'awning-double': [
+                        { id: 'bs_small_awning_double', name: 'بي إس صغير', calc: (w, h) => {
+                            let sW = w - 4.2, sH = (h / 2) - 3.1;
+                            return {
+                                sashW: sW, sashH: sH, glassW: sW - 9.4, glassH: sH - 9.4,
+                                screenW: 0, screenH: 0, sashCount: 2, sakinaH: 0,
+                                so2as1: w - 5.4, bead1_val: sW - 8.9, bead2_val: sH - 12.7,
+                                acc: ['4 مقص قلاب', '2 سقاطة قلاب', '4 مفصلة', 'كاوتش زجاج', 'زوايا تجميع']
+                            };
+                        }}
+                    ]
+                }
+            },
+            'maxim': {
+                systems: {
+                    'sliding': [
+                        { id: 'maxim_e777', name: 'مكسيم (E-777)', calc: (w, h) => ({
+                            sashW: (w / 2) + 0.6, sashH: h - 5.8,
+                            glassW: ((w / 2) + 0.6) - 11.5, glassH: (h - 5.8) - 11.5,
+                            screenW: (w / 2) + 0.3, screenH: h - 5.2,
+                            sashCount: 2, sakinaH: h - 5.6, 
+                            acc: ['4 عجل مكسيم', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })},
+                        { id: 'maxim_e105_01', name: 'مكسيم (E-105 01)', calc: (w, h) => ({
+                            sashW: (w / 2) + 0.8, sashH: h - 6.5,
+                            glassW: ((w / 2) + 0.8) - 12, glassH: (h - 6.5) - 12,
+                            screenW: (w / 2) + 0.3, screenH: h - 6.5,
+                            sashCount: 2, sakinaH: h - 6.7, 
+                            acc: ['4 عجل مكسيم', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })},
+                        { id: 'maxim_e105_05', name: 'مكسيم (E-105 05)', calc: (w, h) => ({
+                            sashW: (w / 2) + 0.5, sashH: h - 6.5,
+                            glassW: ((w / 2) + 0.5) - 12, glassH: (h - 6.5) - 12,
+                            screenW: (w / 2) + 0.3, screenH: h - 6.5,
+                            sashCount: 2, sakinaH: h - 6.7, 
+                            acc: ['4 عجل مكسيم', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })}
+                    ]
+                }
+            },
+            'sherif': {
+                systems: {
+                    'sliding': [
+                        { id: 'jumbo', name: 'جامبو العادي', calc: (w, h) => ({
+                            sashW: (w / 2) - 0.4, sashH: h - 8.4,
+                            glassW: ((w / 2) - 0.4) - 14, glassH: (h - 8.4) - 14,
+                            screenW: (w / 2) - 2.2, screenH: h - 9,
+                            sashCount: 2, sakinaH: h - 8.4,
+                            acc: ['4 عجل جامبو مزدوج', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })},
+                        { id: 'jumbo_dowaran', name: 'جامبو (سكينة دوران)', calc: (w, h) => ({
+                            sashW: (w / 2) - 1.2, sashH: h - 8.4,
+                            glassW: ((w / 2) - 1.2) - 14, glassH: (h - 8.4) - 14,
+                            screenW: (w / 2) - 2.2, screenH: h - 9,
+                            sashCount: 2, sakinaH: h - 12.2,
+                            acc: ['4 عجل جامبو', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })},
+                        { id: 'tango', name: 'تانجو العادي', calc: (w, h) => ({
+                            sashW: (w / 2) - 0.5, sashH: h - 7.4,
+                            glassW: ((w / 2) - 0.5) - 10.5, glassH: (h - 7.4) - 10.5,
+                            screenW: (w / 2) - 1.5, screenH: h - 7.6,
+                            sashCount: 2, sakinaH: h - 7.4,
+                            acc: ['4 عجل تانجو', '2 قفل أوتوماتيك', 'فرش كثيف', 'كاوتش زجاج', 'سلك فايبر', 'مسامير تجميع']
+                        })},
+                        { id: 'tango_dowaran', name: 'تانجو (سكينة دوران)', calc: (w, h) => ({
+                            sashW: (w / 2) - 1, sashH: h - 7.4,
+                            glassW: ((w / 2) - 1) - 10.5, glassH: (h - 7.4) - 10.5,
+                            screenW: (w / 2) - 2.5, screenH: h - 7.6,
+                            sashCount: 2, sakinaH: h - 11,
+                            acc: ['4 عجل تانجو', '2 قفل أوتوماتيك', 'فرش كثيف', 'كاوتش زجاج', 'سلك فايبر', 'مسامير تجميع']
+                        })},
+                        { id: 'nano', name: 'نانو', calc: (w, h) => ({
+                            sashW: (w / 2) - 0.2, sashH: h - 5.8,
+                            glassW: ((w / 2) - 0.2) - 9.5, glassH: (h - 5.8) - 9.5,
+                            screenW: (w / 2) - 0.9, screenH: h - 5.8,
+                            sashCount: 2, sakinaH: h - 5.8,
+                            acc: ['4 عجل نانو', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })},
+                        { id: 'tindo', name: 'تيندو', calc: (w, h) => ({
+                            sashW: (w / 2) - 1, sashH: h - 8.5,
+                            glassW: ((w / 2) - 1) - 14, glassH: (h - 8.5) - 14,
+                            screenW: (w / 2) - 2, screenH: h - 8.5,
+                            sashCount: 2, sakinaH: h - 8.5,
+                            acc: ['4 عجل تيندو', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })},
+                        { id: 'tempo', name: 'تيمبو', calc: (w, h) => ({
+                            sashW: (w / 2) - 0.5, sashH: h - 8.3,
+                            glassW: ((w / 2) - 0.5) - 13, glassH: (h - 8.3) - 13,
+                            screenW: (w / 2) - 1.9, screenH: h - 8.3,
+                            sashCount: 2, sakinaH: h - 8.3,
+                            acc: ['4 عجل تيمبو', '2 قفل أوتوماتيك', 'فرش مانع للأتربة', 'كاوتش زجاج', 'سلك فايبر / صلب', 'مسامير تجميع']
+                        })}
+                    ]
+                }
+            }
+        };
+
+        function updateSystemDropdown() {
+            const brand = brandType.value;
+            const availableSystems = Object.keys(windowData[brand].systems);
+            
+            systemType.innerHTML = '';
+            availableSystems.forEach(sys => {
+                let opt = document.createElement('option');
+                opt.value = sys;
+                opt.textContent = systemLabels[sys];
+                systemType.appendChild(opt);
+            });
+            
+            updateProfileDropdown();
+        }
+
+        function updateProfileDropdown() {
+            const brand = brandType.value;
+            const sys = systemType.value;
+            const profiles = windowData[brand].systems[sys];
+            
+            profileType.innerHTML = '';
+            profiles.forEach(prof => {
+                let opt = document.createElement('option');
+                opt.value = prof.id;
+                opt.textContent = prof.name;
+                profileType.appendChild(opt);
+            });
+
+            windowFrame.className = 'window-frame';
+            windowFrame.classList.add(`frame-${sys}`);
+            leftSash.classList.remove('is-open');
+            rightSash.classList.remove('is-open');
+
+            updateCalculations();
+        }
+
+        function updateCalculations() {
+            let w = parseFloat(inlineWidth.value) || 0;
+            let h = parseFloat(inlineHeight.value) || 0;
+            let brand = brandType.value;
+            let sys = systemType.value;
+            let selectedProfileId = profileType.value;
+
+            windowFrame.style.width = (w * scaleFactor) + 'px';
+            windowFrame.style.height = (h * scaleFactor) + 'px';
+
+            if(w === 0 || h === 0) return;
+
+            let profileArr = windowData[brand].systems[sys];
+            if(!profileArr) return;
+
+            let activeProfile = profileArr.find(p => p.id === selectedProfileId);
+            if(!activeProfile) return;
+
+            let res = activeProfile.calc(w, h);
+
+            let accHTML = '<ul class="accessories-list">';
+            res.acc.forEach(item => { accHTML += `<li>${item}</li>`; });
+            accHTML += '</ul>';
+
+            let rowsHTML = `
+                <tr>
+                    <td><strong>مقاس الوحدة</strong></td>
+                    <td class="number-cell">1</td>
+                    <td class="number-cell">${w.toFixed(1)}</td>
+                    <td class="number-cell">${h.toFixed(1)}</td>
+                    <td rowspan="9" style="vertical-align: top;">${accHTML}</td>
+                </tr>
+                <tr>
+                    <td><strong>مقاس الدرف</strong></td>
+                    <td class="number-cell">${res.sashCount}</td>
+                    <td class="number-cell">${res.sashW.toFixed(1)}</td>
+                    <td class="number-cell">${res.sashH.toFixed(1)}</td>
+                </tr>
+            `;
+
+            if (res.screenW > 0 && res.screenH > 0) {
+                rowsHTML += `
+                <tr>
+                    <td><strong>درف السلك</strong></td>
+                    <td class="number-cell">1</td>
+                    <td class="number-cell">${res.screenW.toFixed(1)}</td>
+                    <td class="number-cell">${res.screenH.toFixed(1)}</td>
+                </tr>`;
+            }
+
+            rowsHTML += `
+                <tr>
+                    <td><strong>زجاج الدرف</strong></td>
+                    <td class="number-cell">${res.sashCount}</td>
+                    <td class="number-cell">${res.glassW.toFixed(1)}</td>
+                    <td class="number-cell">${res.glassH.toFixed(1)}</td>
+                </tr>
+            `;
+
+            if (res.sakinaH > 0) {
+                rowsHTML += `
+                <tr>
+                    <td><strong>مقاس السكينة</strong></td>
+                    <td class="number-cell">2</td>
+                    <td class="number-cell">-</td>
+                    <td class="number-cell">${res.sakinaH.toFixed(1)}</td>
+                </tr>`;
+            }
+
+            if (res.tStopper) {
+                rowsHTML += `
+                <tr>
+                    <td><strong>T الصداد</strong></td>
+                    <td class="number-cell">1</td>
+                    <td class="number-cell">-</td>
+                    <td class="number-cell">${res.tStopper.toFixed(1)}</td>
+                </tr>`;
+            }
+
+            if (res.so2as1) {
+                rowsHTML += `
+                <tr>
+                    <td><strong>سؤاس 1</strong></td>
+                    <td class="number-cell">1</td>
+                    <td class="number-cell">${res.so2as1.toFixed(1)}</td>
+                    <td class="number-cell">-</td>
+                </tr>`;
+            }
+
+            if (res.bead1_val) {
+                rowsHTML += `
+                <tr>
+                    <td><strong>مقاس باكتة 1</strong></td>
+                    <td class="number-cell">4</td>
+                    <td class="number-cell">${res.bead1_val.toFixed(1)}</td>
+                    <td class="number-cell">-</td>
+                </tr>`;
+            }
+            if (res.bead2_val) {
+                rowsHTML += `
+                <tr>
+                    <td><strong>مقاس باكتة 2</strong></td>
+                    <td class="number-cell">4</td>
+                    <td class="number-cell">${res.bead2_val.toFixed(1)}</td>
+                    <td class="number-cell">-</td>
+                </tr>`;
+            }
+
+            calcTableBody.innerHTML = rowsHTML;
+        }
+
+        brandType.addEventListener('change', updateSystemDropdown);
+        systemType.addEventListener('change', updateProfileDropdown);
+        profileType.addEventListener('change', updateCalculations);
+        
+        inlineWidth.addEventListener('change', updateCalculations);
+        inlineHeight.addEventListener('change', updateCalculations);
+
+        inlineWidth.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') { updateCalculations(); this.blur(); }
+        });
+
+        inlineHeight.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') { updateCalculations(); this.blur(); }
+        });
+
+        leftSash.addEventListener('click', function() { this.classList.toggle('is-open'); });
+        rightSash.addEventListener('click', function() { this.classList.toggle('is-open'); });
+
+        // تشغيل التهيئة الأولية للقوائم
+        updateSystemDropdown();
+    </script>
+</body>
+</html>
