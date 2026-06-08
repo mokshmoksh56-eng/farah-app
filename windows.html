@@ -168,13 +168,10 @@
 
         /* --- قائمة المحفوظات السحابية --- */
         .saved-list-container { width: 100%; max-width: 950px; margin-top: 20px; text-align: right; }
-        .saved-card { background: #fff; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
+        .saved-card { background: #fff; border-radius: 8px; margin-bottom: 10px; border: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px;}
         .saved-card-info { flex: 1; min-width: 200px; }
         .saved-card-info p { margin: 0; font-size: 14px; color: #666; font-weight: bold; }
-        .saved-card-actions { display: flex; gap: 10px; }
-        .btn-sm { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; }
-        .btn-edit { background: #f39c12; }
-        .btn-delete { background: #e74c3c; }
+        .btn-sm { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s;}
 
         #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #27ae60; color: white; padding: 12px 25px; border-radius: 30px; display: none; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; font-weight: bold; }
         #sync-status { font-size: 13px; background: rgba(0,0,0,0.1); padding: 5px 10px; border-radius: 20px; display: inline-block; color: #333; margin-bottom: 10px;}
@@ -493,7 +490,7 @@
             let sakinaPieces = (res.sakinaH > 0) ? [res.sakinaH, res.sakinaH] : [];
 
             const windowItem = {
-                id: Date.now(),
+                id: Date.now().toString(),
                 width: w, height: h,
                 brand: brandVal, system: sysVal, profile: profVal,
                 profileName: profName,
@@ -541,7 +538,7 @@
                         <td>${item.profileName}</td>
                         <td class="num">${item.width}</td>
                         <td class="num">${item.height}</td>
-                        <td><button class="btn-delete-row" onclick="removeFromCart(${item.id})">حذف</button></td>
+                        <td><button class="btn-delete-row" onclick="removeFromCart('${item.id}')">حذف</button></td>
                     </tr>
                 `;
             });
@@ -613,7 +610,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -641,7 +638,7 @@
             setTimeout(() => t.style.display = 'none', 2500);
         };
 
-        // --- تحديث تجميع المحفوظات لتجنب التكرار الزائد ---
+        // --- تجميع المحفوظات ومنع التكرار ---
         window.renderSavedList = function() {
             const container = document.getElementById('savedList');
             const itemsArray = Object.keys(windowsDataSaved).map(key => ({
@@ -650,11 +647,11 @@
             })).reverse();
 
             if(itemsArray.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#777;">لا يوجد مقاسات محفوظة حالياً.</p>';
+                container.innerHTML = '<p style="text-align:center; color:#777;">لا توجد فواتير محفوظة حالياً.</p>';
                 return;
             }
 
-            // تجميع الشبابيك حسب اسم الزبون
+            // تجميع الشبابيك تحت اسم كل زبون
             let groupedCustomers = {};
             itemsArray.forEach(item => {
                 let customerName = item.customer || "غير محدد";
@@ -668,19 +665,20 @@
             for (let custName in groupedCustomers) {
                 html += `
                 <div style="background: #e2e8f0; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #cbd5e1;">
-                    <h4 style="color: #c0392b; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #c0392b; display: inline-block; padding-bottom: 5px;">👤 زبون: ${custName}</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #c0392b; margin-bottom: 15px; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                        <h4 style="color: #c0392b; margin: 0; font-size: 18px;">👤 زبون: ${custName}</h4>
+                        <div>
+                            <button class="btn-sm" style="background:#2980b9; margin-left: 5px;" onclick="recallCustomerInvoice('${custName}')">استدعاء الفاتورة بالكامل 📥</button>
+                            <button class="btn-sm" style="background:#e74c3c;" onclick="deleteCustomerInvoice('${custName}')">حذف الفاتورة 🗑️</button>
+                        </div>
+                    </div>
                 `;
                 
                 groupedCustomers[custName].forEach(item => {
                     html += `
-                    <div class="saved-card" style="box-shadow: none; border: 1px solid #cbd5e1; margin-bottom: 8px;">
+                    <div class="saved-card">
                         <div class="saved-card-info">
-                            <p>📏 العرض: <span style="color:#d84315">${item.w}</span> سم | الارتفاع: <span style="color:#d84315">${item.h}</span> سم</p>
-                            <p style="font-size: 12px; color: #888; margin-top: 5px;">🔧 القطاع: ${item.profileName || item.system}</p>
-                        </div>
-                        <div class="saved-card-actions">
-                            <button class="btn-sm btn-edit" onclick="editWindow('${item.id}')">استدعاء ✏️</button>
-                            <button class="btn-sm btn-delete" onclick="deleteWindow('${item.id}')">حذف 🗑️</button>
+                            <p>📏 شباك: العرض <span style="color:#d84315">${item.w}</span> سم × الارتفاع <span style="color:#d84315">${item.h}</span> سم <span style="font-size: 12px; color: #888; margin-right:10px;">(🔧 ${item.profileName || item.system})</span></p>
                         </div>
                     </div>
                     `;
@@ -692,28 +690,52 @@
             container.innerHTML = html;
         };
 
-        window.editWindow = function(id) {
-            const data = windowsDataSaved[id];
-            if(!data) return;
+        // --- استدعاء فاتورة الزبون بالكامل وإعادة حسابها ---
+        window.recallCustomerInvoice = function(customerName) {
+            currentCart = [];
+            document.getElementById('customerName').value = customerName;
             
-            document.getElementById('customerName').value = data.customer || '';
-            document.getElementById('inlineWidth').value = data.w;
-            document.getElementById('inlineHeight').value = data.h;
-            
-            document.getElementById('brandType').value = data.brand;
-            updateSystemDropdown();
-            
-            setTimeout(() => {
-                document.getElementById('systemType').value = data.system;
-                updateProfileDropdown();
-                setTimeout(() => {
-                    document.getElementById('profileType').value = data.profile;
-                    updateCalculations();
-                }, 50);
-            }, 50);
+            Object.keys(windowsDataSaved).forEach(key => {
+                let item = windowsDataSaved[key];
+                if (item.customer === customerName) {
+                    let w = parseFloat(item.w);
+                    let h = parseFloat(item.h);
+                    let brandVal = item.brand;
+                    let sysVal = item.system;
+                    let profVal = item.profile;
+                    let profName = item.profileName || windowData[brandVal].systems[sysVal].find(p => p.id === profVal).name;
+                    
+                    let activeProfile = windowData[brandVal].systems[sysVal].find(p => p.id === profVal);
+                    if(activeProfile) {
+                        let res = activeProfile.calc(w, h);
+                        
+                        let fPieces = [w + 10, w + 10, h + 10, h + 10];
+                        let sPieces = [];
+                        for(let i = 0; i < res.sashCount; i++) {
+                            sPieces.push(res.sashW, res.sashW, res.sashH, res.sashH);
+                        }
+                        let screenPieces = (res.screenW > 0 && res.screenH > 0) ? [res.screenW, res.screenW, res.screenH, res.screenH] : [];
+                        let sakinaPieces = (res.sakinaH > 0) ? [res.sakinaH, res.sakinaH] : [];
 
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            window.showToast("✅ تم استدعاء مقاسات الشباك بنجاح");
+                        const cartItem = {
+                            id: key, 
+                            width: w, height: h,
+                            brand: brandVal, system: sysVal, profile: profVal,
+                            profileName: profName,
+                            fPieces: fPieces,
+                            sPieces: sPieces,
+                            screenPieces: screenPieces,
+                            sakinaPieces: sakinaPieces
+                        };
+                        currentCart.push(cartItem);
+                    }
+                }
+            });
+            
+            document.getElementById('displayCustomerName').innerText = customerName;
+            renderCart();
+            window.scrollTo({ top: document.getElementById('customerCart').offsetTop, behavior: 'smooth' });
+            window.showToast("✅ تم استدعاء الفاتورة ورسم وتقسيم الأعواد بنجاح");
         };
 
         onAuthStateChanged(auth, user => {
@@ -735,6 +757,7 @@
             }
         });
 
+        // --- حفظ سحابي مطور (يمسح القديم للزبون لتجنب التكرار) ---
         window.saveCartToCloud = function() {
             if(!windowUserUid) return;
             const customer = document.getElementById('customerName').value.trim();
@@ -744,59 +767,72 @@
                 return;
             }
             
-            // تعطيل الزر لمنع الضغط مرتين بالخطأ
             const saveBtn = document.getElementById('btnSaveCloud');
             saveBtn.disabled = true;
             saveBtn.innerText = "⏳ جاري الحفظ...";
-
             document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
             
-            let promises = currentCart.map(item => {
-                const dataToSave = { 
+            let updates = {};
+            
+            // تحديد مسح المقاسات القديمة لنفس الزبون
+            Object.keys(windowsDataSaved).forEach(key => {
+                if(windowsDataSaved[key].customer === customer) {
+                    updates[key] = null;
+                }
+            });
+            
+            // إضافة المقاسات الجديدة المحدثة
+            currentCart.forEach(item => {
+                const newKey = push(ref(fdb)).key; // إنشاء مفتاح عشوائي جديد
+                updates[newKey] = {
                     customer: customer,
                     w: item.width, 
                     h: item.height, 
                     brand: item.brand,
                     system: item.system,
                     profile: item.profile,
-                    profileName: item.profileName, // حفظ اسم القطاع صريحاً لسهولة العرض
+                    profileName: item.profileName,
                     timestamp: Date.now()
                 };
-                return push(windowsRef, dataToSave);
             });
-
-            Promise.all(promises).then(() => {
+            
+            const parentRef = ref(fdb, 'backups/azemaa_windows_sizes/' + windowUserUid);
+            update(parentRef, updates).then(() => {
                 document.getElementById('customerName').value = '';
                 currentCart = []; 
                 renderCart(); 
                 document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
                 window.showToast("✅ تم حفظ الفاتورة سحابياً بنجاح!");
                 
-                // إعادة تفعيل الزر
                 saveBtn.disabled = false;
                 saveBtn.innerText = "☁️ حفظ جميع شبابيك الفاتورة سحابياً";
             }).catch(err => {
                 document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
                 alert("حدث خطأ في الاتصال: " + err);
                 
-                // إعادة تفعيل الزر حتى لو حدث خطأ
                 saveBtn.disabled = false;
                 saveBtn.innerText = "☁️ حفظ جميع شبابيك الفاتورة سحابياً";
             });
         };
 
-        window.deleteWindow = function(id) { 
+        // --- حذف فاتورة زبون بالكامل ---
+        window.deleteCustomerInvoice = function(customerName) {
             if(!windowUserUid) return;
-            if(confirm("هل أنت متأكد من حذف تخصيمات هذا الشبّاك نهائياً؟")) { 
+            if(confirm(`هل أنت متأكد من حذف فاتورة الزبون (${customerName}) بالكامل؟ لا يمكن التراجع عن هذا الإجراء.`)) {
                 document.getElementById('sync-status').innerText = "⚡ جاري الحذف...";
-                const itemRef = ref(fdb, 'backups/azemaa_windows_sizes/' + windowUserUid + '/' + id);
-                remove(itemRef).then(() => {
-                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
-                    window.showToast("🗑️ تم الحذف بنجاح");
-                }).catch(err => {
-                    document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
+                let updates = {};
+                Object.keys(windowsDataSaved).forEach(key => {
+                    if(windowsDataSaved[key].customer === customerName) {
+                        updates[key] = null;
+                    }
                 });
-            } 
+                
+                const parentRef = ref(fdb, 'backups/azemaa_windows_sizes/' + windowUserUid);
+                update(parentRef, updates).then(() => {
+                    document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
+                    window.showToast("🗑️ تم حذف الفاتورة بنجاح");
+                });
+            }
         };
     </script>
 </body>
