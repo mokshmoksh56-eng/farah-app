@@ -449,7 +449,32 @@
             }
         });
     }
-    function addNewCard() { if(!window.currentUid) return; for (let i = 1; i <= 50; i++) { const card = document.getElementById(`card-${i}`); if (!card.classList.contains('visible')) { card.classList.add('visible'); window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false }).then(async () => { if (card.classList.contains('locked-mode')) toggleCardLock(i); await syncToTslem(); }).catch(err => alert("❌ خطأ: " + err.message)); return; } } }
+
+    // الدالة المحدثة
+    function addNewCard() { 
+        if(!window.currentUid) return; 
+        
+        for (let i = 1; i <= 50; i++) { 
+            const card = document.getElementById(`card-${i}`); 
+            
+            // التحقق إن الكارت فاضي عشان نتجاهل كروت الأرشيف اللي فيها بيانات
+            const isEmpty = card.querySelector('.c-name').value === "" && card.querySelector('.c-total').value === "";
+            
+            if (!card.classList.contains('visible') && isEmpty) { 
+                card.classList.add('visible'); 
+                window.update(window.ref(window.db, `backups/users/${window.currentUid}/${i}`), { isArchived: false })
+                .then(async () => { 
+                    if (card.classList.contains('locked-mode')) toggleCardLock(i); 
+                    await syncToTslem(); 
+                }).catch(err => alert("❌ خطأ: " + err.message)); 
+                
+                return; 
+            } 
+        }
+        
+        alert("⚠️ لا يوجد كروت جديدة متاحة! تم استخدام جميع الـ 50 كارت.");
+    }
+
     async function deleteCard(id) { if(!window.currentUid) return; if(confirm('سيتم حذف العميل نهائياً وجميع دفعاته المسجلة في اليومية. هل أنت متأكد؟')) { try { await deleteClientPaymentsFromYom(id); await window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`)); const card = document.getElementById(`card-${id}`); card.classList.remove('visible'); card.querySelectorAll('input').forEach(i => i.value = ""); card.querySelector('textarea').value = ""; card.querySelector('.c-code').value = parseInt(id); await syncToTslem(); refreshStats(); alert("تم حذف العميل ودفعاته بنجاح"); } catch(err) { alert("❌ خطأ في الحذف: " + err.message); } } }
     function sendDirectWA(id) { const card = document.getElementById(`card-${id}`); const phone = card.querySelector('.c-phone').value; if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); window.open(`https://wa.me/2${phone}`, '_blank'); }
     function sendWA(id) { const card = document.getElementById(`card-${id}`); const name = card.querySelector('.c-name').value || "عميلنا العزيز"; const phone = card.querySelector('.c-phone').value; const company = document.getElementById('companyNameInput').value || 'azemaa proo'; const curr = getCurrentCurrency(); if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); const totalVal = parseFloat(card.querySelector('.c-total').value) || 0; const totalWord = tafqit(totalVal); let paymentsMsg = ""; const pVals = card.querySelectorAll('.p-val'); const pDates = card.querySelectorAll('.p-date'); let paid = 0; pVals.forEach((p, idx) => { let v = parseFloat(p.value) || 0; let d = pDates[idx].value || "---"; if (v > 0) { paid += v; paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ${curr.sym}\n`; } }); const remVal = totalVal - paid; const remWord = remVal > 0 ? tafqit(remVal) : "تم السداد بالكامل ✓"; const msg = `*تحية طيبة من ${company}* 🌸\n\nأهلاً أ/ *${name}*\nنحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n━━━━━━━━━━━━━━\n💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${totalWord} ${curr.name} لا غير\n\n📅 *تفاصيل الدفعات:* \n${paymentsMsg || "━ لا توجد دفعات مسجلة بعد\n"}\n📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${remWord} ${remVal > 0 ? curr.name + ' لا غير' : ''}\n━━━━━━━━━━━━━━\n\nشكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`; window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank'); }
