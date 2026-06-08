@@ -106,7 +106,12 @@
             border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 10px;
         }
 
-        .customer-input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 15px; font-family: inherit; }
+        .customer-input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 15px; font-family: inherit; outline: none; transition: 0.3s; }
+        .customer-input:focus { border-color: #0056b3; box-shadow: 0 0 5px rgba(0,86,179,0.3); }
+
+        .input-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .input-row > div { flex: 1; min-width: 120px; text-align: right; }
+        .input-row label { display: block; font-size: 14px; font-weight: bold; color: #555; margin-bottom: 5px; }
         
         .controls {
             display: flex; justify-content: space-between; align-items: center;
@@ -155,7 +160,6 @@
             background: #fdf2e9; border: 1px solid #eb984e; padding: 15px;
             border-radius: 8px; margin-top: 20px; text-align: right;
         }
-        .profiles-summary h4 { margin: 0 0 10px 0; color: #d35400; }
         
         /* تصميم رسمة الأعواد المقطعة */
         .optimization-section { background: #fff; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #b2bec3; }
@@ -219,7 +223,19 @@
         </div>
 
         <div class="calculations-section">
+            
             <input type="text" id="customerName" class="customer-input" placeholder="👤 اسم الزبون (مثال: أستاذ أحمد - شقة 12)...">
+            
+            <div class="input-row">
+                <div style="flex: 1; max-width: 150px;">
+                    <label for="windowCount">🔢 العدد:</label>
+                    <input type="number" id="windowCount" class="customer-input" style="margin-bottom: 0;" value="1" min="1" placeholder="1">
+                </div>
+                <div style="flex: 3;">
+                    <label for="windowNote">📝 الغرفة / وصف الشباك (اختياري):</label>
+                    <input type="text" id="windowNote" class="customer-input" style="margin-bottom: 0;" placeholder="مثال: غرفة النوم، شباك المطبخ، الصالة...">
+                </div>
+            </div>
             
             <div class="controls">
                 <div class="select-group">
@@ -236,7 +252,7 @@
             <div id="calcTableContainer"></div>
 
             <div class="action-buttons">
-                <button class="btn-add" onclick="addToCart()">➕ إضافة هذا الشباك للفاتورة</button>
+                <button class="btn-add" onclick="addToCart()">➕ إضافة للفاتورة</button>
             </div>
         </div>
 
@@ -245,18 +261,18 @@
             <div class="cart-header">
                 <h3 style="color: #d84315; margin: 0;">🛒 فاتورة الزبون: <span id="displayCustomerName"></span></h3>
                 <select id="barLengthSelect" onchange="renderCart()" style="padding: 10px; font-size: 15px; border-radius: 8px; border: 2px solid #0056b3; background: #fff; color: #0056b3; font-weight: bold; cursor: pointer; outline: none;">
-                    <option value="650">📏 اختيار طول العود: 6.5 متر</option>
-                    <option value="600">📏 اختيار طول العود: 6 متر</option>
+                    <option value="650">📏 طول العود للحساب: 6.5 متر</option>
+                    <option value="600">📏 طول العود للحساب: 6 متر</option>
                 </select>
             </div>
             
             <table class="cart-table">
                 <thead>
                     <tr>
-                        <th>رقم</th>
                         <th>البيان (القطاع)</th>
-                        <th>العرض</th>
-                        <th>الارتفاع</th>
+                        <th>العدد</th>
+                        <th>المقاس</th>
+                        <th>الوصف</th>
                         <th>إجراء</th>
                     </tr>
                 </thead>
@@ -450,13 +466,11 @@
                 html += `<div class="bar-label">العود رقم ${index + 1} (متبقي هالك: ${waste.toFixed(1)} سم)</div>`;
                 html += `<div class="bar-wrapper">`;
                 
-                // رسم القطعيات
                 bin.forEach(piece => {
                     let pct = (piece / binSize) * 100;
                     html += `<div class="cut-piece" style="width: ${pct}%" title="مقطع طوله ${piece} سم">${piece.toFixed(1)}</div>`;
                 });
                 
-                // رسم الهالك - وتمت إضافة رقم الهالك داخله
                 if(waste > 0) {
                     let wpct = (waste / binSize) * 100;
                     html += `<div class="waste-piece" style="width: ${wpct}%" title="هالك ${waste.toFixed(1)} سم">هالك ${waste.toFixed(1)}</div>`;
@@ -472,6 +486,9 @@
             const custName = document.getElementById('customerName').value.trim();
             if(!custName) { alert("برجاء إدخال اسم الزبون أولاً!"); return; }
 
+            let count = parseInt(document.getElementById('windowCount').value) || 1;
+            let note = document.getElementById('windowNote').value.trim();
+
             let w = parseFloat(inlineWidth.value);
             let h = parseFloat(inlineHeight.value);
             let brandVal = document.getElementById('brandType').value;
@@ -481,17 +498,30 @@
             
             let res = windowData[brandVal].systems[sysVal].find(p => p.id === profVal).calc(w, h);
 
-            let fPieces = [w + 10, w + 10, h + 10, h + 10];
+            let fPieces = [];
             let sPieces = [];
-            for(let i = 0; i < res.sashCount; i++) {
-                sPieces.push(res.sashW, res.sashW, res.sashH, res.sashH);
+            let screenPieces = [];
+            let sakinaPieces = [];
+
+            // ضرب المقاسات في (العدد) لتجميع قطعيات الأعواد تلقائياً
+            for(let c = 0; c < count; c++) {
+                fPieces.push(w + 10, w + 10, h + 10, h + 10);
+                for(let i = 0; i < res.sashCount; i++) {
+                    sPieces.push(res.sashW, res.sashW, res.sashH, res.sashH);
+                }
+                if (res.screenW > 0 && res.screenH > 0) {
+                    screenPieces.push(res.screenW, res.screenW, res.screenH, res.screenH);
+                }
+                if (res.sakinaH > 0) {
+                    sakinaPieces.push(res.sakinaH, res.sakinaH);
+                }
             }
-            let screenPieces = (res.screenW > 0 && res.screenH > 0) ? [res.screenW, res.screenW, res.screenH, res.screenH] : [];
-            let sakinaPieces = (res.sakinaH > 0) ? [res.sakinaH, res.sakinaH] : [];
 
             const windowItem = {
                 id: Date.now().toString(),
                 width: w, height: h,
+                count: count,
+                note: note,
                 brand: brandVal, system: sysVal, profile: profVal,
                 profileName: profName,
                 fPieces: fPieces,
@@ -502,6 +532,11 @@
 
             currentCart.push(windowItem);
             document.getElementById('displayCustomerName').innerText = custName;
+            
+            // تصفير خانات العدد والملاحظات استعداداً للشباك القادم
+            document.getElementById('windowCount').value = "1";
+            document.getElementById('windowNote').value = "";
+
             renderCart();
             window.scrollTo({ top: document.getElementById('customerCart').offsetTop, behavior: 'smooth' });
         }
@@ -534,16 +569,15 @@
 
                 tbody.innerHTML += `
                     <tr>
-                        <td>${index + 1}</td>
-                        <td>${item.profileName}</td>
-                        <td class="num">${item.width}</td>
-                        <td class="num">${item.height}</td>
+                        <td style="font-weight:bold;">${item.profileName}</td>
+                        <td class="num" style="color:#d84315; font-size:16px;">${item.count}</td>
+                        <td class="num" style="direction: ltr;">${item.width} × ${item.height}</td>
+                        <td style="color:#555; font-size:13px;">${item.note || '-'}</td>
                         <td><button class="btn-delete-row" onclick="removeFromCart('${item.id}')">حذف</button></td>
                     </tr>
                 `;
             });
 
-            // قراءة طول العود المختار من القائمة المنسدلة (650 أو 600)
             let selectedBinSize = parseInt(document.getElementById('barLengthSelect').value) || 650;
 
             let summaryHTML = `<h4>📊 الخطة الذكية لتقطيع الألومنيوم (بدون هدر):</h4>`;
@@ -638,7 +672,7 @@
             setTimeout(() => t.style.display = 'none', 2500);
         };
 
-        // --- تجميع المحفوظات ومنع التكرار ---
+        // --- تجميع المحفوظات وتحديثها للبيانات الجديدة ---
         window.renderSavedList = function() {
             const container = document.getElementById('savedList');
             const itemsArray = Object.keys(windowsDataSaved).map(key => ({
@@ -651,7 +685,6 @@
                 return;
             }
 
-            // تجميع الشبابيك تحت اسم كل زبون
             let groupedCustomers = {};
             itemsArray.forEach(item => {
                 let customerName = item.customer || "غير محدد";
@@ -675,10 +708,14 @@
                 `;
                 
                 groupedCustomers[custName].forEach(item => {
+                    let dispCount = item.count ? `العدد: <span style="color:#d84315">${item.count}</span> |` : '';
+                    let dispNote = item.note ? ` <br><span style="font-size: 12px; color: #555;">📝 ${item.note}</span>` : '';
+                    
                     html += `
                     <div class="saved-card">
                         <div class="saved-card-info">
-                            <p>📏 شباك: العرض <span style="color:#d84315">${item.w}</span> سم × الارتفاع <span style="color:#d84315">${item.h}</span> سم <span style="font-size: 12px; color: #888; margin-right:10px;">(🔧 ${item.profileName || item.system})</span></p>
+                            <p>📏 ${dispCount} مقاس: <span style="color:#d84315; direction:ltr;">${item.w} × ${item.h}</span> سم <span style="font-size: 12px; color: #888; margin-right:10px;">(🔧 ${item.profileName || item.system})</span></p>
+                            ${dispNote}
                         </div>
                     </div>
                     `;
@@ -690,7 +727,7 @@
             container.innerHTML = html;
         };
 
-        // --- استدعاء فاتورة الزبون بالكامل وإعادة حسابها ---
+        // --- استدعاء فاتورة الزبون بالكامل وإعادة حسابها بالعدد والملاحظات ---
         window.recallCustomerInvoice = function(customerName) {
             currentCart = [];
             document.getElementById('customerName').value = customerName;
@@ -700,6 +737,8 @@
                 if (item.customer === customerName) {
                     let w = parseFloat(item.w);
                     let h = parseFloat(item.h);
+                    let count = parseInt(item.count) || 1;
+                    let note = item.note || '';
                     let brandVal = item.brand;
                     let sysVal = item.system;
                     let profVal = item.profile;
@@ -709,17 +748,28 @@
                     if(activeProfile) {
                         let res = activeProfile.calc(w, h);
                         
-                        let fPieces = [w + 10, w + 10, h + 10, h + 10];
+                        let fPieces = [];
                         let sPieces = [];
-                        for(let i = 0; i < res.sashCount; i++) {
-                            sPieces.push(res.sashW, res.sashW, res.sashH, res.sashH);
+                        let screenPieces = [];
+                        let sakinaPieces = [];
+                        
+                        for(let c=0; c<count; c++) {
+                            fPieces.push(w + 10, w + 10, h + 10, h + 10);
+                            for(let i = 0; i < res.sashCount; i++) {
+                                sPieces.push(res.sashW, res.sashW, res.sashH, res.sashH);
+                            }
+                            if (res.screenW > 0 && res.screenH > 0) {
+                                screenPieces.push(res.screenW, res.screenW, res.screenH, res.screenH);
+                            }
+                            if (res.sakinaH > 0) {
+                                sakinaPieces.push(res.sakinaH, res.sakinaH);
+                            }
                         }
-                        let screenPieces = (res.screenW > 0 && res.screenH > 0) ? [res.screenW, res.screenW, res.screenH, res.screenH] : [];
-                        let sakinaPieces = (res.sakinaH > 0) ? [res.sakinaH, res.sakinaH] : [];
 
                         const cartItem = {
                             id: key, 
                             width: w, height: h,
+                            count: count, note: note,
                             brand: brandVal, system: sysVal, profile: profVal,
                             profileName: profName,
                             fPieces: fPieces,
@@ -735,7 +785,7 @@
             document.getElementById('displayCustomerName').innerText = customerName;
             renderCart();
             window.scrollTo({ top: document.getElementById('customerCart').offsetTop, behavior: 'smooth' });
-            window.showToast("✅ تم استدعاء الفاتورة ورسم وتقسيم الأعواد بنجاح");
+            window.showToast("✅ تم استدعاء الفاتورة بالكامل بنجاح");
         };
 
         onAuthStateChanged(auth, user => {
@@ -757,7 +807,6 @@
             }
         });
 
-        // --- حفظ سحابي مطور (يمسح القديم للزبون لتجنب التكرار) ---
         window.saveCartToCloud = function() {
             if(!windowUserUid) return;
             const customer = document.getElementById('customerName').value.trim();
@@ -774,20 +823,20 @@
             
             let updates = {};
             
-            // تحديد مسح المقاسات القديمة لنفس الزبون
             Object.keys(windowsDataSaved).forEach(key => {
                 if(windowsDataSaved[key].customer === customer) {
                     updates[key] = null;
                 }
             });
             
-            // إضافة المقاسات الجديدة المحدثة
             currentCart.forEach(item => {
-                const newKey = push(ref(fdb)).key; // إنشاء مفتاح عشوائي جديد
+                const newKey = push(ref(fdb)).key; 
                 updates[newKey] = {
                     customer: customer,
                     w: item.width, 
                     h: item.height, 
+                    count: item.count,
+                    note: item.note,
                     brand: item.brand,
                     system: item.system,
                     profile: item.profile,
@@ -815,7 +864,6 @@
             });
         };
 
-        // --- حذف فاتورة زبون بالكامل ---
         window.deleteCustomerInvoice = function(customerName) {
             if(!windowUserUid) return;
             if(confirm(`هل أنت متأكد من حذف فاتورة الزبون (${customerName}) بالكامل؟ لا يمكن التراجع عن هذا الإجراء.`)) {
