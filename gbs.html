@@ -22,7 +22,7 @@
     <div id="app-screen" style="display:none;" class="max-w-md mx-auto px-4 pt-6 pb-20">
         
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl mb-6 text-center">
-            <h1 class="text-xl font-bold">دفتر الزبائن (Azemaa Pro)</h1>
+            <h1 class="text-xl font-bold">دفتر الزبائن (azemaa proo)</h1>
             <div id="sync-status" class="mt-2 inline-block">🔄 جاري المزامنة...</div>
         </div>
 
@@ -62,7 +62,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -87,7 +87,6 @@
             status.style.background = isSuccess ? "rgba(39, 174, 96, 0.2)" : "rgba(231, 76, 60, 0.2)";
         };
 
-        // دالة الموقع المحدثة بالعد التنازلي
         window.getLocation = () => {
             const btn = document.getElementById('locBtn');
             const originalText = btn.innerHTML;
@@ -132,13 +131,53 @@
             const container = document.getElementById(containerId);
             const arr = Object.keys(data).map(k => ({id: k, ...data[k]})).reverse();
             container.innerHTML = arr.length ? arr.map(cus => `
-                <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <h3 class="font-bold text-gray-800">${cus.name}</h3>
+                <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 relative">
+                    <button onclick="deleteCustomer('${cus.id}')" class="absolute top-4 left-4 text-red-500 hover:text-red-700 transition" title="حذف الزبون">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <h3 class="font-bold text-gray-800 pl-8">${cus.name}</h3>
                     <p class="text-sm text-gray-600 mt-1">${cus.address}</p>
-                    <a href="https://www.google.com/maps/search/?api=1&query=${cus.lat},${cus.lng}" target="_blank" class="text-blue-600 text-xs font-bold mt-2 block">📍 عرض على الخريطة</a>
+                    <a href="https://www.google.com/maps?q=${cus.lat},${cus.lng}" target="_blank" class="text-blue-600 text-xs font-bold mt-2 block">📍 عرض على الخريطة</a>
                 </div>
             `).join('') : '<p class="text-center text-gray-400">لا توجد بيانات</p>';
         };
+
+        window.deleteCustomer = (customerId) => {
+            if (confirm("هل أنت متأكد من حذف هذا الزبون نهائياً؟")) {
+                window.updateSyncStatus("⚡ جاري الحذف...");
+                const customerRef = ref(fdb, `gbs/${windowUserUid}/${customerId}`);
+                
+                remove(customerRef).then(() => {
+                    window.updateSyncStatus("✅ تم الحذف والمزامنة");
+                    
+                    const t = document.getElementById('toast');
+                    t.innerText = "🗑️ تم حذف الزبون بنجاح";
+                    t.classList.replace('bg-emerald-500', 'bg-red-500');
+                    t.classList.remove('hidden');
+                    
+                    setTimeout(() => {
+                        t.classList.add('hidden');
+                        t.classList.replace('bg-red-500', 'bg-emerald-500');
+                        t.innerText = "✅ تم الحفظ والمزامنة بنجاح";
+                    }, 2000);
+                }).catch((error) => {
+                    console.error("خطأ في الحذف:", error);
+                    window.updateSyncStatus("❌ فشل الحذف", false);
+                });
+            }
+        };
+
+        // تفعيل وظيفة البحث
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filtered = Object.keys(customersData).reduce((acc, key) => {
+                if (customersData[key].name.toLowerCase().includes(searchTerm)) {
+                    acc[key] = customersData[key];
+                }
+                return acc;
+            }, {});
+            renderCustomers(filtered, "searchResults");
+        });
 
         document.getElementById("customerForm").addEventListener("submit", (e) => {
             e.preventDefault();
@@ -165,6 +204,21 @@
                 onValue(customersRef, (snap) => {
                     customersData = snap.val() || {};
                     renderCustomers();
+                    
+                    // تحديث قائمة البحث إن كانت مفتوحة
+                    if(!document.getElementById('searchTab').classList.contains('hidden')){
+                         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                         if(searchTerm) {
+                             const filtered = Object.keys(customersData).reduce((acc, key) => {
+                                 if (customersData[key].name.toLowerCase().includes(searchTerm)) {
+                                     acc[key] = customersData[key];
+                                 }
+                                 return acc;
+                             }, {});
+                             renderCustomers(filtered, "searchResults");
+                         }
+                    }
+                    
                     document.getElementById('auth-loader').style.display = 'none';
                     document.getElementById('app-screen').style.display = 'block';
                     window.updateSyncStatus("✅ مزامن لحظياً");
