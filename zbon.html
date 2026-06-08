@@ -125,11 +125,10 @@
         .btn-lock-toggle { background: none; border: none; cursor: pointer; font-size: 15px; margin-left: 8px; padding: 2px 5px; border-radius: 5px; background-color: #f1f2f6; transition: 0.2s; }
         .btn-lock-toggle:hover { background-color: #dcdde1; }
 
-        /* تم تعديل مكان الزرار لليمين */
         .btn-add-client {
             position: fixed;
             bottom: 100px;
-            right: 20px; 
+            left: 20px;
             background: #1abc9c;
             color: white;
             width: 55px;
@@ -399,6 +398,7 @@
     };
     function archiveCardManual(id) { if(!window.currentUid) return; if(confirm('هل تريد نقل هذا الزبون للأرشيف؟')) { window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: true }).then(async () => { document.getElementById(`card-${id}`).classList.remove('visible'); await syncToTslem(); refreshStats(); }).catch(err => alert("❌ خطأ: " + err.message)); } }
     function restoreFromArchive(id) { if(!window.currentUid) return; if(confirm('هل تريد استعادة هذا الزبون؟')) { window.update(window.ref(window.db, `backups/users/${window.currentUid}/${id}`), { isArchived: false }).then(async () => { document.getElementById(`card-${id}`).classList.add('visible'); await syncToTslem(); refreshStats(); }).catch(err => alert("❌ خطأ: " + err.message)); } }
+    
     function startSyncingData() {
         if (localStorage.getItem('azemaa_dark_mode') === 'enabled') { document.body.classList.add('dark-theme'); document.getElementById('darkModeBtn').innerHTML = '☀️ المظهر النهاري'; }
         const clientsRef = window.ref(window.db, `backups/users/${window.currentUid}`);
@@ -445,7 +445,6 @@
                     }
                 }
                 initKeyboardListener();
-                await syncToTslem();
                 refreshStats();
             }
         });
@@ -456,6 +455,7 @@
         
         for (let i = 1; i <= 50; i++) { 
             const card = document.getElementById(`card-${i}`); 
+            
             const isEmpty = card.querySelector('.c-name').value === "" && card.querySelector('.c-total').value === "";
             
             if (!card.classList.contains('visible') && isEmpty) { 
@@ -474,9 +474,109 @@
     }
 
     async function deleteCard(id) { if(!window.currentUid) return; if(confirm('سيتم حذف العميل نهائياً وجميع دفعاته المسجلة في اليومية. هل أنت متأكد؟')) { try { await deleteClientPaymentsFromYom(id); await window.remove(window.ref(window.db, `backups/users/${window.currentUid}/${id}`)); const card = document.getElementById(`card-${id}`); card.classList.remove('visible'); card.querySelectorAll('input').forEach(i => i.value = ""); card.querySelector('textarea').value = ""; card.querySelector('.c-code').value = parseInt(id); await syncToTslem(); refreshStats(); alert("تم حذف العميل ودفعاته بنجاح"); } catch(err) { alert("❌ خطأ في الحذف: " + err.message); } } }
-    function sendDirectWA(id) { const card = document.getElementById(`card-${id}`); const phone = card.querySelector('.c-phone').value; if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); window.open(`https://wa.me/2${phone}`, '_blank'); }
-    function sendWA(id) { const card = document.getElementById(`card-${id}`); const name = card.querySelector('.c-name').value || "عميلنا العزيز"; const phone = card.querySelector('.c-phone').value; const company = document.getElementById('companyNameInput').value || 'azemaa proo'; const curr = getCurrentCurrency(); if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); const totalVal = parseFloat(card.querySelector('.c-total').value) || 0; const totalWord = tafqit(totalVal); let paymentsMsg = ""; const pVals = card.querySelectorAll('.p-val'); const pDates = card.querySelectorAll('.p-date'); let paid = 0; pVals.forEach((p, idx) => { let v = parseFloat(p.value) || 0; let d = pDates[idx].value || "---"; if (v > 0) { paid += v; paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ${curr.sym}\n`; } }); const remVal = totalVal - paid; const remWord = remVal > 0 ? tafqit(remVal) : "تم السداد بالكامل ✓"; const msg = `*تحية طيبة من ${company}* 🌸\n\nأهلاً أ/ *${name}*\nنحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n━━━━━━━━━━━━━━\n💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${totalWord} ${curr.name} لا غير\n\n📅 *تفاصيل الدفعات:* \n${paymentsMsg || "━ لا توجد دفعات مسجلة بعد\n"}\n📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${remWord} ${remVal > 0 ? curr.name + ' لا غير' : ''}\n━━━━━━━━━━━━━━\n\nشكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`; window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, '_blank'); }
-    function refreshStats() { if(!window.currentUid) return; let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0; const summaryBody = document.getElementById('summary-body'); const archiveBody = document.getElementById('archive-body'); summaryBody.innerHTML = ''; archiveBody.innerHTML = ''; window.get(window.ref(window.db, `backups/users/${window.currentUid}`)).then((snapshot) => { const data = snapshot.exists() ? snapshot.val() : null; if (!data) return; let clientsArr = []; Object.keys(data).forEach(id => { if (id !== 'settings') clientsArr.push({id, ...data[id]}); }); clientsArr.sort((a, b) => { const dateA = new Date(a.dy || 2000, (a.dm || 1) - 1, a.dd || 1); const dateB = new Date(b.dy || 2000, (b.dm || 1) - 1, b.dd || 1); return dateA - dateB; }); const now = new Date(); now.setHours(0, 0, 0, 0); clientsArr.forEach(d => { const id = d.id; let pVal = 0; if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0)); const total = parseFloat(d.t) || 0; const rem = total - pVal; const isPaid = (total > 0 && rem <= 0); const stars = `<span class="star-table">${'★'.repeat(d.r || 0)}${'☆'.repeat(5-(d.r || 0))}</span>`; const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6"; const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---"; let isOverdue = false; if (d.dd && d.dm && d.dy && !isPaid) { const deliveryDate = new Date(d.dy, d.dm - 1, d.dd); if (deliveryDate < now) isOverdue = true; } if (d.isArchived || isPaid) { archiveBody.innerHTML += `<tr class="row-paid"><td>${d.code || id}</td><td>${d.n || '---'}</td><td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td><td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td><td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td><td>${stars}</td><td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td></tr>`; if(isPaid) paidC++; } else if (d.n || total > 0) { const rowClass = isOverdue ? 'pulse-row' : ''; const rowHTML = `<tr class="${rowClass}"><td>${d.code || id}</td><td>${d.n}</td><td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td><td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td><td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td><td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td><td>${stars}</td></tr>`; if (isOverdue) summaryBody.insertAdjacentHTML('afterbegin', rowHTML); else summaryBody.innerHTML += rowHTML; debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem; } }); document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); document.getElementById('stat-cust').innerText = cust; document.getElementById('stat-paid').innerText = paidC; document.getElementById('total-all-sum').innerText = totalAll.toLocaleString('en-US'); document.getElementById('total-paid-sum').innerText = totalPaid.toLocaleString('en-US'); document.getElementById('total-rem-sum').innerText = totalRem.toLocaleString('en-US'); }); }
+    
+    function sendDirectWA(id) { 
+        const card = document.getElementById(`card-${id}`); 
+        const phone = card.querySelector('.c-phone').value; 
+        if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); 
+        window.open(`https://wa.me/${phone}`, '_blank'); 
+    }
+
+    function sendWA(id) { 
+        const card = document.getElementById(`card-${id}`); 
+        const name = card.querySelector('.c-name').value || "عميلنا العزيز"; 
+        const phone = card.querySelector('.c-phone').value; 
+        const company = document.getElementById('companyNameInput').value || 'azemaa proo'; 
+        const curr = getCurrentCurrency(); 
+        if (!phone) return alert("يرجى إدخال رقم الموبايل أولاً"); 
+        const totalVal = parseFloat(card.querySelector('.c-total').value) || 0; 
+        const totalWord = tafqit(totalVal); 
+        let paymentsMsg = ""; 
+        const pVals = card.querySelectorAll('.p-val'); 
+        const pDates = card.querySelectorAll('.p-date'); 
+        let paid = 0; 
+        pVals.forEach((p, idx) => { 
+            let v = parseFloat(p.value) || 0; 
+            let d = pDates[idx].value || "---"; 
+            if (v > 0) { 
+                paid += v; 
+                paymentsMsg += `━ دفعة بتاريخ [${d}]: مبلغ ${v.toLocaleString('en-US')} ${curr.sym}\n`; 
+            } 
+        }); 
+        const remVal = totalVal - paid; 
+        const remWord = remVal > 0 ? tafqit(remVal) : "تم السداد بالكامل ✓"; 
+        const msg = `*تحية طيبة من ${company}* 🌸\n\nأهلاً أ/ *${name}*\nنحيطكم علماً بتقرير الحساب الحالي لدى شركتنا:\n━━━━━━━━━━━━━━\n💰 *إجمالي المبلغ:* ${totalVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${totalWord} ${curr.name} لا غير\n\n📅 *تفاصيل الدفعات:* \n${paymentsMsg || "━ لا توجد دفعات مسجلة بعد\n"}\n📉 *المبلغ المتبقي:* ${remVal.toLocaleString('en-US')} ${curr.sym}\n✍️ *فقط:* ${remWord} ${remVal > 0 ? curr.name + ' لا غير' : ''}\n━━━━━━━━━━━━━━\n\nشكراً لثقتكم بنا ونتطلع لخدمتكم دائماً 🙏✨`; 
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank'); 
+    }
+    
+    function refreshStats() { 
+        if(!window.currentUid) return; 
+        let debt = 0, cust = 0, paidC = 0, totalAll = 0, totalPaid = 0, totalRem = 0; 
+        const summaryBody = document.getElementById('summary-body'); 
+        const archiveBody = document.getElementById('archive-body'); 
+        summaryBody.innerHTML = ''; 
+        archiveBody.innerHTML = ''; 
+        window.get(window.ref(window.db, `backups/users/${window.currentUid}`)).then((snapshot) => { 
+            const data = snapshot.exists() ? snapshot.val() : null; 
+            if (!data) return; 
+            let clientsArr = []; 
+            Object.keys(data).forEach(id => { 
+                if (id !== 'settings') clientsArr.push({id, ...data[id]}); 
+            }); 
+            
+            clientsArr.sort((a, b) => { 
+                let yearA = parseInt(a.dy) || 2000;
+                if (yearA < 100) yearA += 2000; 
+                const dateA = new Date(yearA, (a.dm || 1) - 1, a.dd || 1); 
+                
+                let yearB = parseInt(b.dy) || 2000;
+                if (yearB < 100) yearB += 2000;
+                const dateB = new Date(yearB, (b.dm || 1) - 1, b.dd || 1); 
+                
+                return dateA - dateB; 
+            }); 
+            
+            const now = new Date(); 
+            now.setHours(0, 0, 0, 0); 
+            clientsArr.forEach(d => { 
+                const id = d.id; 
+                let pVal = 0; 
+                if(d.pays) d.pays.forEach(p => pVal += parseFloat(p.v || 0)); 
+                const total = parseFloat(d.t) || 0; 
+                const rem = total - pVal; 
+                const isPaid = (total > 0 && rem <= 0); 
+                const stars = `<span class="star-table">${'★'.repeat(d.r || 0)}${'☆'.repeat(5-(d.r || 0))}</span>`; 
+                const mColor = monthColors[parseInt(d.dm)] || "#f1f2f6"; 
+                const dateStr = (d.dd && d.dm && d.dy) ? `${d.dd}/${d.dm}/${d.dy}` : "---"; 
+                let isOverdue = false; 
+                
+                if (d.dd && d.dm && d.dy && !isPaid) { 
+                    let deliveryYear = parseInt(d.dy) || 2000;
+                    if (deliveryYear < 100) deliveryYear += 2000;
+                    const deliveryDate = new Date(deliveryYear, d.dm - 1, d.dd); 
+                    if (deliveryDate < now) isOverdue = true; 
+                } 
+                
+                if (d.isArchived || isPaid) { 
+                    archiveBody.innerHTML += `<tr class="row-paid"><td>${d.code || id}</td><td>${d.n || '---'}</td><td style="background-color:${mColor}; color:#2d3436;">${dateStr}</td><td style="direction:ltr;">${total.toLocaleString('en-US')} ${isPaid ? '✅' : '📁'}</td><td class="notes-td" title="${d.notes || ''}">${d.notes || ''}</td><td>${stars}</td><td><button class="btn-restore" onclick="restoreFromArchive(${id})">استعادة 🔄</button></td></tr>`; 
+                    if(isPaid) paidC++; 
+                } else if (d.n || total > 0) { 
+                    const rowClass = isOverdue ? 'pulse-row' : ''; 
+                    const rowHTML = `<tr class="${rowClass}"><td>${d.code || id}</td><td>${d.n}</td><td style="background-color:${mColor}; color:#2d3436;">${dateStr} ${isOverdue ? '⚠️' : ''}</td><td class="col-total" style="direction:ltr;">${total.toLocaleString('en-US')}</td><td class="col-paid" style="direction:ltr;">${pVal.toLocaleString('en-US')}</td><td class="col-rem" style="direction:ltr;">${rem.toLocaleString('en-US')}</td><td>${stars}</td></tr>`; 
+                    if (isOverdue) summaryBody.insertAdjacentHTML('afterbegin', rowHTML); 
+                    else summaryBody.innerHTML += rowHTML; 
+                    debt += rem; cust++; totalAll += total; totalPaid += pVal; totalRem += rem; 
+                } 
+            }); 
+            document.getElementById('stat-debt').innerText = debt.toLocaleString('en-US'); 
+            document.getElementById('stat-cust').innerText = cust; 
+            document.getElementById('stat-paid').innerText = paidC; 
+            document.getElementById('total-all-sum').innerText = totalAll.toLocaleString('en-US'); 
+            document.getElementById('total-paid-sum').innerText = totalPaid.toLocaleString('en-US'); 
+            document.getElementById('total-rem-sum').innerText = totalRem.toLocaleString('en-US'); 
+        }); 
+    }
+    
     function filterAll() { let q = document.getElementById('searchInput').value.toLowerCase(); const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'}; for(let key in arabicMap) q = q.replace(new RegExp(key, 'g'), arabicMap[key]); visibleCards.forEach(id => { const card = document.getElementById(`card-${id}`); const code = card.querySelector('.c-code').value.toLowerCase(); const name = card.querySelector('.c-name').value.toLowerCase(); const phone = card.querySelector('.c-phone').value.toLowerCase(); card.style.display = (code.includes(q) || name.includes(q) || phone.includes(q)) ? "block" : "none"; }); }
     function filterArchive() { let q = document.getElementById('archiveSearch').value.toLowerCase(); const arabicMap = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'}; for(let key in arabicMap) q = q.replace(new RegExp(key, 'g'), arabicMap[key]); let rows = document.querySelectorAll('#archive-body tr'); rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none"; }); }
     function toggleDarkMode() { const isDark = document.body.classList.toggle('dark-theme'); const btn = document.getElementById('darkModeBtn'); if (isDark) { btn.innerHTML = '☀️ المظهر النهاري'; localStorage.setItem('azemaa_dark_mode', 'enabled'); } else { btn.innerHTML = '🌙 المظهر الليلي'; localStorage.setItem('azemaa_dark_mode', 'disabled'); } }
