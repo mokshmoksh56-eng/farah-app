@@ -135,7 +135,8 @@
         .btn-add { flex: 1; padding: 12px; font-size: 16px; font-weight: bold; color: #fff; background: #2980b9; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .btn-add:hover { background: #2471a3; }
         .btn-cloud { flex: 1; padding: 12px; font-size: 16px; font-weight: bold; color: #fff; background: #27ae60; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .btn-cloud:hover { background: #1e8449; }
+        .btn-cloud:hover:not(:disabled) { background: #1e8449; }
+        .btn-cloud:disabled { background: #95a5a6; cursor: not-allowed; }
         
         /* --- فاتورة الزبون المجمعة --- */
         .customer-cart {
@@ -143,25 +144,32 @@
             border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-top: 20px;
             border-top: 5px solid #d84315;
         }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px; gap: 10px; }
         .cart-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
         .cart-table th, .cart-table td { padding: 10px; border: 1px solid #ddd; text-align: center; }
         .cart-table th { background-color: #d84315; color: white; }
         .btn-delete-row { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-        /* --- صندوق الحسابات للأعواد --- */
+        /* --- صندوق الحسابات وتفصيل الأعواد --- */
         .profiles-summary {
             background: #fdf2e9; border: 1px solid #eb984e; padding: 15px;
             border-radius: 8px; margin-top: 20px; text-align: right;
         }
         .profiles-summary h4 { margin: 0 0 10px 0; color: #d35400; }
-        .profiles-summary p { margin: 5px 0; font-size: 15px; font-weight: bold; color: #333; }
-        .highlight-num { color: #c0392b; font-size: 18px; }
+        
+        /* تصميم رسمة الأعواد المقطعة */
+        .optimization-section { background: #fff; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #b2bec3; }
+        .opt-title { color: #0056b3; font-size: 16px; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #0056b3; display: inline-block; padding-bottom: 5px; font-weight: bold; }
+        .bar-label { text-align: right; font-size: 13px; color: #2c3e50; margin-bottom: 4px; font-weight: bold; }
+        .bar-wrapper { display: flex; height: 35px; background: #ffeaa7; margin-bottom: 12px; border-radius: 6px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); border: 1px solid #ccc; }
+        .cut-piece { background: #0984e3; color: #fff; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; transition: 0.3s;}
+        .cut-piece:hover { background: #0056b3; }
+        .waste-piece { background: #d63031; color: #fff; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; padding: 0 5px; }
 
         /* --- قائمة المحفوظات السحابية --- */
         .saved-list-container { width: 100%; max-width: 950px; margin-top: 20px; text-align: right; }
-        .saved-card { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 10px; border-right: 5px solid #0056b3; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
+        .saved-card { background: #fff; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
         .saved-card-info { flex: 1; min-width: 200px; }
-        .saved-card-info h4 { margin: 0 0 5px 0; color: #333; }
         .saved-card-info p { margin: 0; font-size: 14px; color: #666; font-weight: bold; }
         .saved-card-actions { display: flex; gap: 10px; }
         .btn-sm { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; }
@@ -189,7 +197,7 @@
         <span id="sync-status">🔄 جاري المزامنة...</span>
         
         <div class="hint" id="modeTxt">
-            💡 ادخل مقاس الشباك واضغط "إضافة للفاتورة". سيعرض لك الجدول إجمالي المقاسات وعدد الأعواد.
+            💡 ادخل مقاس الشباك واضغط "إضافة للفاتورة". سيعرض لك البرنامج تفصيل القطعيات بدقة لتقليل الهالك.
         </div>
 
         <div class="visualizer-wrapper">
@@ -236,7 +244,14 @@
         </div>
 
         <div class="customer-cart" id="customerCart" style="display: none;">
-            <h3 style="color: #d84315; margin-top: 0;">🛒 فاتورة الزبون: <span id="displayCustomerName"></span></h3>
+            
+            <div class="cart-header">
+                <h3 style="color: #d84315; margin: 0;">🛒 فاتورة الزبون: <span id="displayCustomerName"></span></h3>
+                <select id="barLengthSelect" onchange="renderCart()" style="padding: 10px; font-size: 15px; border-radius: 8px; border: 2px solid #0056b3; background: #fff; color: #0056b3; font-weight: bold; cursor: pointer; outline: none;">
+                    <option value="650">📏 اختيار طول العود: 6.5 متر</option>
+                    <option value="600">📏 اختيار طول العود: 6 متر</option>
+                </select>
+            </div>
             
             <table class="cart-table">
                 <thead>
@@ -256,12 +271,12 @@
                 </div>
 
             <div class="action-buttons">
-                <button class="btn-cloud" onclick="saveCartToCloud()">☁️ حفظ جميع شبابيك الفاتورة سحابياً</button>
+                <button id="btnSaveCloud" class="btn-cloud" onclick="saveCartToCloud()">☁️ حفظ جميع شبابيك الفاتورة سحابياً</button>
             </div>
         </div>
 
         <div class="saved-list-container">
-            <h3 style="color: #0056b3; border-bottom: 2px solid #ccc; padding-bottom: 10px;">📋 الشبابيك المحفوظة مسبقاً</h3>
+            <h3 style="color: #0056b3; border-bottom: 2px solid #ccc; padding-bottom: 10px;">📋 المحفوظات (مجمعة لكل زبون)</h3>
             <div id="savedList">
                 </div>
         </div>
@@ -385,7 +400,7 @@
                         <tr><th>البيان</th><th>العدد</th><th>العرض (سم)</th><th>الارتفاع (سم)</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td><strong>الوحدة كاملة</strong></td><td class="num">1</td><td class="num">${w.toFixed(1)}</td><td class="num">${h.toFixed(1)}</td></tr>
+                        <tr><td><strong>مقاس الحلق</strong></td><td class="num">1</td><td class="num">${w.toFixed(1)}</td><td class="num">${h.toFixed(1)}</td></tr>
                         <tr><td><strong>مقاس الدرف</strong></td><td class="num">${res.sashCount}</td><td class="num">${res.sashW.toFixed(1)}</td><td class="num">${res.sashH.toFixed(1)}</td></tr>
                         <tr><td><strong>زجاج الدرف</strong></td><td class="num">${res.sashCount}</td><td class="num">${res.glassW.toFixed(1)}</td><td class="num">${res.glassH.toFixed(1)}</td></tr>
             `;
@@ -396,12 +411,63 @@
 
             if (res.sakinaH > 0) tableHTML += `<tr><td><strong>مقاس السكينة</strong></td><td class="num">2</td><td class="num">-</td><td class="num">${res.sakinaH.toFixed(1)}</td></tr>`;
             if (res.tStopper) tableHTML += `<tr><td><strong>T الصداد</strong></td><td class="num">1</td><td class="num">-</td><td class="num">${res.tStopper.toFixed(1)}</td></tr>`;
-            if (res.so2as1) tableHTML += `<tr><td><strong>سؤاس 1</strong></td><td class="num">1</td><td class="num">${res.so2as1.toFixed(1)}</td><td class="num">-</td></tr>`;
-            if (res.bead1_val) tableHTML += `<tr><td><strong>مقاس باكتة 1</strong></td><td class="num">4</td><td class="num">${res.bead1_val.toFixed(1)}</td><td class="num">-</td></tr>`;
-            if (res.bead2_val) tableHTML += `<tr><td><strong>مقاس باكتة 2</strong></td><td class="num">4</td><td class="num">${res.bead2_val.toFixed(1)}</td><td class="num">-</td></tr>`;
 
             tableHTML += `</tbody></table>`;
             document.getElementById('calcTableContainer').innerHTML = tableHTML + accHTML;
+        }
+
+        // --- دالة تعبئة المقاسات في الأعواد (Bin Packing Algorithm) ---
+        function packBins(piecesArray, binSize) {
+            let sortedPieces = piecesArray.slice().sort((a, b) => b - a);
+            let bins = [];
+            
+            for (let piece of sortedPieces) {
+                let placed = false;
+                for (let bin of bins) {
+                    let currentSum = bin.reduce((acc, val) => acc + val, 0);
+                    if (currentSum + piece <= binSize) {
+                        bin.push(piece);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    bins.push([piece]);
+                }
+            }
+            return bins;
+        }
+
+        // --- دالة رسم الأعواد كـ HTML ---
+        function generateVisualBars(bins, binSize, label) {
+            if(bins.length === 0) return '';
+            let html = `
+                <div class="optimization-section">
+                    <h5 class="opt-title">✂️ تقطيع ${label} (${bins.length} عود)</h5>
+            `;
+            
+            bins.forEach((bin, index) => {
+                let totalUsed = bin.reduce((acc, val) => acc + val, 0);
+                let waste = binSize - totalUsed;
+                
+                html += `<div class="bar-label">العود رقم ${index + 1} (متبقي هالك: ${waste.toFixed(1)} سم)</div>`;
+                html += `<div class="bar-wrapper">`;
+                
+                // رسم القطعيات
+                bin.forEach(piece => {
+                    let pct = (piece / binSize) * 100;
+                    html += `<div class="cut-piece" style="width: ${pct}%" title="مقطع طوله ${piece} سم">${piece.toFixed(1)}</div>`;
+                });
+                
+                // رسم الهالك - وتمت إضافة رقم الهالك داخله
+                if(waste > 0) {
+                    let wpct = (waste / binSize) * 100;
+                    html += `<div class="waste-piece" style="width: ${wpct}%" title="هالك ${waste.toFixed(1)} سم">هالك ${waste.toFixed(1)}</div>`;
+                }
+                html += `</div>`;
+            });
+            html += `</div>`;
+            return html;
         }
 
         // --- إضافة الشباك لفاتورة الزبون ---
@@ -418,15 +484,23 @@
             
             let res = windowData[brandVal].systems[sysVal].find(p => p.id === profVal).calc(w, h);
 
-            let framePerimeter = (w + h) * 2; 
-            let sashPerimeter = (res.sashW + res.sashH) * 2 * res.sashCount; 
+            let fPieces = [w + 10, w + 10, h + 10, h + 10];
+            let sPieces = [];
+            for(let i = 0; i < res.sashCount; i++) {
+                sPieces.push(res.sashW, res.sashW, res.sashH, res.sashH);
+            }
+            let screenPieces = (res.screenW > 0 && res.screenH > 0) ? [res.screenW, res.screenW, res.screenH, res.screenH] : [];
+            let sakinaPieces = (res.sakinaH > 0) ? [res.sakinaH, res.sakinaH] : [];
 
             const windowItem = {
                 id: Date.now(),
                 width: w, height: h,
                 brand: brandVal, system: sysVal, profile: profVal,
                 profileName: profName,
-                frameLen: framePerimeter, sashLen: sashPerimeter
+                fPieces: fPieces,
+                sPieces: sPieces,
+                screenPieces: screenPieces,
+                sakinaPieces: sakinaPieces
             };
 
             currentCart.push(windowItem);
@@ -435,7 +509,7 @@
             window.scrollTo({ top: document.getElementById('customerCart').offsetTop, behavior: 'smooth' });
         }
 
-        // --- رسم جدول الفاتورة وحساب الأعواد (بدون هالك ومفروز للقطاعات) ---
+        // --- رسم جدول الفاتورة وحساب الأعواد بالرسم ---
         function renderCart() {
             const cartDiv = document.getElementById('customerCart');
             const tbody = document.getElementById('cartTableBody');
@@ -453,10 +527,13 @@
 
             currentCart.forEach((item, index) => {
                 if (!profilesData[item.profileName]) {
-                    profilesData[item.profileName] = { frameLen: 0, sashLen: 0 };
+                    profilesData[item.profileName] = { fPieces: [], sPieces: [], screenPieces: [], sakinaPieces: [] };
                 }
-                profilesData[item.profileName].frameLen += item.frameLen;
-                profilesData[item.profileName].sashLen += item.sashLen;
+                
+                profilesData[item.profileName].fPieces.push(...item.fPieces);
+                profilesData[item.profileName].sPieces.push(...item.sPieces);
+                profilesData[item.profileName].screenPieces.push(...item.screenPieces);
+                profilesData[item.profileName].sakinaPieces.push(...item.sakinaPieces);
 
                 tbody.innerHTML += `
                     <tr>
@@ -469,39 +546,51 @@
                 `;
             });
 
-            let summaryHTML = `<h4>📊 إجمالي احتياجات الألومنيوم للقطاعات المضافة (صافي بدون هالك):</h4>`;
+            // قراءة طول العود المختار من القائمة المنسدلة (650 أو 600)
+            let selectedBinSize = parseInt(document.getElementById('barLengthSelect').value) || 650;
 
-            for (const [profileName, lengths] of Object.entries(profilesData)) {
-                const frameMeters = lengths.frameLen / 100;
-                const sashMeters = lengths.sashLen / 100;
+            let summaryHTML = `<h4>📊 الخطة الذكية لتقطيع الألومنيوم (بدون هدر):</h4>`;
+            summaryHTML += `<p style="font-size:12px; color:#555; text-align:center; background:#fff; padding:5px; border-radius:5px;">⚠️ تم الحساب في الرسم التوضيحي أدناه على أساس طول العود المختار <strong>${selectedBinSize / 100} متر</strong>.</p>`;
 
-                const frames6m = Math.ceil(frameMeters / 6);
-                const sashes6m = Math.ceil(sashMeters / 6);
+            for (const [profileName, parts] of Object.entries(profilesData)) {
+                
+                let frameBins = packBins(parts.fPieces, selectedBinSize);
+                let sashBins = packBins(parts.sPieces, selectedBinSize);
+                let screenBins = packBins(parts.screenPieces, selectedBinSize);
+                let sakinaBins = packBins(parts.sakinaPieces, selectedBinSize);
 
-                const frames65m = Math.ceil(frameMeters / 6.5);
-                const sashes65m = Math.ceil(sashMeters / 6.5);
+                const frameMeters = (parts.fPieces.reduce((a,b)=>a+b, 0) / 100).toFixed(2);
+                const sashMeters = (parts.sPieces.reduce((a,b)=>a+b, 0) / 100).toFixed(2);
+                const screenMeters = (parts.screenPieces.reduce((a,b)=>a+b, 0) / 100).toFixed(2);
+                const sakinaMeters = (parts.sakinaPieces.reduce((a,b)=>a+b, 0) / 100).toFixed(2);
 
                 summaryHTML += `
                     <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px dashed #eb984e;">
                         <h5 style="color: #2c3e50; font-size: 16px; margin-bottom: 10px; margin-top: 0;">🔹 قطاع: ${profileName}</h5>
-                        <div style="display: flex; justify-content: space-around; flex-wrap: wrap; text-align: center; gap: 15px;">
-                            <div style="background: #fff; padding: 10px; border-radius: 5px; flex: 1; min-width: 200px; border: 1px solid #ddd;">
-                                <p style="color: #2980b9; margin-top: 0;">📏 إذا كانت الأعواد <strong>6 متر</strong></p>
-                                <p>أعواد الحلق: <span class="highlight-num">${frames6m}</span> عود</p>
-                                <p>أعواد الدرفة: <span class="highlight-num">${sashes6m}</span> عود</p>
-                            </div>
-                            <div style="background: #fff; padding: 10px; border-radius: 5px; flex: 1; min-width: 200px; border: 1px solid #ddd;">
-                                <p style="color: #27ae60; margin-top: 0;">📏 إذا كانت الأعواد <strong>6.5 متر</strong></p>
-                                <p>أعواد الحلق: <span class="highlight-num">${frames65m}</span> عود</p>
-                                <p>أعواد الدرفة: <span class="highlight-num">${sashes65m}</span> عود</p>
-                            </div>
+                        
+                        <div style="background: #eef2f5; padding: 10px; border-radius: 5px; text-align: right; margin-bottom: 15px; border: 1px solid #d1d8e0;">
+                            <p style="margin: 0; font-size: 14px; color: #333; line-height: 2.2;">
+                                📏 إجمالي الحلق: <strong style="color: #c0392b;">${frameMeters}</strong> متر 
+                                <span style="color:#27ae60; background:#fff; padding:2px 8px; border-radius:15px; border:1px solid #27ae60; font-size:12px; margin-right:5px;">(يحتاج <strong>${frameBins.length}</strong> عود)</span>
+                                
+                                <br>📏 إجمالي الدلف: <strong style="color: #c0392b;">${sashMeters}</strong> متر 
+                                <span style="color:#27ae60; background:#fff; padding:2px 8px; border-radius:15px; border:1px solid #27ae60; font-size:12px; margin-right:5px;">(يحتاج <strong>${sashBins.length}</strong> عود)</span>
+                                
+                                ${parts.screenPieces.length > 0 ? `<br>📏 إجمالي السلك: <strong style="color: #c0392b;">${screenMeters}</strong> متر <span style="color:#27ae60; background:#fff; padding:2px 8px; border-radius:15px; border:1px solid #27ae60; font-size:12px; margin-right:5px;">(يحتاج <strong>${screenBins.length}</strong> عود)</span>` : ''}
+                                
+                                ${parts.sakinaPieces.length > 0 ? `<br>📏 إجمالي السكينة: <strong style="color: #c0392b;">${sakinaMeters}</strong> متر <span style="color:#27ae60; background:#fff; padding:2px 8px; border-radius:15px; border:1px solid #27ae60; font-size:12px; margin-right:5px;">(يحتاج <strong>${sakinaBins.length}</strong> عود)</span>` : ''}
+                            </p>
                         </div>
-                    </div>
                 `;
+
+                if(frameBins.length > 0) summaryHTML += generateVisualBars(frameBins, selectedBinSize, "أعواد الحلق");
+                if(sashBins.length > 0) summaryHTML += generateVisualBars(sashBins, selectedBinSize, "أعواد الدرفة");
+                if(screenBins.length > 0) summaryHTML += generateVisualBars(screenBins, selectedBinSize, "أعواد السلك");
+                if(sakinaBins.length > 0) summaryHTML += generateVisualBars(sakinaBins, selectedBinSize, "أعواد السكينة");
+
+                summaryHTML += `</div>`;
             }
 
-            summaryHTML += `<p style="font-size: 12px; color: #777; margin-top: 10px;">* ملاحظة: هذا حساب دقيق يمثل مجموع أطوال الحلق والدرفة الفعلية (بدون إضافة نسبة هالك للقص).</p>`;
-            
             summaryDiv.innerHTML = summaryHTML;
         }
 
@@ -552,6 +641,7 @@
             setTimeout(() => t.style.display = 'none', 2500);
         };
 
+        // --- تحديث تجميع المحفوظات لتجنب التكرار الزائد ---
         window.renderSavedList = function() {
             const container = document.getElementById('savedList');
             const itemsArray = Object.keys(windowsDataSaved).map(key => ({
@@ -564,19 +654,42 @@
                 return;
             }
 
-            container.innerHTML = itemsArray.map(item => `
-                <div class="saved-card">
-                    <div class="saved-card-info">
-                        <h4>👤 ${item.customer}</h4>
-                        <p>📏 العرض: <span style="color:#d84315">${item.w}</span> سم | الارتفاع: <span style="color:#d84315">${item.h}</span> سم</p>
-                        <p style="font-size: 12px; color: #888; margin-top: 5px;">🔧 القطاع: ${item.brand} - ${item.system}</p>
+            // تجميع الشبابيك حسب اسم الزبون
+            let groupedCustomers = {};
+            itemsArray.forEach(item => {
+                let customerName = item.customer || "غير محدد";
+                if (!groupedCustomers[customerName]) {
+                    groupedCustomers[customerName] = [];
+                }
+                groupedCustomers[customerName].push(item);
+            });
+
+            let html = '';
+            for (let custName in groupedCustomers) {
+                html += `
+                <div style="background: #e2e8f0; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #cbd5e1;">
+                    <h4 style="color: #c0392b; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #c0392b; display: inline-block; padding-bottom: 5px;">👤 زبون: ${custName}</h4>
+                `;
+                
+                groupedCustomers[custName].forEach(item => {
+                    html += `
+                    <div class="saved-card" style="box-shadow: none; border: 1px solid #cbd5e1; margin-bottom: 8px;">
+                        <div class="saved-card-info">
+                            <p>📏 العرض: <span style="color:#d84315">${item.w}</span> سم | الارتفاع: <span style="color:#d84315">${item.h}</span> سم</p>
+                            <p style="font-size: 12px; color: #888; margin-top: 5px;">🔧 القطاع: ${item.profileName || item.system}</p>
+                        </div>
+                        <div class="saved-card-actions">
+                            <button class="btn-sm btn-edit" onclick="editWindow('${item.id}')">استدعاء ✏️</button>
+                            <button class="btn-sm btn-delete" onclick="deleteWindow('${item.id}')">حذف 🗑️</button>
+                        </div>
                     </div>
-                    <div class="saved-card-actions">
-                        <button class="btn-sm btn-edit" onclick="editWindow('${item.id}')">استدعاء المقاس ✏️</button>
-                        <button class="btn-sm btn-delete" onclick="deleteWindow('${item.id}')">حذف 🗑️</button>
-                    </div>
-                </div>
-            `).join('');
+                    `;
+                });
+
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
         };
 
         window.editWindow = function(id) {
@@ -631,6 +744,11 @@
                 return;
             }
             
+            // تعطيل الزر لمنع الضغط مرتين بالخطأ
+            const saveBtn = document.getElementById('btnSaveCloud');
+            saveBtn.disabled = true;
+            saveBtn.innerText = "⏳ جاري الحفظ...";
+
             document.getElementById('sync-status').innerText = "⚡ جاري الحفظ تلقائياً...";
             
             let promises = currentCart.map(item => {
@@ -641,6 +759,7 @@
                     brand: item.brand,
                     system: item.system,
                     profile: item.profile,
+                    profileName: item.profileName, // حفظ اسم القطاع صريحاً لسهولة العرض
                     timestamp: Date.now()
                 };
                 return push(windowsRef, dataToSave);
@@ -652,9 +771,17 @@
                 renderCart(); 
                 document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
                 window.showToast("✅ تم حفظ الفاتورة سحابياً بنجاح!");
+                
+                // إعادة تفعيل الزر
+                saveBtn.disabled = false;
+                saveBtn.innerText = "☁️ حفظ جميع شبابيك الفاتورة سحابياً";
             }).catch(err => {
                 document.getElementById('sync-status').innerText = "⚠️ خطأ في المزامنة";
                 alert("حدث خطأ في الاتصال: " + err);
+                
+                // إعادة تفعيل الزر حتى لو حدث خطأ
+                saveBtn.disabled = false;
+                saveBtn.innerText = "☁️ حفظ جميع شبابيك الفاتورة سحابياً";
             });
         };
 
