@@ -5,84 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تحويل رصيد عبر فوري</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f4f7f6; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-        }
-        .container { 
-            background-color: white; 
-            padding: 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1); 
-            width: 100%; 
-            max-width: 400px; 
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .fawry-badge {
-            background-color: #fadb14;
-            color: #333;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-            display: inline-block;
-            margin-bottom: 10px;
-        }
-        h2 { 
-            color: #333; 
-            margin: 0;
-            font-size: 22px;
-        }
-        .form-group { 
-            margin-bottom: 18px; 
-        }
-        label { 
-            display: block; 
-            margin-bottom: 8px; 
-            color: #555; 
-            font-weight: bold;
-            font-size: 14px;
-        }
-        input { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #ddd; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        input:focus {
-            border-color: #0056b3;
-            outline: none;
-        }
-        button { 
-            width: 100%; 
-            padding: 14px; 
-            background-color: #0056b3; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 16px; 
-            transition: background-color 0.3s;
-        }
-        button:hover { 
-            background-color: #004494; 
-        }
-        button:disabled {
-            background-color: #aaa;
-            cursor: not-allowed;
-        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .header { text-align: center; margin-bottom: 25px; }
+        .fawry-badge { background-color: #fadb14; color: #333; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 10px; }
+        h2 { color: #333; margin: 0; font-size: 22px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
+        input:focus { border-color: #0056b3; outline: none; }
+        button { width: 100%; padding: 14px; background-color: #0056b3; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        button:hover { background-color: #004494; }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -114,16 +48,19 @@
 </div>
 
 <script>
+    // ========================================================
+    // ⚠️ مهم جداً: ضعي عنوان الـ IP الخاص بالكمبيوتر هنا ⚠️
+    // ابحثي عن IPv4 في موجه الأوامر (cmd) واكتبيه بدلاً من هذا الرقم
+    // ========================================================
+    const COMPUTER_IP = "192.168.1.5"; 
+    
     document.getElementById('paymentForm').addEventListener('submit', async function(e) {
-        e.preventDefault(); // إيقاف إعادة تحميل الصفحة
+        e.preventDefault(); 
         
         const submitBtn = document.getElementById('submitBtn');
-        
-        // تعطيل الزر لتجنب الضغط المزدوج
         submitBtn.disabled = true;
-        submitBtn.innerText = 'جاري تحويلك لبوابة الدفع...';
+        submitBtn.innerText = 'جاري الاتصال بالسيرفر...';
 
-        // تجميع البيانات من الحقول
         const payload = {
             userPhone: document.getElementById('userPhone').value,
             meezaCard: document.getElementById('meezaCard').value,
@@ -131,32 +68,28 @@
         };
 
         try {
-            // إرسال البيانات إلى الخادم (Node.js) الذي صممناه مسبقاً
-            // تأكد أن الرابط هنا يطابق رابط سيرفرك الفعلي
-            const response = await fetch('http://localhost:3000/api/create-payment', {
+            // استخدام الـ IP بدلاً من localhost
+            const response = await fetch(`http://${COMPUTER_IP}:3000/api/create-payment`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json' 
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             const data = await response.json();
 
-            // إذا نجح الخادم في إنشاء الطلب مع فوري
-            if (data.success && data.paymentUrl) {
-                // توجيه المستخدم لصفحة فوري لإتمام الدفع
-                window.location.href = data.paymentUrl;
+            if (data.success) {
+                alert('تم الاتصال بنجاح بالسيرفر الخاص بك!');
+                if(data.paymentUrl) {
+                    window.location.href = data.paymentUrl;
+                }
             } else {
-                alert('عذراً، حدث خطأ: ' + (data.message || 'لا يمكن إنشاء الطلب الآن.'));
-                // إعادة تفعيل الزر
+                alert('خطأ من السيرفر: ' + data.message);
                 submitBtn.disabled = false;
                 submitBtn.innerText = 'متابعة الدفع';
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('حدث خطأ في الاتصال. تأكد من تشغيل خادم Node.js (البَاكَند).');
-            // إعادة تفعيل الزر
+            alert(`فشل الاتصال! تأكدي أن الكمبيوتر والتابلت على نفس شبكة الواي فاي، وأن رقم الـ IP (${COMPUTER_IP}) صحيح، وأن السيرفر يعمل.`);
             submitBtn.disabled = false;
             submitBtn.innerText = 'متابعة الدفع';
         }
