@@ -233,6 +233,8 @@
 
     <div class="archive-box">
         <h3 style="text-align:center; margin:0 0 10px 0;">📂 الأرشيف التفصيلي للعمال 💰</h3>
+        <button onclick="forceArchiveNow(this)" style="width:100%; margin-bottom: 15px; background:var(--teal); color:white; border:none; padding:12px; border-radius:10px; font-weight:900; cursor:pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">📦 حفظ جميع العمال في الأرشيف الآن</button>
+        
         <select id="archiveSearch" onchange="fetchAndBuildArchive()" style="width:100%; padding:12px; border-radius:10px; font-weight:900; border:2px solid var(--gold); outline:none;">
             <option value="">-- اختر اسم العامل لعرض أرشيفه --</option>
         </select>
@@ -437,7 +439,7 @@
                             <button disabled class="btn-tgl ${att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx},${di})">½</button>
                             <button disabled class="btn-tgl ${att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx},${di})">غ</button>
                         </div>
-                        <input disabled type="number" class="loan-input" value="${loans[di]}" placeholder="سلفة" onchange="syncArrayData(${idx}, 'loans', ${di}, this.value)">
+                        <input disabled type="number" class="loan-input" value="${loans[di] !== undefined ? loans[di] : ''}" placeholder="سلفة" onchange="syncArrayData(${idx}, 'loans', ${di}, this.value)">
                     </div>
                 `;
             }
@@ -526,7 +528,10 @@
 
     function syncArrayData(wIdx, field, dIdx, val) {
         setSyncStatus(true);
-        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}/${field}`), { [dIdx]: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
+        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}`), { 
+            [`${field}/${dIdx}`]: val, 
+            name: masterWorkers[wIdx].name 
+        }).then(() => setSyncStatus(false));
         recalc(wIdx);
     }
 
@@ -716,7 +721,16 @@
             }
             if(workerRecord) {
                 hasRecords = true;
-                let loansSum = 0; if(workerRecord.loans) Object.values(workerRecord.loans).forEach(l => loansSum += parseFloat(l || 0));
+                let loansSum = 0; 
+                if(workerRecord.loans) {
+                    Object.values(workerRecord.loans).forEach(l => {
+                        let parsedVal = parseFloat(l);
+                        if(!isNaN(parsedVal)) {
+                            loansSum += parsedVal;
+                        }
+                    });
+                }
+                
                 let attArray = workerRecord.att ? Object.values(workerRecord.att) : [1,1,1,1,1,1];
                 let attSum = attArray.reduce((sum, val) => sum + parseFloat(val || 0), 0);
                 let salaryBase = parseFloat(workerRecord.sal || 0);
@@ -786,7 +800,33 @@
     window.handleDateChange = handleDateChange;
     window.shareToWhatsApp = shareToWhatsApp;
     window.fetchAndBuildArchive = fetchAndBuildArchive;
-    window.updateCurrency = updateCurrency; // تصدير الدالة للمتصفح
+    window.updateCurrency = updateCurrency; 
+
+    // دالة الحفظ اليدوي للأرشيف للكل
+    window.forceArchiveNow = async function(btn) {
+        if(confirm("⚠️ هل أنت متأكد أنك تريد حفظ بيانات جميع العمال للأسبوع الحالي في الأرشيف الآن؟")) {
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ جاري أرشفة الكل...";
+            btn.style.background = "var(--warning)";
+            
+            // استدعاء دالة الأرشفة الأصلية الموجودة بالفعل
+            await archiveCurrentWeekSnapshots(); 
+            
+            btn.innerText = "✅ تم حفظ الكل في الأرشيف بنجاح";
+            btn.style.background = "var(--whatsapp-green)";
+            
+            // إعادة الزر لشكله الطبيعي بعد 3 ثواني
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = "var(--teal)";
+            }, 3000);
+            
+            // تحديث العرض إذا كنت تفتح أرشيف عامل معين
+            if (document.getElementById('archiveSearch').value !== "") {
+                fetchAndBuildArchive();
+            }
+        }
+    };
 </script>
 </body>
 </html>
