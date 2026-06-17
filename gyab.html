@@ -313,22 +313,39 @@
     }
 
     function updateDateFromSelectors() {
-        const d = document.getElementById('dayPicker').value;
-        const m = parseInt(document.getElementById('monthPicker').value) + 1;
-        const y = document.getElementById('yearPicker').value;
-        document.getElementById('datePicker').value = `${y}-${m.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-        handleDateChange();
+        // سحب القيم كأرقام مباشرة لمنع مشاكل المتصفحات في قراءة النصوص
+        const d = parseInt(document.getElementById('dayPicker').value);
+        const m = parseInt(document.getElementById('monthPicker').value); 
+        const y = parseInt(document.getElementById('yearPicker').value);
+        
+        // بناء التاريخ بالتوقيت المحلي مباشرة
+        const pickedDate = new Date(y, m, d);
+        
+        handleDateChange(pickedDate);
         applyGlowToCurrentDayPicker();
     }
 
-    function handleDateChange() {
-        const pickedDate = new Date(document.getElementById('datePicker').value);
+    function handleDateChange(pickedDate = null) {
+        // في حالة استدعاء الدالة بدون تاريخ، يتم بناءه من القوائم
+        if (!pickedDate) {
+            const d = parseInt(document.getElementById('dayPicker').value);
+            const m = parseInt(document.getElementById('monthPicker').value);
+            const y = parseInt(document.getElementById('yearPicker').value);
+            pickedDate = new Date(y, m, d);
+        }
+        
         if (isNaN(pickedDate)) return;
+
         let dayOfWeek = pickedDate.getDay();
         let diffToSaturday = (dayOfWeek === 6) ? 0 : (dayOfWeek + 1);
         let saturday = new Date(pickedDate);
         saturday.setDate(pickedDate.getDate() - diffToSaturday);
-        currentWeekID = saturday.toISOString().split('T')[0];
+        
+        // استخراج السنة والشهر واليوم بالتوقيت المحلي لتكوين الـ ID
+        let sy = saturday.getFullYear();
+        let sm = (saturday.getMonth() + 1).toString().padStart(2, '0');
+        let sd = saturday.getDate().toString().padStart(2, '0');
+        currentWeekID = `${sy}-${sm}-${sd}`;
         
         currentWeekDates = [];
         currentFullDates = [];
