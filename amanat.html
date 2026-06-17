@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحليل الفوري المباشر (BTC/USDT)</title>
+    <title>لوحة التحليل الفوري بالثواني والدقائق (BTC/USDT)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0e14; color: #d1d4dc; margin: 0; padding: 20px; }
         .container { max-width: 1400px; margin: auto; }
@@ -42,13 +42,13 @@
 <body>
     <div class="container">
         <div class="widget-box">
-            <h1>لوحة المراقبة الحية بالثواني (WebSocket Stream)</h1>
-            <p class="desc">تحديث فوري حقيقي كل ثانية ومبني عبر بث مباشر من خادم بينانس لتتبع أطر الدقائق بدقة وسرعة قصوى.</p>
+            <h1>لوحة المراقبة الحية بالثواني الفائقة (1s إلى 60s وأعلى)</h1>
+            <p class="desc">تحليل مدمج يبدأ من ثانية واحدة (1s) ومحدث لحظياً عبر بث النبضات من خوادم بينانس لتداول السكالبينج فائق السرعة.</p>
             
             <div class="header-controls">
-                <button id="startBtn" class="btn-analyze" onclick="startLiveDashboard()">▶ بدء البث المباشر (تحديث بالثانية)</button>
+                <button id="startBtn" class="btn-analyze" onclick="startLiveDashboard()">▶ بدء البث المباشر المدمج (ثواني + دقائق)</button>
                 <div id="timerDisplay" class="timer-box">
-                    <span class="pulse">●</span> البث المباشر متصل وتحديث الأسعار لحظي
+                    <span class="pulse">●</span> البث الحي للثواني متصل ويعمل الآن
                 </div>
             </div>
 
@@ -67,7 +67,7 @@
                 </div>
             </div>
             
-            <div id="loader">جاري فتح قناة البث الحي واستقبال بيانات السوق...</div>
+            <div id="loader">جاري الاتصال بقنوات البث الحي لبينانس وتجميع الإطارات...</div>
             
             <div id="resultsArea">
                 <div class="table-container">
@@ -78,17 +78,22 @@
     </div>
 
     <script>
-        let ws; 
-        let globalCandles1m = []; // مخزن الشموع التاريخي
+        let wsTicker;
+        let globalCandles1m = []; 
+        let secondsHistory = []; // مخزن مصفوفة الثواني الأخيرة لحساب أطر الثواني
+        const maxSecondsStored = 120; // الاحتفاظ بآخر دقيقتين من حركة الثواني
 
+        // دمج أطر الثواني (تعتمد على عدد الثواني) وأطر الدقائق (تعتمد على عدد شموع الـ 1m)
         const timeFrames = [
-            { label: '1m', chunks: 1 },
-            { label: '2m', chunks: 2 },
-            { label: '3m', chunks: 3 },
-            { label: '5m', chunks: 5 },
-            { label: '15m', chunks: 15 },
-            { label: '30m', chunks: 30 },
-            { label: '1h', chunks: 60 }
+            { label: '1s', type: 'sec', value: 1 },
+            { label: '5s', type: 'sec', value: 5 },
+            { label: '15s', type: 'sec', value: 15 },
+            { label: '30s', type: 'sec', value: 30 },
+            { label: '60s (1m)', type: 'min', value: 1 },
+            { label: '3m', type: 'min', value: 3 },
+            { label: '5m', type: 'min', value: 5 },
+            { label: '15m', type: 'min', value: 15 },
+            { label: '1h', type: 'min', value: 60 }
         ];
 
         function calcSMA(data, period) {
@@ -143,110 +148,128 @@
             document.getElementById('loader').style.display = 'block';
 
             try {
-                // خطوة البداية: سحب آخر البيانات المسجلة لبناء القاعدة الأساسية
+                // جلب البيانات التاريخية للدقائق لبناء الأطر المتوسطة والكبيرة فوراً
                 const response = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=1000');
                 const rawData = await response.json();
                 
-                // تحويل صيغة البيانات التاريخية لتتطابق مع دفق الويب سوكيت
                 globalCandles1m = rawData.map(c => ({
                     time: parseInt(c[0]),
                     open: parseFloat(c[1]),
                     high: parseFloat(c[2]),
                     low: parseFloat(c[3]),
-                    close: parseFloat(c[4]),
-                    isFinal: true
+                    close: parseFloat(c[4])
                 }));
 
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('resultsArea').style.display = 'block';
 
-                // معالجة أولية وعرض اللوحة فوراً
-                processAndRender();
-
-                // فتح قناة اتصال الـ WebSocket للتحديث بالثانية دون حظر الـ IP
-                initWebSocket();
+                // الاتصال بـ WebSocket الفوري للثواني والأسعار اللحظية الفائقة
+                initCombinedStreams();
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerHTML = '<span style="color:#ff5252;">❌ خطأ في تهيئة البيانات التاريخية.</span>';
+                document.getElementById('loader').innerHTML = '<span style="color:#ff5252;">❌ خطأ في الاتصال الأولي بالبيانات.</span>';
             }
         }
 
-        function initWebSocket() {
-            ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_1m');
+        function initCombinedStreams() {
+            // تيار مجمع من بينانس يجلب تيكر الثواني وتحديثات شموع الدقيقة معاً
+            wsTicker = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker/btcusdt@kline_1m');
 
-            ws.onmessage = (event) => {
+            wsTicker.onmessage = (event) => {
                 const message = JSON.parse(event.data);
-                const kline = message.k;
+                
+                // 1. معالجة بيانات تيار الثواني والسعر اللحظي الحالي
+                if (message.e === "24hrTicker") {
+                    const currentPrice = parseFloat(message.c);
+                    const now = Date.now();
 
-                const liveCandle = {
-                    time: kline.t,
-                    open: parseFloat(kline.o),
-                    high: parseFloat(kline.h),
-                    low: parseFloat(kline.l),
-                    close: parseFloat(kline.c),
-                    isFinal: kline.x // تعني هل انتهت الدقيقة أم لا
-                };
+                    // تسجيل السعر الحالي في مصفوفة حركة الثواني
+                    secondsHistory.push({ time: now, price: currentPrice });
+                    if (secondsHistory.length > maxSecondsStored) secondsHistory.shift();
 
-                // التحقق من آخر شمعة في المصفوفة لتحديثها بالثانية أو إضافة شمعة دقيقة جديدة
-                if (globalCandles1m.length > 0 && globalCandles1m[globalCandles1m.length - 1].time === liveCandle.time) {
-                    globalCandles1m[globalCandles1m.length - 1] = liveCandle;
-                } else {
-                    globalCandles1m.push(liveCandle);
-                    if (globalCandles1m.length > 1200) globalCandles1m.shift(); // الإبقاء على حجم معقول الذاكرة
+                    // معالجة وإعادة عرض الجدول ثانية بثانية
+                    processAndRender(currentPrice);
                 }
+                
+                // 2. معالجة تحديثات الدقائق في الخلفية للحفاظ على دقة المؤشرات الكبيرة
+                if (message.e === "kline") {
+                    const kline = message.k;
+                    const candle = {
+                        time: kline.t,
+                        open: parseFloat(kline.o),
+                        high: parseFloat(kline.h),
+                        low: parseFloat(kline.l),
+                        close: parseFloat(kline.c)
+                    };
 
-                // معالجة البيانات الفورية وإعادة رسم الجدول كل ثانية
-                processAndRender();
+                    if (globalCandles1m.length > 0 && globalCandles1m[globalCandles1m.length - 1].time === candle.time) {
+                        globalCandles1m[globalCandles1m.length - 1] = candle;
+                    } else {
+                        globalCandles1m.push(candle);
+                        if (globalCandles1m.length > 1100) globalCandles1m.shift();
+                    }
+                }
             };
 
-            ws.onerror = (err) => console.error("WebSocket Error: ", err);
-            ws.onclose = () => setTimeout(initWebSocket, 5000); // إعادة اتصال تلقائي في حال انقطاع البث
+            wsTicker.onclose = () => setTimeout(initCombinedStreams, 4000);
         }
 
-        function processAndRender() {
+        function processAndRender(currentPrice) {
             let tableHTML = `
                 <tr>
                     <th>الإطار الزمنّي</th>
                     <th>وقت التحديث</th>
-                    <th>السعر اللحظي</th>
+                    <th>السعر الحالي</th>
                     <th>الاتجاه (SMA/EMA)</th>
                     <th>RSI (14)</th>
                     <th>Stochastic</th>
                     <th>MACD</th>
                     <th>Bollinger Bands</th>
-                    <th>القرار اللحظي</th>
+                    <th>القرار الفوري</th>
                 </tr>
             `;
 
             let maxGridUpper = 0;
             let minGridLower = Infinity;
-            let latestPrice = globalCandles1m[globalCandles1m.length - 1].close;
 
             for (let tf of timeFrames) {
                 let customCloses = [];
                 let customHighs = [];
                 let customLows = [];
-                let lastCloseTime = Date.now();
-                
-                let step = tf.chunks;
 
-                // تجميع شموع الـ دقيقة لتوليد الأطر الزمنية الأخرى
-                for (let i = globalCandles1m.length; i > 0; i -= step) {
-                    let startIdx = Math.max(0, i - step);
-                    let chunk = globalCandles1m.slice(startIdx, i);
-                    if (chunk.length === 0) continue;
-                    
-                    let chunkClose = chunk[chunk.length - 1].close; 
-                    let chunkHigh = Math.max(...chunk.map(c => c.high));
-                    let chunkLow = Math.min(...chunk.map(c => c.low));
-                    
-                    customCloses.unshift(chunkClose);
-                    customHighs.unshift(chunkHigh);
-                    customLows.unshift(chunkLow);
+                if (tf.type === 'sec') {
+                    // بناء إطارات الثواني ديناميكياً من مصفوفة الثواني المخزنة
+                    let secWindow = tf.value;
+                    // تجميع حزم بناءً على حجم الإطار بالثواني
+                    for (let i = secondsHistory.length; i > 0; i -= secWindow) {
+                        let chunk = secondsHistory.slice(Math.max(0, i - secWindow), i);
+                        if(chunk.length === 0) continue;
+                        let prices = chunk.map(c => c.price);
+                        customCloses.unshift(prices[prices.length - 1]);
+                        customHighs.unshift(Math.max(...prices));
+                        customLows.unshift(Math.min(...prices));
+                    }
+                } else {
+                    // بناء أطر الدقائق والساعات من المصفوفة التاريخية الكبرى
+                    let step = tf.value;
+                    for (let i = globalCandles1m.length; i > 0; i -= step) {
+                        let chunk = globalCandles1m.slice(Math.max(0, i - step), i);
+                        if (chunk.length === 0) continue;
+                        customCloses.unshift(chunk[chunk.length - 1].close);
+                        customHighs.unshift(Math.max(...chunk.map(c => c.high)));
+                        customLows.unshift(Math.min(...chunk.map(c => c.low)));
+                    }
                 }
 
-                const currentPrice = customCloses[customCloses.length - 1];
+                // الحماية في حال كانت بيانات الثواني المجمعة في البداية لا تزال تبني نفسها
+                if (customCloses.length === 0) {
+                    customCloses = [currentPrice];
+                    customHighs = [currentPrice];
+                    customLows = [currentPrice];
+                }
+
+                const tfPrice = customCloses[customCloses.length - 1] || currentPrice;
 
                 const sma20 = calcSMA(customCloses, 20);
                 const ema20 = calcEMA(customCloses, 20);
@@ -264,16 +287,16 @@
                     if (bb.lower < minGridLower) minGridLower = bb.lower;
                 }
 
-                let formattedTime = new Date(lastCloseTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-                let formattedDate = new Date(lastCloseTime).toLocaleDateString('ar-EG', { weekday: 'short' });
+                let formattedTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                let formattedDate = new Date().toLocaleDateString('ar-EG', { weekday: 'short' });
 
                 let score = 0;
                 let validIndicators = 0;
 
                 if (sma20 && ema20) {
                     validIndicators += 2;
-                    if (currentPrice > sma20) score++; else score--;
-                    if (currentPrice > ema20) score++; else score--;
+                    if (tfPrice > sma20) score++; else score--;
+                    if (tfPrice > ema20) score++; else score--;
                 }
                 if (macd !== null) {
                     validIndicators++;
@@ -287,7 +310,7 @@
                     if (rsi14 <= 30) score += 2;
                 }
                 if (stoch) {
-                    validIndicators++;
+                    validIndicators += 1;
                     if (stoch > 50 && stoch < 80) score++; 
                     else if (stoch < 50 && stoch > 20) score--;
                     if (stoch >= 80) score -= 1;
@@ -297,25 +320,25 @@
                 let decision = '';
                 let cssClass = '';
 
-                if (validIndicators > 3) {
-                    if (score >= 3) { decision = 'شراء قوي'; cssClass = 'buy'; }
+                if (validIndicators >= 2) {
+                    if (score >= 2) { decision = 'شراء قوي'; cssClass = 'buy'; }
                     else if (score > 0) { decision = 'شراء'; cssClass = 'buy'; }
-                    else if (score <= -3) { decision = 'بيع قوي'; cssClass = 'sell'; }
+                    else if (score <= -2) { decision = 'بيع قوي'; cssClass = 'sell'; }
                     else if (score < 0) { decision = 'بيع'; cssClass = 'sell'; }
-                    else { decision = 'تذبذب (محايد)'; cssClass = 'wait'; }
+                    else { decision = 'تذبذب عرضي'; cssClass = 'wait'; }
                 } else {
-                    decision = 'جاري الحساب المباشر'; cssClass = 'wait';
+                    decision = 'جاري تجميع نبضات البث'; cssClass = 'wait';
                 }
 
-                let trendText = sma20 ? `S: ${sma20.toFixed(0)}<br>E: ${ema20.toFixed(0)}` : '-';
+                let trendText = sma20 ? `S: ${sma20.toFixed(1)}<br>E: ${ema20.toFixed(1)}` : '-';
                 let macdText = macd !== null ? `<span class="${macd > 0 ? 'buy' : 'sell'}">${macd.toFixed(2)}</span>` : '-';
-                let bbText = bb ? `<span style="color:#ff5252">↑ ${bb.upper.toFixed(0)}</span><br><span style="color:#00e676">↓ ${bb.lower.toFixed(0)}</span>` : '-';
+                let bbText = bb ? `<span style="color:#ff5252">↑ ${bb.upper.toFixed(1)}</span><br><span style="color:#00e676">↓ ${bb.lower.toFixed(1)}</span>` : '-';
 
                 tableHTML += `
                     <tr>
-                        <td><strong>${tf.label}</strong></td>
+                        <td><span style="color: #00e676">⚡ ${tf.label}</span></td>
                         <td class="time-col">${formattedDate} ${formattedTime}</td>
-                        <td dir="ltr" style="color: #f7931a; font-weight: bold;">${currentPrice.toFixed(2)}</td>
+                        <td dir="ltr" style="color: #f7931a; font-weight: bold;">${tfPrice.toFixed(2)}</td>
                         <td dir="ltr" style="font-size:12px; color:#8a93a6;">${trendText}</td>
                         <td dir="ltr" class="${rsi14 > 70 ? 'sell' : rsi14 < 30 ? 'buy' : ''}">${rsi14 ? rsi14.toFixed(1) : '-'}</td>
                         <td dir="ltr" class="${stoch > 80 ? 'sell' : stoch < 20 ? 'buy' : ''}">${stoch ? stoch.toFixed(1) : '-'}</td>
@@ -328,9 +351,10 @@
 
             document.getElementById('dataTable').innerHTML = tableHTML;
             
-            document.getElementById('radar-upper').innerText = maxGridUpper.toFixed(2) + ' USDT';
-            document.getElementById('radar-current').innerText = latestPrice.toFixed(2) + ' USDT';
-            document.getElementById('radar-lower').innerText = minGridLower.toFixed(2) + ' USDT';
+            // تحديث الرادار العلوي بأرقام دقيقة وحساسة جداً للسكالبينج
+            document.getElementById('radar-upper').innerText = maxGridUpper > 0 ? maxGridUpper.toFixed(2) + ' USDT' : '-';
+            document.getElementById('radar-current').innerText = currentPrice.toFixed(2) + ' USDT';
+            document.getElementById('radar-lower').innerText = minGridLower < Infinity ? minGridLower.toFixed(2) + ' USDT' : '-';
             document.getElementById('gridRadar').style.display = 'flex';
         }
     </script>
