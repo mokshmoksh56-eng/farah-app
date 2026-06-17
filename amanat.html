@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تشريح الشموع والذيول الفورية مع الرسم المباشر (BTC/USDT)</title>
+    <title>لوحة تشريح الشموع مع خطوط الاتجاه والإنذار المباشر (BTC/USDT)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0e14; color: #d1d4dc; margin: 0; padding: 20px; }
         .container { max-width: 1550px; margin: auto; }
@@ -19,10 +19,16 @@
         .pulse { animation: pulse-animation 1s infinite; }
         @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
         
+        /* شاشة الرادار والخطوط والإنذار */
         .grid-radar { display: none; justify-content: space-around; background: #1c212e; padding: 20px; border-radius: 8px; border-right: 4px solid #f7931a; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .grid-item { text-align: center; min-width: 150px; }
-        .grid-item span { display: block; font-size: 14px; color: #8a93a6; margin-bottom: 5px; }
-        .grid-item strong { font-size: 22px; }
+        .grid-item { text-align: center; min-width: 140px; }
+        .grid-item span { display: block; font-size: 13px; color: #8a93a6; margin-bottom: 5px; }
+        .grid-item strong { font-size: 20px; }
+
+        /* صندوق لوحة الإشعارات الفورية */
+        .alert-box { background: #1a1016; border: 1px dashed #ff5252; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-size: 16px; font-weight: bold; display: none; }
+        .alert-success { background: #0c1c15; border-color: #00e676; color: #00e676; }
+        .alert-danger { background: #1f1315; border-color: #ff5252; color: #ff5252; }
         
         .table-container { max-height: 650px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #2a2e39; }
         table { width: 100%; border-collapse: collapse; white-space: nowrap; }
@@ -37,7 +43,7 @@
         
         .anatomy-text { font-size: 12px; color: #cbd5e1; font-family: monospace; }
         
-        /* تصميم هيكل الرسم البياني الفوري للشمعة */
+        /* هيكل الرسم البياني الفوري للشمعة */
         .candle-graphic-container { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 75px; background: #0b0e14; border-radius: 4px; padding: 4px; margin: auto; border: 1px solid #1f222e; }
         .wick-top { width: 2px; background-color: #cbd5e1; min-height: 1px; }
         .candle-body-box { width: 18px; border-radius: 2px; min-height: 3px; transition: all 0.2s ease; }
@@ -53,32 +59,42 @@
 <body>
     <div class="container">
         <div class="widget-box">
-            <h1>لوحة تشريح الشموع والذيول مع الرسم البياني الفوري</h1>
-            <p class="desc">رسم تخطيطي حي وحسابي متكامل لفصل حركات الذيول عن الأجسام والمحدث مباشرة ثانية بثانية.</p>
+            <h1>لوحة تشريح الشموع مع خطوط الدعم المتصاعد والمقاومة المتنازلة والإنذار الآلي</h1>
+            <p class="desc">النظام يراقب الخطوط الحية بشكل مستمر؛ إذا تخطى السعر الخط التنازلي أو التصاعدي سيتم إطلاق إنذار فوري.</p>
             
             <div class="header-controls">
-                <button id="startBtn" class="btn-analyze" onclick="startLiveDashboard()">▶ تشغيل محرك التشريح والرسم الحي</button>
+                <button id="startBtn" class="btn-analyze" onclick="startLiveDashboard()">▶ تشغيل محرك الرادار والإنذار الفوري</button>
                 <div id="timerDisplay" class="timer-box">
-                    <span class="pulse">●</span> البث متصل - الرسوم التوضيحية للشمعة تتحرك بالوقت الفعلي
+                    <span class="pulse">●</span> محرك مراقبة كسر واختراق الخطوط يعمل الآن ثانية بثانية
                 </div>
             </div>
 
+            <div id="liveAlert" class="alert-box"></div>
+
             <div id="gridRadar" class="grid-radar">
                 <div class="grid-item">
-                    <span>الحد الأعلى (شبكة)</span>
-                    <strong id="radar-upper" class="sell">-</strong>
-                </div>
-                <div class="grid-item">
-                    <span>السعر اللحظي (BTC)</span>
+                    <span>السعر اللحظي الحالي</span>
                     <strong id="radar-current" style="color:#f7931a">-</strong>
                 </div>
+                <div class="grid-item" style="border-right: 1px dashed #2a2e39; padding-right: 10px;">
+                    <span>خط المقاومة (التنازلي)</span>
+                    <strong id="line-descending" class="sell">-</strong>
+                </div>
                 <div class="grid-item">
-                    <span>الحد الأدنى (شبكة)</span>
-                    <strong id="radar-lower" class="buy">-</strong>
+                    <span>خط الدعم (التصاعدي)</span>
+                    <strong id="line-ascending" class="buy">-</strong>
+                </div>
+                <div class="grid-item" style="border-right: 1px dashed #2a2e39; padding-right: 10px;">
+                    <span>سقف بولينجر الأعلى</span>
+                    <strong id="radar-upper" style="color:#e0e0e0">-</strong>
+                </div>
+                <div class="grid-item">
+                    <span>أرضية بولينجر الأدنى</span>
+                    <strong id="radar-lower" style="color:#e0e0e0">-</strong>
                 </div>
             </div>
             
-            <div id="loader">جاري تشغيل ميكانيكية الرسم البياني التفاعلي...</div>
+            <div id="loader">جاري فتح قنوات البث ومراقبة مستويات الخطوط...</div>
             
             <div id="resultsArea">
                 <div class="table-container">
@@ -92,7 +108,7 @@
                                 <th>القرار السلوكي الحركي</th>
                                 <th>Bollinger Bands</th>
                                 <th>RSI (14)</th>
-                                <th>وقت التحديث</th>
+                                <th>حالة الخطوط</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
@@ -108,6 +124,10 @@
         let globalCandles1m = []; 
         let secondsHistory = []; 
         const maxSecondsStored = 300; 
+
+        // الخطوط الحسابية للاتجاه
+        let currentAscendingLine = 0;  // خط الدعم التصاعدي
+        let currentDescendingLine = 0; // خط المقاومة التنازلي
 
         const timeFrames = [
             { label: '1s', type: 'sec', value: 1 },
@@ -151,44 +171,37 @@
             let upperWick = high - Math.max(open, close);
             let lowerWick = Math.min(open, close) - low;
 
-            // تحويل الأبعاد إلى نسب مئوية من إجمالي الطول الكلي للشمعة
             let bodyPct = (body / totalRange) * 100;
             let upperWickPct = (upperWick / totalRange) * 100;
             let lowerWickPct = (lowerWick / totalRange) * 100;
 
             let isBullish = close >= open;
             let bodyBgClass = isBullish ? 'bg-green' : 'bg-red';
-            if (bodyPct < 8) bodyBgClass = 'bg-gray'; // شمعة دوجي رمادية متوازنة
+            if (bodyPct < 8) bodyBgClass = 'bg-gray'; 
 
             let anatomyReport = `جسم: ${bodyPct.toFixed(0)}%<br>علوي: ${upperWickPct.toFixed(0)}%<br>سفلي: ${lowerWickPct.toFixed(0)}%`;
             let decision = 'تذبذب عادي';
             let cssClass = 'wait';
 
             if (bodyPct > 70) {
-                if (isBullish) { decision = '🚀 اندفاع شرائي قوي (ماروبوزو)'; cssClass = 'buy'; }
-                else { decision = '⚠️ هبوط جارف مسيطر (ماروبوزو)'; cssClass = 'sell'; }
+                if (isBullish) { decision = '🚀 اندفاع شرائي قوي'; cssClass = 'buy'; }
+                else { decision = '⚠️ هبوط جارف مسيطر'; cssClass = 'sell'; }
             } 
             else if (lowerWickPct > 50 && bodyPct < 35) {
-                decision = '🎯 ارتداد صاعد (مطرقة - قاع)'; cssClass = 'buy';
+                decision = '🎯 ارتداد صاعد (مطرقة)'; cssClass = 'buy';
             } 
             else if (upperWickPct > 50 && bodyPct < 35) {
-                decision = '📉 انعكاس هابط (شهاب - قمة)'; cssClass = 'sell';
+                decision = '📉 انعكاس هابط (شهاب)'; cssClass = 'sell';
             } 
             else if (bodyPct < 15 && upperWickPct > 35 && lowerWickPct > 35) {
-                decision = '⚖️ حيرة وتصفية (دوجي)'; cssClass = 'wait';
-            }
-            else if (upperWickPct > 30 && lowerWickPct > 30) {
-                decision = '↔️ تذبذب عرضي عنيف'; cssClass = 'wait';
+                decision = '⚖️ حيرة (دوجي)'; cssClass = 'wait';
             }
 
-            // توليد كود الـ HTML المباشر للرسم التوضيحي للشمعة داخل الجدول
-            // نستخدم حد أقصى للارتفاع (مثال 50 بكسل) ونوزع النسب عليه
             let maxRenderHeight = 50; 
             let h_top = (upperWickPct / 100) * maxRenderHeight;
             let h_body = (bodyPct / 100) * maxRenderHeight;
             let h_bottom = (lowerWickPct / 100) * maxRenderHeight;
 
-            // التأكد من وجود مساحات مرئية للحد الأدنى من بكسلات الرسم
             if(h_top < 1 && upperWickPct > 0) h_top = 2;
             if(h_body < 3) h_body = 4;
             if(h_bottom < 1 && lowerWickPct > 0) h_bottom = 2;
@@ -222,6 +235,13 @@
                     secondsHistory.push({ time: Date.now() - (i * 1000), price: lastPrice });
                 }
 
+                // حساب خطوط الدعم والمقاومة الحية بناءً على البيانات التاريخية القريبة للشموع
+                let recentHighs = globalCandles1m.slice(-30).map(c => c.high);
+                let recentLows = globalCandles1m.slice(-30).map(c => c.low);
+                
+                currentDescendingLine = Math.max(...recentHighs) - 5;  // المقاومة التنازلية تحت أعلى قمة بقليل
+                currentAscendingLine = Math.min(...recentLows) + 5;     // الدعم التصاعدي فوق أدنى قاع بقليل
+
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('resultsArea').style.display = 'block';
 
@@ -232,9 +252,39 @@
                 for (let i = 0; i < maxSecondsStored; i++) {
                     secondsHistory.push({ time: Date.now() - (i * 1000), price: fallbackPrice });
                 }
+                currentDescendingLine = fallbackPrice + 50;
+                currentAscendingLine = fallbackPrice - 50;
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('resultsArea').style.display = 'block';
                 initCombinedStreams();
+            }
+        }
+
+        function checkLineBreaks(currentPrice) {
+            let alertDiv = document.getElementById('liveAlert');
+            
+            // 1. مراقبة اختراق الخط التنازلي (المقاومة) لأعلى
+            if (currentPrice > currentDescendingLine) {
+                alertDiv.innerHTML = `🟢 إنذار: السعر الحالي (${currentPrice.toFixed(2)}) اخترق خط المقاومة التنازلي (${currentDescendingLine.toFixed(2)}) صعوداً!`;
+                alertDiv.className = "alert-box alert-success";
+                alertDiv.style.display = "block";
+                
+                // تعديل تدريجي للخط التنازلي لملاحقة الحركة الجديدة
+                currentDescendingLine = currentPrice + 2;
+            } 
+            // 2. مراقبة كسر خط الدعم التصاعدي لأسفل
+            else if (currentPrice < currentAscendingLine) {
+                alertDiv.innerHTML = `🔴 إنذار: السعر الحالي (${currentPrice.toFixed(2)}) كسر خط الدعم التصاعدي (${currentAscendingLine.toFixed(2)}) هبوطاً!`;
+                alertDiv.className = "alert-box alert-danger";
+                alertDiv.style.display = "block";
+                
+                // تعديل تدريجي للخط التصاعدي لملاحقة القاع الجديد
+                currentAscendingLine = currentPrice - 2;
+            } 
+            else {
+                // تضييق تدريجي ذكي للخطوط لمحاكاة المثلثات السعرية الحقيقية (التصاعدية والتنازلية)
+                currentDescendingLine -= 0.01;
+                currentAscendingLine += 0.01;
             }
         }
 
@@ -257,6 +307,9 @@
                     if (currentPrice > lastCandle.high) lastCandle.high = currentPrice;
                     if (currentPrice < lastCandle.low) lastCandle.low = currentPrice;
                 }
+
+                // فحص اختراق وكسر الخطوط ثانية بثانية
+                checkLineBreaks(currentPrice);
 
                 processAndRender(currentPrice);
             };
@@ -300,7 +353,6 @@
                 const c_high = customHighs[customHighs.length - 1] || currentPrice;
                 const c_low = customLows[customLows.length - 1] || currentPrice;
 
-                // استدعاء محرك التشريح والرسم البياني
                 let anatomy = analyzeCandleAnatomy(c_open, c_high, c_low, c_close);
                 const bb = calcBollinger(customCloses, 20);
                 const rsi14 = calcRSI(customCloses, 14);
@@ -310,26 +362,37 @@
                     if (bb.lower < minGridLower) minGridLower = bb.lower;
                 }
 
-                let formattedTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-                let bbText = bb ? `<span style="color:#ff5252">↑ ${bb.upper.toFixed(1)}</span> | <span style="color:#00e676">↓ ${bb.lower.toFixed(1)}</span>` : '-';
+                // حساب حالة الخطوط بالنسبة لكل إطار زمني
+                let lineStatusText = '<span style="color:#8a93a6">داخل النطاق</span>';
+                if (c_close > currentDescendingLine) {
+                    lineStatusText = '<span class="buy">🟢 اختراق صاعد!</span>';
+                } else if (c_close < currentAscendingLine) {
+                    lineStatusText = '<span class="sell">🔴 كسر هابط!</span>';
+                }
 
                 rowsHTML += `
                     <tr>
                         <td><span style="color: #00e676">⚡ ${tf.label}</span></td>
                         <td dir="ltr" style="color: #f7931a; font-weight: bold;">${c_close.toFixed(2)}</td>
-                        <td>${anatomy.graphic}</td> <td dir="ltr" class="anatomy-text">${anatomy.report}</td>
+                        <td>${anatomy.graphic}</td> 
+                        <td dir="ltr" class="anatomy-text">${anatomy.report}</td>
                         <td class="${anatomy.cssClass}">${anatomy.decision}</td>
-                        <td dir="ltr" style="font-size:12px;">${bbText}</td>
+                        <td dir="ltr" style="font-size:12px;">${bb ? `↑ ${bb.upper.toFixed(1)} | ↓ ${bb.lower.toFixed(1)}` : '-'}</td>
                         <td dir="ltr" class="${rsi14 > 70 ? 'sell' : rsi14 < 30 ? 'buy' : ''}">${rsi14 ? rsi14.toFixed(1) : '-'}</td>
-                        <td class="time-col">${formattedTime}</td>
+                        <td>${lineStatusText}</td>
                     </tr>
                 `;
             }
 
             document.getElementById('tableBody').innerHTML = rowsHTML;
-            document.getElementById('radar-upper').innerText = maxGridUpper > 0 ? maxGridUpper.toFixed(2) + ' USDT' : '-';
+            
+            // تحديث قيم شاشة الرادار العلوية
             document.getElementById('radar-current').innerText = currentPrice.toFixed(2) + ' USDT';
-            document.getElementById('radar-lower').innerText = minGridLower < Infinity ? minGridLower.toFixed(2) + ' USDT' : '-';
+            document.getElementById('line-descending').innerText = currentDescendingLine.toFixed(2) + ' USDT';
+            document.getElementById('line-ascending').innerText = currentAscendingLine.toFixed(2) + ' USDT';
+            document.getElementById('radar-upper').innerText = maxGridUpper > 0 ? maxGridUpper.toFixed(1) : '-';
+            document.getElementById('radar-lower').innerText = minGridLower < Infinity ? minGridLower.toFixed(1) : '-';
+            
             document.getElementById('gridRadar').style.display = 'flex';
         }
     </script>
