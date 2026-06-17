@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحليل الآلي ونطاقات الشبكة (BTC/USDT)</title>
+    <title>لوحة التحليل الفوري المباشر (BTC/USDT)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0e14; color: #d1d4dc; margin: 0; padding: 20px; }
         .container { max-width: 1400px; margin: auto; }
@@ -16,8 +16,9 @@
         .btn-analyze:hover { background-color: #1e4bd8; }
         
         .timer-box { font-size: 16px; font-weight: bold; color: #00e676; display: none; }
+        .pulse { animation: pulse-animation 1s infinite; }
+        @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
         
-        /* قسم إعدادات الشبكة الموصى بها */
         .grid-radar { display: none; justify-content: space-around; background: #1c212e; padding: 20px; border-radius: 8px; border-right: 4px solid #f7931a; margin-bottom: 20px; }
         .grid-item { text-align: center; }
         .grid-item span { display: block; font-size: 14px; color: #8a93a6; margin-bottom: 5px; }
@@ -41,13 +42,13 @@
 <body>
     <div class="container">
         <div class="widget-box">
-            <h1>لوحة المراقبة الحية (Auto-Refresh)</h1>
-            <p class="desc">يتم تحديث البيانات آلياً كل دقيقة، مع استخراج النطاق السعري الأمثل لتشغيل التداول العرضي.</p>
+            <h1>لوحة المراقبة الحية بالثواني (WebSocket Stream)</h1>
+            <p class="desc">تحديث فوري حقيقي كل ثانية ومبني عبر بث مباشر من خادم بينانس لتتبع أطر الدقائق بدقة وسرعة قصوى.</p>
             
             <div class="header-controls">
-                <button id="startBtn" class="btn-analyze" onclick="startLiveDashboard()">▶ بدء التشغيل الحي (Live)</button>
+                <button id="startBtn" class="btn-analyze" onclick="startLiveDashboard()">▶ بدء البث المباشر (تحديث بالثانية)</button>
                 <div id="timerDisplay" class="timer-box">
-                    التحديث التلقائي القادم خلال: <span id="countdown">60</span> ثانية
+                    <span class="pulse">●</span> البث المباشر متصل وتحديث الأسعار لحظي
                 </div>
             </div>
 
@@ -57,7 +58,7 @@
                     <strong id="radar-upper" class="sell">-</strong>
                 </div>
                 <div class="grid-item">
-                    <span>السعر اللحظي (Current)</span>
+                    <span>السعر اللحظي الحالي</span>
                     <strong id="radar-current" style="color:#f7931a">-</strong>
                 </div>
                 <div class="grid-item">
@@ -66,21 +67,29 @@
                 </div>
             </div>
             
-            <div id="loader">جاري الاتصال بالسوق وبناء الإطارات...</div>
+            <div id="loader">جاري فتح قناة البث الحي واستقبال بيانات السوق...</div>
             
             <div id="resultsArea">
                 <div class="table-container">
-                    <table id="dataTable">
-                        </table>
+                    <table id="dataTable"></table>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let refreshInterval;
-        let countdownInterval;
-        let secondsLeft = 60;
+        let ws; 
+        let globalCandles1m = []; // مخزن الشموع التاريخي
+
+        const timeFrames = [
+            { label: '1m', chunks: 1 },
+            { label: '2m', chunks: 2 },
+            { label: '3m', chunks: 3 },
+            { label: '5m', chunks: 5 },
+            { label: '15m', chunks: 15 },
+            { label: '30m', chunks: 30 },
+            { label: '1h', chunks: 60 }
+        ];
 
         function calcSMA(data, period) {
             if (data.length < period) return null;
@@ -128,177 +137,201 @@
             return ((currentClose - lowest) / (highest - lowest)) * 100;
         }
 
-        function startLiveDashboard() {
-            // إخفاء زر التشغيل وإظهار المؤقت
+        async function startLiveDashboard() {
             document.getElementById('startBtn').style.display = 'none';
             document.getElementById('timerDisplay').style.display = 'block';
-            
-            // جلب البيانات فوراً
-            fetchMarketData();
-
-            // إعداد التحديث كل 60 ثانية
-            refreshInterval = setInterval(fetchMarketData, 60000);
-            
-            // تشغيل العداد التنازلي المرئي
-            countdownInterval = setInterval(() => {
-                secondsLeft--;
-                if (secondsLeft <= 0) secondsLeft = 60;
-                document.getElementById('countdown').innerText = secondsLeft;
-            }, 1000);
-        }
-
-        async function fetchMarketData() {
-            if (document.getElementById('dataTable').innerHTML.trim() === '') {
-                document.getElementById('loader').style.display = 'block';
-            }
+            document.getElementById('loader').style.display = 'block';
 
             try {
-                const response = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1000');
-                const data1h = await response.json();
+                // خطوة البداية: سحب آخر البيانات المسجلة لبناء القاعدة الأساسية
+                const response = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=1000');
+                const rawData = await response.json();
                 
-                let tableHTML = `
-                    <tr>
-                        <th>الإطار</th>
-                        <th>وقت الإغلاق</th>
-                        <th>السعر</th>
-                        <th>الاتجاه (SMA/EMA)</th>
-                        <th>RSI (14)</th>
-                        <th>Stochastic</th>
-                        <th>MACD</th>
-                        <th>Bollinger Bands</th>
-                        <th>القرار اللحظي</th>
-                    </tr>
-                `;
-
-                // متغيرات لاستخراج أفضل نطاق للشبكة
-                let maxGridUpper = 0;
-                let minGridLower = Infinity;
-                let latestPrice = 0;
-
-                for(let hours = 1; hours <= 24; hours++) {
-                    let customCloses = [];
-                    let customHighs = [];
-                    let customLows = [];
-                    let lastCloseTime = 0;
-                    
-                    for (let i = data1h.length; i > 0; i -= hours) {
-                        let startIdx = Math.max(0, i - hours);
-                        let chunk = data1h.slice(startIdx, i);
-                        
-                        let chunkClose = parseFloat(chunk[chunk.length - 1][4]); 
-                        let chunkHigh = Math.max(...chunk.map(c => parseFloat(c[2])));
-                        let chunkLow = Math.min(...chunk.map(c => parseFloat(c[3])));
-                        
-                        customCloses.unshift(chunkClose);
-                        customHighs.unshift(chunkHigh);
-                        customLows.unshift(chunkLow);
-                        
-                        if (i === data1h.length) {
-                            lastCloseTime = chunk[chunk.length - 1][6]; 
-                        }
-                    }
-
-                    const currentPrice = customCloses[customCloses.length - 1];
-                    if (hours === 1) latestPrice = currentPrice;
-
-                    const sma20 = calcSMA(customCloses, 20);
-                    const ema20 = calcEMA(customCloses, 20);
-                    const rsi14 = calcRSI(customCloses, 14);
-                    const stoch = calcStochastic(customCloses, customHighs, customLows, 14);
-                    const bb = calcBollinger(customCloses, 20);
-                    
-                    let macd = null;
-                    if (customCloses.length >= 26) {
-                        macd = calcEMA(customCloses, 12) - calcEMA(customCloses, 26);
-                    }
-
-                    // التقاط أعلى وأدنى بولينجر باند لنطاق الشبكة
-                    if (bb) {
-                        if (bb.upper > maxGridUpper) maxGridUpper = bb.upper;
-                        if (bb.lower < minGridLower) minGridLower = bb.lower;
-                    }
-
-                    let formattedTime = new Date(lastCloseTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
-                    let formattedDate = new Date(lastCloseTime).toLocaleDateString('ar-EG', { weekday: 'short' });
-
-                    let score = 0;
-                    let validIndicators = 0;
-
-                    if (sma20 && ema20) {
-                        validIndicators += 2;
-                        if (currentPrice > sma20) score++; else score--;
-                        if (currentPrice > ema20) score++; else score--;
-                    }
-                    if (macd !== null) {
-                        validIndicators++;
-                        if (macd > 0) score++; else score--;
-                    }
-                    if (rsi14) {
-                        validIndicators++;
-                        if (rsi14 > 50 && rsi14 < 70) score++; 
-                        else if (rsi14 < 50 && rsi14 > 30) score--;
-                        if (rsi14 >= 70) score -= 2; 
-                        if (rsi14 <= 30) score += 2;
-                    }
-                    if (stoch) {
-                        validIndicators++;
-                        if (stoch > 50 && stoch < 80) score++; 
-                        else if (stoch < 50 && stoch > 20) score--;
-                        if (stoch >= 80) score -= 1;
-                        if (stoch <= 20) score += 1;
-                    }
-
-                    let decision = '';
-                    let cssClass = '';
-
-                    if (validIndicators > 3) {
-                        if (score >= 3) { decision = 'شراء قوي'; cssClass = 'buy'; }
-                        else if (score > 0) { decision = 'شراء'; cssClass = 'buy'; }
-                        else if (score <= -3) { decision = 'بيع قوي'; cssClass = 'sell'; }
-                        else if (score < 0) { decision = 'بيع'; cssClass = 'sell'; }
-                        else { decision = 'تذبذب (محايد)'; cssClass = 'wait'; }
-                    } else {
-                        decision = 'جارٍ الحساب'; cssClass = 'wait';
-                    }
-
-                    let trendText = sma20 ? `S: ${sma20.toFixed(0)}<br>E: ${ema20.toFixed(0)}` : '-';
-                    let macdText = macd !== null ? `<span class="${macd > 0 ? 'buy' : 'sell'}">${macd.toFixed(2)}</span>` : '-';
-                    let bbText = bb ? `<span style="color:#ff5252">↑ ${bb.upper.toFixed(0)}</span><br><span style="color:#00e676">↓ ${bb.lower.toFixed(0)}</span>` : '-';
-
-                    tableHTML += `
-                        <tr>
-                            <td><strong>${hours}h</strong></td>
-                            <td class="time-col">${formattedDate} ${formattedTime}</td>
-                            <td dir="ltr" style="color: #f7931a; font-weight: bold;">${currentPrice.toFixed(2)}</td>
-                            <td dir="ltr" style="font-size:12px; color:#8a93a6;">${trendText}</td>
-                            <td dir="ltr" class="${rsi14 > 70 ? 'sell' : rsi14 < 30 ? 'buy' : ''}">${rsi14 ? rsi14.toFixed(1) : '-'}</td>
-                            <td dir="ltr" class="${stoch > 80 ? 'sell' : stoch < 20 ? 'buy' : ''}">${stoch ? stoch.toFixed(1) : '-'}</td>
-                            <td dir="ltr">${macdText}</td>
-                            <td dir="ltr" style="font-size:12px;">${bbText}</td>
-                            <td class="${cssClass}">${decision}</td>
-                        </tr>
-                    `;
-                }
-
-                // تحديث واجهة المستخدم
-                document.getElementById('dataTable').innerHTML = tableHTML;
-                
-                // تحديث رادار الشبكة
-                document.getElementById('radar-upper').innerText = maxGridUpper.toFixed(2) + ' USDT';
-                document.getElementById('radar-current').innerText = latestPrice.toFixed(2) + ' USDT';
-                document.getElementById('radar-lower').innerText = minGridLower.toFixed(2) + ' USDT';
-                document.getElementById('gridRadar').style.display = 'flex';
+                // تحويل صيغة البيانات التاريخية لتتطابق مع دفق الويب سوكيت
+                globalCandles1m = rawData.map(c => ({
+                    time: parseInt(c[0]),
+                    open: parseFloat(c[1]),
+                    high: parseFloat(c[2]),
+                    low: parseFloat(c[3]),
+                    close: parseFloat(c[4]),
+                    isFinal: true
+                }));
 
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('resultsArea').style.display = 'block';
 
-                // إعادة ضبط المؤقت
-                secondsLeft = 60;
+                // معالجة أولية وعرض اللوحة فوراً
+                processAndRender();
+
+                // فتح قناة اتصال الـ WebSocket للتحديث بالثانية دون حظر الـ IP
+                initWebSocket();
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerHTML = '<span style="color:#ff5252;">❌ خطأ في تحديث البيانات. سيتم المحاولة مجدداً في الدورة القادمة.</span>';
+                document.getElementById('loader').innerHTML = '<span style="color:#ff5252;">❌ خطأ في تهيئة البيانات التاريخية.</span>';
             }
+        }
+
+        function initWebSocket() {
+            ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_1m');
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                const kline = message.k;
+
+                const liveCandle = {
+                    time: kline.t,
+                    open: parseFloat(kline.o),
+                    high: parseFloat(kline.h),
+                    low: parseFloat(kline.l),
+                    close: parseFloat(kline.c),
+                    isFinal: kline.x // تعني هل انتهت الدقيقة أم لا
+                };
+
+                // التحقق من آخر شمعة في المصفوفة لتحديثها بالثانية أو إضافة شمعة دقيقة جديدة
+                if (globalCandles1m.length > 0 && globalCandles1m[globalCandles1m.length - 1].time === liveCandle.time) {
+                    globalCandles1m[globalCandles1m.length - 1] = liveCandle;
+                } else {
+                    globalCandles1m.push(liveCandle);
+                    if (globalCandles1m.length > 1200) globalCandles1m.shift(); // الإبقاء على حجم معقول الذاكرة
+                }
+
+                // معالجة البيانات الفورية وإعادة رسم الجدول كل ثانية
+                processAndRender();
+            };
+
+            ws.onerror = (err) => console.error("WebSocket Error: ", err);
+            ws.onclose = () => setTimeout(initWebSocket, 5000); // إعادة اتصال تلقائي في حال انقطاع البث
+        }
+
+        function processAndRender() {
+            let tableHTML = `
+                <tr>
+                    <th>الإطار الزمنّي</th>
+                    <th>وقت التحديث</th>
+                    <th>السعر اللحظي</th>
+                    <th>الاتجاه (SMA/EMA)</th>
+                    <th>RSI (14)</th>
+                    <th>Stochastic</th>
+                    <th>MACD</th>
+                    <th>Bollinger Bands</th>
+                    <th>القرار اللحظي</th>
+                </tr>
+            `;
+
+            let maxGridUpper = 0;
+            let minGridLower = Infinity;
+            let latestPrice = globalCandles1m[globalCandles1m.length - 1].close;
+
+            for (let tf of timeFrames) {
+                let customCloses = [];
+                let customHighs = [];
+                let customLows = [];
+                let lastCloseTime = Date.now();
+                
+                let step = tf.chunks;
+
+                // تجميع شموع الـ دقيقة لتوليد الأطر الزمنية الأخرى
+                for (let i = globalCandles1m.length; i > 0; i -= step) {
+                    let startIdx = Math.max(0, i - step);
+                    let chunk = globalCandles1m.slice(startIdx, i);
+                    if (chunk.length === 0) continue;
+                    
+                    let chunkClose = chunk[chunk.length - 1].close; 
+                    let chunkHigh = Math.max(...chunk.map(c => c.high));
+                    let chunkLow = Math.min(...chunk.map(c => c.low));
+                    
+                    customCloses.unshift(chunkClose);
+                    customHighs.unshift(chunkHigh);
+                    customLows.unshift(chunkLow);
+                }
+
+                const currentPrice = customCloses[customCloses.length - 1];
+
+                const sma20 = calcSMA(customCloses, 20);
+                const ema20 = calcEMA(customCloses, 20);
+                const rsi14 = calcRSI(customCloses, 14);
+                const stoch = calcStochastic(customCloses, customHighs, customLows, 14);
+                const bb = calcBollinger(customCloses, 20);
+                
+                let macd = null;
+                if (customCloses.length >= 26) {
+                    macd = calcEMA(customCloses, 12) - calcEMA(customCloses, 26);
+                }
+
+                if (bb) {
+                    if (bb.upper > maxGridUpper) maxGridUpper = bb.upper;
+                    if (bb.lower < minGridLower) minGridLower = bb.lower;
+                }
+
+                let formattedTime = new Date(lastCloseTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                let formattedDate = new Date(lastCloseTime).toLocaleDateString('ar-EG', { weekday: 'short' });
+
+                let score = 0;
+                let validIndicators = 0;
+
+                if (sma20 && ema20) {
+                    validIndicators += 2;
+                    if (currentPrice > sma20) score++; else score--;
+                    if (currentPrice > ema20) score++; else score--;
+                }
+                if (macd !== null) {
+                    validIndicators++;
+                    if (macd > 0) score++; else score--;
+                }
+                if (rsi14) {
+                    validIndicators++;
+                    if (rsi14 > 50 && rsi14 < 70) score++; 
+                    else if (rsi14 < 50 && rsi14 > 30) score--;
+                    if (rsi14 >= 70) score -= 2; 
+                    if (rsi14 <= 30) score += 2;
+                }
+                if (stoch) {
+                    validIndicators++;
+                    if (stoch > 50 && stoch < 80) score++; 
+                    else if (stoch < 50 && stoch > 20) score--;
+                    if (stoch >= 80) score -= 1;
+                    if (stoch <= 20) score += 1;
+                }
+
+                let decision = '';
+                let cssClass = '';
+
+                if (validIndicators > 3) {
+                    if (score >= 3) { decision = 'شراء قوي'; cssClass = 'buy'; }
+                    else if (score > 0) { decision = 'شراء'; cssClass = 'buy'; }
+                    else if (score <= -3) { decision = 'بيع قوي'; cssClass = 'sell'; }
+                    else if (score < 0) { decision = 'بيع'; cssClass = 'sell'; }
+                    else { decision = 'تذبذب (محايد)'; cssClass = 'wait'; }
+                } else {
+                    decision = 'جاري الحساب المباشر'; cssClass = 'wait';
+                }
+
+                let trendText = sma20 ? `S: ${sma20.toFixed(0)}<br>E: ${ema20.toFixed(0)}` : '-';
+                let macdText = macd !== null ? `<span class="${macd > 0 ? 'buy' : 'sell'}">${macd.toFixed(2)}</span>` : '-';
+                let bbText = bb ? `<span style="color:#ff5252">↑ ${bb.upper.toFixed(0)}</span><br><span style="color:#00e676">↓ ${bb.lower.toFixed(0)}</span>` : '-';
+
+                tableHTML += `
+                    <tr>
+                        <td><strong>${tf.label}</strong></td>
+                        <td class="time-col">${formattedDate} ${formattedTime}</td>
+                        <td dir="ltr" style="color: #f7931a; font-weight: bold;">${currentPrice.toFixed(2)}</td>
+                        <td dir="ltr" style="font-size:12px; color:#8a93a6;">${trendText}</td>
+                        <td dir="ltr" class="${rsi14 > 70 ? 'sell' : rsi14 < 30 ? 'buy' : ''}">${rsi14 ? rsi14.toFixed(1) : '-'}</td>
+                        <td dir="ltr" class="${stoch > 80 ? 'sell' : stoch < 20 ? 'buy' : ''}">${stoch ? stoch.toFixed(1) : '-'}</td>
+                        <td dir="ltr">${macdText}</td>
+                        <td dir="ltr" style="font-size:12px;">${bbText}</td>
+                        <td class="${cssClass}">${decision}</td>
+                    </tr>
+                `;
+            }
+
+            document.getElementById('dataTable').innerHTML = tableHTML;
+            
+            document.getElementById('radar-upper').innerText = maxGridUpper.toFixed(2) + ' USDT';
+            document.getElementById('radar-current').innerText = latestPrice.toFixed(2) + ' USDT';
+            document.getElementById('radar-lower').innerText = minGridLower.toFixed(2) + ' USDT';
+            document.getElementById('gridRadar').style.display = 'flex';
         }
     </script>
 </body>
