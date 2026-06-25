@@ -435,11 +435,39 @@
         
         document.getElementById('cardsList').innerHTML = masterWorkers.map((worker, idx) => {
             let d = saved[idx] || {};
+            let needsInitialSave = false; // متغير لمعرفة إذا كان الكارت جديد ويحتاج حفظ مبدئي تلقائي
             
             let sal = (d.sal !== undefined && d.sal !== '') ? d.sal : (worker.sal || '');
-            let att = d.att || [1,1,1,1,1,1];
-            let loans = d.loans || ['','','','','',''];
+            
+            let att = [1, 1, 1, 1, 1, 1];
+            if (d.att) {
+                for (let i = 0; i < 6; i++) {
+                    att[i] = d.att[i] !== undefined ? parseFloat(d.att[i]) : 1;
+                }
+            } else {
+                needsInitialSave = true; // لا يوجد حضور مسجل، إذن نحتاج لرفعه للسيرفر
+            }
+
+            let loans = ['', '', '', '', '', ''];
+            if (d.loans) {
+                for (let i = 0; i < 6; i++) {
+                    loans[i] = d.loans[i] !== undefined ? d.loans[i] : '';
+                }
+            } else {
+                needsInitialSave = true;
+            }
+
             let note = d.note || '';
+
+            // ====== حفظ تلقائي في الخلفية للقيم الافتراضية (كله حضور) ======
+            if (needsInitialSave && window.currentUid && currentWeekID) {
+                update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${idx}`), {
+                    att: att,
+                    loans: loans,
+                    sal: sal,
+                    name: worker.name
+                });
+            }
 
             let daysHtml = '';
             for(let di = 0; di < 6; di++) {
@@ -518,7 +546,7 @@
             lockBtn.innerHTML = '🔒 تعديل';
             lockBtn.classList.remove('unlocked');
             card.querySelectorAll('input, textarea, button.btn-tgl').forEach(el => el.setAttribute('disabled', 'true'));
-            manualSaveWorker(idx); 
+            // لم نعد نحتاج الحفظ هنا لأن الحفظ التلقائي يعمل دائماً
         }
     }
 
@@ -526,6 +554,7 @@
         if (btn.hasAttribute('disabled')) return; 
         Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        // هنا يتم الحفظ التلقائي لأي تعديل تقوم به
         syncArrayData(wIdx, 'att', dIdx, btn.dataset.v);
     }
 
@@ -748,8 +777,14 @@
                     });
                 }
                 
-                let attArray = workerRecord.att ? Object.values(workerRecord.att) : [1,1,1,1,1,1];
+                let attArray = [1, 1, 1, 1, 1, 1];
+                if (workerRecord.att) {
+                    for (let i = 0; i < 6; i++) {
+                        attArray[i] = workerRecord.att[i] !== undefined ? parseFloat(workerRecord.att[i]) : 1;
+                    }
+                }
                 let attSum = attArray.reduce((sum, val) => sum + parseFloat(val || 0), 0);
+                
                 let salaryBase = parseFloat(workerRecord.sal || 0);
                 let net = Math.round(((salaryBase/6)*attSum) - loansSum);
                 
