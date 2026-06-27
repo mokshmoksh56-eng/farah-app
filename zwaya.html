@@ -682,6 +682,15 @@
 
         let currentPositions = {};
 
+        // دالة حساب نقطة تقاطع الفتحة الوهمية (امتداد الجدار C مع الجدار D)
+        function getIntersection(p1, p2, p3, p4) {
+            let d = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+            if (d === 0) return null; // في حالة التوازي التام
+            let nx = (p1.x * p2.y - p1.y * p2.x) * (p3.x - p4.x) - (p1.x - p2.x) * (p3.x * p4.y - p3.y * p4.x);
+            let ny = (p1.x * p2.y - p1.y * p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x * p4.y - p3.y * p4.x);
+            return { x: nx / d, y: ny / d };
+        }
+
         function updatePositionElements() {
             if (!currentPositions.c1) return;
             
@@ -734,10 +743,32 @@
             let cosD = (Math.pow(gap, 2) + Math.pow(wD, 2) - Math.pow(dist(P4, P1), 2)) / (2 * gap * wD);
             let angleD_auto = Math.round(Math.acos(Math.max(-1, Math.min(1, cosD))) * 180 / Math.PI) || 0;
 
+            // حساب نقطة التقاطع الوهمية (حرف L) والمسافات
+            let P_intersect = getIntersection(P3, P4, P1, P5);
+            let extC = 0, extD = 0;
+
             let minX = Math.min(P1.x, P2.x, P3.x, P4.x, P5.x);
             let maxX = Math.max(P1.x, P2.x, P3.x, P4.x, P5.x);
             let minY = Math.min(P1.y, P2.y, P3.y, P4.y, P5.y);
             let maxY = Math.max(P1.y, P2.y, P3.y, P4.y, P5.y);
+
+            // إضافة نقطة التقاطع للحدود ليتم تصغير/تكبير الرسمة بناءً عليها
+            if (P_intersect) {
+                extC = dist(P4, P_intersect);
+                extD = dist(P5, P_intersect);
+                
+                // حماية من الخطوط شبه المتوازية التي قد تسبب نقطة تقاطع بعيدة جداً
+                if (extC < 1500 && extD < 1500) {
+                    minX = Math.min(minX, P_intersect.x);
+                    maxX = Math.max(maxX, P_intersect.x);
+                    minY = Math.min(minY, P_intersect.y);
+                    maxY = Math.max(maxY, P_intersect.y);
+                } else {
+                    P_intersect = null; 
+                    extC = 0;
+                    extD = 0;
+                }
+            }
 
             let mathW = maxX - minX || 1;
             let mathH = maxY - minY || 1;
@@ -753,8 +784,9 @@
             currentPositions.c3 = toC(P3);
             currentPositions.c4 = toC(P4);
             currentPositions.c5 = toC(P5);
+            currentPositions.c_int = P_intersect ? toC(P_intersect) : null;
 
-            drawLayout(gap, angleC_auto, angleD_auto);
+            drawLayout(gap, angleC_auto, angleD_auto, extC, extD);
             updatePositionElements();
             
             if (triggerSave && typeof window.saveZwayaData === 'function') {
@@ -762,12 +794,26 @@
             }
         }
 
-        function drawLayout(gap, angleC_auto, angleD_auto) {
+        function drawLayout(gap, angleC_auto, angleD_auto, extC, extD) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawGrid();
 
+            // دالة مساعدة لكتابة النصوص بخلفية بيضاء لمنع التداخل مع الخطوط
+            function drawTextWithBg(text, x, y, color, font = 'bold 15px Arial') {
+                ctx.font = font;
+                let metrics = ctx.measureText(text);
+                let padding = 4;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillRect(x - metrics.width/2 - padding, y - 10 - padding, metrics.width + padding*2, 20 + padding*2);
+                ctx.fillStyle = color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, x, y);
+            }
+
             let c1 = currentPositions.c1, c2 = currentPositions.c2, c3 = currentPositions.c3, c4 = currentPositions.c4, c5 = currentPositions.c5;
 
+            // رسم الوتر المتقطع
             ctx.beginPath();
             ctx.setLineDash([6, 6]);
             ctx.moveTo(c1.x, c1.y); ctx.lineTo(c3.x, c3.y);
@@ -776,6 +822,7 @@
             ctx.stroke();
             ctx.setLineDash([]);
 
+            // رسم الجدران
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -793,6 +840,32 @@
             ctx.lineTo(c5.x, c5.y); 
             ctx.stroke(); 
 
+            // رسم تقاطع حرف L (الزاوية الوهمية من الداخل) وكتابة المقاسات
+            let c_int = currentPositions.c_int;
+            if (c_int) {
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]); // خطوط متقطعة
+                ctx.moveTo(c4.x, c4.y);
+                ctx.lineTo(c_int.x, c_int.y);
+                ctx.lineTo(c5.x, c5.y);
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#94a3b8'; // لون رصاصي للتقاطع
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // كتابة المقاسات على الضلعين الوهميين
+                if (extC > 0 && extD > 0) {
+                    let midC_x = (c4.x + c_int.x) / 2;
+                    let midC_y = (c4.y + c_int.y) / 2;
+                    drawTextWithBg(extC.toFixed(1) + " سم", midC_x, midC_y, '#64748b', 'bold 12px Arial');
+
+                    let midD_x = (c5.x + c_int.x) / 2;
+                    let midD_y = (c5.y + c_int.y) / 2;
+                    drawTextWithBg(extD.toFixed(1) + " سم", midD_x, midD_y, '#64748b', 'bold 12px Arial');
+                }
+            }
+
+            // رسم خط الفتحة المتقطع باللون البرتقالي
             ctx.beginPath();
             ctx.setLineDash([8, 8]);
             ctx.moveTo(c5.x, c5.y); ctx.lineTo(c4.x, c4.y);
@@ -850,19 +923,6 @@
             ctx.textBaseline = 'middle';
             ctx.fillText(gapText, 0, offsetY);
             ctx.restore();
-
-            function drawTextWithBg(text, x, y, color, font = 'bold 15px Arial') {
-                ctx.font = font;
-                let metrics = ctx.measureText(text);
-                let padding = 4;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillRect(x - metrics.width/2 - padding, y - 10 - padding, metrics.width + padding*2, 20 + padding*2);
-                ctx.fillStyle = color;
-                ctx.fillText(text, x, y);
-            }
-
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
 
             drawTextWithBg(inputs.aAB.value + "°", c2.x + 45, c2.y - 25, '#ef4444');
             drawTextWithBg(inputs.aBC.value + "°", c3.x - 45, c3.y - 25, '#3b82f6');
