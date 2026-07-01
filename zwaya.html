@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azemaa Pro - الإصدار الذكي التفاعلي</title>
+    <title>azemaa proo - الإصدار الذكي التفاعلي</title>
     <style>
         :root {
             --bg-main: #f0f4f8; 
@@ -323,7 +323,7 @@
     <div class="app-container">
         
         <div class="header">
-            <h2>Azemaa Pro</h2>
+            <h2>azemaa proo</h2>
         </div>
 
         <div class="header-controls">
@@ -811,6 +811,23 @@
                 ctx.fillText(text, x, y);
             }
 
+            // دالة مخصصة لكتابة رقم الزاوية من الداخل (تلقائياً مهما تغير الشكل)
+            function drawAngleText(center, pStart, pEnd, text, color, isCCW) {
+                let a1 = Math.atan2(pStart.y - center.y, pStart.x - center.x);
+                let a2 = Math.atan2(pEnd.y - center.y, pEnd.x - center.x);
+                let diff = a2 - a1;
+                
+                if (isCCW && diff > 0) diff -= 2 * Math.PI;
+                if (!isCCW && diff < 0) diff += 2 * Math.PI;
+                
+                let midAngle = a1 + (diff / 2);
+                let textDist = 48; // المسافة من النقطة للداخل
+                let tx = center.x + Math.cos(midAngle) * textDist;
+                let ty = center.y + Math.sin(midAngle) * textDist;
+                
+                drawTextWithBg(text, tx, ty, color);
+            }
+
             let c1 = currentPositions.c1, c2 = currentPositions.c2, c3 = currentPositions.c3, c4 = currentPositions.c4, c5 = currentPositions.c5;
 
             // رسم الوتر المتقطع
@@ -907,7 +924,8 @@
             ctx.translate(midX, midY);
             ctx.rotate(angle);
 
-            let offsetY = -35; 
+            // تصفير الإزاحة ليظهر النص فوق الخط المتقطع تماماً ولا يخرج عن الشاشة
+            let offsetY = 0; 
 
             let gapText = "الفتحة: " + gap.toFixed(1) + " سم";
             ctx.font = 'bold 15px Arial'; 
@@ -924,12 +942,12 @@
             ctx.fillText(gapText, 0, offsetY);
             ctx.restore();
 
-            drawTextWithBg(inputs.aAB.value + "°", c2.x + 45, c2.y - 25, '#ef4444');
-            drawTextWithBg(inputs.aBC.value + "°", c3.x - 45, c3.y - 25, '#3b82f6');
-            drawTextWithBg(inputs.aAD.value + "°", c1.x + 45, c1.y + 35, '#10b981');
-            
-            drawTextWithBg(angleC_auto + "°", c4.x - 40, c4.y + 30, '#d97706');
-            drawTextWithBg(angleD_auto + "°", c5.x + 40, c5.y + 30, '#d97706');
+            // تطبيق دالة رسم أرقام الزوايا التلقائية الجديدة
+            drawAngleText(c2, c3, c1, inputs.aAB.value + "°", '#ef4444', true);
+            drawAngleText(c3, c2, c4, inputs.aBC.value + "°", '#3b82f6', false);
+            drawAngleText(c1, c2, c5, inputs.aAD.value + "°", '#10b981', true);
+            drawAngleText(c4, c3, c5, angleC_auto + "°", '#d97706', false);
+            drawAngleText(c5, c4, c1, angleD_auto + "°", '#d97706', false);
         }
 
         window.addEventListener('resize', () => {
