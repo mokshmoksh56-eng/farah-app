@@ -78,14 +78,12 @@
         .att-btns { display: flex; gap: 2px; flex: 2; }
         .btn-tgl { flex: 1; border: 1px solid #ccc; background: #fff; font-size: 11px; font-weight: 900; padding: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s;}
         
-        /* ألوان الأزرار النشطة */
         .btn-tgl.active[data-v="1"] { background: var(--whatsapp-green); color: white; border-color: var(--whatsapp-green); }
         .btn-tgl.active[data-v="0.5"] { background: var(--warning); color: white; border-color: var(--warning); }
         .btn-tgl.active[data-v="0"] { background: var(--danger); color: white; border-color: var(--danger); }
         
         .loan-input { width: 55px; border: 1px solid #ddd; border-radius: 5px; padding: 8px 0; text-align: center; font-weight: 900; color: var(--danger); background: #fff; }
 
-        /* ستايل الخانات المقفلة (للحماية) */
         input:disabled, textarea:disabled, button.btn-tgl:disabled:not(.active) {
             background-color: #e9ecef !important;
             color: #6c757d !important;
@@ -94,7 +92,6 @@
             opacity: 0.8;
         }
 
-        /* الاحتفاظ بلون الزر النشط حتى وهو مقفل */
         button.btn-tgl.active:disabled {
             cursor: not-allowed !important;
             opacity: 0.9; 
@@ -250,7 +247,6 @@
     let currentFullDates = [];     
     let allArchiveData = {};
     
-    // تعريف متغير العملة العالمي واستدعاؤه من الذاكرة
     let currentCurrency = localStorage.getItem('workerCurrency') || 'ج.م';
 
     function initSystem() {
@@ -260,20 +256,16 @@
         applyGlowToCurrentDayPicker();
     }
 
-    // تهيئة قائمة اختيار العملة
     function initCurrency() {
         document.getElementById('countryCurrency').value = currentCurrency;
     }
 
-    // تحديث العملة عند تغييرها من القائمة
     function updateCurrency() {
         currentCurrency = document.getElementById('countryCurrency').value;
         localStorage.setItem('workerCurrency', currentCurrency);
         
-        // إعادة حساب وعرض جميع الكروت لتحديث الرموز
-        masterWorkers.forEach((_, i) => recalc(i));
+        masterWorkers.forEach(w => recalc(w.id));
         
-        // تحديث الأرشيف إذا كان مفتوحاً
         if (document.getElementById('archiveContent').innerHTML !== "") {
             fetchAndBuildArchive();
         }
@@ -313,12 +305,10 @@
     }
 
     function updateDateFromSelectors() {
-        // سحب القيم كأرقام مباشرة لمنع مشاكل المتصفحات في قراءة النصوص
         const d = parseInt(document.getElementById('dayPicker').value);
         const m = parseInt(document.getElementById('monthPicker').value); 
         const y = parseInt(document.getElementById('yearPicker').value);
         
-        // بناء التاريخ بالتوقيت المحلي مباشرة
         const pickedDate = new Date(y, m, d);
         
         handleDateChange(pickedDate);
@@ -326,7 +316,6 @@
     }
 
     function handleDateChange(pickedDate = null) {
-        // في حالة استدعاء الدالة بدون تاريخ، يتم بناءه من القوائم
         if (!pickedDate) {
             const d = parseInt(document.getElementById('dayPicker').value);
             const m = parseInt(document.getElementById('monthPicker').value);
@@ -341,7 +330,6 @@
         let saturday = new Date(pickedDate);
         saturday.setDate(pickedDate.getDate() - diffToSaturday);
         
-        // استخراج السنة والشهر واليوم بالتوقيت المحلي لتكوين الـ ID
         let sy = saturday.getFullYear();
         let sm = (saturday.getMonth() + 1).toString().padStart(2, '0');
         let sd = saturday.getDate().toString().padStart(2, '0');
@@ -381,6 +369,17 @@
             masterWorkers = Array.isArray(rawData) ? rawData : Object.values(rawData);
             masterWorkers = masterWorkers.filter(w => w && w.name);
             
+            let needsSave = false;
+            masterWorkers = masterWorkers.map((w, index) => {
+                if (!w.id) {
+                    w.id = "w_" + index + "_" + Date.now();
+                    needsSave = true;
+                }
+                return w;
+            });
+            
+            if(needsSave) saveMasterWorkers();
+            
             updateWorkerEditor();
             updateArchiveDropdown();
             loadWeekData();
@@ -390,7 +389,8 @@
     function addNewWorker() {
         const name = document.getElementById('workerNameInp').value.trim();
         if(!name) return;
-        masterWorkers.push({ name: name, inst_weekly: 0, sal: '' });
+        const newId = "w_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        masterWorkers.push({ id: newId, name: name, inst_weekly: 0, sal: '' });
         document.getElementById('workerNameInp').value = "";
         saveMasterWorkers();
         
@@ -399,9 +399,9 @@
         }, 300);
     }
 
-    function removeWorker(idx) {
+    function removeWorker(id) {
         if(confirm("⚠️ هل تريد حذف هذا العامل من النظام نهائياً؟")) {
-            masterWorkers.splice(idx, 1);
+            masterWorkers = masterWorkers.filter(w => w.id !== id);
             saveMasterWorkers();
         }
     }
@@ -417,10 +417,10 @@
 
     function updateWorkerEditor() {
         const box = document.getElementById('workerListEditor');
-        box.innerHTML = masterWorkers.map((w, idx) => `
+        box.innerHTML = masterWorkers.map((w) => `
             <div style="display:flex; justify-content:space-between; background:#f5f6fa; padding:5px 10px; border-radius:8px; margin-bottom:4px; align-items:center; font-size:13px;">
                 <span>💰 👷 ${w.name}</span>
-                <button onclick="removeWorker(${idx})" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
+                <button onclick="removeWorker('${w.id}')" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
             </div>
         `).join('');
     }
@@ -433,9 +433,11 @@
         const snap = await window.get(window.ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`));
         const saved = snap.exists() ? snap.val() : {};
         
-        document.getElementById('cardsList').innerHTML = masterWorkers.map((worker, idx) => {
-            let d = saved[idx] || {};
-            let needsInitialSave = false; // متغير لمعرفة إذا كان الكارت جديد ويحتاج حفظ مبدئي تلقائي
+        document.getElementById('cardsList').innerHTML = masterWorkers.map((worker, index) => {
+            let id = worker.id;
+            // دمج ذكي للبيانات القديمة التي كانت تعتمد على الترتيب
+            let d = saved[id] || saved[index] || {}; 
+            let needsInitialSave = false;
             
             let sal = (d.sal !== undefined && d.sal !== '') ? d.sal : (worker.sal || '');
             
@@ -445,7 +447,7 @@
                     att[i] = d.att[i] !== undefined ? parseFloat(d.att[i]) : 1;
                 }
             } else {
-                needsInitialSave = true; // لا يوجد حضور مسجل، إذن نحتاج لرفعه للسيرفر
+                needsInitialSave = true; 
             }
 
             let loans = ['', '', '', '', '', ''];
@@ -459,9 +461,8 @@
 
             let note = d.note || '';
 
-            // ====== حفظ تلقائي في الخلفية للقيم الافتراضية (كله حضور) ======
             if (needsInitialSave && window.currentUid && currentWeekID) {
-                update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${idx}`), {
+                update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${id}`), {
                     att: att,
                     loans: loans,
                     sal: sal,
@@ -480,29 +481,29 @@
                             <span class="day-date">${currentWeekDates[di]}</span>
                         </div>
                         <div class="att-btns">
-                            <button disabled class="btn-tgl ${att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,${idx},${di})">ح</button>
-                            <button disabled class="btn-tgl ${att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,${idx},${di})">½</button>
-                            <button disabled class="btn-tgl ${att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,${idx},${di})">غ</button>
+                            <button disabled class="btn-tgl ${att[di]==1?'active':''}" data-v="1" onclick="toggleAtt(this,'${id}',${di})">ح</button>
+                            <button disabled class="btn-tgl ${att[di]==0.5?'active':''}" data-v="0.5" onclick="toggleAtt(this,'${id}',${di})">½</button>
+                            <button disabled class="btn-tgl ${att[di]==0?'active':''}" data-v="0" onclick="toggleAtt(this,'${id}',${di})">غ</button>
                         </div>
-                        <input disabled type="number" class="loan-input" value="${loans[di] !== undefined ? loans[di] : ''}" placeholder="سلفة" onchange="syncArrayData(${idx}, 'loans', ${di}, this.value)">
+                        <input disabled type="number" class="loan-input" value="${loans[di] !== undefined ? loans[di] : ''}" placeholder="سلفة" onchange="syncArrayData('${id}', 'loans', ${di}, this.value)">
                     </div>
                 `;
             }
 
             return `
-                <div class="worker-card" id="card-${idx}" data-locked="true">
+                <div class="worker-card" id="card-${id}" data-locked="true">
                     <div class="card-name">
                         <span>💰 ${worker.name}</span>
-                        <button class="lock-btn" onclick="toggleEditCard(${idx})">🔒 تعديل</button>
+                        <button class="lock-btn" onclick="toggleEditCard('${id}')">🔒 تعديل</button>
                     </div>
                     <div class="salary-row">
                         <label style="font-size:12px;">الراتب الأساسي (ثابت):</label>
-                        <input disabled type="number" class="salary-input" value="${sal}" placeholder="الراتب" onchange="syncSalary(${idx}, this.value)">
+                        <input disabled type="number" class="salary-input" value="${sal}" placeholder="الراتب" onchange="syncSalary('${id}', this.value)">
                     </div>
                     <div class="days-grid">
                         ${daysHtml}
                     </div>
-                    <textarea disabled class="note-input" placeholder="ملاحظات ومسحوبات أخرى..." onblur="syncData(${idx}, 'note', this.value)" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';">${note}</textarea>
+                    <textarea disabled class="note-input" placeholder="ملاحظات ومسحوبات أخرى..." onblur="syncData('${id}', 'note', this.value)" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';">${note}</textarea>
                     
                     <div class="card-footer">
                         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -515,8 +516,8 @@
                         </div>
                     </div>
                     <div class="card-buttons">
-                        <button class="btn-save-manual" onclick="manualSaveWorker(${idx})">حفظ 💾</button>
-                        <button class="btn-share" onclick="shareToWhatsApp(${idx})">واتساب 🟢</button>
+                        <button class="btn-save-manual" onclick="manualSaveWorker('${id}')">حفظ 💾</button>
+                        <button class="btn-share" onclick="shareToWhatsApp('${id}')">واتساب 🟢</button>
                     </div>
                 </div>`;
         }).join('');
@@ -528,11 +529,11 @@
             }
         });
 
-        masterWorkers.forEach((_, i) => recalc(i));
+        masterWorkers.forEach(w => recalc(w.id));
     }
 
-    function toggleEditCard(idx) {
-        const card = document.getElementById(`card-${idx}`);
+    function toggleEditCard(id) {
+        const card = document.getElementById(`card-${id}`);
         const isLocked = card.getAttribute('data-locked') === 'true';
         const lockBtn = card.querySelector('.lock-btn');
         
@@ -546,43 +547,49 @@
             lockBtn.innerHTML = '🔒 تعديل';
             lockBtn.classList.remove('unlocked');
             card.querySelectorAll('input, textarea, button.btn-tgl').forEach(el => el.setAttribute('disabled', 'true'));
-            // لم نعد نحتاج الحفظ هنا لأن الحفظ التلقائي يعمل دائماً
         }
     }
 
-    function toggleAtt(btn, wIdx, dIdx) {
+    function toggleAtt(btn, id, dIdx) {
         if (btn.hasAttribute('disabled')) return; 
         Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        // هنا يتم الحفظ التلقائي لأي تعديل تقوم به
-        syncArrayData(wIdx, 'att', dIdx, btn.dataset.v);
+        syncArrayData(id, 'att', dIdx, btn.dataset.v);
     }
 
-    function syncData(wIdx, field, val) {
+    function syncData(id, field, val) {
+        let wIdx = masterWorkers.findIndex(w => w.id === id);
+        if(wIdx === -1) return;
         setSyncStatus(true);
-        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}`), { [field]: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
-        recalc(wIdx);
+        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${id}`), { [field]: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
+        recalc(id);
     }
 
-    function syncSalary(wIdx, val) {
+    function syncSalary(id, val) {
+        let wIdx = masterWorkers.findIndex(w => w.id === id);
+        if(wIdx === -1) return;
         setSyncStatus(true);
-        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}`), { sal: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
+        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${id}`), { sal: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
         masterWorkers[wIdx].sal = val;
         update(ref(window.db, `backups/workers_master/${window.currentUid}/${wIdx}`), { sal: val });
-        recalc(wIdx);
+        recalc(id);
     }
 
-    function syncArrayData(wIdx, field, dIdx, val) {
+    function syncArrayData(id, field, dIdx, val) {
+        let wIdx = masterWorkers.findIndex(w => w.id === id);
+        if(wIdx === -1) return;
         setSyncStatus(true);
-        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}`), { 
+        update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${id}`), { 
             [`${field}/${dIdx}`]: val, 
             name: masterWorkers[wIdx].name 
         }).then(() => setSyncStatus(false));
-        recalc(wIdx);
+        recalc(id);
     }
 
-    function manualSaveWorker(idx) {
-        const card = document.getElementById(`card-${idx}`);
+    function manualSaveWorker(id) {
+        let wIdx = masterWorkers.findIndex(w => w.id === id);
+        if(wIdx === -1) return;
+        const card = document.getElementById(`card-${id}`);
         if (!card) return;
 
         let sal = parseFloat(card.querySelector('.salary-input').value) || '';
@@ -600,19 +607,19 @@
         });
 
         setSyncStatus(true);
-        const path = `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${idx}`;
+        const path = `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${id}`;
         
         update(ref(window.db, path), {
             sal: sal,
             note: note,
             loans: loans,
             att: att,
-            name: masterWorkers[idx].name
+            name: masterWorkers[wIdx].name
         }).then(() => {
-            masterWorkers[idx].sal = sal;
-            update(ref(window.db, `backups/workers_master/${window.currentUid}/${idx}`), { sal: sal }).then(() => {
+            masterWorkers[wIdx].sal = sal;
+            update(ref(window.db, `backups/workers_master/${window.currentUid}/${wIdx}`), { sal: sal }).then(() => {
                 setSyncStatus(false);
-                recalc(idx);
+                recalc(id);
                 const saveBtn = card.querySelector('.btn-save-manual');
                 const originalText = saveBtn.innerText;
                 saveBtn.innerText = "تم الحفظ 💰";
@@ -635,8 +642,8 @@
         }
     }
 
-    function recalc(idx) {
-        const c = document.getElementById(`card-${idx}`); if(!c) return;
+    function recalc(id) {
+        const c = document.getElementById(`card-${id}`); if(!c) return;
         let sal = parseFloat(c.querySelector('.salary-input').value) || 0, lTotal = 0, aTotal = 0;
         c.querySelectorAll('.loan-input').forEach(i => lTotal += parseFloat(i.value) || 0);
         c.querySelectorAll('.btn-tgl.active').forEach(b => aTotal += parseFloat(b.dataset.v));
@@ -666,11 +673,13 @@
         document.getElementById('stat-net').innerText = gN;
     }
 
-    function shareToWhatsApp(idx) {
-        const c = document.getElementById(`card-${idx}`);
-        const name = masterWorkers[idx].name;
+    function shareToWhatsApp(id) {
+        let wIdx = masterWorkers.findIndex(w => w.id === id);
+        if(wIdx === -1) return;
+        const c = document.getElementById(`card-${id}`);
+        const name = masterWorkers[wIdx].name;
         const sal = c.querySelector('.salary-input').value || 0;
-        const net = c.querySelector('.sum-n').innerText; // تأخذ النص المنسق بالعملة
+        const net = c.querySelector('.sum-n').innerText; 
         const note = c.querySelector('.note-input').value || "لا يوجد";
         
         let details = "";
@@ -758,8 +767,8 @@
         for(let weekKey of weeksKeys) {
             const weekData = archives[weekKey];
             let workerRecord = null;
-            for(let idx in weekData) {
-                let w = weekData[idx];
+            for(let key in weekData) {
+                let w = weekData[key];
                 if(w && w.name === selectedName) {
                     workerRecord = w;
                     break;
@@ -854,26 +863,22 @@
     window.fetchAndBuildArchive = fetchAndBuildArchive;
     window.updateCurrency = updateCurrency; 
 
-    // دالة الحفظ اليدوي للأرشيف للكل
     window.forceArchiveNow = async function(btn) {
         if(confirm("⚠️ هل أنت متأكد أنك تريد حفظ بيانات جميع العمال للأسبوع الحالي في الأرشيف الآن؟")) {
             const originalText = btn.innerText;
             btn.innerText = "⏳ جاري أرشفة الكل...";
             btn.style.background = "var(--warning)";
             
-            // استدعاء دالة الأرشفة الأصلية الموجودة بالفعل
             await archiveCurrentWeekSnapshots(); 
             
             btn.innerText = "✅ تم حفظ الكل في الأرشيف بنجاح";
             btn.style.background = "var(--whatsapp-green)";
             
-            // إعادة الزر لشكله الطبيعي بعد 3 ثواني
             setTimeout(() => {
                 btn.innerText = originalText;
                 btn.style.background = "var(--teal)";
             }, 3000);
             
-            // تحديث العرض إذا كنت تفتح أرشيف عامل معين
             if (document.getElementById('archiveSearch').value !== "") {
                 fetchAndBuildArchive();
             }
