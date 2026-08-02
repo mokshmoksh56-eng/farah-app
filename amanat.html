@@ -3,420 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحليل الشامل (من 1 ثانية إلى 12 ساعة) مع الإنذار (BTC/USDT)</title>
+    <title>شاشة القفل</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0e14; color: #d1d4dc; margin: 0; padding: 20px; }
-        .container { max-width: 1550px; margin: auto; }
-        .widget-box { background: #151924; padding: 25px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); border: 1px solid #2a2e39; }
-        h1 { text-align: center; color: #f7931a; font-size: 26px; margin-bottom: 5px; }
-        p.desc { text-align: center; color: #8a93a6; font-size: 15px; margin-bottom: 25px; margin-top: 5px; }
-        
-        .header-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #0b0e14; padding: 15px; border-radius: 8px; border: 1px dashed #2962ff; }
-        .btn-analyze { background-color: #2962ff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.3s; }
-        .btn-analyze:hover { background-color: #1e4bd8; }
-        
-        .timer-box { font-size: 16px; font-weight: bold; color: #00e676; display: none; }
-        .pulse { animation: pulse-animation 1s infinite; }
-        @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-        
-        /* شاشة الرادار والإنذار */
-        .grid-radar { display: none; justify-content: space-around; background: #1c212e; padding: 20px; border-radius: 8px; border-right: 4px solid #f7931a; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .grid-item { text-align: center; min-width: 140px; }
-        .grid-item span { display: block; font-size: 13px; color: #8a93a6; margin-bottom: 5px; }
-        .grid-item strong { font-size: 20px; }
+        /* إعدادات الشاشة الأساسية */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            /* ممكن تغير لون الخلفية أو تحط صورة براحتك */
+            background-color: #121212; 
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
 
-        .alert-box { background: #1a1016; border: 1px dashed #ff5252; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-size: 16px; font-weight: bold; display: none; }
-        .alert-success { background: #0c1c15; border-color: #00e676; color: #00e676; }
-        .alert-danger { background: #1f1315; border-color: #ff5252; color: #ff5252; }
-        
-        .table-container { max-height: 700px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #2a2e39; }
-        table { width: 100%; border-collapse: collapse; white-space: nowrap; }
-        th, td { border-bottom: 1px solid #2a2e39; padding: 12px 15px; text-align: center; font-size: 14px; vertical-align: middle; }
-        th { background-color: #0b0e14; color: #f7931a; position: sticky; top: 0; z-index: 1; }
-        tr:hover { background-color: #1c212e; }
-        
-        .time-col { color: #8a93a6; font-family: monospace; font-size: 13px; }
-        .buy { color: #00e676; font-weight: bold; }
-        .sell { color: #ff5252; font-weight: bold; }
-        .wait { color: #ff9800; font-weight: bold; }
-        
-        .anatomy-text { font-size: 12px; color: #cbd5e1; font-family: monospace; }
-        
-        .candle-graphic-container { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 75px; background: #0b0e14; border-radius: 4px; padding: 4px; margin: auto; border: 1px solid #1f222e; }
-        .wick-top { width: 2px; background-color: #cbd5e1; min-height: 1px; }
-        .candle-body-box { width: 18px; border-radius: 2px; min-height: 3px; transition: all 0.2s ease; }
-        .wick-bottom { width: 2px; background-color: #cbd5e1; min-height: 1px; }
-        .bg-green { background-color: #00e676; border: 1px solid #00c853; }
-        .bg-red { background-color: #ff5252; border: 1px solid #d50000; }
-        .bg-gray { background-color: #78909c; border: 1px solid #455a64; }
+        /* حاوية شاشة القفل */
+        .lock-screen {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
 
-        #loader { display: none; text-align: center; color: #2962ff; margin-top: 20px; font-weight: bold; font-size: 18px; }
-        #resultsArea { display: none; }
+        /* تصميم الساعة والتاريخ اللي تحت */
+        #datetime {
+            position: absolute;
+            bottom: 15px; /* المسافة من أسفل الشاشة */
+            font-size: 10px; /* حجم الخط صغير جداً */
+            opacity: 0.15; /* تقليل الشفافية عشان مايكونش باين أوي */
+            letter-spacing: 1px;
+            user-select: none; /* عشان المستخدم ميعرفش يحدد النص */
+        }
+
+        /* عنصر تجريبي في نص الشاشة (ممكن تمسحه) */
+        .main-content {
+            font-size: 24px;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="widget-box">
-            <h1>رادار الأطر الزمنية الشامل (من الثواني حتى 12 ساعة) ومراقبة الاختراقات</h1>
-            <p class="desc">نظام متقدم يحسب خطوط الدعم والمقاومة لكل إطار زمني على حدة، ليخبرك بموعد الكسر (Breakdown) أو الاختراق (Breakout) لحظة بلحظة.</p>
-            
-            <div class="header-controls">
-                <button id="startBtn" class="btn-analyze" onclick="startLiveDashboard()">▶ تشغيل محرك الأبعاد المتعددة والرادار</button>
-                <div id="timerDisplay" class="timer-box">
-                    <span class="pulse">●</span> البث متصل - يتم مراقبة الكسر واختراق الخطوط لجميع الأطر
-                </div>
-            </div>
 
-            <div id="liveAlert" class="alert-box"></div>
-
-            <div id="gridRadar" class="grid-radar">
-                <div class="grid-item">
-                    <span>السعر اللحظي (BTC)</span>
-                    <strong id="radar-current" style="color:#f7931a">-</strong>
-                </div>
-                <div class="grid-item" style="border-right: 1px dashed #2a2e39; padding-right: 10px;">
-                    <span>المقاومة الكلية المتنازلة (Macro)</span>
-                    <strong id="line-descending" class="sell">-</strong>
-                </div>
-                <div class="grid-item">
-                    <span>الدعم الكلي المتصاعد (Macro)</span>
-                    <strong id="line-ascending" class="buy">-</strong>
-                </div>
-                <div class="grid-item" style="border-right: 1px dashed #2a2e39; padding-right: 10px;">
-                    <span>قمة بولينجر (12h)</span>
-                    <strong id="radar-upper" style="color:#e0e0e0">-</strong>
-                </div>
-                <div class="grid-item">
-                    <span>قاع بولينجر (12h)</span>
-                    <strong id="radar-lower" style="color:#e0e0e0">-</strong>
-                </div>
-            </div>
-            
-            <div id="loader">جاري مزامنة قواعد البيانات التاريخية للدقائق والساعات...</div>
-            
-            <div id="resultsArea">
-                <div class="table-container">
-                    <table id="dataTable">
-                        <thead>
-                            <tr>
-                                <th>الإطار الزمنّي</th>
-                                <th>السعر الحالي</th>
-                                <th>الرسم المباشر</th>
-                                <th>تشريح النسب (%)</th>
-                                <th>القرار السلوكي الحركي</th>
-                                <th>خطوط الاتجاه (الكسر والاختراق)</th>
-                                <th>RSI (14)</th>
-                                <th>وقت التحديث</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="lock-screen">
+        <!-- محتوى شاشة القفل الرئيسي (تقدر تحط باسورد أو صورة هنا) -->
+        <div class="main-content">
+            🔒 اسحب للأعلى لفتح الشاشة
         </div>
+
+        <!-- الجزء الخاص بالتاريخ والساعة -->
+        <div id="datetime"></div>
     </div>
 
     <script>
-        let wsStream;
-        let globalCandles1m = []; 
-        let globalCandles1h = []; // قاعدة بيانات الساعات لدعم 2h, 4h, 6h, 12h
-        let secondsHistory = []; 
-        const maxSecondsStored = 300; 
-
-        // الخطوط الكلية لضبط الإنذار العام (مبنية على أطر الساعات)
-        let macroDescendingLine = Infinity;  
-        let macroAscendingLine = 0; 
-
-        const timeFrames = [
-            { label: '1s', type: 'sec', value: 1 },
-            { label: '5s', type: 'sec', value: 5 },
-            { label: '15s', type: 'sec', value: 15 },
-            { label: '30s', type: 'sec', value: 30 },
-            { label: '1m', type: 'min', value: 1 },
-            { label: '5m', type: 'min', value: 5 },
-            { label: '15m', type: 'min', value: 15 },
-            { label: '1h', type: 'hour', value: 1 },
-            { label: '2h', type: 'hour', value: 2 },
-            { label: '4h', type: 'hour', value: 4 },
-            { label: '6h', type: 'hour', value: 6 },
-            { label: '12h', type: 'hour', value: 12 }
-        ];
-
-        function calcBollinger(data, period = 20) {
-            if (data.length === 0) return null;
-            let subset = data.slice(-period);
-            let sma = subset.reduce((a, b) => a + b, 0) / subset.length;
-            if (subset.length === 1) return { upper: sma * 1.002, lower: sma * 0.998 };
-            let variance = subset.reduce((a, b) => a + Math.pow(b - sma, 2), 0) / subset.length;
-            let stdDev = Math.sqrt(variance) || (sma * 0.001);
-            return { upper: sma + (stdDev * 2), lower: sma - (stdDev * 2) };
-        }
-
-        function calcRSI(data, period = 14) {
-            if (data.length < 2) return 50;
-            let subset = data.slice(-(period + 1));
-            let gains = 0, losses = 0;
-            for(let i = 1; i < subset.length; i++) {
-                let diff = subset[i] - subset[i - 1];
-                if(diff > 0) gains += diff; else losses -= diff;
-            }
-            if (losses === 0) return 100;
-            let rs = (gains / subset.length) / (losses / subset.length);
-            return 100 - (100 / (1 + rs));
-        }
-
-        function analyzeCandleAnatomy(open, high, low, close) {
-            let body = Math.abs(close - open);
-            let totalRange = high - low;
-            if (totalRange === 0) totalRange = 0.01;
-
-            let upperWick = high - Math.max(open, close);
-            let lowerWick = Math.min(open, close) - low;
-
-            let bodyPct = (body / totalRange) * 100;
-            let upperWickPct = (upperWick / totalRange) * 100;
-            let lowerWickPct = (lowerWick / totalRange) * 100;
-
-            let isBullish = close >= open;
-            let bodyBgClass = isBullish ? 'bg-green' : 'bg-red';
-            if (bodyPct < 8) bodyBgClass = 'bg-gray'; 
-
-            let anatomyReport = `جسم: ${bodyPct.toFixed(0)}%<br>علوي: ${upperWickPct.toFixed(0)}%<br>سفلي: ${lowerWickPct.toFixed(0)}%`;
-            let decision = 'تذبذب عادي';
-            let cssClass = 'wait';
-
-            if (bodyPct > 70) {
-                if (isBullish) { decision = '🚀 اندفاع شرائي مستمر'; cssClass = 'buy'; }
-                else { decision = '⚠️ هبوط جارف مسيطر'; cssClass = 'sell'; }
-            } 
-            else if (lowerWickPct > 50 && bodyPct < 35) {
-                decision = '🎯 ارتداد صاعد (مطرقة)'; cssClass = 'buy';
-            } 
-            else if (upperWickPct > 50 && bodyPct < 35) {
-                decision = '📉 انعكاس هابط (شهاب)'; cssClass = 'sell';
-            } 
-            else if (bodyPct < 15 && upperWickPct > 35 && lowerWickPct > 35) {
-                decision = '⚖️ حيرة (دوجي)'; cssClass = 'wait';
-            }
-
-            let maxRenderHeight = 50; 
-            let h_top = (upperWickPct / 100) * maxRenderHeight;
-            let h_body = (bodyPct / 100) * maxRenderHeight;
-            let h_bottom = (lowerWickPct / 100) * maxRenderHeight;
-
-            if(h_top < 1 && upperWickPct > 0) h_top = 2;
-            if(h_body < 3) h_body = 4;
-            if(h_bottom < 1 && lowerWickPct > 0) h_bottom = 2;
-
-            let graphicHTML = `
-                <div class="candle-graphic-container">
-                    <div class="wick-top" style="height: ${h_top}px;"></div>
-                    <div class="candle-body-box ${bodyBgClass}" style="height: ${h_body}px;"></div>
-                    <div class="wick-bottom" style="height: ${h_bottom}px;"></div>
-                </div>
-            `;
-
-            return { report: anatomyReport, decision: decision, cssClass: cssClass, graphic: graphicHTML };
-        }
-
-        async function startLiveDashboard() {
-            document.getElementById('startBtn').style.display = 'none';
-            document.getElementById('timerDisplay').style.display = 'block';
-            document.getElementById('loader').style.display = 'block';
-
-            try {
-                // جلب بيانات الدقائق والساعات معاً لتغطية كافة الأطر حتى 12 ساعة
-                const [res1m, res1h] = await Promise.all([
-                    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=1000'),
-                    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=500')
-                ]);
-                
-                const rawData1m = await res1m.json();
-                const rawData1h = await res1h.json();
-                
-                globalCandles1m = rawData1m.map(c => ({
-                    time: parseInt(c[0]), open: parseFloat(c[1]), high: parseFloat(c[2]), low: parseFloat(c[3]), close: parseFloat(c[4])
-                }));
-
-                globalCandles1h = rawData1h.map(c => ({
-                    time: parseInt(c[0]), open: parseFloat(c[1]), high: parseFloat(c[2]), low: parseFloat(c[3]), close: parseFloat(c[4])
-                }));
-
-                let lastPrice = globalCandles1m[globalCandles1m.length - 1].close;
-                for (let i = 0; i < maxSecondsStored; i++) {
-                    secondsHistory.push({ time: Date.now() - (i * 1000), price: lastPrice });
-                }
-
-                // حساب خطوط الإنذار الكلية بناءً على آخر 48 ساعة (المتوسط الكلي للسوق)
-                let macroHighs = globalCandles1h.slice(-48).map(c => c.high);
-                let macroLows = globalCandles1h.slice(-48).map(c => c.low);
-                macroDescendingLine = Math.max(...macroHighs) - 10;
-                macroAscendingLine = Math.min(...macroLows) + 10;
-
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('resultsArea').style.display = 'block';
-
-                initCombinedStreams();
-
-            } catch (error) {
-                alert("يرجى التأكد من اتصالك بالإنترنت. سيتم محاولة تشغيل النظام محلياً.");
-            }
-        }
-
-        function checkMacroAlert(currentPrice) {
-            let alertDiv = document.getElementById('liveAlert');
+        function updateDateTime() {
+            const now = new Date();
             
-            if (currentPrice > macroDescendingLine) {
-                alertDiv.innerHTML = `🟢 إنذار كلي: السعر اخترق خط المقاومة التاريخي العنيف (${macroDescendingLine.toFixed(2)})! سيولة شرائية ضخمة!`;
-                alertDiv.className = "alert-box alert-success";
-                alertDiv.style.display = "block";
-                macroDescendingLine = currentPrice + 5; // رفع سقف الإنذار
-            } 
-            else if (currentPrice < macroAscendingLine) {
-                alertDiv.innerHTML = `🔴 إنذار كلي: السعر كسر خط الدعم التاريخي القوي (${macroAscendingLine.toFixed(2)})! انهيار سعري محتمل!`;
-                alertDiv.className = "alert-box alert-danger";
-                alertDiv.style.display = "block";
-                macroAscendingLine = currentPrice - 5; // خفض قاع الإنذار
-            }
-        }
-
-        function initCombinedStreams() {
-            wsStream = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
-
-            wsStream.onmessage = (event) => {
-                const message = JSON.parse(event.data);
-                const currentPrice = parseFloat(message.c);
-                const now = Date.now();
-
-                secondsHistory.push({ time: now, price: currentPrice });
-                if (secondsHistory.length > maxSecondsStored) secondsHistory.shift();
-
-                // تحديث الشمعة الحية للدقيقة
-                if (globalCandles1m.length > 0) {
-                    let last1m = globalCandles1m[globalCandles1m.length - 1];
-                    last1m.close = currentPrice;
-                    if (currentPrice > last1m.high) last1m.high = currentPrice;
-                    if (currentPrice < last1m.low) last1m.low = currentPrice;
-                }
-
-                // تحديث الشمعة الحية للساعة (لتغذية أطر الـ 2h, 4h, 6h, 12h)
-                if (globalCandles1h.length > 0) {
-                    let last1h = globalCandles1h[globalCandles1h.length - 1];
-                    last1h.close = currentPrice;
-                    if (currentPrice > last1h.high) last1h.high = currentPrice;
-                    if (currentPrice < last1h.low) last1h.low = currentPrice;
-                }
-
-                checkMacroAlert(currentPrice);
-                processAndRender(currentPrice);
+            // خيارات تنسيق الوقت والتاريخ (بالعربي)
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
             };
-
-            wsStream.onclose = () => setTimeout(initCombinedStreams, 2000);
+            
+            const formattedDateTime = now.toLocaleDateString('ar-EG', options);
+            
+            // عرض النص في الشاشة
+            document.getElementById('datetime').textContent = formattedDateTime;
         }
 
-        function processAndRender(currentPrice) {
-            let rowsHTML = '';
-            let max12hUpper = 0;
-            let min12hLower = Infinity;
-
-            for (let tf of timeFrames) {
-                let customCloses = []; let customHighs = []; let customLows = []; let customOpens = [];
-
-                if (tf.type === 'sec') {
-                    let secWindow = tf.value;
-                    for (let i = secondsHistory.length; i > 0; i -= secWindow) {
-                        let chunk = secondsHistory.slice(Math.max(0, i - secWindow), i);
-                        if(chunk.length === 0) continue;
-                        let prices = chunk.map(c => c.price);
-                        customOpens.unshift(prices[0]);
-                        customCloses.unshift(prices[prices.length - 1]);
-                        customHighs.unshift(Math.max(...prices));
-                        customLows.unshift(Math.min(...prices));
-                    }
-                } 
-                else if (tf.type === 'min') {
-                    let step = tf.value;
-                    for (let i = globalCandles1m.length; i > 0; i -= step) {
-                        let chunk = globalCandles1m.slice(Math.max(0, i - step), i);
-                        if (chunk.length === 0) continue;
-                        customOpens.unshift(chunk[0].open);
-                        customCloses.unshift(chunk[chunk.length - 1].close);
-                        customHighs.unshift(Math.max(...chunk.map(c => c.high)));
-                        customLows.unshift(Math.min(...chunk.map(c => c.low)));
-                    }
-                }
-                else if (tf.type === 'hour') {
-                    let step = tf.value;
-                    for (let i = globalCandles1h.length; i > 0; i -= step) {
-                        let chunk = globalCandles1h.slice(Math.max(0, i - step), i);
-                        if (chunk.length === 0) continue;
-                        customOpens.unshift(chunk[0].open);
-                        customCloses.unshift(chunk[chunk.length - 1].close);
-                        customHighs.unshift(Math.max(...chunk.map(c => c.high)));
-                        customLows.unshift(Math.min(...chunk.map(c => c.low)));
-                    }
-                }
-
-                if(customCloses.length === 0) continue;
-
-                const c_open = customOpens[customOpens.length - 1];
-                const c_close = customCloses[customCloses.length - 1];
-                const c_high = customHighs[customHighs.length - 1];
-                const c_low = customLows[customLows.length - 1];
-
-                // حساب خطوط المقاومة والدعم الخاصة بـ "هذا الإطار الزمني تحديداً"
-                // يأخذ الكود أعلى قمة وأدنى قاع لآخر 14 شمعة سابقة ليحدد خطوط هذا الإطار
-                let pastHighs = customHighs.slice(-15, -1);
-                let pastLows = customLows.slice(-15, -1);
-                let tfResistance = pastHighs.length > 0 ? Math.max(...pastHighs) : c_high;
-                let tfSupport = pastLows.length > 0 ? Math.min(...pastLows) : c_low;
-
-                let lineStatusText = `<span style="color:#8a93a6">داخل نطاق (${tfSupport.toFixed(0)} - ${tfResistance.toFixed(0)})</span>`;
-                if (c_close > tfResistance) {
-                    lineStatusText = `🟢 <span class="buy">اختراق لخط متنازل</span>`;
-                } else if (c_close < tfSupport) {
-                    lineStatusText = `🔴 <span class="sell">كسر لخط تصاعدي</span>`;
-                }
-
-                let anatomy = analyzeCandleAnatomy(c_open, c_high, c_low, c_close);
-                const rsi14 = calcRSI(customCloses, 14);
-
-                // استخراج قمة وقاع الـ 12 ساعة لتغذية الرادار العلوي
-                if (tf.label === '12h') {
-                    const bb12h = calcBollinger(customCloses, 20);
-                    if (bb12h) {
-                        max12hUpper = bb12h.upper;
-                        min12hLower = bb12h.lower;
-                    }
-                }
-
-                let formattedTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-
-                rowsHTML += `
-                    <tr>
-                        <td><span style="color: #00e676; font-weight:bold;">${tf.label}</span></td>
-                        <td dir="ltr" style="color: #f7931a; font-weight: bold; font-size:15px;">${c_close.toFixed(2)}</td>
-                        <td>${anatomy.graphic}</td> 
-                        <td dir="ltr" class="anatomy-text">${anatomy.report}</td>
-                        <td class="${anatomy.cssClass}">${anatomy.decision}</td>
-                        <td style="font-size:13px; font-weight:bold;">${lineStatusText}</td>
-                        <td dir="ltr" class="${rsi14 > 70 ? 'sell' : rsi14 < 30 ? 'buy' : ''}">${rsi14 ? rsi14.toFixed(1) : '-'}</td>
-                        <td class="time-col">${formattedTime}</td>
-                    </tr>
-                `;
-            }
-
-            document.getElementById('tableBody').innerHTML = rowsHTML;
-            
-            document.getElementById('radar-current').innerText = currentPrice.toFixed(2) + ' USDT';
-            document.getElementById('line-descending').innerText = macroDescendingLine.toFixed(2) + ' USDT';
-            document.getElementById('line-ascending').innerText = macroAscendingLine.toFixed(2) + ' USDT';
-            document.getElementById('radar-upper').innerText = max12hUpper > 0 ? max12hUpper.toFixed(0) : '-';
-            document.getElementById('radar-lower').innerText = min12hLower < Infinity ? min12hLower.toFixed(0) : '-';
-            
-            document.getElementById('gridRadar').style.display = 'flex';
-        }
+        // تشغيل الدالة أول مرة عشان تظهر فوراً
+        updateDateTime();
+        
+        // تحديث الوقت كل دقيقة (60000 مللي ثانية)
+        setInterval(updateDateTime, 60000);
     </script>
 </body>
 </html>
