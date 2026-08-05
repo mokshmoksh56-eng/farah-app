@@ -125,6 +125,7 @@
         .input-ltr {
             text-align: left;
             direction: ltr;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* فرض خط أرقام إنجليزي */
         }
 
         .radio-container {
@@ -302,7 +303,7 @@
             font-weight: 700;
             font-size: 15px;
             box-sizing: border-box;
-            cursor: pointer; /* تأكيد أن المؤشر يعمل كزر */
+            cursor: pointer;
         }
 
         @keyframes fadeIn {
@@ -360,22 +361,23 @@
             </div>
 
             <div class="input-group">
-                <label>المبلغ الصافي المطلوب تحويله (ج.م)</label>
-                <input type="number" id="transferAmount" class="input-control input-ltr" placeholder="أدخل المبلغ" required min="10" oninput="calculateFee()">
+                <label>المبلغ الصافي المطلوب تحويله (بالأرقام الإنجليزية)</label>
+                <!-- inputmode="numeric" لتفعيل لوحة الأرقام الإنجليزية في الهواتف -->
+                <input type="number" id="transferAmount" class="input-control input-ltr" inputmode="numeric" placeholder="أدخل المبلغ" required min="10" oninput="calculateFee()">
             </div>
 
             <div id="feeDisplay" class="receipt-box">
                 <div class="receipt-row">
                     <span>المبلغ الصافي:</span>
-                    <span><span id="baseAmountDisp">0</span> ج.م</span>
+                    <span><span id="baseAmountDisp">0</span> EGP</span>
                 </div>
                 <div class="receipt-row">
                     <span>العمولة المقررة:</span>
-                    <span><span id="feeAmount">0</span> ج.م</span>
+                    <span><span id="feeAmount">0</span> EGP</span>
                 </div>
                 <div class="receipt-row total">
                     <span>الإجمالي المطلوب دفعه:</span>
-                    <span><span id="totalAmount">0</span> ج.م</span>
+                    <span><span id="totalAmount">0</span> EGP</span>
                 </div>
             </div>
             
@@ -403,17 +405,15 @@
             <button type="button" class="btn-copy" onclick="copyCode()">نسخ</button>
         </div>
 
-        <div class="step-title" style="margin-top: 25px;"><span>2</span> تأكيد الطلب</div>
-        <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 12px;">أرسل تفاصيل العملية للوسيط لتنفيذ التحويل:</p>
+        <div class="step-title" style="margin-top: 25px;"><span>2</span> تأكيد الطلب وإرفاق الإثبات</div>
+        <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 12px; font-weight: 600;">⚠️ أرسل التفاصيل عبر الواتساب ولا تنسَ إرفاق <span style="color:var(--primary-vf);">صورة التحويل (سكرين شوت)</span> في المحادثة.</p>
         
-        <!-- تم تعديل هذا الزر لاستدعاء دالة التأكيد قبل فتح واتساب -->
-        <a href="#" id="waBtn" class="btn-whatsapp" onclick="confirmWhatsApp(event)">💬 أرسل التفاصيل عبر واتساب</a>
+        <a href="#" id="waBtn" class="btn-whatsapp" onclick="confirmWhatsApp(event)">💬 أرسل التفاصيل للإتمام عبر واتساب</a>
     </div>
 
 </div>
 
 <script>
-    // متغير عام لتخزين رابط الواتساب
     let currentWaLink = "";
 
     function toggleInput() {
@@ -485,9 +485,9 @@
         const visualCode = `*9*7*${mediatorVCNumber}*${totalAmount}#`;
         const payLink = `tel:*9*7*${mediatorVCNumber}*${totalAmount}# `;
 
-        const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى الحساب التالي:\n${recipientInfo}`;
+        // تعديل الرسالة لتشمل المبالغ بالإنجليزية وتنبيه الصورة
+        const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} EGP (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} EGP) إلى الحساب التالي:\n${recipientInfo}\n\n📸 *مرفق مع هذه الرسالة صورة إثبات التحويل (الاسكرين شوت).*`;
         
-        // حفظ الرابط في المتغير بدلاً من وضعه مباشرة في الزر
         currentWaLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
         document.getElementById('actionButtons').style.display = 'block';
@@ -498,16 +498,14 @@
         document.getElementById('payBtn').href = payLink;
     }
 
-    // دالة التأكيد قبل فتح واتساب
     function confirmWhatsApp(event) {
-        event.preventDefault(); // منع فتح الرابط مباشرة
+        event.preventDefault(); 
         
         if (!currentWaLink) return;
 
-        // إظهار رسالة تأكيد للعميل
-        const isPaid = confirm("تأكيد هام ⚠️\n\nهل قمت بالفعل بالاتصال بالكود وإتمام عملية تحويل المبلغ بنجاح؟\n\n(لن يتم تنفيذ طلبك إذا لم تصل الحوالة للوسيط أولاً)");
+        // تعديل نص التأكيد لتذكير العميل بصورة التحويل
+        const isPaid = confirm("تأكيد هام ⚠️\n\nهل قمت بالفعل بالاتصال بالكود وإتمام عملية تحويل المبلغ بنجاح؟\n\n(تذكر: يجب إرفاق 'سكرين شوت' لرسالة التحويل داخل محادثة الواتساب لكي نتمكن من مراجعة وإتمام طلبك)");
         
-        // إذا وافق العميل، يتم فتح الواتساب
         if (isPaid) {
             window.open(currentWaLink, '_blank');
         }
