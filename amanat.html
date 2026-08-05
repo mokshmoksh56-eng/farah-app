@@ -236,12 +236,14 @@
         const feeDisplay = document.getElementById('feeDisplay');
         
         if (amountInput && amountInput > 0) {
-            const baseAmount = parseFloat(amountInput);
-            const fee = baseAmount * 0.02;
+            // استخدام parseInt لضمان عدم وجود كسور في المبلغ الأساسي
+            const baseAmount = parseInt(amountInput);
+            // استخدام Math.ceil لجبر أي كسر في العمولة لأقرب رقم صحيح أعلى
+            const fee = Math.ceil(baseAmount * 0.02);
             const total = baseAmount + fee;
             
-            document.getElementById('feeAmount').innerText = fee.toFixed(2);
-            document.getElementById('totalAmount').innerText = total.toFixed(2);
+            document.getElementById('feeAmount').innerText = fee;
+            document.getElementById('totalAmount').innerText = total;
             
             feeDisplay.style.display = 'block';
         } else {
@@ -262,21 +264,20 @@
 
         const mediatorVCNumber = document.getElementById('mediatorVCNumber').value;
         
-        // تجهيز رقم الواتساب بإضافة كود مصر "2" في حال كان يبدأ بـ 0
         let mediatorWhatsApp = mediatorVCNumber;
         if (mediatorWhatsApp.startsWith('0')) {
             mediatorWhatsApp = '2' + mediatorWhatsApp;
         }
         
-        const baseAmount = parseFloat(document.getElementById('transferAmount').value);
-        const fee = baseAmount * 0.02;
+        // حساب المبالغ كأرقام صحيحة لمنع ظهور الكسور في كود USSD
+        const baseAmount = parseInt(document.getElementById('transferAmount').value);
+        const fee = Math.ceil(baseAmount * 0.02);
         const totalAmount = baseAmount + fee;
         
-        const rawUssdCode = `*9*7*${mediatorVCNumber}*${totalAmount}#`;
+        const rawUssdCode = `*9*7*${mediatorVCNumber}*${totalAmount}# `;
         
         const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى الحساب التالي:\n${recipientInfo}`;
         
-        // استخدام رقم الوسيط مباشرة في رابط الواتساب
         const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
         document.getElementById('actionButtons').style.display = 'flex';
