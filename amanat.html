@@ -171,12 +171,12 @@
         </div>
 
         <div class="input-group" id="phoneInputGroup" style="display: none;">
-            <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" pattern="^[0-9]{11}$" title="يجب إدخال 11 رقم">
+            <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" pattern="^01[0125][0-9]{8}$" title="يجب إدخال 11 رقم">
         </div>
 
         <div class="input-group">
-            <label>رقم الوسيط (فودافون كاش):</label>
-            <input type="tel" id="mediatorVCNumber" value="01012345678" required pattern="^010[0-9]{8}$">
+            <label>رقم الوسيط (فودافون كاش وواتساب):</label>
+            <input type="tel" id="mediatorVCNumber" placeholder="01XXXXXXXXX" required pattern="^01[0125][0-9]{8}$">
         </div>
 
         <div class="input-group">
@@ -202,13 +202,11 @@
         </div>
         
         <p style="font-weight: bold; margin-top: 15px; margin-bottom: 5px; font-size: 14px;">الخطوة 2: تأكيد الطلب</p>
-        <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">أرسل التفاصيل عبر واتساب</a>
+        <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">أرسل التفاصيل للوسيط عبر واتساب</a>
     </div>
 </div>
 
 <script>
-    const mediatorWhatsApp = "201012345678"; 
-
     function toggleInput() {
         const method = document.querySelector('input[name="transferMethod"]:checked').value;
         const addressGroup = document.getElementById('addressInputGroup');
@@ -264,6 +262,12 @@
 
         const mediatorVCNumber = document.getElementById('mediatorVCNumber').value;
         
+        // تجهيز رقم الواتساب بإضافة كود مصر "2" في حال كان يبدأ بـ 0
+        let mediatorWhatsApp = mediatorVCNumber;
+        if (mediatorWhatsApp.startsWith('0')) {
+            mediatorWhatsApp = '2' + mediatorWhatsApp;
+        }
+        
         const baseAmount = parseFloat(document.getElementById('transferAmount').value);
         const fee = baseAmount * 0.02;
         const totalAmount = baseAmount + fee;
@@ -271,6 +275,8 @@
         const rawUssdCode = `*9*7*${mediatorVCNumber}*${totalAmount}#`;
         
         const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى الحساب التالي:\n${recipientInfo}`;
+        
+        // استخدام رقم الوسيط مباشرة في رابط الواتساب
         const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
         document.getElementById('actionButtons').style.display = 'flex';
