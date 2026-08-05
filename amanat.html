@@ -59,7 +59,6 @@
             direction: ltr;
         }
         
-        /* تنسيق أزرار الاختيار */
         .radio-group {
             display: flex;
             gap: 15px;
@@ -112,15 +111,6 @@
             border-top: 2px dashed #eee;
             padding-top: 20px;
         }
-        .btn-pay {
-            display: block;
-            padding: 12px;
-            background-color: #e60000;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-        }
         .btn-whatsapp {
             display: block;
             padding: 12px;
@@ -133,15 +123,16 @@
         .copy-section {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .copy-section input {
             margin-bottom: 0;
             background-color: #f9f9f9;
-            color: #333;
+            color: #d32f2f;
             font-weight: bold;
             direction: ltr;
             text-align: center;
+            border: 2px dashed #ccc;
         }
         .btn-copy {
             background-color: #007bff;
@@ -161,7 +152,6 @@
     
     <form id="instaForm" onsubmit="generateProcess(event)">
         
-        <!-- اختيارات الدفع -->
         <div class="input-group">
             <label>طريقة التحويل للمستلم:</label>
             <div class="radio-group">
@@ -176,12 +166,10 @@
             </div>
         </div>
 
-        <!-- حقل عنوان إنستاباي (يظهر افتراضياً) -->
         <div class="input-group" id="addressInputGroup">
             <input type="text" id="instaAddress" placeholder="مثال: name@instapay" required>
         </div>
 
-        <!-- حقل رقم الهاتف (مخفي افتراضياً) -->
         <div class="input-group" id="phoneInputGroup" style="display: none;">
             <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" pattern="^[0-9]{11}$" title="يجب إدخال 11 رقم">
         </div>
@@ -196,7 +184,6 @@
             <input type="number" id="transferAmount" placeholder="أدخل المبلغ" required min="10" oninput="calculateFee()">
         </div>
 
-        <!-- مربع يظهر تلقائياً ليوضح العمولة والإجمالي -->
         <div id="feeDisplay" class="fee-display">
             العمولة: <span id="feeAmount">0</span> ج.م<br>
             إجمالي المطلوب دفعه: <span id="totalAmount">0</span> ج.م
@@ -207,25 +194,21 @@
 
     <div class="action-buttons" id="actionButtons">
         <p style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">الخطوة 1: ادفع للوسيط</p>
+        <p style="font-size: 13px; color: #444; margin: 0 0 10px 0; text-align: right;">انسخ الكود التالي والصقه في لوحة الاتصال بهاتفك لإتمام الدفع:</p>
         
-        <a href="#" id="payBtn" class="btn-pay">اتصال لدفع المبلغ الإجمالي</a>
-        
-        <p style="font-size: 12px; color: #888; margin: 0;">إذا لم يعمل زر الاتصال، انسخ الكود التالي والصقه في لوحة الاتصال:</p>
         <div class="copy-section">
             <input type="text" id="rawCodeDisplay" readonly>
-            <button type="button" class="btn-copy" onclick="copyCode()">نسخ</button>
+            <button type="button" class="btn-copy" onclick="copyCode()">نسخ الكود</button>
         </div>
         
-        <p style="font-weight: bold; margin-top: 10px; margin-bottom: 5px; font-size: 14px;">الخطوة 2: تأكيد الطلب</p>
+        <p style="font-weight: bold; margin-top: 15px; margin-bottom: 5px; font-size: 14px;">الخطوة 2: تأكيد الطلب</p>
         <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">أرسل التفاصيل عبر واتساب</a>
     </div>
 </div>
 
 <script>
-    // إعداد رقم واتساب الخاص بالوسيط
     const mediatorWhatsApp = "201012345678"; 
 
-    // دالة التبديل بين حقل العنوان وحقل رقم الهاتف
     function toggleInput() {
         const method = document.querySelector('input[name="transferMethod"]:checked').value;
         const addressGroup = document.getElementById('addressInputGroup');
@@ -239,18 +222,17 @@
             
             phoneGroup.style.display = 'none';
             phoneInput.required = false;
-            phoneInput.value = ''; // تفريغ الحقل
+            phoneInput.value = ''; 
         } else {
             phoneGroup.style.display = 'block';
             phoneInput.required = true;
             
             addressGroup.style.display = 'none';
             addressInput.required = false;
-            addressInput.value = ''; // تفريغ الحقل
+            addressInput.value = ''; 
         }
     }
 
-    // دالة حساب العمولة
     function calculateFee() {
         const amountInput = document.getElementById('transferAmount').value;
         const feeDisplay = document.getElementById('feeDisplay');
@@ -269,11 +251,9 @@
         }
     }
 
-    // دالة تجهيز التحويل والروابط
     function generateProcess(event) {
         event.preventDefault(); 
         
-        // معرفة طريقة التحويل المختارة والقيمة
         const method = document.querySelector('input[name="transferMethod"]:checked').value;
         let recipientInfo = "";
         if (method === 'address') {
@@ -288,31 +268,23 @@
         const fee = baseAmount * 0.02;
         const totalAmount = baseAmount + fee;
         
-        // تجهيز كود الاتصال بالاعتماد على (المبلغ الإجمالي)
         const rawUssdCode = `*9*7*${mediatorVCNumber}*${totalAmount}#`;
-        const encodedUssd = `%2A9%2A7%2A${mediatorVCNumber}%2A${totalAmount}%23`;
-        const payLink = `tel:${encodedUssd}`;
         
-        // تجهيز رسالة الواتساب 
         const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى الحساب التالي:\n${recipientInfo}`;
         const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
-        // إظهار قسم الأزرار
         document.getElementById('actionButtons').style.display = 'flex';
         
-        // تحديث البيانات في الواجهة
         document.getElementById('rawCodeDisplay').value = rawUssdCode;
-        document.getElementById('payBtn').href = payLink;
         document.getElementById('waBtn').href = waLink;
     }
 
-    // دالة نسخ الكود
     function copyCode() {
         const copyText = document.getElementById("rawCodeDisplay");
         copyText.select();
         copyText.setSelectionRange(0, 99999); 
         navigator.clipboard.writeText(copyText.value).then(() => {
-            alert("تم نسخ الكود بنجاح!\nالآن اذهب إلى تطبيق الاتصال والصق الكود.");
+            alert("تم نسخ الكود بنجاح!\nالآن اذهب إلى تطبيق الاتصال والصق الكود لإتمام الدفع.");
         }).catch(() => {
             alert("فشل النسخ التلقائي، يرجى تحديده ونسخه يدوياً.");
         });
