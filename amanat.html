@@ -302,6 +302,7 @@
             font-weight: 700;
             font-size: 15px;
             box-sizing: border-box;
+            cursor: pointer; /* تأكيد أن المؤشر يعمل كزر */
         }
 
         @keyframes fadeIn {
@@ -321,7 +322,6 @@
 
     <div class="trust-badge">
         <p>تأكد من مصداقيتنا وتابع تقييمات العملاء 🌟</p>
-        <!-- تم ربط الرابط الخاص بك هنا بنجاح -->
         <a href="https://t.me/azemaaAzemaa" target="_blank" class="btn-telegram">
             ✈️ انضم لقناتنا على تليجرام
         </a>
@@ -406,12 +406,16 @@
         <div class="step-title" style="margin-top: 25px;"><span>2</span> تأكيد الطلب</div>
         <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 12px;">أرسل تفاصيل العملية للوسيط لتنفيذ التحويل:</p>
         
-        <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">💬 أرسل التفاصيل عبر واتساب</a>
+        <!-- تم تعديل هذا الزر لاستدعاء دالة التأكيد قبل فتح واتساب -->
+        <a href="#" id="waBtn" class="btn-whatsapp" onclick="confirmWhatsApp(event)">💬 أرسل التفاصيل عبر واتساب</a>
     </div>
 
 </div>
 
 <script>
+    // متغير عام لتخزين رابط الواتساب
+    let currentWaLink = "";
+
     function toggleInput() {
         const method = document.querySelector('input[name="transferMethod"]:checked').value;
         const addressGroup = document.getElementById('addressInputGroup');
@@ -482,7 +486,9 @@
         const payLink = `tel:*9*7*${mediatorVCNumber}*${totalAmount}# `;
 
         const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى الحساب التالي:\n${recipientInfo}`;
-        const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
+        
+        // حفظ الرابط في المتغير بدلاً من وضعه مباشرة في الزر
+        currentWaLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
         document.getElementById('actionButtons').style.display = 'block';
         document.getElementById('actionButtons').scrollIntoView({ behavior: 'smooth' });
@@ -490,7 +496,21 @@
         document.getElementById('rawCodeDisplay').value = rawUssdCode;
         document.getElementById('displayCodeInBtn').innerText = visualCode; 
         document.getElementById('payBtn').href = payLink;
-        document.getElementById('waBtn').href = waLink;
+    }
+
+    // دالة التأكيد قبل فتح واتساب
+    function confirmWhatsApp(event) {
+        event.preventDefault(); // منع فتح الرابط مباشرة
+        
+        if (!currentWaLink) return;
+
+        // إظهار رسالة تأكيد للعميل
+        const isPaid = confirm("تأكيد هام ⚠️\n\nهل قمت بالفعل بالاتصال بالكود وإتمام عملية تحويل المبلغ بنجاح؟\n\n(لن يتم تنفيذ طلبك إذا لم تصل الحوالة للوسيط أولاً)");
+        
+        // إذا وافق العميل، يتم فتح الواتساب
+        if (isPaid) {
+            window.open(currentWaLink, '_blank');
+        }
     }
 
     function copyCode() {
