@@ -33,15 +33,31 @@
             font-size: 14px;
             margin-bottom: 25px;
         }
+        .input-group {
+            text-align: right;
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            color: #444;
+            margin-bottom: 5px;
+        }
         input {
             width: 100%;
             padding: 12px;
-            margin-bottom: 15px;
             border: 1px solid #ccc;
             border-radius: 6px;
             box-sizing: border-box;
             font-size: 15px;
+            text-align: right;
+            direction: rtl;
+        }
+        /* لتوسيط الأرقام في حقل المبلغ */
+        input[type="number"], input[type="tel"] {
             text-align: center;
+            direction: ltr;
         }
         button {
             width: 100%;
@@ -53,9 +69,20 @@
             font-size: 16px;
             cursor: pointer;
             margin-bottom: 15px;
+            font-weight: bold;
         }
         button:hover {
             background-color: #555;
+        }
+        .fee-display {
+            background-color: #ffeaea;
+            color: #d32f2f;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: none; /* مخفي حتى يتم إدخال مبلغ */
         }
         .action-buttons {
             display: none;
@@ -94,6 +121,7 @@
             color: #333;
             font-weight: bold;
             direction: ltr;
+            text-align: center;
         }
         .btn-copy {
             background-color: #007bff;
@@ -103,25 +131,41 @@
         .btn-copy:hover {
             background-color: #0056b3;
         }
-        .instructions {
-            font-size: 13px;
-            color: #555;
-            margin-top: 15px;
-            text-align: right;
-            line-height: 1.6;
-        }
     </style>
 </head>
 <body>
 
 <div class="app-box">
     <h3>تحويل لإنستاباي بوسيط</h3>
-    <p class="subtitle">يتم تحويل الأموال لمحفظتنا، ونقوم نحن بتحويلها لحساب إنستاباي المطلوب.</p>
+    <p class="subtitle">عمولة التحويل: 20 ج.م لكل 1000 ج.م (2%)</p>
     
     <form id="instaForm" onsubmit="generateProcess(event)">
-        <input type="text" id="instaAddress" placeholder="عنوان إنستاباي (مثال: name@instapay)" required>
-        <input type="tel" id="phoneNumber" placeholder="رقم الهاتف المرتبط بالحساب" required pattern="^[0-9]{11}$" title="يجب إدخال 11 رقم">
-        <input type="number" id="transferAmount" placeholder="المبلغ المراد تحويله" required min="10">
+        
+        <div class="input-group">
+            <label>عنوان إنستاباي المستلم:</label>
+            <input type="text" id="instaAddress" placeholder="مثال: name@instapay" required>
+        </div>
+
+        <div class="input-group">
+            <label>رقم الهاتف المرتبط بإنستاباي:</label>
+            <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" required pattern="^[0-9]{11}$">
+        </div>
+
+        <div class="input-group">
+            <label>رقم الوسيط (فودافون كاش):</label>
+            <input type="tel" id="mediatorVCNumber" value="01012345678" required pattern="^010[0-9]{8}$">
+        </div>
+
+        <div class="input-group">
+            <label>المبلغ المراد وصوله للمستلم (ج.م):</label>
+            <input type="number" id="transferAmount" placeholder="أدخل المبلغ" required min="10" oninput="calculateFee()">
+        </div>
+
+        <!-- مربع يظهر تلقائياً ليوضح العمولة والإجمالي -->
+        <div id="feeDisplay" class="fee-display">
+            العمولة: <span id="feeAmount">0</span> ج.م<br>
+            إجمالي المطلوب دفعه: <span id="totalAmount">0</span> ج.م
+        </div>
         
         <button type="submit">تجهيز عملية التحويل</button>
     </form>
@@ -129,10 +173,8 @@
     <div class="action-buttons" id="actionButtons">
         <p style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">الخطوة 1: ادفع للوسيط</p>
         
-        <!-- زر الاتصال المباشر -->
-        <a href="#" id="payBtn" class="btn-pay">اتصال لدفع المبلغ</a>
+        <a href="#" id="payBtn" class="btn-pay">اتصال لدفع المبلغ الإجمالي</a>
         
-        <!-- بديل النسخ في حال فشل الاتصال المباشر -->
         <p style="font-size: 12px; color: #888; margin: 0;">إذا لم يعمل زر الاتصال، انسخ الكود التالي والصقه في لوحة الاتصال:</p>
         <div class="copy-section">
             <input type="text" id="rawCodeDisplay" readonly>
@@ -140,40 +182,53 @@
         </div>
         
         <p style="font-weight: bold; margin-top: 10px; margin-bottom: 5px; font-size: 14px;">الخطوة 2: تأكيد الطلب</p>
-        <!-- زر إرسال التفاصيل للوسيط -->
         <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">أرسل التفاصيل عبر واتساب</a>
-    </div>
-
-    <div class="instructions">
-        <strong>تنبيه:</strong><br>
-        تأكد من إتمام خطوة الدفع أولاً بنجاح عبر فودافون كاش، ثم قم بإرسال رسالة الواتساب لتأكيد العملية وتنفيذها.
     </div>
 </div>
 
 <script>
+    // إعداد رقم واتساب الخاص بالوسيط
+    const mediatorWhatsApp = "201012345678"; 
+
+    // دالة حساب العمولة (تعمل أثناء كتابة المستخدم للمبلغ)
+    function calculateFee() {
+        const amountInput = document.getElementById('transferAmount').value;
+        const feeDisplay = document.getElementById('feeDisplay');
+        
+        if (amountInput && amountInput > 0) {
+            const baseAmount = parseFloat(amountInput);
+            // حساب العمولة (2% تكافئ 20 جنيه لكل 1000)
+            const fee = baseAmount * 0.02;
+            const total = baseAmount + fee;
+            
+            document.getElementById('feeAmount').innerText = fee.toFixed(2);
+            document.getElementById('totalAmount').innerText = total.toFixed(2);
+            
+            feeDisplay.style.display = 'block';
+        } else {
+            feeDisplay.style.display = 'none';
+        }
+    }
+
+    // دالة تجهيز التحويل والروابط
     function generateProcess(event) {
         event.preventDefault(); 
         
-        // ==========================================
-        // إعدادات الوسيط (قم بتغييرها ببياناتك)
-        const mediatorVCNumber = "01012345678"; // رقم فودافون كاش الخاص بك 
-        const mediatorWhatsApp = "201012345678"; // رقم الواتساب الخاص بك (يبدأ بـ 20)
-        // ==========================================
-
         const instaAddress = document.getElementById('instaAddress').value;
         const phoneNumber = document.getElementById('phoneNumber').value; 
-        const amount = document.getElementById('transferAmount').value;
+        const mediatorVCNumber = document.getElementById('mediatorVCNumber').value;
         
-        // الكود الحقيقي (الذي سيظهر في خانة النسخ)
-        const rawUssdCode = `*9*7*${mediatorVCNumber}*${amount}#`;
+        const baseAmount = parseFloat(document.getElementById('transferAmount').value);
+        const fee = baseAmount * 0.02;
+        const totalAmount = baseAmount + fee;
         
-        // الكود المشفر (الذي سيتم استخدامه في زر الاتصال لتخطي حماية الأندرويد)
-        // تم تشفير النجمة بـ %2A والشباك بـ %23
-        const encodedUssd = `%2A9%2A7%2A${mediatorVCNumber}%2A${amount}%23`;
+        // تجهيز كود الاتصال بالاعتماد على (المبلغ الإجمالي)
+        const rawUssdCode = `*9*7*${mediatorVCNumber}*${totalAmount}#`;
+        const encodedUssd = `%2A9%2A7%2A${mediatorVCNumber}%2A${totalAmount}%23`;
         const payLink = `tel:${encodedUssd}`;
         
-        // تجهيز رسالة الواتساب
-        const message = `مرحباً، لقد قمت بتحويل مبلغ ${amount} جنيه إلى محفظتكم.\n\nالرجاء تحويل هذا المبلغ إلى حساب إنستاباي التالي:\nالعنوان: ${instaAddress}\nرقم الهاتف: ${phoneNumber}`;
+        // تجهيز رسالة الواتساب لتوضيح التفاصيل للوسيط
+        const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى حساب إنستاباي التالي:\nالعنوان: ${instaAddress}\nرقم الهاتف: ${phoneNumber}`;
         const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
         // إظهار قسم الأزرار
@@ -185,11 +240,11 @@
         document.getElementById('waBtn').href = waLink;
     }
 
-    // دالة لنسخ الكود
+    // دالة نسخ الكود
     function copyCode() {
         const copyText = document.getElementById("rawCodeDisplay");
         copyText.select();
-        copyText.setSelectionRange(0, 99999); // للهواتف المحمولة
+        copyText.setSelectionRange(0, 99999); 
         navigator.clipboard.writeText(copyText.value).then(() => {
             alert("تم نسخ الكود بنجاح!\nالآن اذهب إلى تطبيق الاتصال والصق الكود.");
         }).catch(() => {
