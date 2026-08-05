@@ -3,30 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الدفع السريع - فودافون كاش</title>
+    <title>تحويل من فودافون كاش إلى إنستاباي (عبر وسيط)</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
             padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
         }
         .app-box {
             background: white;
             padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 350px;
+            max-width: 400px;
             text-align: center;
         }
         h3 {
-            color: #e60000;
-            margin-bottom: 20px;
+            color: #6a1b9a;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 25px;
         }
         input {
             width: 100%;
@@ -35,7 +40,7 @@
             border: 1px solid #ccc;
             border-radius: 6px;
             box-sizing: border-box;
-            font-size: 16px;
+            font-size: 15px;
             text-align: center;
         }
         button {
@@ -52,71 +57,104 @@
         button:hover {
             background-color: #555;
         }
-        .call-btn {
+        .action-buttons {
             display: none;
-            width: 100%;
-            padding: 15px;
-            background-color: #28a745;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+            border-top: 2px dashed #eee;
+            padding-top: 20px;
+        }
+        .btn-pay {
+            display: block;
+            padding: 12px;
+            background-color: #e60000;
             color: white;
             text-decoration: none;
             border-radius: 6px;
-            font-size: 18px;
             font-weight: bold;
-            box-sizing: border-box;
         }
-        .call-btn:hover {
-            background-color: #218838;
+        .btn-whatsapp {
+            display: block;
+            padding: 12px;
+            background-color: #25D366;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
         }
         .instructions {
             font-size: 13px;
-            color: #666;
+            color: #555;
             margin-top: 15px;
-            line-height: 1.5;
+            text-align: right;
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
 
 <div class="app-box">
-    <h3>دفع فودافون كاش السريع</h3>
+    <h3>تحويل لإنستاباي بوسيط</h3>
+    <p class="subtitle">يتم تحويل الأموال لمحفظتنا، ونقوم نحن بتحويلها لحساب إنستاباي المطلوب.</p>
     
-    <form id="cashForm" onsubmit="generateCode(event)">
-        <input type="tel" id="mobileNumber" placeholder="رقم المحفظة المحول إليه" required pattern="^010[0-9]{8}$" title="أدخل رقم فودافون صحيح مكون من 11 رقم">
-        <input type="number" id="transferAmount" placeholder="المبلغ" required min="5">
+    <form id="instaForm" onsubmit="generateProcess(event)">
+        <input type="text" id="instaAddress" placeholder="عنوان إنستاباي (مثال: name@instapay)" required>
+        <!-- تمت إضافة حقل رقم الهاتف هنا -->
+        <input type="tel" id="phoneNumber" placeholder="رقم الهاتف المرتبط بالحساب" required pattern="^[0-9]{11}$" title="يجب إدخال 11 رقم">
+        <input type="number" id="transferAmount" placeholder="المبلغ المراد تحويله" required min="10">
         
-        <button type="submit">تجهيز كود الدفع</button>
+        <button type="submit">تجهيز عملية التحويل</button>
     </form>
 
-    <!-- هذا الزر سيظهر بعد الضغط على الزر السابق -->
-    <a href="#" id="callButton" class="call-btn">إجراء الاتصال للتحويل</a>
+    <div class="action-buttons" id="actionButtons">
+        <p style="font-weight: bold; margin-bottom: 10px; font-size: 14px;">نفذ الخطوتين التاليتين لإتمام الطلب:</p>
+        
+        <a href="#" id="payBtn" class="btn-pay">الخطوة 1: ادفع للوسيط (فودافون كاش)</a>
+        
+        <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">الخطوة 2: أرسل التفاصيل عبر واتساب</a>
+    </div>
 
-    <p class="instructions">
-        <strong>ملاحظة:</strong> عند الضغط على زر الاتصال، سيتم نقلك للوحة الاتصال بهاتفك. اضغط اتصال وأدخل رقمك السري لتأكيد العملية.
-    </p>
+    <div class="instructions">
+        <strong>طريقة العمل:</strong><br>
+        1. اضغط على "الخطوة 1" لدفع المبلغ لوسيط التحويل عبر محفظتك.<br>
+        2. اضغط على "الخطوة 2" لإرسال رسالة آلية للوسيط لتأكيد الدفع وإبلاغه بعنوان إنستاباي ورقم الهاتف.<br>
+    </div>
 </div>
 
 <script>
-    function generateCode(event) {
-        event.preventDefault(); // منع إعادة تحميل الصفحة
+    function generateProcess(event) {
+        event.preventDefault(); 
         
-        // جلب البيانات من الحقول
-        const number = document.getElementById('mobileNumber').value;
+        // --- إعدادات الوسيط (قم بتغييرها ببياناتك) ---
+        const mediatorVCNumber = "01012345678"; // رقم فودافون كاش الخاص بك (الوسيط)
+        const mediatorWhatsApp = "201012345678"; // رقم الواتساب الخاص بك (مسبوق بكود الدولة 20)
+        // ----------------------------------------------
+
+        const instaAddress = document.getElementById('instaAddress').value;
+        const phoneNumber = document.getElementById('phoneNumber').value; // التقاط رقم الهاتف
         const amount = document.getElementById('transferAmount').value;
         
-        // تكوين الكود: *9*7*الرقم*المبلغ#
-        // نستخدم %23 بدلاً من # لأن المتصفحات لا تقرأ علامة الشباك في الروابط بشكل صحيح
-        const ussdCode = `*9*7*{number}*${amount} #`;
+        // 1. تجهيز كود الدفع (تحويل فودافون كاش للوسيط)
+        const ussdCode = `*9*7*${mediatorVCNumber}*${amount}%23`;
+        const payLink = `tel:${ussdCode}`;
         
-        // تجهيز الرابط الخاص بالاتصال
-        const telLink = `tel:${ussdCode}`;
+        // 2. تجهيز رسالة الواتساب للوسيط متضمنة رقم الهاتف
+        const message = `مرحباً، لقد قمت بتحويل مبلغ ${amount} جنيه إلى محفظتكم.\n\nالرجاء تحويل هذا المبلغ إلى حساب إنستاباي التالي:\nالعنوان: ${instaAddress}\nرقم الهاتف: ${phoneNumber}`;
+        const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
-        // إظهار زر الاتصال وتحديث رابطه
-        const callBtn = document.getElementById('callButton');
-        callBtn.href = telLink;
-        callBtn.style.display = 'block';
-        callBtn.innerHTML = `اتصل الآن لتحويل ${amount} ج.م`;
+        // إظهار الأزرار وتحديث روابطها
+        document.getElementById('actionButtons').style.display = 'flex';
+        
+        const payBtn = document.getElementById('payBtn');
+        payBtn.href = payLink;
+        payBtn.innerHTML = `الخطوة 1: ادفع ${amount} ج.م للوسيط`;
+        
+        const waBtn = document.getElementById('waBtn');
+        waBtn.href = waLink;
     }
 </script>
 
 </body>
 </html>
+j
