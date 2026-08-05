@@ -42,9 +42,9 @@
             font-size: 13px;
             font-weight: bold;
             color: #444;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
-        input {
+        input[type="text"], input[type="tel"], input[type="number"] {
             width: 100%;
             padding: 12px;
             border: 1px solid #ccc;
@@ -54,11 +54,31 @@
             text-align: right;
             direction: rtl;
         }
-        /* لتوسيط الأرقام في حقل المبلغ */
         input[type="number"], input[type="tel"] {
             text-align: center;
             direction: ltr;
         }
+        
+        /* تنسيق أزرار الاختيار */
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-start;
+            margin-bottom: 15px;
+        }
+        .radio-group label {
+            display: inline-flex;
+            align-items: center;
+            font-size: 14px;
+            font-weight: normal;
+            cursor: pointer;
+            margin-bottom: 0;
+        }
+        .radio-group input[type="radio"] {
+            margin-left: 8px;
+            cursor: pointer;
+        }
+
         button {
             width: 100%;
             padding: 12px;
@@ -82,7 +102,7 @@
             font-size: 13px;
             font-weight: bold;
             margin-bottom: 15px;
-            display: none; /* مخفي حتى يتم إدخال مبلغ */
+            display: none;
         }
         .action-buttons {
             display: none;
@@ -141,14 +161,29 @@
     
     <form id="instaForm" onsubmit="generateProcess(event)">
         
+        <!-- اختيارات الدفع -->
         <div class="input-group">
-            <label>عنوان إنستاباي المستلم:</label>
+            <label>طريقة التحويل للمستلم:</label>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="transferMethod" value="address" checked onchange="toggleInput()"> 
+                    عنوان إنستاباي (IPA)
+                </label>
+                <label>
+                    <input type="radio" name="transferMethod" value="phone" onchange="toggleInput()"> 
+                    رقم هاتف
+                </label>
+            </div>
+        </div>
+
+        <!-- حقل عنوان إنستاباي (يظهر افتراضياً) -->
+        <div class="input-group" id="addressInputGroup">
             <input type="text" id="instaAddress" placeholder="مثال: name@instapay" required>
         </div>
 
-        <div class="input-group">
-            <label>رقم الهاتف المرتبط بإنستاباي:</label>
-            <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" required pattern="^[0-9]{11}$">
+        <!-- حقل رقم الهاتف (مخفي افتراضياً) -->
+        <div class="input-group" id="phoneInputGroup" style="display: none;">
+            <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" pattern="^[0-9]{11}$" title="يجب إدخال 11 رقم">
         </div>
 
         <div class="input-group">
@@ -190,14 +225,38 @@
     // إعداد رقم واتساب الخاص بالوسيط
     const mediatorWhatsApp = "201012345678"; 
 
-    // دالة حساب العمولة (تعمل أثناء كتابة المستخدم للمبلغ)
+    // دالة التبديل بين حقل العنوان وحقل رقم الهاتف
+    function toggleInput() {
+        const method = document.querySelector('input[name="transferMethod"]:checked').value;
+        const addressGroup = document.getElementById('addressInputGroup');
+        const phoneGroup = document.getElementById('phoneInputGroup');
+        const addressInput = document.getElementById('instaAddress');
+        const phoneInput = document.getElementById('phoneNumber');
+
+        if (method === 'address') {
+            addressGroup.style.display = 'block';
+            addressInput.required = true;
+            
+            phoneGroup.style.display = 'none';
+            phoneInput.required = false;
+            phoneInput.value = ''; // تفريغ الحقل
+        } else {
+            phoneGroup.style.display = 'block';
+            phoneInput.required = true;
+            
+            addressGroup.style.display = 'none';
+            addressInput.required = false;
+            addressInput.value = ''; // تفريغ الحقل
+        }
+    }
+
+    // دالة حساب العمولة
     function calculateFee() {
         const amountInput = document.getElementById('transferAmount').value;
         const feeDisplay = document.getElementById('feeDisplay');
         
         if (amountInput && amountInput > 0) {
             const baseAmount = parseFloat(amountInput);
-            // حساب العمولة (2% تكافئ 20 جنيه لكل 1000)
             const fee = baseAmount * 0.02;
             const total = baseAmount + fee;
             
@@ -214,8 +273,15 @@
     function generateProcess(event) {
         event.preventDefault(); 
         
-        const instaAddress = document.getElementById('instaAddress').value;
-        const phoneNumber = document.getElementById('phoneNumber').value; 
+        // معرفة طريقة التحويل المختارة والقيمة
+        const method = document.querySelector('input[name="transferMethod"]:checked').value;
+        let recipientInfo = "";
+        if (method === 'address') {
+            recipientInfo = "عنوان إنستاباي: " + document.getElementById('instaAddress').value;
+        } else {
+            recipientInfo = "رقم هاتف إنستاباي: " + document.getElementById('phoneNumber').value;
+        }
+
         const mediatorVCNumber = document.getElementById('mediatorVCNumber').value;
         
         const baseAmount = parseFloat(document.getElementById('transferAmount').value);
@@ -227,8 +293,8 @@
         const encodedUssd = `%2A9%2A7%2A${mediatorVCNumber}%2A${totalAmount}%23`;
         const payLink = `tel:${encodedUssd}`;
         
-        // تجهيز رسالة الواتساب لتوضيح التفاصيل للوسيط
-        const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى حساب إنستاباي التالي:\nالعنوان: ${instaAddress}\nرقم الهاتف: ${phoneNumber}`;
+        // تجهيز رسالة الواتساب 
+        const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} جنيه (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} جنيه) إلى الحساب التالي:\n${recipientInfo}`;
         const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
         // إظهار قسم الأزرار
