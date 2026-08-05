@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحويل من فودافون كاش إلى إنستاباي (عبر وسيط)</title>
+    <title>تحويل من فودافون كاش إلى إنستاباي</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -60,7 +60,7 @@
         .action-buttons {
             display: none;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
             margin-top: 20px;
             border-top: 2px dashed #eee;
             padding-top: 20px;
@@ -83,6 +83,26 @@
             border-radius: 6px;
             font-weight: bold;
         }
+        .copy-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .copy-section input {
+            margin-bottom: 0;
+            background-color: #f9f9f9;
+            color: #333;
+            font-weight: bold;
+            direction: ltr;
+        }
+        .btn-copy {
+            background-color: #007bff;
+            margin-bottom: 0;
+            width: 40%;
+        }
+        .btn-copy:hover {
+            background-color: #0056b3;
+        }
         .instructions {
             font-size: 13px;
             color: #555;
@@ -100,7 +120,6 @@
     
     <form id="instaForm" onsubmit="generateProcess(event)">
         <input type="text" id="instaAddress" placeholder="عنوان إنستاباي (مثال: name@instapay)" required>
-        <!-- تمت إضافة حقل رقم الهاتف هنا -->
         <input type="tel" id="phoneNumber" placeholder="رقم الهاتف المرتبط بالحساب" required pattern="^[0-9]{11}$" title="يجب إدخال 11 رقم">
         <input type="number" id="transferAmount" placeholder="المبلغ المراد تحويله" required min="10">
         
@@ -108,17 +127,26 @@
     </form>
 
     <div class="action-buttons" id="actionButtons">
-        <p style="font-weight: bold; margin-bottom: 10px; font-size: 14px;">نفذ الخطوتين التاليتين لإتمام الطلب:</p>
+        <p style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">الخطوة 1: ادفع للوسيط</p>
         
-        <a href="#" id="payBtn" class="btn-pay">الخطوة 1: ادفع للوسيط (فودافون كاش)</a>
+        <!-- زر الاتصال المباشر -->
+        <a href="#" id="payBtn" class="btn-pay">اتصال لدفع المبلغ</a>
         
-        <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">الخطوة 2: أرسل التفاصيل عبر واتساب</a>
+        <!-- بديل النسخ في حال فشل الاتصال المباشر -->
+        <p style="font-size: 12px; color: #888; margin: 0;">إذا لم يعمل زر الاتصال، انسخ الكود التالي والصقه في لوحة الاتصال:</p>
+        <div class="copy-section">
+            <input type="text" id="rawCodeDisplay" readonly>
+            <button type="button" class="btn-copy" onclick="copyCode()">نسخ</button>
+        </div>
+        
+        <p style="font-weight: bold; margin-top: 10px; margin-bottom: 5px; font-size: 14px;">الخطوة 2: تأكيد الطلب</p>
+        <!-- زر إرسال التفاصيل للوسيط -->
+        <a href="#" id="waBtn" class="btn-whatsapp" target="_blank">أرسل التفاصيل عبر واتساب</a>
     </div>
 
     <div class="instructions">
-        <strong>طريقة العمل:</strong><br>
-        1. اضغط على "الخطوة 1" لدفع المبلغ لوسيط التحويل عبر محفظتك.<br>
-        2. اضغط على "الخطوة 2" لإرسال رسالة آلية للوسيط لتأكيد الدفع وإبلاغه بعنوان إنستاباي ورقم الهاتف.<br>
+        <strong>تنبيه:</strong><br>
+        تأكد من إتمام خطوة الدفع أولاً بنجاح عبر فودافون كاش، ثم قم بإرسال رسالة الواتساب لتأكيد العملية وتنفيذها.
     </div>
 </div>
 
@@ -126,35 +154,49 @@
     function generateProcess(event) {
         event.preventDefault(); 
         
-        // --- إعدادات الوسيط (قم بتغييرها ببياناتك) ---
-        const mediatorVCNumber = "01012345678"; // رقم فودافون كاش الخاص بك (الوسيط)
-        const mediatorWhatsApp = "201012345678"; // رقم الواتساب الخاص بك (مسبوق بكود الدولة 20)
-        // ----------------------------------------------
+        // ==========================================
+        // إعدادات الوسيط (قم بتغييرها ببياناتك)
+        const mediatorVCNumber = "01012345678"; // رقم فودافون كاش الخاص بك 
+        const mediatorWhatsApp = "201012345678"; // رقم الواتساب الخاص بك (يبدأ بـ 20)
+        // ==========================================
 
         const instaAddress = document.getElementById('instaAddress').value;
-        const phoneNumber = document.getElementById('phoneNumber').value; // التقاط رقم الهاتف
+        const phoneNumber = document.getElementById('phoneNumber').value; 
         const amount = document.getElementById('transferAmount').value;
         
-        // 1. تجهيز كود الدفع (تحويل فودافون كاش للوسيط)
-        const ussdCode = `*9*7*${mediatorVCNumber}*${amount}%23`;
-        const payLink = `tel:${ussdCode}`;
+        // الكود الحقيقي (الذي سيظهر في خانة النسخ)
+        const rawUssdCode = `*9*7*${mediatorVCNumber}*${amount}#`;
         
-        // 2. تجهيز رسالة الواتساب للوسيط متضمنة رقم الهاتف
+        // الكود المشفر (الذي سيتم استخدامه في زر الاتصال لتخطي حماية الأندرويد)
+        // تم تشفير النجمة بـ %2A والشباك بـ %23
+        const encodedUssd = `%2A9%2A7%2A${mediatorVCNumber}%2A${amount}%23`;
+        const payLink = `tel:${encodedUssd}`;
+        
+        // تجهيز رسالة الواتساب
         const message = `مرحباً، لقد قمت بتحويل مبلغ ${amount} جنيه إلى محفظتكم.\n\nالرجاء تحويل هذا المبلغ إلى حساب إنستاباي التالي:\nالعنوان: ${instaAddress}\nرقم الهاتف: ${phoneNumber}`;
         const waLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
         
-        // إظهار الأزرار وتحديث روابطها
+        // إظهار قسم الأزرار
         document.getElementById('actionButtons').style.display = 'flex';
         
-        const payBtn = document.getElementById('payBtn');
-        payBtn.href = payLink;
-        payBtn.innerHTML = `الخطوة 1: ادفع ${amount} ج.م للوسيط`;
-        
-        const waBtn = document.getElementById('waBtn');
-        waBtn.href = waLink;
+        // تحديث البيانات في الواجهة
+        document.getElementById('rawCodeDisplay').value = rawUssdCode;
+        document.getElementById('payBtn').href = payLink;
+        document.getElementById('waBtn').href = waLink;
+    }
+
+    // دالة لنسخ الكود
+    function copyCode() {
+        const copyText = document.getElementById("rawCodeDisplay");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // للهواتف المحمولة
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            alert("تم نسخ الكود بنجاح!\nالآن اذهب إلى تطبيق الاتصال والصق الكود.");
+        }).catch(() => {
+            alert("فشل النسخ التلقائي، يرجى تحديده ونسخه يدوياً.");
+        });
     }
 </script>
 
 </body>
 </html>
-j
