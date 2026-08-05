@@ -1,86 +1,146 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شاشة القفل</title>
+    <title>منصة التحويلات المالية</title>
     <style>
-        /* إعدادات الشاشة الأساسية */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            /* ممكن تغير لون الخلفية أو تحط صورة براحتك */
-            background-color: #121212; 
-            color: #ffffff;
+        body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-        }
-
-        /* حاوية شاشة القفل */
-        .lock-screen {
-            height: 100%;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
             display: flex;
-            flex-direction: column;
             justify-content: center;
-            align-items: center;
-            position: relative;
         }
-
-        /* تصميم الساعة والتاريخ اللي تحت */
-        #datetime {
-            position: absolute;
-            bottom: 15px; /* المسافة من أسفل الشاشة */
-            font-size: 10px; /* حجم الخط صغير جداً */
-            opacity: 0.15; /* تقليل الشفافية عشان مايكونش باين أوي */
-            letter-spacing: 1px;
-            user-select: none; /* عشان المستخدم ميعرفش يحدد النص */
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
         }
-
-        /* عنصر تجريبي في نص الشاشة (ممكن تمسحه) */
-        .main-content {
-            font-size: 24px;
-            opacity: 0.8;
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #e60000; /* لون فودافون */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #cc0000;
+        }
+        .hidden {
+            display: none;
+        }
+        .note {
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+            margin-top: 15px;
         }
     </style>
 </head>
 <body>
 
-    <div class="lock-screen">
-        <!-- محتوى شاشة القفل الرئيسي (تقدر تحط باسورد أو صورة هنا) -->
-        <div class="main-content">
-            🔒 اسحب للأعلى لفتح الشاشة
-        </div>
-
-        <!-- الجزء الخاص بالتاريخ والساعة -->
-        <div id="datetime"></div>
+<div class="container">
+    <h2>خدمة التحويلات</h2>
+    
+    <div class="form-group">
+        <label for="transferType">اختر نوع التحويل:</label>
+        <select id="transferType" onchange="toggleForms()">
+            <option value="vc-to-vc">فودافون كاش إلى فودافون كاش</option>
+            <option value="vc-to-insta">فودافون كاش إلى إنستاباي (عبر وسيط)</option>
+        </select>
     </div>
 
-    <script>
-        function updateDateTime() {
-            const now = new Date();
-            
-            // خيارات تنسيق الوقت والتاريخ (بالعربي)
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            };
-            
-            const formattedDateTime = now.toLocaleDateString('ar-EG', options);
-            
-            // عرض النص في الشاشة
-            document.getElementById('datetime').textContent = formattedDateTime;
-        }
+    <!-- فورم فودافون كاش إلى فودافون كاش -->
+    <form id="form-vc-to-vc" onsubmit="processTransfer(event)">
+        <div class="form-group">
+            <label>رقم المرسل (فودافون كاش):</label>
+            <input type="text" placeholder="010XXXXXXXX" required pattern="^010[0-9]{8}$" title="يجب أن يكون رقم فودافون صحيح">
+        </div>
+        <div class="form-group">
+            <label>رقم المستلم (فودافون كاش):</label>
+            <input type="text" placeholder="010XXXXXXXX" required pattern="^010[0-9]{8}$">
+        </div>
+        <div class="form-group">
+            <label>المبلغ (جنيه مصري):</label>
+            <input type="number" min="10" placeholder="أدخل المبلغ" required>
+        </div>
+        <button type="submit">تنفيذ التحويل</button>
+    </form>
 
-        // تشغيل الدالة أول مرة عشان تظهر فوراً
-        updateDateTime();
-        
-        // تحديث الوقت كل دقيقة (60000 مللي ثانية)
-        setInterval(updateDateTime, 60000);
-    </script>
+    <!-- فورم فودافون كاش إلى إنستاباي -->
+    <form id="form-vc-to-insta" class="hidden" onsubmit="processTransfer(event)">
+        <div class="form-group">
+            <label>رقم المرسل (فودافون كاش):</label>
+            <input type="text" placeholder="010XXXXXXXX" required pattern="^010[0-9]{8}$">
+        </div>
+        <div class="form-group">
+            <label>عنوان إنستاباي للمستلم (IPA) أو رقم الهاتف:</label>
+            <input type="text" placeholder="user@instapay أو رقم هاتف" required>
+        </div>
+        <div class="form-group">
+            <label>المبلغ (جنيه مصري):</label>
+            <input type="number" min="10" placeholder="أدخل المبلغ" required>
+        </div>
+        <button type="submit" style="background-color: #6a1b9a;">طلب تحويل لإنستاباي</button>
+    </form>
+
+    <p class="note">ملاحظة: هذا النموذج لجمع بيانات الطلب فقط، سيتم توجيهك لصفحة الدفع أو التواصل مع الدعم لإتمام التحويل.</p>
+</div>
+
+<script>
+    function toggleForms() {
+        const type = document.getElementById("transferType").value;
+        const vcForm = document.getElementById("form-vc-to-vc");
+        const instaForm = document.getElementById("form-vc-to-insta");
+
+        if (type === "vc-to-vc") {
+            vcForm.classList.remove("hidden");
+            instaForm.classList.add("hidden");
+        } else {
+            vcForm.classList.add("hidden");
+            instaForm.classList.remove("hidden");
+        }
+    }
+
+    function processTransfer(event) {
+        event.preventDefault();
+        // هنا يتم كتابة الكود الخاص بإرسال البيانات للسيرفر (Backend)
+        alert("تم استلام طلبك! (في التطبيق الحقيقي سيتم توجيهك للدفع الآن)");
+    }
+</script>
+
 </body>
 </html>
