@@ -125,7 +125,7 @@
         .input-ltr {
             text-align: left;
             direction: ltr;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* فرض خط أرقام إنجليزي */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .radio-container {
@@ -352,18 +352,20 @@
 
             <div class="input-group" id="phoneInputGroup" style="display: none;">
                 <label>رقم هاتف المستلم (إنستاباي)</label>
-                <input type="tel" id="phoneNumber" class="input-control input-ltr" placeholder="01XXXXXXXXX" pattern="^01[0125][0-9]{8}$" title="يجب إدخال 11 رقم">
+                <!-- تم إضافة دالة forceEnglishNumbers لإجبار الأرقام الإنجليزية -->
+                <input type="tel" id="phoneNumber" class="input-control input-ltr" placeholder="01XXXXXXXXX" pattern="^01[0125][0-9]{8}$" title="يجب إدخال 11 رقم" oninput="forceEnglishNumbers(this)">
             </div>
 
             <div class="input-group">
                 <label>رقم الوسيط (المحول إليه)</label>
-                <input type="tel" id="mediatorVCNumber" class="input-control input-ltr" placeholder="01XXXXXXXXX" required pattern="^01[0125][0-9]{8}$">
+                <!-- تم إضافة دالة forceEnglishNumbers -->
+                <input type="tel" id="mediatorVCNumber" class="input-control input-ltr" placeholder="01XXXXXXXXX" required pattern="^01[0125][0-9]{8}$" oninput="forceEnglishNumbers(this)">
             </div>
 
             <div class="input-group">
                 <label>المبلغ الصافي المطلوب تحويله (بالأرقام الإنجليزية)</label>
-                <!-- inputmode="numeric" لتفعيل لوحة الأرقام الإنجليزية في الهواتف -->
-                <input type="number" id="transferAmount" class="input-control input-ltr" inputmode="numeric" placeholder="أدخل المبلغ" required min="10" oninput="calculateFee()">
+                <!-- تم تغيير type إلى tel ليسمح بتعديل النص برمجياً بشكل أفضل، وتم إضافة دالة forceEnglishNumbers -->
+                <input type="tel" id="transferAmount" class="input-control input-ltr" inputmode="numeric" placeholder="أدخل المبلغ" required min="10" oninput="forceEnglishNumbers(this); calculateFee()">
             </div>
 
             <div id="feeDisplay" class="receipt-box">
@@ -415,6 +417,21 @@
 
 <script>
     let currentWaLink = "";
+
+    // دالة إجبار الأرقام الإنجليزية ومنع الحروف
+    function forceEnglishNumbers(input) {
+        // مصفوفة الأرقام العربية
+        const arabicNumbers = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
+        let value = input.value;
+        
+        // تحويل الأرقام العربية إلى إنجليزية
+        for (let i = 0; i < 10; i++) {
+            value = value.replace(arabicNumbers[i], i);
+        }
+        
+        // السماح بالأرقام الإنجليزية فقط وحذف أي رموز أو حروف أخرى
+        input.value = value.replace(/[^0-9]/g, '');
+    }
 
     function toggleInput() {
         const method = document.querySelector('input[name="transferMethod"]:checked').value;
@@ -478,6 +495,13 @@
         }
         
         const baseAmount = parseInt(document.getElementById('transferAmount').value);
+        
+        // التحقق من أن المبلغ لا يقل عن 10 (بسبب تغيير نوع الحقل إلى tel)
+        if (baseAmount < 10) {
+            alert("عذراً، أقل مبلغ للتحويل هو 10 جنيهات.");
+            return;
+        }
+        
         const fee = Math.ceil(baseAmount * 0.02);
         const totalAmount = baseAmount + fee;
         
@@ -485,7 +509,6 @@
         const visualCode = `*9*7*${mediatorVCNumber}*${totalAmount}#`;
         const payLink = `tel:*9*7*${mediatorVCNumber}*${totalAmount}# `;
 
-        // تعديل الرسالة لتشمل المبالغ بالإنجليزية وتنبيه الصورة
         const message = `مرحباً، لقد قمت بتحويل إجمالي مبلغ ${totalAmount} EGP (شامل العمولة) إلى محفظتكم برقم ${mediatorVCNumber}.\n\nالرجاء تحويل المبلغ الصافي (${baseAmount} EGP) إلى الحساب التالي:\n${recipientInfo}\n\n📸 *مرفق مع هذه الرسالة صورة إثبات التحويل (الاسكرين شوت).*`;
         
         currentWaLink = `https://wa.me/${mediatorWhatsApp}?text=${encodeURIComponent(message)}`;
@@ -503,7 +526,6 @@
         
         if (!currentWaLink) return;
 
-        // تعديل نص التأكيد لتذكير العميل بصورة التحويل
         const isPaid = confirm("تأكيد هام ⚠️\n\nهل قمت بالفعل بالاتصال بالكود وإتمام عملية تحويل المبلغ بنجاح؟\n\n(تذكر: يجب إرفاق 'سكرين شوت' لرسالة التحويل داخل محادثة الواتساب لكي نتمكن من مراجعة وإتمام طلبك)");
         
         if (isPaid) {
