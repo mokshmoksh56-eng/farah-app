@@ -92,6 +92,9 @@
             padding: 8px 15px; 
             font-size: 14px; 
             border-radius: 6px;
+            color: white;
+            border: none;
+            cursor: pointer;
         }
 
         @keyframes pulse { 
@@ -144,8 +147,8 @@
 </div>
 
 <script>
-    // أسماء فريق العمل لفرز المهام تلقائياً
-    const teamMembers = ['محمد عبد العظيم', 'ميدو', 'محفوظ', 'أميرة'];
+    // قائمة الأسماء المعرفة مسبقاً
+    const teamMembers = ['محمد عبد العظيم', 'ميدو', 'محفوظ', 'أميرة', 'أحمد', 'محمود', 'يوسف', 'مريم', 'أسماء']; 
     
     let notesData = JSON.parse(localStorage.getItem('azemaaNotes')) || [];
 
@@ -157,33 +160,41 @@
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let isRecording = false;
+    
+    let originalText = ""; 
+    let sessionFinalText = ""; 
 
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.lang = 'ar-EG'; 
         recognition.continuous = true;
-        recognition.interimResults = true; // حساس للصوت ولحظي
+        recognition.interimResults = true; 
 
         recognition.onstart = () => {
             startBtn.textContent = "جاري الاستماع... 🛑";
             startBtn.classList.add("recording");
+            
+            originalText = noteBox.value;
+            if (originalText && !originalText.endsWith(" ")) {
+                originalText += " ";
+            }
+            sessionFinalText = ""; 
         };
 
         recognition.onresult = (event) => {
-            let finalTranscript = '';
-            let interimTranscript = '';
+            let sessionInterimText = '';
             
+            // قراءة الكلمات وتصنيفها كـ نهائية أو مؤقتة
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript + " ";
+                    sessionFinalText += event.results[i][0].transcript;
                 } else {
-                    interimTranscript += event.results[i][0].transcript;
+                    sessionInterimText += event.results[i][0].transcript;
                 }
             }
             
-            if (finalTranscript !== '') {
-                noteBox.value += finalTranscript;
-            }
+            // دمج النص النهائي مع المؤقت بدون تكرار
+            noteBox.value = originalText + sessionFinalText + sessionInterimText;
         };
 
         recognition.onend = () => {
@@ -214,6 +225,7 @@
         let assignedPerson = "عام";
         
         for (let name of teamMembers) {
+            // التحقق من وجود الاسم في النص
             if (text.includes(name)) {
                 assignedPerson = name;
                 break;
@@ -231,6 +243,8 @@
         localStorage.setItem('azemaaNotes', JSON.stringify(notesData));
         
         noteBox.value = "";
+        originalText = ""; 
+        sessionFinalText = ""; 
         renderTables();
     });
 
