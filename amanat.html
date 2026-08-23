@@ -11,10 +11,6 @@
             margin: 0; 
             padding: 20px; 
             color: #1c1e21; 
-            /* لمنع تحديد النص بالغلط أثناء الضغط المطول */
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
         }
         .container { 
             max-width: 900px; 
@@ -34,9 +30,9 @@
         
         .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
         
-        /* زرار شبه ميكروفون الواتساب */
+        /* تصميم الزر */
         #start-btn { 
-            background-color: #25D366; 
+            background-color: #1877f2; 
             color: white; 
             padding: 20px; 
             font-size: 20px; 
@@ -44,14 +40,14 @@
             border-radius: 50px; 
             cursor: pointer; 
             font-weight: bold; 
-            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
-            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(24, 119, 242, 0.3);
+            transition: all 0.3s ease;
             width: 100%;
         }
-        /* شكل الزرار وهو مضغوط (بيسجل) */
+        /* شكل الزر أثناء التسجيل */
         #start-btn.recording { 
             background-color: #e41e3f !important; 
-            transform: scale(0.97);
+            animation: pulse 1.5s infinite;
             box-shadow: 0 4px 20px rgba(228, 30, 63, 0.5);
         }
         
@@ -68,7 +64,7 @@
         textarea:focus { border-color: #1877f2; outline: none; }
         
         #save-btn { 
-            background-color: #1877f2; 
+            background-color: #25D366; 
             color: white; 
             padding: 15px 30px; 
             font-size: 18px; 
@@ -96,7 +92,13 @@
         th { background-color: #f5f6f7; color: #606770; }
         
         .badge { background-color: #ff9f43; color: white; padding: 5px 10px; border-radius: 20px; font-weight: bold; }
-        .delete-btn { background-color: #e41e3f; padding: 8px 15px; font-size: 13px; border-radius: 6px; color: white; border: none; }
+        .delete-btn { background-color: #e41e3f; padding: 8px 15px; font-size: 13px; border-radius: 6px; color: white; border: none; cursor: pointer; }
+
+        @keyframes pulse { 
+            0% { transform: scale(1); } 
+            50% { transform: scale(0.97); } 
+            100% { transform: scale(1); } 
+        }
     </style>
 </head>
 <body>
@@ -107,9 +109,8 @@
     </div>
     
     <div class="controls">
-        <!-- زر المايك يعمل بالضغط المطول -->
-        <button id="start-btn">اضغط باستمرار للتحدث 🎙️</button>
-        <textarea id="note-box" placeholder="الكلام هيظهر هنا بعد ما ترفع صباعك..."></textarea>
+        <button id="start-btn">اضغط مرة واحدة وتحدث 🎙️</button>
+        <textarea id="note-box" placeholder="الكلام هيظهر هنا بمجرد ما تخلص الجملة..."></textarea>
         <button id="save-btn">حفظ وتوزيع في الجداول 💾</button>
     </div>
 
@@ -149,55 +150,48 @@
         recognition = new SpeechRecognition();
         recognition.lang = 'ar-EG'; 
         
-        // إيقاف التخمين اللحظي تماماً لإنهاء مشكلة التكرار على الأندرويد
+        // إيقاف التخمين اللحظي لمنع مشكلة التكرار نهائياً
         recognition.continuous = true;
         recognition.interimResults = false; 
 
+        recognition.onstart = () => {
+            isRecording = true;
+            startBtn.textContent = "جاري الاستماع... (اضغط للإيقاف أو اسكت قليلاً) 🛑";
+            startBtn.classList.add("recording");
+        };
+
         recognition.onresult = (event) => {
             let finalText = '';
+            // سحب الكلام النهائي الصافي
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 finalText += event.results[i][0].transcript + " ";
             }
-            // إضافة النص الصافي للمربع بدون مسح القديم
+            // إضافة النص الصافي للمربع بدون مسح ما تم كتابته مسبقاً
             if(finalText.trim() !== "") {
                 noteBox.value += finalText;
             }
         };
 
+        // عندما يتوقف المايك (سواء ضغطت إيقاف أو سكتّ لفترة)
+        recognition.onend = () => {
+            isRecording = false;
+            startBtn.textContent = "اضغط مرة واحدة وتحدث 🎙️";
+            startBtn.classList.remove("recording");
+        };
+
         recognition.onerror = (e) => console.log("Error: " + e.error);
 
-        // وظيفة تشغيل المايك
-        const startMic = (e) => {
+        // تشغيل وإيقاف المايك بضغطة واحدة (Click)
+        startBtn.addEventListener('click', (e) => {
             e.preventDefault(); 
             if (!isRecording) {
                 try {
                     recognition.start();
-                    isRecording = true;
-                    startBtn.textContent = "جاري الاستماع... (ارفع اصبعك) 🛑";
-                    startBtn.classList.add("recording");
                 } catch(err) {}
-            }
-        };
-
-        // وظيفة إيقاف المايك
-        const stopMic = (e) => {
-            e.preventDefault();
-            if (isRecording) {
+            } else {
                 recognition.stop();
-                isRecording = false;
-                startBtn.textContent = "اضغط باستمرار للتحدث 🎙️";
-                startBtn.classList.remove("recording");
             }
-        };
-
-        // تفعيل الضغط المطول للموبايل (Touch) والكمبيوتر (Mouse)
-        startBtn.addEventListener('touchstart', startMic, {passive: false});
-        startBtn.addEventListener('touchend', stopMic, {passive: false});
-        startBtn.addEventListener('touchcancel', stopMic, {passive: false});
-        
-        startBtn.addEventListener('mousedown', startMic);
-        startBtn.addEventListener('mouseup', stopMic);
-        startBtn.addEventListener('mouseleave', stopMic); // لو سحب صباعه بره الزرار
+        });
         
     } else {
         startBtn.disabled = true;
