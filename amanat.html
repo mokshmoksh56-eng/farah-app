@@ -147,7 +147,7 @@
 </div>
 
 <script>
-    // قائمة الأسماء المعرفة مسبقاً
+    // قائمة الأسماء
     const teamMembers = ['محمد عبد العظيم', 'ميدو', 'محفوظ', 'أميرة', 'أحمد', 'محمود', 'يوسف', 'مريم', 'أسماء']; 
     
     let notesData = JSON.parse(localStorage.getItem('azemaaNotes')) || [];
@@ -160,9 +160,7 @@
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let isRecording = false;
-    
     let originalText = ""; 
-    let sessionFinalText = ""; 
 
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
@@ -174,27 +172,24 @@
             startBtn.textContent = "جاري الاستماع... 🛑";
             startBtn.classList.add("recording");
             
+            // بنحفظ الكلام اللي كان مكتوب قبل ما نضغط المايك
             originalText = noteBox.value;
             if (originalText && !originalText.endsWith(" ")) {
                 originalText += " ";
             }
-            sessionFinalText = ""; 
         };
 
         recognition.onresult = (event) => {
-            let sessionInterimText = '';
+            let currentTranscript = '';
             
-            // قراءة الكلمات وتصنيفها كـ نهائية أو مؤقتة
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    sessionFinalText += event.results[i][0].transcript;
-                } else {
-                    sessionInterimText += event.results[i][0].transcript;
-                }
+            // الطريقة الجديدة: بنقرأ كل الكلام اللي اتسجل في الجلسة دي من الصفر كل مرة
+            // عشان نمنع متصفح الموبايل إنه يكرر الكلمات
+            for (let i = 0; i < event.results.length; ++i) {
+                currentTranscript += event.results[i][0].transcript;
             }
             
-            // دمج النص النهائي مع المؤقت بدون تكرار
-            noteBox.value = originalText + sessionFinalText + sessionInterimText;
+            // بنعرض الكلام القديم + الكلام الجديد الصافي
+            noteBox.value = originalText + currentTranscript;
         };
 
         recognition.onend = () => {
@@ -225,7 +220,6 @@
         let assignedPerson = "عام";
         
         for (let name of teamMembers) {
-            // التحقق من وجود الاسم في النص
             if (text.includes(name)) {
                 assignedPerson = name;
                 break;
@@ -244,7 +238,6 @@
         
         noteBox.value = "";
         originalText = ""; 
-        sessionFinalText = ""; 
         renderTables();
     });
 
