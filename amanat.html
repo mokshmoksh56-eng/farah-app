@@ -178,23 +178,24 @@
         .tag-measure { background: #e0e7ff; color: #4f46e5; }
         .tag-money { background: #d1fae5; color: #059669; }
 
-        /* هنا التعديل لضمان تمدد الكارت مع الكلام الطويل */
         .card-body { 
             font-size: 14px; 
             line-height: 1.6; 
             font-weight: 700; 
             margin-bottom: 12px; 
-            white-space: pre-wrap; /* تحافظ على السطور الجديدة وتسمح بالتمدد */
-            word-wrap: break-word; /* تمنع خروج الكلام بره الكارت */
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
 
         .card-actions { display: flex; gap: 8px; }
-        .btn-done, .btn-delete { 
+        .btn-done, .btn-delete, .btn-edit { 
             padding: 8px; font-size: 12px; border-radius: 6px; border: none; 
             cursor: pointer; font-weight: 800; font-family: 'Cairo', sans-serif; 
         }
         .btn-done { background: #d1fae5; color: #059669; flex-grow: 1; border: 1px solid #a7f3d0;}
-        .btn-delete { background: #fee2e2; color: var(--danger); width: 60px; border: 1px solid #fecaca;}
+        /* إضافة خصائص زر التعديل */
+        .btn-edit { background: #e0f2fe; color: #0284c7; width: 50px; border: 1px solid #bae6fd;}
+        .btn-delete { background: #fee2e2; color: var(--danger); width: 50px; border: 1px solid #fecaca;}
 
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.98); } 100% { transform: scale(1); } }
     </style>
@@ -266,7 +267,6 @@
     const startBtn = document.getElementById('start-btn');
     const saveBtn = document.getElementById('save-btn');
     
-    // كود التمدد التلقائي لمربع النص
     noteBox.addEventListener('input', function() {
         this.style.height = 'auto'; 
         this.style.height = (this.scrollHeight) + 'px'; 
@@ -295,7 +295,6 @@
             }
             if(finalText.trim() !== "") {
                 noteBox.value += finalText;
-                // تمديد المربع تلقائياً عند إضافة النص بالصوت
                 noteBox.style.height = 'auto';
                 noteBox.style.height = (noteBox.scrollHeight) + 'px';
             }
@@ -324,7 +323,7 @@
 
     saveBtn.addEventListener('click', () => {
         const text = noteBox.value.trim();
-        if (!text) return alert("برجاء التحدث أولاً!");
+        if (!text) return alert("برجاء التحدث أو الكتابة أولاً!");
 
         let assignedPerson = "عام";
         for (let name of teamMembers) {
@@ -363,8 +362,34 @@
         }
     }
 
+    // إضافة وظيفة التعديل
+    function editNote(id) {
+        let note = notesData.find(n => n.id === id);
+        if (note) {
+            let newText = prompt("قم بتعديل تفاصيل المهمة:", note.text);
+            
+            // التأكد من أن المستخدم أدخل نص ولم يضغط على إلغاء
+            if (newText !== null && newText.trim() !== "") {
+                note.text = newText.trim();
+                
+                // إعادة تقييم الشخص المسؤول بناءً على النص الجديد
+                let assignedPerson = "عام";
+                for (let name of teamMembers) {
+                    if (note.text.includes(name)) { assignedPerson = name; break; }
+                }
+                note.person = assignedPerson;
+                
+                // إعادة تقييم العلامات (Tags)
+                note.tags = analyzeText(note.text);
+
+                localStorage.setItem('azemaaProAI', JSON.stringify(notesData));
+                renderApp(currentViewData);
+            }
+        }
+    }
+
     function deleteNote(id) {
-        if(confirm("تأكيد الحذف؟")) {
+        if(confirm("هل أنت متأكد من حذف هذه المهمة؟")) {
             notesData = notesData.filter(n => n.id !== id);
             localStorage.setItem('azemaaProAI', JSON.stringify(notesData));
             
@@ -416,7 +441,7 @@
         tasksList.innerHTML = ""; 
 
         if (dataToRender.length === 0) {
-            tasksList.innerHTML = "<p style='text-align:center; color:#94a3b8; font-size:14px; padding:20px;'>لا توجد بيانات...</p>";
+            tasksList.innerHTML = "<p style='text-align:center; color:#94a3b8; font-size:14px; padding:20px;'>لا توجد مهام...</p>";
             return;
         }
 
@@ -426,6 +451,7 @@
             
             const bgColor = cardColors[index % cardColors.length];
             
+            // تمت إضافة زر التعديل هنا 👇
             const cardHTML = `
                 <div class="task-card ${isDone ? 'completed' : ''}" style="background-color: ${bgColor};">
                     <div class="card-header">
@@ -438,7 +464,8 @@
                         <button class="btn-done" onclick="toggleStatus(${note.id})">
                             ${isDone ? '↩️ تراجع' : '✅ تم الإنجاز'}
                         </button>
-                        <button class="btn-delete" onclick="deleteNote(${note.id})">🗑️</button>
+                        <button class="btn-edit" onclick="editNote(${note.id})" title="تعديل المهمة">✏️</button>
+                        <button class="btn-delete" onclick="deleteNote(${note.id})" title="حذف المهمة">🗑️</button>
                     </div>
                 </div>
             `;
