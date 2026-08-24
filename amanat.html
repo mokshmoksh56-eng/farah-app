@@ -7,360 +7,314 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        :root { --primary: #2563eb; --secondary: #3b82f6; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --dark: #0f172a; --dark-lighter: #1e293b; --bg-color: #f8fafc; --card-bg: #ffffff; --text-main: #1e293b; --text-muted: #64748b; }
-        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-color); margin: 0; padding: 0; color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
-        
-        /* القائمة الجانبية (متجاوبة مع المحمول) */
-        .sidebar { 
-            width: 280px; background: var(--dark); color: white; display: flex; flex-direction: column; 
-            box-shadow: -4px 0 15px rgba(0,0,0,0.1); z-index: 1000;
-            transition: right 0.3s ease-in-out;
-            position: fixed; top: 0; right: -280px; height: 100vh; /* مخفية افتراضياً على الموبايل */
+        :root {
+            --primary: #2563eb;
+            --secondary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
         }
-        .sidebar.open { right: 0; } /* إظهار القائمة */
+
+        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-color); margin: 0; padding: 15px; color: var(--text-main); }
+        .container { max-width: 1000px; margin: auto; background: var(--card-bg); padding: 30px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); }
         
-        .sidebar-header { padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-header h1 { margin: 0; font-size: 28px; font-weight: 900; color: #fff; background: linear-gradient(45deg, var(--secondary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .sidebar-header p { margin: 5px 0 0 0; font-size: 14px; color: #94a3b8; }
-        .nav-menu { display: flex; flex-direction: column; padding: 20px 0; flex-grow: 1; }
-        .nav-item { padding: 15px 25px; color: #cbd5e1; text-decoration: none; font-size: 18px; font-weight: 700; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px; border-right: 4px solid transparent; }
-        .nav-item:hover, .nav-item.active { background: var(--dark-lighter); color: white; border-right-color: var(--primary); }
-
-        /* الشفافية خلف القائمة في وضع المحمول */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none; opacity: 0; transition: opacity 0.3s; }
-        .overlay.active { display: block; opacity: 1; }
-
-        /* شريط المحمول العلوي */
-        .mobile-header { display: flex; align-items: center; justify-content: space-between; background: white; padding: 15px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 100; position: sticky; top: 0;}
-        .mobile-header h2 { margin: 0; font-size: 20px; font-weight: 900; background: linear-gradient(45deg, var(--secondary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .menu-toggle { background: none; border: none; font-size: 24px; color: var(--dark); cursor: pointer; padding: 0; }
-
-        /* مساحة العمل */
-        .main-wrapper { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; width: 100%; }
-        .main-content { flex-grow: 1; padding: 20px; overflow-y: auto; position: relative; }
+        .header { text-align: center; margin-bottom: 25px; }
+        h1 { margin: 0 0 5px 0; font-size: 34px; font-weight: 900; background: linear-gradient(45deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p.subtitle { color: var(--text-muted); font-size: 16px; margin: 0; font-weight: 700; }
         
-        .view-section { display: none; animation: fadeIn 0.4s ease-in-out; }
-        .view-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .section-title { font-size: 20px; font-weight: 900; margin-bottom: 20px; border-right: 5px solid var(--primary); padding-right: 12px; }
+        /* لوحة الإحصائيات العامة */
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: #fff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 16px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.3s; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+        .stat-value { font-size: 28px; font-weight: 900; margin-bottom: 5px; }
+        .stat-title { font-size: 14px; font-weight: 700; color: var(--text-muted); }
+        
+        .val-total { color: var(--primary); }
+        .val-done { color: var(--success); }
+        .val-urgent { color: var(--danger); }
+        .val-pending { color: var(--warning); }
 
-        /* إدخال المهام */
-        .controls-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 25px; border: 1px solid #e2e8f0; }
-        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        #start-btn, #camera-btn { padding: 12px; font-size: 14px; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; flex: 1; transition: 0.3s; font-family: inherit; }
-        #start-btn { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; }
-        #start-btn.recording { background: linear-gradient(135deg, var(--danger) 0%, #f87171 100%); animation: pulse 1.5s infinite; }
-        #camera-btn { background: #e2e8f0; color: var(--text-main); }
-        #camera-btn:hover { background: #cbd5e1; }
-        #image-preview-container { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-        textarea { padding: 15px; font-size: 15px; border-radius: 16px; border: 2px solid #e2e8f0; width: 100%; box-sizing: border-box; min-height: 90px; font-family: inherit; margin-bottom: 15px; resize: vertical;}
-        textarea:focus { outline: none; border-color: var(--primary); }
-        #save-btn { background: var(--success); color: white; padding: 15px; font-size: 16px; border: none; border-radius: 16px; cursor: pointer; font-weight: 800; width: 100%; font-family: inherit; transition: 0.3s;}
+        /* قسم التقارير السنوية */
+        .report-section { background: #f1f5f9; padding: 25px; border-radius: 16px; margin-bottom: 30px; border: 2px dashed #cbd5e1; }
+        .report-header { font-size: 20px; font-weight: 900; margin-bottom: 15px; color: var(--dark); display: flex; align-items: center; gap: 8px;}
+        .report-controls { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        @media (max-width: 600px) { .report-controls { grid-template-columns: 1fr; } }
+        
+        select, input[type="text"] { padding: 15px; font-size: 16px; border-radius: 12px; border: 2px solid #e2e8f0; font-family: 'Cairo', sans-serif; font-weight: 600; width: 100%; box-sizing: border-box; transition: 0.3s; }
+        select:focus, input[type="text"]:focus { border-color: var(--primary); outline: none; }
+        
+        .btn-report { background: var(--dark); color: white; padding: 15px; font-size: 16px; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; font-family: 'Cairo', sans-serif; transition: 0.3s;}
+        .btn-report:hover { background: #0f172a; }
 
-        /* البطاقات */
-        .list-container { display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px;}
-        .task-card { background: var(--card-bg); border: 1px solid #e2e8f0; border-radius: 16px; transition: 0.3s; overflow: hidden; }
-        .task-card.completed .card-header-compact { background: #f8fafc; opacity: 0.7; }
-        .task-card.completed .task-text { text-decoration: line-through; color: var(--text-muted); }
-        .card-header-compact { padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; background: #fff; transition: 0.2s; }
-        .compact-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
-        .badge { background: #dbeafe; color: var(--primary); padding: 4px 10px; border-radius: 10px; font-weight: 800; font-size: 13px; }
-        .task-date { font-size: 12px; color: var(--text-muted); font-weight: 700; }
-        .toggle-icon { font-size: 16px; transition: 0.3s; color: var(--text-muted); }
-        .task-card.expanded .toggle-icon { transform: rotate(180deg); }
-        .card-details { padding: 0 15px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out, padding 0.3s ease; background: #fafafa; }
-        .task-card.expanded .card-details { padding: 15px; max-height: 1500px; border-top: 1px solid #e2e8f0; }
-        .task-image-display { max-width: 100%; max-height: 250px; border-radius: 10px; margin-bottom: 12px; border: 1px solid #e2e8f0; object-fit: contain;}
-        .task-text { font-size: 15px; line-height: 1.6; font-weight: 700; margin-bottom: 15px; white-space: pre-wrap;}
-        .tags-container { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;}
-        .ai-tag { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
+        .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+        #start-btn { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; padding: 18px; font-size: 20px; border: none; border-radius: 50px; cursor: pointer; font-weight: 800; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3); transition: 0.3s; font-family: 'Cairo', sans-serif; }
+        #start-btn.recording { background: linear-gradient(135deg, var(--danger) 0%, #f87171 100%); animation: pulse 1.5s infinite; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); }
+        
+        textarea { padding: 20px; font-size: 18px; border-radius: 16px; border: 2px solid #e2e8f0; background-color: #fff; resize: vertical; min-height: 90px; width: 100%; box-sizing: border-box; font-family: 'Cairo', sans-serif; font-weight: 600; }
+        
+        .action-row { display: flex; gap: 10px; }
+        #save-btn { background: var(--success); color: white; padding: 15px; font-size: 18px; border: none; border-radius: 16px; cursor: pointer; font-weight: 800; flex-grow: 1; font-family: 'Cairo', sans-serif; }
+
+        .section-title { font-size: 22px; font-weight: 900; margin-bottom: 20px; color: var(--text-main); border-right: 5px solid var(--primary); padding-right: 12px; display: flex; justify-content: space-between; align-items: center;}
+        
+        /* الكروت */
+        .list-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
+        .task-card { background: var(--card-bg); border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; transition: 0.3s; position: relative; overflow: hidden; }
+        .task-card::before { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 6px; background: var(--secondary); border-radius: 0 16px 16px 0; }
+        .task-card.completed { background: #f8fafc; opacity: 0.7; }
+        .task-card.completed::before { background: var(--success); }
+        .task-card.completed .card-body { text-decoration: line-through; color: var(--text-muted); }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+        .badge { background: #dbeafe; color: var(--primary); padding: 5px 12px; border-radius: 12px; font-weight: 800; font-size: 14px; }
+        
+        .tags-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;}
+        .ai-tag { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; }
         .tag-urgent { background: #fee2e2; color: var(--danger); }
         .tag-measure { background: #e0e7ff; color: #4f46e5; }
         .tag-money { background: #d1fae5; color: #059669; }
+
+        .task-date { font-size: 13px; color: var(--text-muted); font-weight: 700; }
+        .card-body { font-size: 18px; line-height: 1.6; font-weight: 700; margin-bottom: 15px; }
+
         .card-actions { display: flex; gap: 10px; }
-        .btn-done, .btn-delete { padding: 10px; font-size: 13px; border-radius: 10px; border: none; cursor: pointer; font-weight: 800; font-family: inherit; flex: 1; }
-        .btn-done { background: #d1fae5; color: #059669; }
-        .btn-delete { background: #fee2e2; color: var(--danger); flex: 0.4; }
+        .btn-done { background: #d1fae5; color: #059669; padding: 8px 16px; font-size: 14px; border-radius: 10px; border: none; cursor: pointer; font-weight: 800; font-family: 'Cairo', sans-serif; flex-grow: 1;}
+        .btn-delete { background: #fee2e2; color: var(--danger); padding: 8px 16px; font-size: 14px; border-radius: 10px; border: none; cursor: pointer; font-weight: 800; font-family: 'Cairo', sans-serif; }
 
-        /* التقارير */
-        .report-controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
-        select, input[type="text"] { padding: 12px; font-size: 14px; border-radius: 12px; border: 2px solid #e2e8f0; width: 100%; box-sizing: border-box; font-family: inherit; font-weight: 600;}
-        .btn-report { background: var(--dark); color: white; padding: 12px; font-size: 15px; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; font-family: inherit;}
-        .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: #fff; border: 1px solid #e2e8f0; padding: 15px 5px; border-radius: 12px; text-align: center; }
-        .stat-value { font-size: 22px; font-weight: 900; margin-bottom: 2px; }
-        .val-total { color: var(--primary); } .val-done { color: var(--success); } .val-pending { color: var(--warning); }
-        .stat-title { font-size: 12px; font-weight: 700; color: var(--text-muted); }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.98); } 100% { transform: scale(1); } }
-        #camera-input { display: none; }
-
-        /* تعديلات شاشات الكمبيوتر (Desktop) */
-        @media (min-width: 992px) {
-            .sidebar { position: static; height: 100vh; }
-            .mobile-header { display: none; }
-            .overlay { display: none !important; }
-            .report-controls { grid-template-columns: 2fr 1fr 1fr; }
-            .main-content { padding: 30px; }
-        }
     </style>
 </head>
 <body>
 
-    <!-- الشفافية الخاصة بالهاتف -->
-    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
-
-    <!-- القائمة الجانبية -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h1>Azemaa proo</h1>
-            <p>إدارة مطابخ فرح</p>
+<div class="container">
+    <div class="header">
+        <h1>Azemaa proo 📊</h1>
+        <p class="subtitle">نظام الإدارة والتقارير - مطابخ فرح</p>
+    </div>
+    
+    <!-- قسم التقارير السنوية للأشخاص والشركات -->
+    <div class="report-section">
+        <div class="report-header">📑 استخراج تقرير سنوي (أشخاص / شركات)</div>
+        <div class="report-controls">
+            <input type="text" id="report-query" placeholder="اكتب اسم الفني، العميل، أو الشركة (مثال: ميدو، شركة الأمل)...">
+            <select id="report-year">
+                <option value="all">كل السنوات</option>
+                <option value="2026" selected>2026</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+            </select>
+            <button class="btn-report" onclick="generateReport()">عرض التقرير 🔍</button>
         </div>
-        <nav class="nav-menu">
-            <div class="nav-item active" onclick="switchView('tasksView', this)">📝 المهام اليومية</div>
-            <div class="nav-item" onclick="switchView('reportsView', this)">📊 التقارير والإحصائيات</div>
-        </nav>
-    </aside>
-
-    <!-- منطقة العمل والمحتوى -->
-    <div class="main-wrapper">
-        <!-- شريط المحمول -->
-        <header class="mobile-header">
-            <button class="menu-toggle" onclick="toggleMenu()">☰</button>
-            <h2>Azemaa proo</h2>
-            <div style="width: 24px;"></div> <!-- للتوازن البصري -->
-        </header>
-
-        <main class="main-content">
-            <!-- قسم المهام اليومية -->
-            <div id="tasksView" class="view-section active">
-                <div class="section-title">إضافة مهمة أو ملاحظة</div>
-                <div class="controls-card">
-                    <div class="btn-group">
-                        <button id="start-btn">🎙️ تسجيل صوتي</button>
-                        <button id="camera-btn">📷 أضف صورة</button>
-                        <input type="file" id="camera-input" accept="image/*" capture="environment">
-                    </div>
-                    <div id="image-preview-container"></div>
-                    <textarea id="note-box" placeholder="سجل ملاحظتك هنا... (المقاسات، الحسابات، أو توجيهات للفنيين)"></textarea>
-                    <button id="save-btn">💾 حفظ المهمة</button>
-                </div>
-                <div class="section-title">📋 أحدث المهام</div>
-                <div id="tasks-list" class="list-container"></div>
-            </div>
-
-            <!-- قسم التقارير -->
-            <div id="reportsView" class="view-section">
-                <div class="section-title">📑 التقارير السنوية</div>
-                <div class="controls-card">
-                    <div class="report-controls">
-                        <input type="text" id="report-query" placeholder="ابحث باسم الفني أو الشركة...">
-                        <select id="report-year">
-                            <option value="all">كل السنوات</option>
-                            <option value="2026" selected>2026</option>
-                            <option value="2025">2025</option>
-                            <option value="2024">2024</option>
-                        </select>
-                        <button class="btn-report" onclick="generateReport()">عرض التقرير 🔍</button>
-                    </div>
-                    <div id="custom-report-stats" class="dashboard" style="display: none;">
-                        <div class="stat-card"><div class="stat-value val-total" id="rep-total">0</div><div class="stat-title">إجمالي</div></div>
-                        <div class="stat-card"><div class="stat-value val-done" id="rep-done">0</div><div class="stat-title">أُنجز</div></div>
-                        <div class="stat-card"><div class="stat-value val-pending" id="rep-pending">0</div><div class="stat-title">متبقي</div></div>
-                    </div>
-                </div>
-                <div class="section-title" id="report-list-title">نتائج التقرير</div>
-                <div id="reports-list" class="list-container"></div>
-            </div>
-        </main>
+        
+        <!-- إحصائيات التقرير المخصص (تظهر عند البحث) -->
+        <div id="custom-report-stats" class="dashboard" style="display: none; margin-bottom: 0; margin-top: 20px;">
+            <div class="stat-card"><div class="stat-value val-total" id="rep-total">0</div><div class="stat-title">إجمالي العمليات</div></div>
+            <div class="stat-card"><div class="stat-value val-done" id="rep-done">0</div><div class="stat-title">تم الإنجاز</div></div>
+            <div class="stat-card"><div class="stat-value val-pending" id="rep-pending">0</div><div class="stat-title">متبقي / قيد التنفيذ</div></div>
+        </div>
     </div>
 
+    <div class="controls">
+        <button id="start-btn">🎙️ اضغط للتسجيل الصوتي</button>
+        <textarea id="note-box" placeholder="سجل ملاحظتك أو المهمة هنا..."></textarea>
+        <div class="action-row">
+            <button id="save-btn">💾 حفظ المهمة</button>
+        </div>
+    </div>
+
+    <!-- زر لإلغاء الفلترة والعودة للعرض الكامل -->
+    <div class="section-title">
+        <span id="list-title">📋 جميع المهام والملاحظات</span>
+        <button id="clear-filter-btn" style="display:none; background:var(--danger); color:white; border:none; padding:5px 15px; border-radius:8px; font-family:'Cairo'; cursor:pointer; font-weight:bold;" onclick="clearReport()">❌ إلغاء التقرير</button>
+    </div>
+    
+    <div id="tasks-list" class="list-container"></div>
+</div>
+
 <script>
-    // --- التحكم في القائمة الجانبية للمحمول ---
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-
-    function toggleMenu() {
-        sidebar.classList.toggle('open');
-        overlay.classList.toggle('active');
-    }
-
-    function switchView(viewId, element) {
-        // تغيير القسم النشط
-        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-        document.getElementById(viewId).classList.add('active');
-        
-        // تغيير الزر النشط في القائمة
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
-        
-        // إغلاق القائمة تلقائياً بعد اختيار قسم (في الموبايل)
-        if (window.innerWidth < 992) { toggleMenu(); }
-
-        if(viewId === 'tasksView') renderList(notesData, 'tasks-list');
-    }
-
-    // --- بقية الأكواد (قاعدة البيانات، الكاميرا، الصوت) ---
     const teamMembers = ['محمد عبد العظيم', 'ميدو', 'محفوظ', 'أميرة', 'أحمد', 'محمود', 'يوسف', 'مريم', 'أسماء']; 
-    let notesData = [];
-    let currentImageBase64 = null;
-    let db;
+    let notesData = JSON.parse(localStorage.getItem('azemaaProAI')) || [];
+    
+    let currentViewData = notesData; 
 
-    const request = indexedDB.open("AzemaaProDB", 1);
-    request.onupgradeneeded = function(event) {
-        db = event.target.result;
-        if (!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath: 'id' });
-    };
-    request.onsuccess = function(event) {
-        db = event.target.result;
-        migrateOldData(); 
-        loadDataFromDB(); 
-    };
-    request.onerror = function(event) { console.error("خطأ:", event.target.error); };
-
-    function migrateOldData() {
-        const oldData = JSON.parse(localStorage.getItem('azemaaProAI'));
-        if (oldData && oldData.length > 0) {
-            const tx = db.transaction('notes', 'readwrite');
-            const store = tx.objectStore('notes');
-            oldData.forEach(note => store.put(note));
-            tx.oncomplete = () => { localStorage.removeItem('azemaaProAI'); loadDataFromDB(); };
-        }
-    }
-
-    function loadDataFromDB() {
-        const tx = db.transaction('notes', 'readonly');
-        const getReq = tx.objectStore('notes').getAll();
-        getReq.onsuccess = function() {
-            notesData = getReq.result.sort((a, b) => b.id - a.id);
-            if(document.getElementById('tasksView').classList.contains('active')) renderList(notesData, 'tasks-list'); else generateReport();
-        };
-    }
-
-    function saveToDB(note) {
-        const tx = db.transaction('notes', 'readwrite');
-        tx.objectStore('notes').put(note);
-        tx.oncomplete = () => loadDataFromDB();
-    }
-
-    function deleteFromDB(id) {
-        const tx = db.transaction('notes', 'readwrite');
-        tx.objectStore('notes').delete(id);
-        tx.oncomplete = () => loadDataFromDB();
-    }
-
-    // الكاميرا
-    const cameraInput = document.getElementById('camera-input');
-    const cameraBtn = document.getElementById('camera-btn');
-    const imagePreviewContainer = document.getElementById('image-preview-container');
-    cameraBtn.addEventListener('click', () => cameraInput.click());
-    cameraInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1200; 
-                let scaleSize = 1;
-                if(img.width > MAX_WIDTH) scaleSize = MAX_WIDTH / img.width;
-                canvas.width = img.width * scaleSize; canvas.height = img.height * scaleSize;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                currentImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
-                imagePreviewContainer.innerHTML = `<img src="${currentImageBase64}" style="max-height: 80px; border-radius: 8px; border: 2px solid var(--primary);"><button onclick="clearImage()" style="background:var(--danger); color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:bold;">❌ حذف</button>`;
-            }
-            img.src = event.target.result;
-        }
-        reader.readAsDataURL(file);
-    });
-
-    window.clearImage = function() { currentImageBase64 = null; imagePreviewContainer.innerHTML = ''; cameraInput.value = ''; }
-
-    // الصوت
     const noteBox = document.getElementById('note-box');
     const startBtn = document.getElementById('start-btn');
+    const saveBtn = document.getElementById('save-btn');
+    
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition; let isRecording = false;
+    let recognition;
+    let isRecording = false;
+
     if (SpeechRecognition) {
-        recognition = new SpeechRecognition(); recognition.lang = 'ar-EG'; recognition.continuous = true;
-        recognition.onstart = () => { isRecording = true; startBtn.textContent = "🛑 جاري الاستماع..."; startBtn.classList.add("recording"); };
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ar-EG'; 
+        recognition.continuous = true;
+        recognition.interimResults = false; 
+
+        recognition.onstart = () => {
+            isRecording = true;
+            startBtn.textContent = "🛑 جاري الاستماع للتحليل...";
+            startBtn.classList.add("recording");
+        };
+
         recognition.onresult = (event) => {
             let finalText = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) finalText += event.results[i][0].transcript + " ";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                finalText += event.results[i][0].transcript + " ";
+            }
             if(finalText.trim() !== "") noteBox.value += finalText;
         };
-        recognition.onend = () => { isRecording = false; startBtn.textContent = "🎙️ تسجيل صوتي"; startBtn.classList.remove("recording"); };
-        startBtn.addEventListener('click', (e) => { e.preventDefault(); if (!isRecording) try { recognition.start(); } catch(err) {} else recognition.stop(); });
+
+        recognition.onend = () => {
+            isRecording = false;
+            startBtn.textContent = "🎙️ اضغط للتسجيل الصوتي";
+            startBtn.classList.remove("recording");
+        };
+
+        startBtn.addEventListener('click', (e) => {
+            e.preventDefault(); 
+            if (!isRecording) try { recognition.start(); } catch(err) {} 
+            else recognition.stop();
+        });
     }
 
     function analyzeText(text) {
         let tags = [];
-        if (/(عاجل|بسرعة|ضروري|فورا|حالا)/.test(text)) tags.push({ type: 'urgent', html: '<span class="ai-tag tag-urgent">🔥 عاجل</span>' });
-        if (/(متر|سم|ملي|مقاس|طول|عرض|درفة|قطاع|مفصلة|زجاج|فايبر)/.test(text)) tags.push({ type: 'measure', html: '<span class="ai-tag tag-measure">📏 مقاسات</span>' });
+        if (/(عاجل|بسرعة|ضروري|فورا|حالا)/.test(text)) tags.push({ type: 'urgent', html: '<span class="ai-tag tag-urgent">🔥 عاجل جداً</span>' });
+        if (/(متر|سم|ملي|مقاس|طول|عرض|درفة|قطاع|مفصلة|زجاج|فايبر)/.test(text)) tags.push({ type: 'measure', html: '<span class="ai-tag tag-measure">📏 مقاسات وخامات</span>' });
         if (/(جنيه|الف|حساب|عربون|دفع|باقي|تكلفة|فلوس)/.test(text)) tags.push({ type: 'money', html: '<span class="ai-tag tag-money">💰 ماليات</span>' });
-        if (currentImageBase64) tags.push({ type: 'photo', html: '<span class="ai-tag" style="background:#fef3c7; color:#d97706;">📷 صورة</span>' });
         return tags;
     }
 
-    document.getElementById('save-btn').addEventListener('click', () => {
+    saveBtn.addEventListener('click', () => {
         const text = noteBox.value.trim();
-        if (!text && !currentImageBase64) return alert("برجاء إدخال نص أو إرفاق صورة أولاً!");
+        if (!text) return alert("برجاء التحدث أولاً!");
+
         let assignedPerson = "عام";
-        for (let name of teamMembers) { if (text.includes(name)) { assignedPerson = name; break; } }
+        for (let name of teamMembers) {
+            if (text.includes(name)) { assignedPerson = name; break; }
+        }
+
+        const tags = analyzeText(text);
         const now = new Date();
+        const year = now.getFullYear().toString();
+        const fullDateTime = `${now.toLocaleDateString('ar-EG')} - ${now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+
         const newNote = { 
-            id: Date.now(), text: text, person: assignedPerson,
-            datetime: `${now.toLocaleDateString('ar-EG')} - ${now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 
-            year: now.getFullYear().toString(), status: 'pending', 
-            tags: analyzeText(text), image: currentImageBase64
+            id: Date.now(), 
+            text: text, 
+            person: assignedPerson,
+            datetime: fullDateTime,
+            year: year,
+            status: 'pending',
+            tags: tags
         };
-        saveToDB(newNote); noteBox.value = ""; clearImage();
+        
+        notesData.unshift(newNote);
+        localStorage.setItem('azemaaProAI', JSON.stringify(notesData));
+        noteBox.value = "";
+        clearReport(); 
     });
 
-    function toggleCard(headerElement) { headerElement.parentElement.classList.toggle('expanded'); }
-    function toggleStatus(id) { let note = notesData.find(n => n.id === id); if (note) { note.status = note.status === 'completed' ? 'pending' : 'completed'; saveToDB(note); } }
-    function deleteNote(id) { if(confirm("تأكيد الحذف النهائي؟")) deleteFromDB(id); }
+    function toggleStatus(id) {
+        let note = notesData.find(n => n.id === id);
+        if (note) {
+            note.status = note.status === 'completed' ? 'pending' : 'completed';
+            localStorage.setItem('azemaaProAI', JSON.stringify(notesData));
+            renderApp(currentViewData);
+        }
+    }
+
+    function deleteNote(id) {
+        if(confirm("تأكيد الحذف النهائي؟")) {
+            notesData = notesData.filter(n => n.id !== id);
+            localStorage.setItem('azemaaProAI', JSON.stringify(notesData));
+            
+            currentViewData = currentViewData.filter(n => n.id !== id);
+            renderApp(currentViewData);
+        }
+    }
 
     function generateReport() {
         const query = document.getElementById('report-query').value.trim();
         const yearQuery = document.getElementById('report-year').value;
-        const filteredData = notesData.filter(n => {
-            const matchYear = yearQuery === 'all' || n.year === yearQuery;
-            const matchName = query === "" || n.person.includes(query) || (n.text && n.text.includes(query));
+
+        if(!query && yearQuery === 'all') {
+            return clearReport();
+        }
+
+        currentViewData = notesData.filter(n => {
+            const matchYear = yearQuery === 'all' || n.year === yearQuery || (n.datetime && n.datetime.includes(yearQuery));
+            const matchName = query === "" || n.person.includes(query) || n.text.includes(query);
             return matchYear && matchName;
         });
-        document.getElementById('rep-total').innerText = filteredData.length;
-        document.getElementById('rep-done').innerText = filteredData.filter(n => n.status === 'completed').length;
-        document.getElementById('rep-pending').innerText = filteredData.length - filteredData.filter(n => n.status === 'completed').length;
+
+        const total = currentViewData.length;
+        const done = currentViewData.filter(n => n.status === 'completed').length;
+        const pending = total - done;
+
+        document.getElementById('rep-total').innerText = total;
+        document.getElementById('rep-done').innerText = done;
+        document.getElementById('rep-pending').innerText = pending;
         document.getElementById('custom-report-stats').style.display = 'grid';
-        document.getElementById('report-list-title').innerText = `نتائج: ${query || 'الكل'}`;
-        renderList(filteredData, 'reports-list');
+        
+        document.getElementById('list-title').innerText = `📋 تقرير: ${query || 'الكل'} (${yearQuery === 'all' ? 'كل السنوات' : yearQuery})`;
+        document.getElementById('clear-filter-btn').style.display = 'inline-block';
+
+        renderApp(currentViewData);
     }
 
-    function renderList(data, containerId) {
-        const container = document.getElementById(containerId); container.innerHTML = ""; 
-        if (data.length === 0) return container.innerHTML = "<p style='text-align:center; color:#94a3b8; padding:20px; background:#fff; border-radius:12px;'>لا توجد مهام مطابقة...</p>";
-        data.forEach(note => {
+    function clearReport() {
+        document.getElementById('report-query').value = "";
+        document.getElementById('report-year').value = "all";
+        document.getElementById('custom-report-stats').style.display = 'none';
+        document.getElementById('list-title').innerText = "📋 جميع المهام والملاحظات";
+        document.getElementById('clear-filter-btn').style.display = 'none';
+        
+        currentViewData = notesData;
+        renderApp(currentViewData);
+    }
+
+    function renderApp(dataToRender) {
+        const tasksList = document.getElementById('tasks-list');
+        tasksList.innerHTML = ""; 
+
+        if (dataToRender.length === 0) {
+            tasksList.innerHTML = "<p style='text-align:center; color:#94a3b8; padding:20px;'>لا توجد بيانات مطابقة...</p>";
+            return;
+        }
+
+        dataToRender.forEach(note => {
             const isDone = note.status === 'completed';
             const tagsHTML = (note.tags || []).map(t => t.html).join('');
-            const imageHTML = note.image ? `<img src="${note.image}" class="task-image-display" alt="مرفق المهمة">` : '';
+            
             const cardHTML = `
                 <div class="task-card ${isDone ? 'completed' : ''}">
-                    <div class="card-header-compact" onclick="toggleCard(this)">
-                        <div class="compact-info"><span class="badge">${note.person}</span><span class="task-date">${note.datetime}</span>${isDone ? '<span style="font-size:12px; color:var(--success); font-weight:bold;">(تم)</span>' : ''}</div>
-                        <div class="toggle-icon">▼</div>
+                    <div class="card-header">
+                        <span class="badge ${note.person === 'عام' ? 'general' : ''}">${note.person}</span>
+                        <span class="task-date">🕒 ${note.datetime}</span>
                     </div>
-                    <div class="card-details">
-                        ${tagsHTML ? `<div class="tags-container">${tagsHTML}</div>` : ''}
-                        ${imageHTML}
-                        <div class="task-text">${note.text || 'مهمة مصورة بدون نص'}</div>
-                        <div class="card-actions"><button class="btn-done" onclick="toggleStatus(${note.id})">${isDone ? '↩️ تراجع' : '✅ تم الإنجاز'}</button><button class="btn-delete" onclick="deleteNote(${note.id})">🗑️ حذف</button></div>
+                    ${tagsHTML ? `<div class="tags-container">${tagsHTML}</div>` : ''}
+                    <div class="card-body">${note.text}</div>
+                    <div class="card-actions">
+                        <button class="btn-done" onclick="toggleStatus(${note.id})">
+                            ${isDone ? '↩️ تراجع عن الإنجاز' : '✅ تم الإنجاز'}
+                        </button>
+                        <button class="btn-delete" onclick="deleteNote(${note.id})">🗑️ حذف</button>
                     </div>
-                </div>`;
-            container.innerHTML += cardHTML;
+                </div>
+            `;
+            tasksList.innerHTML += cardHTML;
         });
     }
+
+    clearReport();
 </script>
+
 </body>
 </html>
