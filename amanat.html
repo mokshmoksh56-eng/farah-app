@@ -178,14 +178,13 @@
         .tag-measure { background: #e0e7ff; color: #4f46e5; }
         .tag-money { background: #d1fae5; color: #059669; }
 
-        /* هنا التعديل لضمان تمدد الكارت مع الكلام الطويل */
         .card-body { 
             font-size: 14px; 
             line-height: 1.6; 
             font-weight: 700; 
             margin-bottom: 12px; 
-            white-space: pre-wrap; /* تحافظ على السطور الجديدة وتسمح بالتمدد */
-            word-wrap: break-word; /* تمنع خروج الكلام بره الكارت */
+            white-space: pre-wrap;
+            word-wrap: break-word; 
         }
 
         .card-actions { display: flex; gap: 8px; }
@@ -266,7 +265,6 @@
     const startBtn = document.getElementById('start-btn');
     const saveBtn = document.getElementById('save-btn');
     
-    // كود التمدد التلقائي لمربع النص
     noteBox.addEventListener('input', function() {
         this.style.height = 'auto'; 
         this.style.height = (this.scrollHeight) + 'px'; 
@@ -275,6 +273,7 @@
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let isRecording = false;
+    let keepAlive = false; // متغير جديد للتحكم في استمرار الميكروفون
 
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
@@ -284,7 +283,7 @@
 
         recognition.onstart = () => {
             isRecording = true;
-            startBtn.textContent = "🛑 جاري الاستماع...";
+            startBtn.innerHTML = "🛑 جاري الاستماع <span>(اضغط للإيقاف)</span>";
             startBtn.classList.add("recording");
         };
 
@@ -295,22 +294,31 @@
             }
             if(finalText.trim() !== "") {
                 noteBox.value += finalText;
-                // تمديد المربع تلقائياً عند إضافة النص بالصوت
                 noteBox.style.height = 'auto';
                 noteBox.style.height = (noteBox.scrollHeight) + 'px';
             }
         };
 
         recognition.onend = () => {
-            isRecording = false;
-            startBtn.textContent = "🎙️ تسجيل صوتي للمهمة";
-            startBtn.classList.remove("recording");
+            // إذا لم يقم المستخدم بالضغط على زر الإيقاف، أعد تشغيل الميكروفون فوراً
+            if (keepAlive) {
+                try { recognition.start(); } catch(err) {}
+            } else {
+                isRecording = false;
+                startBtn.textContent = "🎙️ تسجيل صوتي للمهمة";
+                startBtn.classList.remove("recording");
+            }
         };
 
         startBtn.addEventListener('click', (e) => {
             e.preventDefault(); 
-            if (!isRecording) try { recognition.start(); } catch(err) {} 
-            else recognition.stop();
+            if (!isRecording) {
+                keepAlive = true; // تفعيل الاستمرار
+                try { recognition.start(); } catch(err) {} 
+            } else {
+                keepAlive = false; // إيقاف الاستمرار
+                recognition.stop();
+            }
         });
     }
 
@@ -351,6 +359,13 @@
         
         noteBox.value = "";
         noteBox.style.height = 'auto'; 
+        
+        // إيقاف الميكروفون تلقائياً عند حفظ المهمة لضمان عدم تداخله مع مهمة جديدة
+        if (isRecording) {
+            keepAlive = false;
+            recognition.stop();
+        }
+
         clearReport(); 
     });
 
