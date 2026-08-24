@@ -125,7 +125,8 @@
         textarea { 
             padding: 10px; font-size: 14px; border-radius: 8px; 
             border: 1px solid #cbd5e1; background-color: #f8fafc; 
-            resize: none; min-height: 70px; width: 100%; font-family: 'Cairo', sans-serif; font-weight: 600; 
+            resize: none; min-height: 50px; width: 100%; font-family: 'Cairo', sans-serif; font-weight: 600; 
+            overflow: hidden; 
         }
         textarea:focus { background: #fff; border-color: var(--primary); outline: none; }
         
@@ -159,7 +160,6 @@
             width: 4px; background: var(--secondary); 
         }
         
-        /* تنسيق حالة الإنجاز (بهتان اللون وخط على النص) */
         .task-card.completed { 
             background-color: #f1f5f9 !important; 
             opacity: 0.7; 
@@ -178,7 +178,15 @@
         .tag-measure { background: #e0e7ff; color: #4f46e5; }
         .tag-money { background: #d1fae5; color: #059669; }
 
-        .card-body { font-size: 14px; line-height: 1.5; font-weight: 700; margin-bottom: 12px; }
+        /* هنا التعديل لضمان تمدد الكارت مع الكلام الطويل */
+        .card-body { 
+            font-size: 14px; 
+            line-height: 1.6; 
+            font-weight: 700; 
+            margin-bottom: 12px; 
+            white-space: pre-wrap; /* تحافظ على السطور الجديدة وتسمح بالتمدد */
+            word-wrap: break-word; /* تمنع خروج الكلام بره الكارت */
+        }
 
         .card-actions { display: flex; gap: 8px; }
         .btn-done, .btn-delete { 
@@ -205,7 +213,6 @@
         <div class="report-controls">
             <input type="text" id="report-query" placeholder="ابحث باسم أو كلمة...">
             <div class="report-row">
-                <!-- تم تفريغ القائمة ليتم ملؤها عبر الجافاسكريبت -->
                 <select id="report-year"></select>
                 <button class="btn-report" onclick="generateReport()">بحث 🔍</button>
             </div>
@@ -221,7 +228,7 @@
     <!-- قسم الإدخال -->
     <div class="controls">
         <button id="start-btn">🎙️ تسجيل صوتي للمهمة</button>
-        <textarea id="note-box" placeholder="اكتب الملاحظة هنا..."></textarea>
+        <textarea id="note-box" placeholder="اكتب الملاحظة هنا..." rows="2"></textarea>
         <button id="save-btn">💾 حفظ المهمة</button>
     </div>
 
@@ -238,10 +245,8 @@
     let notesData = JSON.parse(localStorage.getItem('azemaaProAI')) || [];
     let currentViewData = notesData; 
 
-    // مجموعة ألوان فاتحة (Pastel) لتلوين المهام
     const cardColors = ['#f0fdf4', '#eff6ff', '#fefce8', '#fdf2f8', '#f5f3ff', '#fff7ed'];
 
-    // تهيئة قائمة السنوات من 2026 إلى 30 سنة قادمة
     const yearSelect = document.getElementById('report-year');
     const startYear = 2026;
     const endYear = startYear + 30;
@@ -261,6 +266,12 @@
     const startBtn = document.getElementById('start-btn');
     const saveBtn = document.getElementById('save-btn');
     
+    // كود التمدد التلقائي لمربع النص
+    noteBox.addEventListener('input', function() {
+        this.style.height = 'auto'; 
+        this.style.height = (this.scrollHeight) + 'px'; 
+    });
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let isRecording = false;
@@ -282,7 +293,12 @@
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 finalText += event.results[i][0].transcript + " ";
             }
-            if(finalText.trim() !== "") noteBox.value += finalText;
+            if(finalText.trim() !== "") {
+                noteBox.value += finalText;
+                // تمديد المربع تلقائياً عند إضافة النص بالصوت
+                noteBox.style.height = 'auto';
+                noteBox.style.height = (noteBox.scrollHeight) + 'px';
+            }
         };
 
         recognition.onend = () => {
@@ -332,7 +348,9 @@
         
         notesData.unshift(newNote);
         localStorage.setItem('azemaaProAI', JSON.stringify(notesData));
+        
         noteBox.value = "";
+        noteBox.style.height = 'auto'; 
         clearReport(); 
     });
 
@@ -359,7 +377,6 @@
         const query = document.getElementById('report-query').value.trim();
         const yearQuery = document.getElementById('report-year').value;
 
-        // التصفية بالسنة المحددة والاسم/الكلمة
         currentViewData = notesData.filter(n => {
             const matchYear = n.year === yearQuery || (n.datetime && n.datetime.includes(yearQuery));
             const matchName = query === "" || n.person.includes(query) || n.text.includes(query);
@@ -383,7 +400,6 @@
 
     function clearReport() {
         document.getElementById('report-query').value = "";
-        // إعادة القائمة المنسدلة للسنة الحالية (أو 2026 كافتراضي)
         const currentYearValue = new Date().getFullYear().toString();
         document.getElementById('report-year').value = (currentYearValue >= 2026) ? currentYearValue : "2026";
         
@@ -408,7 +424,6 @@
             const isDone = note.status === 'completed';
             const tagsHTML = (note.tags || []).map(t => t.html).join('');
             
-            // تحديد لون الكارت من المصفوفة بناءً على ترتيبه
             const bgColor = cardColors[index % cardColors.length];
             
             const cardHTML = `
