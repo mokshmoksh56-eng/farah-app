@@ -100,11 +100,12 @@
         .card-footer { 
             display: flex; justify-content: space-between; padding: 10px 12px; 
             background: rgba(0,0,0,0.02); border-top: 1px solid #e2e8f0;
+            gap: 5px; flex-wrap: wrap;
         }
         .icon-btn { 
-            background: white; border: 1px solid #e2e8f0; padding: 6px 12px; 
-            border-radius: 6px; cursor: pointer; font-size: 14px; box-shadow: 0 2px 0 #cbd5e1;
-            transition: 0.2s;
+            background: white; border: 1px solid #e2e8f0; padding: 6px 10px; 
+            border-radius: 6px; cursor: pointer; font-size: 13px; box-shadow: 0 2px 0 #cbd5e1;
+            transition: 0.2s; font-family: 'Cairo'; font-weight: 700; flex: 1; text-align: center;
         }
         .icon-btn:active { transform: translateY(2px); box-shadow: none; }
 
@@ -167,13 +168,12 @@
 
     let currentUid = null;
     let dbRef = null;
-    let localNotes = {}; // بديل للـ localStorage ويعمل نفس عمل yom
+    let localNotes = {}; 
     let currentSelectedImageData = null;
 
     const teamMembers = ['محمد عبد العظيم', 'ميدو', 'محفوظ', 'أميرة', 'أحمد', 'محمود', 'يوسف', 'مريم', 'أسماء'];
     const cardColors = ['#fdf196', '#fce1cb', '#b8f4f9', '#c1f3c9', '#e6dff9', '#f9d2d7'];
     
-    // تهيئة سنوات البحث
     const yearSelect = document.getElementById('report-year');
     const currentYear = new Date().getFullYear().toString();
     for (let y = 2026; y <= 2056; y++) {
@@ -184,7 +184,6 @@
         yearSelect.appendChild(option);
     }
 
-    // التحقق من الجلسة وبدء المزامنة (مثل yom تماماً)
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUid = user.uid;
@@ -208,7 +207,6 @@
         });
     }
 
-    // --- معالجة الصور وضغطها ---
     document.getElementById('image-upload').addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (file) {
@@ -242,14 +240,12 @@
         document.getElementById('preview-img').src = '';
     }
 
-    // --- تكبير مربع النص تلقائياً ---
     const noteBox = document.getElementById('note-box');
     noteBox.addEventListener('input', function() {
         this.style.height = 'auto'; 
         this.style.height = (this.scrollHeight) + 'px'; 
     });
 
-    // --- التعرف على الصوت ---
     const startBtn = document.getElementById('start-btn');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition; let isRecording = false;
@@ -270,7 +266,6 @@
         startBtn.addEventListener('click', (e) => { e.preventDefault(); if (!isRecording) try { recognition.start(); } catch(err) {} else recognition.stop(); });
     }
 
-    // --- تحليل النص الذكي ---
     function analyzeText(text) {
         let tags = [];
         if (/(عاجل|بسرعة|ضروري|فورا|حالا)/.test(text)) tags.push({ type: 'urgent', html: '<span class="ai-tag tag-urgent">🔥 عاجل</span>' });
@@ -279,7 +274,6 @@
         return tags;
     }
 
-    // --- حفظ الملحوظة أونلاين ---
     document.getElementById('save-btn').addEventListener('click', () => {
         if (!currentUid) return;
         const text = noteBox.value.trim();
@@ -305,10 +299,9 @@
             status: 'pending',
             tags: tags,
             imageData: currentSelectedImageData || "",
-            timestamp: Date.now() // للترتيب
+            timestamp: Date.now() 
         };
         
-        // الحفظ الفوري في Firebase
         set(child(dbRef, uniqueId), newNote).then(() => {
             noteBox.value = "";
             noteBox.style.height = 'auto'; 
@@ -316,7 +309,6 @@
         }).catch(err => alert("فشل الحفظ: " + err.message));
     });
 
-    // --- تعديل وإدارة المهام (تحديث السحابة مباشرة) ---
     window.toggleStatus = function(id) {
         if (!currentUid || !localNotes[id]) return;
         const newStatus = localNotes[id].status === 'completed' ? 'pending' : 'completed';
@@ -343,12 +335,42 @@
             note.person = assignedPerson;
             note.tags = analyzeText(note.text);
             
-            // تحديث السحابة بالبيانات الجديدة
             set(child(dbRef, id), note);
         }
     }
 
-    // --- فلترة وعرض البيانات ---
+    // --- دالة الترحيل لصفحة اليومية (yom.html) ---
+    window.sendToYom = function(id, type) {
+        if (!currentUid || !localNotes[id]) return;
+        
+        let note = localNotes[id];
+        
+        let amount = prompt(`أدخل المبلغ الذي تريد تسجيله كـ (${type === 'in' ? 'دخول' : 'خروج'}):`, "0");
+        
+        if (amount === null || amount.trim() === "" || isNaN(amount) || parseFloat(amount) === 0) {
+            return; 
+        }
+
+        const uniqueId = 'id_' + Date.now();
+        const entryData = { 
+            id: uniqueId, 
+            shop: "غير ذلك", 
+            customer: note.person || "-", 
+            date: new Date().toISOString().slice(0, 16), 
+            desc: note.text, 
+            inVal: type === 'in' ? parseFloat(amount) : 0, 
+            outVal: type === 'out' ? parseFloat(amount) : 0 
+        };
+
+        const yomRef = ref(db, `backups/yomya_users/${currentUid}/${uniqueId}`);
+
+        set(yomRef, entryData).then(() => {
+            window.location.href = "yom.html";
+        }).catch(err => {
+            alert("حدث خطأ أثناء الترحيل السحابي: " + err.message);
+        });
+    }
+
     document.getElementById('report-query').addEventListener('input', renderApp);
     document.getElementById('report-year').addEventListener('change', renderApp);
 
@@ -359,10 +381,8 @@
         const query = document.getElementById('report-query').value.trim().toLowerCase();
         const yearQuery = document.getElementById('report-year').value;
 
-        // تحويل الكائن لمصفوفة وترتيبها من الأحدث للأقدم
         let notesArray = Object.values(localNotes).sort((a, b) => b.timestamp - a.timestamp);
 
-        // تطبيق الفلتر
         const filteredNotes = notesArray.filter(n => {
             const matchYear = n.year === yearQuery || (n.datetime && n.datetime.includes(yearQuery));
             const matchName = query === "" || (n.person && n.person.includes(query)) || (n.text && n.text.toLowerCase().includes(query));
@@ -380,6 +400,7 @@
             const bgColor = cardColors[index % cardColors.length];
             const imageHTML = note.imageData ? `<img src="${note.imageData}" class="task-image" alt="مرفق">` : '';
 
+            // تم استبدال الفوتر القديم بالأزرار الأربعة الجديدة هنا
             const cardHTML = `
                 <div class="task-card ${isDone ? 'completed' : ''}" style="background-color: ${bgColor};">
                     <div class="card-content">
@@ -392,9 +413,10 @@
                         <div class="task-text">${note.text}</div>
                     </div>
                     <div class="card-footer">
-                        <button class="icon-btn" onclick="deleteNote('${note.id}')" title="حذف المهمة">🗑️</button>
-                        <button class="icon-btn" onclick="toggleStatus('${note.id}')" title="تم الإنجاز">${isDone ? '↩️' : '✅'}</button>
-                        <button class="icon-btn" onclick="editNote('${note.id}')" title="تعديل المهمة">✏️</button>
+                        <button class="icon-btn" onclick="sendToYom('${note.id}', 'out')" title="ترحيل كخروج">📤 خروج</button>
+                        <button class="icon-btn" onclick="sendToYom('${note.id}', 'in')" title="ترحيل كدخول">📥 دخول</button>
+                        <button class="icon-btn" onclick="editNote('${note.id}')" title="تعديل المهمة">✏️ تعديل</button>
+                        <button class="icon-btn" onclick="deleteNote('${note.id}')" title="حذف المهمة">🗑️ حذف</button>
                     </div>
                 </div>
             `;
