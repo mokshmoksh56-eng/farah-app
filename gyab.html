@@ -58,11 +58,21 @@
         
         .worker-card { background: var(--white); border-radius: 15px; padding: 12px; border-top: 5px solid var(--gold); box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative;}
         
-        .card-name { display: flex; justify-content: space-between; align-items: center; font-size: 16px; color: var(--dark-green); margin-bottom: 10px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
-        .lock-btn { background: var(--danger); color: white; border: none; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; cursor: pointer; transition: 0.3s; }
+        .card-name { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--dark-green); margin-bottom: 10px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
+        .lock-btn { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 900; cursor: pointer; transition: 0.3s; }
         .lock-btn.unlocked { background: var(--whatsapp-green); }
 
-        /* ستايل خانة الراتب الأساسي المميز */
+        .btn-vacation {
+            background: #fff3e0;
+            color: var(--warning);
+            border: 1px solid var(--warning);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
         .salary-row { 
             display: flex; 
             align-items: center; 
@@ -253,19 +263,20 @@
                 </select>
             </div>
 
-            <!-- تحديث شكل الإضافة لتشمل العمالة الصيفية -->
             <div style="display:flex; gap:5px; margin-top:10px; align-items: center; flex-wrap: wrap;">
                 <input type="text" id="workerNameInp" style="flex:2; border: 1px solid #ddd; padding: 8px; border-radius: 8px; min-width: 120px;" placeholder="اسم عامل جديد">
+                <input type="number" id="workerInitialSalInp" style="width:90px; border: 1px solid #ddd; padding: 8px; border-radius: 8px; text-align:center;" placeholder="الراتب">
                 <label style="font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 3px; background: #fff9e6; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--gold); cursor: pointer;">
                     <input type="checkbox" id="isSummerCheck"> ☀️ صيفي
                 </label>
                 <button onclick="addNewWorker()" style="background:var(--gold); color:#3b2a0f; border:none; padding:8px 15px; border-radius:8px; font-weight: 900;">إضافة 🧑‍🏭</button>
             </div>
-            
-            <!-- زر إخفاء العمالة الصيفية -->
-            <button id="btnToggleSummer" onclick="toggleSummerWorkers()" style="width:100%; margin-top:10px; padding:8px; border-radius:8px; border:2px solid var(--warning); background:#fff; color:var(--warning); font-weight:900; cursor:pointer;">🙈 إخفاء العمالة الصيفية من الكروت</button>
 
-            <div id="workerListEditor" style="margin-top:10px;"></div>
+            <h4 style="color:var(--dark-green); margin:15px 0 5px 0;">👷 العمال الحاليين في الورشة:</h4>
+            <div id="workerListEditor" style="margin-top:5px;"></div>
+
+            <h4 style="color:var(--warning); margin:20px 0 5px 0;">🏖️ العمالة في إجازة صيفية (المجمدين):</h4>
+            <div id="vacationWorkersEditor" style="margin-top:5px;"></div>
         </details>
     </div>
 
@@ -288,22 +299,14 @@
     let currentWeekID = "";
     let currentWeekDates = [];     
     let currentFullDates = [];     
-    let allArchiveData = {};
     
     let currentCurrency = localStorage.getItem('workerCurrency') || 'ج.م';
-    let showSummerWorkers = true; // متغير للتحكم في ظهور العمالة الصيفية
 
     function initSystem() {
         initCurrency();
         initDateSelectors();
         loadMasterWorkers();
         applyGlowToCurrentDayPicker();
-    }
-
-    function toggleSummerWorkers() {
-        showSummerWorkers = !showSummerWorkers;
-        document.getElementById('btnToggleSummer').innerText = showSummerWorkers ? "🙈 إخفاء العمالة الصيفية من الكروت" : "👀 إظهار العمالة الصيفية";
-        loadWeekData(); 
     }
 
     function initCurrency() {
@@ -419,23 +422,49 @@
 
     function addNewWorker() {
         const name = document.getElementById('workerNameInp').value.trim();
+        const initialSal = document.getElementById('workerInitialSalInp').value.trim();
         const isSummer = document.getElementById('isSummerCheck').checked;
         if(!name) return;
         
-        masterWorkers.push({ name: name, inst_weekly: 0, sal: '', isSummer: isSummer, last_sal: '' });
+        masterWorkers.push({ 
+            name: name, 
+            sal: initialSal || '', 
+            isSummer: isSummer, 
+            status: 'active',
+            last_sal: initialSal || '',
+            vacation_date: ''
+        });
         
         document.getElementById('workerNameInp').value = "";
+        document.getElementById('workerInitialSalInp').value = "";
         document.getElementById('isSummerCheck').checked = false;
         saveMasterWorkers();
-        
-        setTimeout(() => {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }, 300);
     }
 
     function removeWorker(idx) {
         if(confirm("⚠️ هل تريد حذف هذا العامل من النظام نهائياً؟")) {
             masterWorkers.splice(idx, 1);
+            saveMasterWorkers();
+        }
+    }
+
+    function moveToVacation(idx) {
+        const worker = masterWorkers[idx];
+        const lastSal = worker.sal || worker.last_sal || 0;
+        if(confirm(`🏖️ هل تريد تحويل [${worker.name}] إلى إجازة صيفية وتجميد حسابه من هذا الأسبوع؟\n\n📌 سيتم حفظ آخر راتب له وهو: (${lastSal} ${currentCurrency})`)) {
+            masterWorkers[idx].status = 'on_leave';
+            masterWorkers[idx].last_sal = lastSal;
+            masterWorkers[idx].vacation_date = currentWeekID;
+            saveMasterWorkers();
+        }
+    }
+
+    function returnFromVacation(idx) {
+        const worker = masterWorkers[idx];
+        const lastSal = worker.last_sal || 0;
+        if(confirm(`🔄 هل تريد إعادة [${worker.name}] للعمل النشط في هذا الأسبوع؟\n\n📌 آخر راتب مسجل له كان: (${lastSal} ${currentCurrency})`)) {
+            masterWorkers[idx].status = 'active';
+            masterWorkers[idx].sal = lastSal; 
             saveMasterWorkers();
         }
     }
@@ -450,18 +479,48 @@
     }
 
     function updateWorkerEditor() {
-        const box = document.getElementById('workerListEditor');
-        box.innerHTML = masterWorkers.map((w, idx) => `
-            <div style="display:flex; justify-content:space-between; background:#f5f6fa; padding:5px 10px; border-radius:8px; margin-bottom:4px; align-items:center; font-size:13px;">
-                <span>💰 👷 ${w.name} ${w.isSummer ? '☀️' : ''}</span>
-                <button onclick="removeWorker(${idx})" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
-            </div>
-        `).join('');
+        const activeBox = document.getElementById('workerListEditor');
+        const vacationBox = document.getElementById('vacationWorkersEditor');
+        
+        let activeHtml = '';
+        let vacationHtml = '';
+
+        masterWorkers.forEach((w, idx) => {
+            const isVacation = (w.status === 'on_leave');
+            if (!isVacation) {
+                activeHtml += `
+                    <div style="display:flex; justify-content:space-between; background:#f5f6fa; padding:6px 10px; border-radius:8px; margin-bottom:4px; align-items:center; font-size:13px;">
+                        <span>💰 👷 <b>${w.name}</b> ${w.isSummer ? '☀️' : ''} (راتب: ${w.sal || 0} ${currentCurrency})</span>
+                        <div style="display:flex; gap:5px;">
+                            <button onclick="moveToVacation(${idx})" style="background:#fff3e0; color:var(--warning); border:1px solid var(--warning); border-radius:5px; padding:3px 7px; font-weight:bold; cursor:pointer;" title="إجازة صيفية">🏖️ إجازة</button>
+                            <button onclick="removeWorker(${idx})" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                vacationHtml += `
+                    <div style="display:flex; justify-content:space-between; background:#fff8e7; border:1px dashed var(--gold); padding:6px 10px; border-radius:8px; margin-bottom:4px; align-items:center; font-size:13px;">
+                        <div>
+                            <span>🏖️ <b>${w.name}</b></span>
+                            <span style="display:block; font-size:11px; color:#666;">آخر راتب: <b>${w.last_sal || 0} ${currentCurrency}</b> | خرج: ${w.vacation_date || 'غير محدد'}</span>
+                        </div>
+                        <div style="display:flex; gap:5px;">
+                            <button onclick="returnFromVacation(${idx})" style="background:var(--whatsapp-green); color:white; border:none; border-radius:5px; padding:4px 8px; font-weight:bold; cursor:pointer;">🔄 عودة للعمل</button>
+                            <button onclick="removeWorker(${idx})" style="color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        activeBox.innerHTML = activeHtml || '<p style="font-size:12px; color:#888;">لا يوجد عمال نشطين حالياً</p>';
+        vacationBox.innerHTML = vacationHtml || '<p style="font-size:12px; color:#888;">لا يوجد عمال في إجازة صيفية</p>';
     }
 
     async function loadWeekData() {
         if(!window.currentUid || masterWorkers.length === 0) {
             document.getElementById('cardsList').innerHTML = "";
+            refreshStats();
             return;
         }
         const snap = await window.get(window.ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}`));
@@ -470,7 +529,8 @@
         let htmlCards = '';
         
         masterWorkers.forEach((worker, idx) => {
-            if (!showSummerWorkers && worker.isSummer) return; // تخطي الرندر إذا كان العامل صيفياً وتم إخفاؤه
+            // تخطي العمال الذين في إجازة حتى لا يظهروا في الأسبوع ولا يتم احتسابهم
+            if (worker.status === 'on_leave') return;
 
             let d = saved[idx] || {};
             let needsInitialSave = false; 
@@ -517,22 +577,20 @@
                 `;
             }
 
-            let summerBadge = worker.isSummer ? '<span style="background: #ff9800; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; margin-right: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">☀️ صيفي</span>' : '';
+            let summerBadge = worker.isSummer ? '<span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-right: 4px;">☀️ صيفي</span>' : '';
 
             htmlCards += `
                 <div class="worker-card" id="card-${idx}" data-locked="true">
                     <div class="card-name">
                         <span>💰 ${worker.name} ${summerBadge}</span>
-                        <button class="lock-btn" onclick="toggleEditCard(${idx})">🔒 تعديل</button>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <button class="btn-vacation" onclick="moveToVacation(${idx})">🏖️ إجازة</button>
+                            <button class="lock-btn" onclick="toggleEditCard(${idx})">🔒 تعديل</button>
+                        </div>
                     </div>
                     
-                    <div style="font-size: 12px; color: #555; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; background: #f0f7f4; padding: 5px 10px; border-radius: 8px; border: 1px dashed var(--teal);">
-                        <label style="font-weight: 900; color: var(--dark-green);">مرجع آخر راتب:</label>
-                        <input disabled type="number" style="width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 5px; font-weight: 900; text-align: center; color: var(--teal);" value="${worker.last_sal || ''}" onchange="syncLastSal(${idx}, this.value)" placeholder="مثلاً: 500">
-                    </div>
-
                     <div class="salary-row">
-                        <label>الراتب الأساسي (ثابت):</label>
+                        <label>الراتب الأساسي (الأسبوعي):</label>
                         <input disabled type="number" class="salary-input" value="${sal}" placeholder="الراتب" onchange="syncSalary(${idx}, this.value)">
                     </div>
                     
@@ -572,6 +630,7 @@
 
     function toggleEditCard(idx) {
         const card = document.getElementById(`card-${idx}`);
+        if (!card) return;
         const isLocked = card.getAttribute('data-locked') === 'true';
         const lockBtn = card.querySelector('.lock-btn');
         
@@ -605,7 +664,8 @@
         setSyncStatus(true);
         update(ref(window.db, `backups/workers_weeks/${window.currentUid}/${currentWeekID}/${wIdx}`), { sal: val, name: masterWorkers[wIdx].name }).then(() => setSyncStatus(false));
         masterWorkers[wIdx].sal = val;
-        update(ref(window.db, `backups/workers_master/${window.currentUid}/${wIdx}`), { sal: val });
+        masterWorkers[wIdx].last_sal = val;
+        update(ref(window.db, `backups/workers_master/${window.currentUid}/${wIdx}`), { sal: val, last_sal: val });
         recalc(wIdx);
     }
 
@@ -647,7 +707,8 @@
             name: masterWorkers[idx].name
         }).then(() => {
             masterWorkers[idx].sal = sal;
-            update(ref(window.db, `backups/workers_master/${window.currentUid}/${idx}`), { sal: sal }).then(() => {
+            masterWorkers[idx].last_sal = sal;
+            update(ref(window.db, `backups/workers_master/${window.currentUid}/${idx}`), { sal: sal, last_sal: sal }).then(() => {
                 setSyncStatus(false);
                 recalc(idx);
                 const saveBtn = card.querySelector('.btn-save-manual');
@@ -729,7 +790,7 @@
         const dropdown = document.getElementById('archiveSearch');
         const currentSelection = dropdown.value;
         dropdown.innerHTML = '<option value="">-- اختر اسم العامل لعرض أرشيفه --</option>' + 
-            masterWorkers.map(w => `<option value="${w.name}">💰 ${w.name} ${w.isSummer ? '☀️' : ''}</option>`).join('');
+            masterWorkers.map(w => `<option value="${w.name}">💰 ${w.name} ${w.status === 'on_leave' ? '(🏖️ في إجازة)' : ''}</option>`).join('');
         dropdown.value = currentSelection;
     }
 
@@ -764,17 +825,6 @@
         if(snapshot.exists()) {
             const weekData = snapshot.val();
             await window.set(archiveRef, weekData);
-            console.log(`تم تحديث أرشيف أسبوع ${currentWeekSnapshotID} بنجاح (حفظ يومي)`);
-            const statusDiv = document.getElementById('syncStatus');
-            const originalText = statusDiv.innerText;
-            statusDiv.innerText = "📦 تم الحفظ اليومي للأرشيف";
-            statusDiv.style.background = "var(--gold)";
-            statusDiv.style.color = "#3b2a0f";
-            setTimeout(() => {
-                statusDiv.innerText = originalText;
-                statusDiv.style.background = "rgba(255,255,255,0.2)";
-                statusDiv.style.color = "white";
-            }, 3000);
         }
     }
 
@@ -831,7 +881,6 @@
                 
                 let detailsHtml = `<div class="attendance-details"><strong>📋 تفاصيل الحضور والغياب:</strong><div style="margin-top:8px;">`;
                 for(let i=0; i<weekdays.length; i++) {
-                    
                     let tmp = new Date(archiveStartDate);
                     tmp.setDate(archiveStartDate.getDate() + i);
                     let d = tmp.getDate().toString().padStart(2, '0');
@@ -875,7 +924,7 @@
             }
         }
         
-        display.innerHTML = hasRecords ? html : "<p style='text-align:center; color:#777; font-size:13px;'>🚫 لا توجد سجلات مؤرشفة سابقة لهذا العامل (سيتم الأرشفة يومياً بشكل تلقائي).</p>";
+        display.innerHTML = hasRecords ? html : "<p style='text-align:center; color:#777; font-size:13px;'>🚫 لا توجد سجلات مؤرشفة سابقة لهذا العامل.</p>";
     }
     
     window.toggleAtt = toggleAtt;
@@ -890,13 +939,8 @@
     window.shareToWhatsApp = shareToWhatsApp;
     window.fetchAndBuildArchive = fetchAndBuildArchive;
     window.updateCurrency = updateCurrency; 
-    window.toggleSummerWorkers = toggleSummerWorkers;
-    
-    window.syncLastSal = function(wIdx, val) {
-        setSyncStatus(true);
-        update(ref(window.db, `backups/workers_master/${window.currentUid}/${wIdx}`), { last_sal: val }).then(() => setSyncStatus(false));
-        masterWorkers[wIdx].last_sal = val;
-    };
+    window.moveToVacation = moveToVacation;
+    window.returnFromVacation = returnFromVacation;
 
     window.forceArchiveNow = async function(btn) {
         if(confirm("⚠️ هل أنت متأكد أنك تريد حفظ بيانات جميع العمال للأسبوع الحالي في الأرشيف الآن؟")) {
