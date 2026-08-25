@@ -47,6 +47,14 @@
         }
         textarea:focus { border-color: var(--primary); }
 
+        /* شريط التنبيه الذكي */
+        #ai-warning {
+            display: none; background: #fee2e2; color: #dc2626; padding: 10px; 
+            border-radius: 8px; margin-top: 10px; font-size: 13px; font-weight: 800; 
+            border: 2px solid #f87171; text-align: center;
+            animation: pulse 2s infinite;
+        }
+
         .controls-row { display: flex; gap: 10px; margin-top: 10px; }
         .controls-row label, .controls-row button {
             flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-weight: 800;
@@ -108,8 +116,11 @@
             transition: 0.2s; font-family: 'Cairo'; font-weight: 700; flex: 1; text-align: center;
         }
         .icon-btn:active { transform: translateY(2px); box-shadow: none; }
+        
+        .btn-out { background-color: var(--danger) !important; color: white !important; border-color: var(--danger) !important; }
+        .btn-in { background-color: var(--success) !important; color: white !important; border-color: var(--success) !important; }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -122,6 +133,11 @@
 
     <div class="input-section">
         <textarea id="note-box" placeholder="اكتب تفاصيل المهمة أو المقاسات هنا..."></textarea>
+        
+        <!-- التنبيه الذكي سيظهر هنا -->
+        <div id="ai-warning">
+            ⚠️ تنبيه: الزبون (<span id="ai-customer-name"></span>) مسجل له عمليات في اليومية مسبقاً!
+        </div>
         
         <div id="image-preview-container">
             <button class="clear-img-btn" onclick="clearSelectedImage()">✖</button>
@@ -170,6 +186,9 @@
     let dbRef = null;
     let localNotes = {}; 
     let currentSelectedImageData = null;
+    
+    // مصفوفة لتخزين أسماء زبائن اليومية (yom)
+    let yomCustomers = [];
 
     const teamMembers = ['محمد عبد العظيم', 'ميدو', 'محفوظ', 'أميرة', 'أحمد', 'محمود', 'يوسف', 'مريم', 'أسماء'];
     const cardColors = ['#fdf196', '#fce1cb', '#b8f4f9', '#c1f3c9', '#e6dff9', '#f9d2d7'];
@@ -196,6 +215,7 @@
     });
 
     function initApp() {
+        // 1. جلب ملاحظات notmop
         onValue(dbRef, (snapshot) => {
             localNotes = snapshot.val() || {};
             renderApp();
@@ -205,7 +225,49 @@
             document.getElementById('sync-status').innerText = "🔴 خطأ اتصال بالسيرفر";
             document.getElementById('sync-status').style.color = "var(--danger)";
         });
+
+        // 2. جلب أسماء الزبائن من اليومية yom بذكاء
+        const yomRef = ref(db, `backups/yomya_users/${currentUid}`);
+        onValue(yomRef, (snapshot) => {
+            const yData = snapshot.val() || {};
+            const tempSet = new Set();
+            Object.values(yData).forEach(item => {
+                if(item.customer && item.customer !== "-" && item.customer.trim().length > 2) {
+                    tempSet.add(item.customer.trim());
+                }
+            });
+            yomCustomers = Array.from(tempSet);
+        });
     }
+
+    // --- الذكاء الاصطناعي لفحص الزبائن المكررة أثناء الكتابة ---
+    const noteBox = document.getElementById('note-box');
+    const aiWarning = document.getElementById('ai-warning');
+    const aiCustomerName = document.getElementById('ai-customer-name');
+
+    noteBox.addEventListener('input', function() {
+        this.style.height = 'auto'; 
+        this.style.height = (this.scrollHeight) + 'px'; 
+        
+        let currentText = this.value;
+        let found = false;
+
+        if(currentText.trim().length > 2) {
+            for(let cust of yomCustomers) {
+                // إذا تم ذكر اسم زبون اليومية في النص المكتوب
+                if(currentText.includes(cust)) {
+                    aiCustomerName.innerText = cust;
+                    aiWarning.style.display = 'block';
+                    found = true;
+                    break;
+                }
+            }
+        }
+        
+        if(!found) {
+            aiWarning.style.display = 'none';
+        }
+    });
 
     document.getElementById('image-upload').addEventListener('change', function(event) {
         const file = event.target.files[0];
@@ -240,12 +302,6 @@
         document.getElementById('preview-img').src = '';
     }
 
-    const noteBox = document.getElementById('note-box');
-    noteBox.addEventListener('input', function() {
-        this.style.height = 'auto'; 
-        this.style.height = (this.scrollHeight) + 'px'; 
-    });
-
     const startBtn = document.getElementById('start-btn');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition; let isRecording = false;
@@ -260,7 +316,13 @@
         recognition.onresult = (event) => {
             let finalText = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) { finalText += event.results[i][0].transcript + " "; }
-            if(finalText.trim() !== "") { noteBox.value += finalText; noteBox.style.height = 'auto'; noteBox.style.height = (noteBox.scrollHeight) + 'px'; }
+            if(finalText.trim() !== "") { 
+                noteBox.value += finalText; 
+                noteBox.style.height = 'auto'; 
+                noteBox.style.height = (noteBox.scrollHeight) + 'px'; 
+                // تفعيل الفحص الذكي عند الإدخال الصوتي
+                noteBox.dispatchEvent(new Event('input'));
+            }
         };
         recognition.onend = () => { isRecording = false; startBtn.innerHTML = "🎙️ استماع"; startBtn.classList.remove("recording"); };
         startBtn.addEventListener('click', (e) => { e.preventDefault(); if (!isRecording) try { recognition.start(); } catch(err) {} else recognition.stop(); });
@@ -305,6 +367,7 @@
         set(child(dbRef, uniqueId), newNote).then(() => {
             noteBox.value = "";
             noteBox.style.height = 'auto'; 
+            aiWarning.style.display = 'none'; // إخفاء التنبيه بعد الحفظ
             clearSelectedImage();
         }).catch(err => alert("فشل الحفظ: " + err.message));
     });
@@ -345,10 +408,19 @@
         
         let note = localNotes[id];
         
-        let amount = prompt(`أدخل المبلغ الذي تريد تسجيله كـ (${type === 'in' ? 'دخول' : 'خروج'}):`, "0");
+        let amount = prompt(`أدخل المبلغ الذي تريد تسجيله كـ (${type === 'in' ? 'دخول' : 'خروج'}):`, "");
         
-        if (amount === null || amount.trim() === "" || isNaN(amount) || parseFloat(amount) === 0) {
+        if (amount === null || amount.trim() === "") {
             return; 
+        }
+
+        amount = amount.replace(/[٠١٢٣٤٥٦٧٨٩]/g, function(d) {
+            return d.charCodeAt(0) - 1632;
+        });
+
+        if (isNaN(amount) || parseFloat(amount) === 0) {
+            alert("برجاء إدخال مبلغ صحيح!");
+            return;
         }
 
         const uniqueId = 'id_' + Date.now();
@@ -400,7 +472,6 @@
             const bgColor = cardColors[index % cardColors.length];
             const imageHTML = note.imageData ? `<img src="${note.imageData}" class="task-image" alt="مرفق">` : '';
 
-            // تم استبدال الفوتر القديم بالأزرار الأربعة الجديدة هنا
             const cardHTML = `
                 <div class="task-card ${isDone ? 'completed' : ''}" style="background-color: ${bgColor};">
                     <div class="card-content">
@@ -413,8 +484,8 @@
                         <div class="task-text">${note.text}</div>
                     </div>
                     <div class="card-footer">
-                        <button class="icon-btn" onclick="sendToYom('${note.id}', 'out')" title="ترحيل كخروج">📤 خروج</button>
-                        <button class="icon-btn" onclick="sendToYom('${note.id}', 'in')" title="ترحيل كدخول">📥 دخول</button>
+                        <button class="icon-btn btn-out" onclick="sendToYom('${note.id}', 'out')" title="ترحيل كخروج">📤 خروج</button>
+                        <button class="icon-btn btn-in" onclick="sendToYom('${note.id}', 'in')" title="ترحيل كدخول">📥 دخول</button>
                         <button class="icon-btn" onclick="editNote('${note.id}')" title="تعديل المهمة">✏️ تعديل</button>
                         <button class="icon-btn" onclick="deleteNote('${note.id}')" title="حذف المهمة">🗑️ حذف</button>
                     </div>
