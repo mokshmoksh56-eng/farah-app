@@ -209,4 +209,82 @@
                 if(data.error) throw new Error(data.error.message);
 
                 let aiText = data.candidates[0].content.parts[0].text;
-                let cleanJson = aiText.replace(/```json/g, '').replace(/
+                let cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
+                let extractedData = JSON.parse(cleanJson);
+                
+                document.getElementById('externalHeight').value = extractedData.height || '';
+                document.getElementById('externalWidth').value = extractedData.width || '';
+                document.getElementById('externalDepth').value = extractedData.depth || '';
+                if(extractedData.doors) {
+                    document.getElementById('unitType').value = (extractedData.doors == 2) ? 'double' : 'single';
+                }
+                if(extractedData.position) {
+                    document.getElementById('cabinetPosition').value = (extractedData.position === 'top') ? 'top' : 'bottom';
+                }
+                
+                loader.style.display = 'none';
+                status.style.color = "#27ae60";
+                status.innerText = "تم استخراج المقاسات من الصورة بنجاح!";
+                
+                calculateFinalSizes(); 
+                
+            } catch (error) {
+                loader.style.display = 'none';
+                status.style.color = "#e74c3c";
+                status.innerText = "حدث خطأ. تأكد من وضع مفتاح API صحيح للصورة.";
+                console.error(error);
+            }
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+
+    // --- دالة حساب التقطيع النهائية ---
+    function calculateFinalSizes() {
+        let extH = parseFloat(document.getElementById('externalHeight').value);
+        let extW = parseFloat(document.getElementById('externalWidth').value);
+        let extD = parseFloat(document.getElementById('externalDepth').value);
+        let type = document.getElementById('unitType').value;
+        let position = document.getElementById('cabinetPosition').value;
+        let resultBody = document.getElementById('resultBody');
+        let resultTable = document.getElementById('resultTable');
+        
+        if (isNaN(extH) || isNaN(extW) || isNaN(extD)) {
+            return;
+        }
+
+        resultBody.innerHTML = ""; 
+        resultTable.style.display = "table";
+
+        // تحديد اسم الوحدة للجدول بناءً على الاختيار
+        let posText = (position === 'top') ? "علوية" : "سفلية";
+
+        resultBody.innerHTML += `<tr><td colspan="3" class="section-title">تقطيع شاسيه وحدة ${posText} (علبة 2.5 سم)</td></tr>`;
+        
+        addRow('قوايم الارتفاع', (extH - 5).toFixed(1), '4');
+        addRow('عوارض العرض', (extW - 5).toFixed(1), '4');
+        addRow('عوارض العمق', (extD - 5).toFixed(1), '4');
+
+        resultBody.innerHTML += `<tr><td colspan="3" class="section-title">الضلف والفيبر</td></tr>`;
+        let innerH = extH - 5;
+        let innerW = extW - 5;
+
+        if (type === 'single') {
+            let doorH = innerH + 2.5;
+            let doorW = innerW + 2.5;
+            addRow('الضلفة (ارتفاع × عرض)', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '1');
+            addRow('فيبر الضلفة (ارتفاع × عرض)', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '1');
+        } else if (type === 'double') {
+            let doorH = innerH + 2.5;
+            let doorW = (innerW + 2.6) / 2;
+            addRow('الضلفة (ارتفاع × عرض)', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '2');
+            addRow('فيبر الضلفة (ارتفاع × عرض)', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '2');
+        }
+    }
+
+    function addRow(name, size, count) {
+        document.getElementById('resultBody').innerHTML += `<tr><td>${name}</td><td>${size}</td><td>${count}</td></tr>`;
+    }
+</script>
+
+</body>
+</html>
