@@ -704,10 +704,23 @@
             });
             
             const result = await response.json();
-            return result.candidates[0].content.parts[0].text;
+            
+            // إضافة التحقق من الأخطاء لمعرفة السبب الحقيقي من جوجل
+            if (!response.ok) {
+                console.error("Google API Error:", result);
+                let errMsg = result.error ? result.error.message : "خطأ غير معروف";
+                return "⚠️ رفض من جوجل: " + errMsg;
+            }
+            
+            if(result.candidates && result.candidates.length > 0) {
+                 return result.candidates[0].content.parts[0].text;
+            } else {
+                 return "⚠️ عذراً، لم أتمكن من استخراج إجابة صالحة.";
+            }
+
         } catch (error) {
             console.error(error);
-            return "عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي.";
+            return "عذراً، حدث خطأ تقني في الاتصال: " + error.message;
         }
     }
 
