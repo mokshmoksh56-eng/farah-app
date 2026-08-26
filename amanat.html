@@ -128,17 +128,16 @@
                 status.style.display = "block";
             };
         } else {
-            alert("متصفحك لا يدعم خاصية التحدث الصوتي. يرجى استخدام متصفح Google Chrome.");
+            alert("متصفحك لا يدعم خاصية التحدث الصوتي. تأكد من فتح الرابط على متصفح Google Chrome آمن (HTTPS).");
         }
     }
 
-    // --- دالة تحليل النص الصوتي (سريعة بدون إنترنت) ---
+    // --- دالة تحليل النص الصوتي ---
     function processTextFast(text) {
         let status = document.getElementById('aiStatus');
         status.style.display = 'block';
         
         try {
-            // استخراج المقاسات
             let heightMatch = text.match(/ارتفاع\s*(\d+)/) || text.match(/طول\s*(\d+)/);
             let widthMatch = text.match(/عرض\s*(\d+)/);
             let depthMatch = text.match(/عمق\s*(\d+)/);
@@ -147,14 +146,12 @@
             if(widthMatch) document.getElementById('externalWidth').value = widthMatch[1];
             if(depthMatch) document.getElementById('externalDepth').value = depthMatch[1];
 
-            // استخراج نوع الضلف
             if(text.includes("ضلفتين") || text.includes("اثنين") || text.includes("2")) {
                 document.getElementById('unitType').value = 'double';
             } else if (text.includes("ضلفة") || text.includes("واحد") || text.includes("1")) {
                 document.getElementById('unitType').value = 'single';
             }
 
-            // استخراج موقع الوحدة (سفلي أو علوي)
             if(text.includes("علو") || text.includes("فوق")) {
                 document.getElementById('cabinetPosition').value = 'top';
             } else if (text.includes("سفل") || text.includes("تحت")) {
@@ -255,16 +252,22 @@
         resultBody.innerHTML = ""; 
         resultTable.style.display = "table";
 
-        // تحديد اسم الوحدة للجدول بناءً على الاختيار
         let posText = (position === 'top') ? "علوية" : "سفلية";
 
+        // 1. تقطيع الشاسيه
         resultBody.innerHTML += `<tr><td colspan="3" class="section-title">تقطيع شاسيه وحدة ${posText} (علبة 2.5 سم)</td></tr>`;
-        
         addRow('قوايم الارتفاع', (extH - 5).toFixed(1), '4');
         addRow('عوارض العرض', (extW - 5).toFixed(1), '4');
         addRow('عوارض العمق', (extD - 5).toFixed(1), '4');
 
-        resultBody.innerHTML += `<tr><td colspan="3" class="section-title">الضلف والفيبر</td></tr>`;
+        // 2. فيبر الأجناب (العلبة)
+        resultBody.innerHTML += `<tr><td colspan="3" class="section-title">فيبر تقفيل العلبة</td></tr>`;
+        let boxFiberH = extH - 5.2;
+        let boxFiberD = extD - 5.2;
+        addRow('فيبر الأجناب (يمين وشمال)', `${boxFiberH.toFixed(1)} × ${boxFiberD.toFixed(1)}`, '2');
+
+        // 3. الضلف وفيبر الضلف
+        resultBody.innerHTML += `<tr><td colspan="3" class="section-title">الضلف والفيبر الخاص بها</td></tr>`;
         let innerH = extH - 5;
         let innerW = extW - 5;
 
