@@ -128,7 +128,7 @@
     const micBtn = document.getElementById('micBtn');
     const speechBox = document.getElementById('speechBox');
 
-    // تم تحديث القاموس ليشمل الرموز الرياضية المباشرة
+    // القاموس الشامل للأرقام والعمليات والمسح
     const voiceMap = {
         'صفر': '0', '0': '0',
         'واحد': '1', '1': '1',
@@ -144,7 +144,8 @@
         'ناقص': '-', 'طرح': '-', '-': '-',
         'في': '*', 'ضرب': '*', '*': '*', 'x': '*', 'X': '*',
         'على': '/', 'قسمه': '/', 'قسمة': '/', '/': '/',
-        'يساوي': '=', 'النتيجه': '=', 'النتيجة': '=', '=': '='
+        'يساوي': '=', 'النتيجه': '=', 'النتيجة': '=', '=': '=',
+        'مسح': 'C', 'امسح': 'C', 'حذف': 'C', 'c': 'C', 'C': 'C'
     };
 
     function appendValue(val) {
@@ -171,14 +172,17 @@
         }
     }
 
+    // تم تعديل هذه الدالة لتتجاوز مشاكل الرموز وتضيء الزر بدقة
     function flashButton(val) {
-        const btn = document.querySelector(`button[data-val="${val}"]`);
-        if(btn) {
-            btn.classList.add('active');
-            setTimeout(() => {
-                btn.classList.remove('active');
-            }, 500);
-        }
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(btn => {
+            if (btn.getAttribute('data-val') === val) {
+                btn.classList.add('active');
+                setTimeout(() => {
+                    btn.classList.remove('active');
+                }, 500);
+            }
+        });
     }
 
     function speakResult(text) {
@@ -207,15 +211,14 @@
             speechBox.innerText = `قلت: "${fullTranscript}"`;
             speechBox.style.color = "#1abc9c";
 
-            // الذكاء هنا: بنفكك الرموز عن الأرقام بمسافات عشان لو المتصفح كتب "1+1" لازقة في بعض
+            // فك الرموز عن الأرقام بمسافات ليفهمها النظام
             fullTranscript = fullTranscript.replace(/\+/g, ' + ')
                                            .replace(/-/g, ' - ')
                                            .replace(/\*/g, ' * ')
                                            .replace(/\//g, ' / ')
                                            .replace(/=/g, ' = ')
-                                           .replace(/x/gi, ' * '); // لو كتب حرف x كضرب
+                                           .replace(/x/gi, ' * '); 
             
-            // بنشيل المسافات الزايدة
             fullTranscript = fullTranscript.replace(/\s+/g, ' ').trim();
             
             const transcriptWords = fullTranscript.split(' ');
@@ -226,6 +229,8 @@
                     if (mappedValue) {
                         if (mappedValue === '=') {
                             calculate();
+                        } else if (mappedValue === 'C') {
+                            clearDisplay();
                         } else {
                             appendValue(mappedValue);
                         }
