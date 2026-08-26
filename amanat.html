@@ -16,16 +16,16 @@
         #imagePreview { max-width: 100%; max-height: 200px; margin-top: 15px; border-radius: 8px; display: none; }
         .loader { display: none; margin: 15px auto; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #voiceTextDisplay { margin-top: 15px; font-style: italic; color: #555; background: #e8f8f5; padding: 10px; border-radius: 5px; display: none; }
+        #voiceTextDisplay { margin-top: 15px; font-style: italic; color: #555; background: #e8f8f5; padding: 10px; border-radius: 5px; display: none; font-weight: bold; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
         input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
-        button.calc-btn { width: 100%; background-color: #3498db; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        button.calc-btn { width: 100%; background-color: #3498db; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px;}
+        button.calc-btn:hover { background-color: #2980b9; }
         table { width: 100%; margin-top: 20px; border-collapse: collapse; text-align: center; }
         th, td { border: 1px solid #ddd; padding: 12px; }
         th { background-color: #2c3e50; color: white; }
         .section-title { background-color: #34495e; color: white; font-weight: bold; }
-        /* تأثير النبض للمايك وهو شغال */
         .recording { animation: pulse 1.5s infinite; background-color: #c0392b !important; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
@@ -78,7 +78,7 @@
 </div>
 
 <script>
-    // ⚠️ حط مفتاح الـ API بتاعك هنا
+    // ⚠️ مفتاح جوجل الخاص بقراءة الصور فقط (المايك سيعمل بدونه)
     const API_KEY = "حط_مفتاحك_هنا";
 
     // --- 1. دالة تسجيل الصوت ---
@@ -93,7 +93,7 @@
             
             recognition.continuous = false;
             recognition.interimResults = false;
-            recognition.lang = "ar-EG"; // اللغة العربية (مصر)
+            recognition.lang = "ar-EG"; 
 
             recognition.start();
             micBtn.classList.add("recording");
@@ -109,73 +109,58 @@
                 textDisplay.innerText = `أنت قلت: "${spokenText}"`;
                 textDisplay.style.display = "block";
                 
-                // إرسال النص للذكاء الاصطناعي لتحليله
-                processTextWithAI(spokenText);
+                // إرسال النص للتحليل المباشر السريع
+                processTextFast(spokenText);
             };
 
             recognition.onerror = function(e) {
                 micBtn.classList.remove("recording");
                 micBtn.innerText = "🎤 تحدث بالمقاسات";
                 status.innerText = "لم يتم التعرف على الصوت، حاول مرة أخرى.";
+                status.style.color = "#e74c3c";
                 status.style.display = "block";
             };
         } else {
-            alert("متصفحك لا يدعم خاصية التحدث الصوتي. يرجى استخدام Google Chrome.");
+            alert("متصفحك لا يدعم خاصية التحدث الصوتي. يرجى استخدام متصفح Google Chrome.");
         }
     }
 
-    // --- 2. دالة تحليل النص الصوتي بالذكاء الاصطناعي ---
-    async function processTextWithAI(text) {
-        let loader = document.getElementById('aiLoader');
+    // --- 2. دالة تحليل النص الصوتي (مباشرة وبسرعة البرق بدون إنترنت) ---
+    function processTextFast(text) {
         let status = document.getElementById('aiStatus');
-        
-        loader.style.display = 'block';
         status.style.display = 'block';
-        status.style.color = "#8e44ad";
-        status.innerText = "جاري فهم المقاسات من كلامك...";
-
+        
         try {
-            let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: `استخرج المقاسات من هذا النص. ابحث عن الارتفاع، والعرض، والعمق، ورقم يدل على عدد الضلف (1 أو 2). 
-                            النص المنطوق: "${text}"
-                            رُد بصيغة JSON فقط بهذا الشكل:
-                            {"height": رقم, "width": رقم, "depth": رقم, "doors": رقم}` }
-                        ]
-                    }]
-                })
-            });
+            // استخراج الأرقام بناءً على الكلمات
+            let heightMatch = text.match(/ارتفاع\s*(\d+)/) || text.match(/طول\s*(\d+)/);
+            let widthMatch = text.match(/عرض\s*(\d+)/);
+            let depthMatch = text.match(/عمق\s*(\d+)/);
 
-            let data = await response.json();
-            let aiText = data.candidates[0].content.parts[0].text;
-            let cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
-            let extractedData = JSON.parse(cleanJson);
+            // توزيع الأرقام في الخانات
+            if(heightMatch) document.getElementById('externalHeight').value = heightMatch[1];
+            if(widthMatch) document.getElementById('externalWidth').value = widthMatch[1];
+            if(depthMatch) document.getElementById('externalDepth').value = depthMatch[1];
 
-            // ملء الخانات
-            if(extractedData.height) document.getElementById('externalHeight').value = extractedData.height;
-            if(extractedData.width) document.getElementById('externalWidth').value = extractedData.width;
-            if(extractedData.depth) document.getElementById('externalDepth').value = extractedData.depth;
-            if(extractedData.doors) document.getElementById('unitType').value = (extractedData.doors == 2) ? 'double' : 'single';
+            // تحديد نوع الضلف
+            if(text.includes("ضلفتين") || text.includes("اثنين") || text.includes("2")) {
+                document.getElementById('unitType').value = 'double';
+            } else if (text.includes("ضلفة") || text.includes("واحد") || text.includes("1")) {
+                document.getElementById('unitType').value = 'single';
+            }
 
-            loader.style.display = 'none';
             status.style.color = "#27ae60";
-            status.innerText = "تم استخراج المقاسات بنجاح من صوتك!";
+            status.innerText = "تم إدخال المقاسات بنجاح!";
             
-            // ممكن نشغل زرار الحساب أوتوماتيك كمان!
-            // calculateFinalSizes(); 
+            // الضغط على زرار الحساب أوتوماتيكياً لتوفير الوقت
+            calculateFinalSizes();
             
         } catch (error) {
-            loader.style.display = 'none';
             status.style.color = "#e74c3c";
-            status.innerText = "حدث خطأ في فهم المقاسات، تأكد من وضوح الصوت.";
+            status.innerText = "حدث خطأ في فهم المقاسات، يرجى إعادة المحاولة.";
         }
     }
 
-    // --- 3. دالة تحليل الصورة (نفس القديمة) ---
+    // --- 3. دالة تحليل الصورة (تحتاج مفتاح جوجل API) ---
     async function processImage(event) {
         let input = event.target;
         if (!input.files || !input.files[0]) return;
@@ -183,6 +168,7 @@
         let loader = document.getElementById('aiLoader');
         let status = document.getElementById('aiStatus');
         let reader = new FileReader();
+        
         reader.onload = async function(e) {
             preview.src = e.target.result;
             preview.style.display = 'block';
@@ -191,6 +177,7 @@
             status.style.color = "#e74c3c";
             status.innerText = "جاري تحليل الصورة...";
             let base64Image = e.target.result.split(',')[1];
+            
             try {
                 let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
                     method: 'POST',
@@ -205,21 +192,30 @@
                         }]
                     })
                 });
+                
                 let data = await response.json();
+                if(data.error) throw new Error(data.error.message);
+
                 let aiText = data.candidates[0].content.parts[0].text;
                 let cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
                 let extractedData = JSON.parse(cleanJson);
+                
                 document.getElementById('externalHeight').value = extractedData.height || '';
                 document.getElementById('externalWidth').value = extractedData.width || '';
                 document.getElementById('externalDepth').value = extractedData.depth || '';
                 document.getElementById('unitType').value = (extractedData.doors == 2) ? 'double' : 'single';
+                
                 loader.style.display = 'none';
                 status.style.color = "#27ae60";
                 status.innerText = "تم استخراج المقاسات من الصورة بنجاح!";
+                
+                calculateFinalSizes(); // حساب تلقائي
+                
             } catch (error) {
                 loader.style.display = 'none';
                 status.style.color = "#e74c3c";
-                status.innerText = "حدث خطأ. يرجى إدخال المقاسات يدوياً.";
+                status.innerText = "حدث خطأ. تأكد من وضع مفتاح API صحيح للصورة.";
+                console.error(error);
             }
         }
         reader.readAsDataURL(input.files[0]);
@@ -235,7 +231,7 @@
         let resultTable = document.getElementById('resultTable');
         
         if (isNaN(extH) || isNaN(extW) || isNaN(extD)) {
-            alert("يرجى إدخال (الارتفاع، العرض، والعمق) بشكل صحيح!");
+            // لا تظهر رسالة خطأ إذا كانت الخانات فارغة لسه
             return;
         }
 
@@ -254,13 +250,13 @@
         if (type === 'single') {
             let doorH = innerH + 2.5;
             let doorW = innerW + 2.5;
-            addRow('الضلفة', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '1');
-            addRow('فيبر الضلفة', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '1');
+            addRow('الضلفة (ارتفاع × عرض)', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '1');
+            addRow('فيبر الضلفة (ارتفاع × عرض)', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '1');
         } else if (type === 'double') {
             let doorH = innerH + 2.5;
             let doorW = (innerW + 2.6) / 2;
-            addRow('الضلفة', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '2');
-            addRow('فيبر الضلفة', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '2');
+            addRow('الضلفة (ارتفاع × عرض)', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '2');
+            addRow('فيبر الضلفة (ارتفاع × عرض)', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '2');
         }
     }
 
