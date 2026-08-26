@@ -27,12 +27,27 @@
             background-color: #ecf0f1;
             border: none;
             border-radius: 5px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             font-size: 28px;
             text-align: left;
             padding: 10px;
             box-sizing: border-box;
             direction: ltr;
+        }
+        #speechBox {
+            width: 100%;
+            min-height: 30px;
+            background-color: #1a252f;
+            color: #1abc9c;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            padding: 5px 10px;
+            font-size: 14px;
+            box-sizing: border-box;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .buttons {
             display: grid;
@@ -53,7 +68,6 @@
         button.clear { background-color: #e74c3c; grid-column: span 2; }
         button.equal { background-color: #27ae60; grid-column: span 2; }
         
-        /* التأثير الضوئي عند النطق أو الضغط */
         button.active, button:active {
             background-color: #f1c40f !important;
             color: #333;
@@ -81,37 +95,40 @@
 
 <div class="calculator">
     <input type="text" id="display" disabled placeholder="0">
+    <!-- مربع عرض الكلام المنطوق -->
+    <div id="speechBox">الكلام اللي هتقوله هيظهر هنا...</div>
+    
     <div class="buttons">
         <button class="mic-btn" id="micBtn" onclick="startListening()">🎤 اضغط وتحدث</button>
         
-        <button class="clear" data-val="C" onclick="clearDisplay()">C (مسح)</button>
-        <button class="operator" data-val="/" onclick="appendValue('/')">/ (على)</button>
-        <button class="operator" data-val="*" onclick="appendValue('*')">* (في)</button>
+        <button class="clear" data-val="C" onclick="clearDisplay()">C</button>
+        <button class="operator" data-val="/" onclick="appendValue('/')">/</button>
+        <button class="operator" data-val="*" onclick="appendValue('*')">*</button>
         
         <button data-val="7" onclick="appendValue('7')">7</button>
         <button data-val="8" onclick="appendValue('8')">8</button>
         <button data-val="9" onclick="appendValue('9')">9</button>
-        <button class="operator" data-val="-" onclick="appendValue('-')">- (ناقص)</button>
+        <button class="operator" data-val="-" onclick="appendValue('-')">-</button>
         
         <button data-val="4" onclick="appendValue('4')">4</button>
         <button data-val="5" onclick="appendValue('5')">5</button>
         <button data-val="6" onclick="appendValue('6')">6</button>
-        <button class="operator" data-val="+" onclick="appendValue('+')">+ (زائد)</button>
+        <button class="operator" data-val="+" onclick="appendValue('+')">+</button>
         
         <button data-val="1" onclick="appendValue('1')">1</button>
         <button data-val="2" onclick="appendValue('2')">2</button>
         <button data-val="3" onclick="appendValue('3')">3</button>
         
         <button data-val="0" onclick="appendValue('0')">0</button>
-        <button class="equal" data-val="=" onclick="calculate()">= (يساوي)</button>
+        <button class="equal" data-val="=" onclick="calculate()">=</button>
     </div>
 </div>
 
 <script>
     const display = document.getElementById('display');
     const micBtn = document.getElementById('micBtn');
+    const speechBox = document.getElementById('speechBox');
 
-    // قاموس لتحويل الكلمات المنطوقة إلى أرقام وعمليات
     const voiceMap = {
         'صفر': '0', '0': '0',
         'واحد': '1', '1': '1',
@@ -127,8 +144,7 @@
         'ناقص': '-', 'طرح': '-',
         'في': '*', 'ضرب': '*',
         'على': '/', 'قسمه': '/', 'قسمة': '/',
-        'يساوي': '=', 'النتيجه': '=', 'النتيجة': '=',
-        'مسح': 'C', 'امسح': 'C'
+        'يساوي': '=', 'النتيجه': '=', 'النتيجة': '='
     };
 
     function appendValue(val) {
@@ -155,55 +171,63 @@
         }
     }
 
-    // دالة لإضاءة الزر المطابق
     function flashButton(val) {
         const btn = document.querySelector(`button[data-val="${val}"]`);
         if(btn) {
             btn.classList.add('active');
             setTimeout(() => {
                 btn.classList.remove('active');
-            }, 500); // مدة الإضاءة نصف ثانية
+            }, 500);
         }
     }
 
-    // دالة نطق النتيجة
     function speakResult(text) {
         const utterance = new SpeechSynthesisUtterance("النتيجة هي " + text);
         utterance.lang = 'ar-SA'; 
         window.speechSynthesis.speak(utterance);
     }
 
-    // إعداد التعرف على الصوت
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.lang = 'ar-EG'; // اللغة العربية
+        recognition.lang = 'ar-EG'; 
         recognition.continuous = false;
         recognition.interimResults = false;
 
         recognition.onstart = function() {
             micBtn.classList.add('listening');
             micBtn.innerText = "🎤 جاري الاستماع...";
+            speechBox.innerText = "أنا أسمعك الآن...";
+            speechBox.style.color = "#f1c40f";
         };
 
         recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript.trim().split(' ');
+            const fullTranscript = event.results[0][0].transcript.trim();
             
-            // معالجة الكلمات المنطوقة كلمة بكلمة لعمل التأثير الضوئي
-            transcript.forEach((word, index) => {
+            // عرض الكلام اللي قلته على الشاشة
+            speechBox.innerText = `قلت: "${fullTranscript}"`;
+            speechBox.style.color = "#1abc9c";
+
+            const transcriptWords = fullTranscript.split(' ');
+            
+            transcriptWords.forEach((word, index) => {
                 setTimeout(() => {
                     let mappedValue = voiceMap[word];
                     if (mappedValue) {
                         if (mappedValue === '=') {
                             calculate();
-                        } else if (mappedValue === 'C') {
-                            clearDisplay();
                         } else {
                             appendValue(mappedValue);
                         }
                     }
-                }, index * 600); // تأخير بسيط بين كل كلمة والأخرى لظهور الإضاءة
+                }, index * 600); 
             });
+        };
+
+        // معالجة الأخطاء وإظهارها على الشاشة
+        recognition.onerror = function(event) {
+            speechBox.innerText = `خطأ: ${event.error} (تأكد من صلاحيات المايك وأن الرابط آمن HTTPS)`;
+            speechBox.style.color = "#e74c3c";
         };
 
         recognition.onend = function() {
@@ -215,7 +239,8 @@
             recognition.start();
         };
     } else {
-        micBtn.innerText = "التعرف على الصوت غير مدعوم في متصفحك";
+        micBtn.innerText = "المتصفح لا يدعم الصوت";
+        speechBox.innerText = "يرجى استخدام متصفح Google Chrome";
         micBtn.disabled = true;
     }
 </script>
