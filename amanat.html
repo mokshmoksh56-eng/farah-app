@@ -128,7 +128,6 @@
     const micBtn = document.getElementById('micBtn');
     const speechBox = document.getElementById('speechBox');
 
-    // القاموس الشامل للأرقام والعمليات والمسح
     const voiceMap = {
         'صفر': '0', '0': '0',
         'واحد': '1', '1': '1',
@@ -149,9 +148,18 @@
     };
 
     function appendValue(val) {
-        if(display.value === '0') display.value = val;
-        else display.value += val;
-        flashButton(val);
+        // لو القيمة جاية كنص طويل (زي "10") نتعامل معاها صح
+        let stringVal = String(val);
+        
+        if(display.value === '0') display.value = stringVal;
+        else display.value += stringVal;
+        
+        // إضاءة الأزرار بالترتيب (مثلاً لو 10 هينور 1 وبعدين 0)
+        for (let i = 0; i < stringVal.length; i++) {
+            setTimeout(() => {
+                flashButton(stringVal[i]);
+            }, i * 300);
+        }
     }
 
     function clearDisplay() {
@@ -172,7 +180,6 @@
         }
     }
 
-    // تم تعديل هذه الدالة لتتجاوز مشاكل الرموز وتضيء الزر بدقة
     function flashButton(val) {
         const buttons = document.querySelectorAll('button');
         buttons.forEach(btn => {
@@ -211,7 +218,6 @@
             speechBox.innerText = `قلت: "${fullTranscript}"`;
             speechBox.style.color = "#1abc9c";
 
-            // فك الرموز عن الأرقام بمسافات ليفهمها النظام
             fullTranscript = fullTranscript.replace(/\+/g, ' + ')
                                            .replace(/-/g, ' - ')
                                            .replace(/\*/g, ' * ')
@@ -224,8 +230,15 @@
             const transcriptWords = fullTranscript.split(' ');
             
             transcriptWords.forEach((word, index) => {
+                // زودنا وقت التأخير شوية عشان لو رقم كبير ياخد وقته في الإضاءة والكتابة
                 setTimeout(() => {
                     let mappedValue = voiceMap[word];
+                    
+                    // الحل السحري: لو الكلمة مش في القاموس بس هي رقم (زي 10 أو 81)، اقبلها زي ما هي
+                    if (!mappedValue && !isNaN(word) && word.trim() !== '') {
+                        mappedValue = word;
+                    }
+
                     if (mappedValue) {
                         if (mappedValue === '=') {
                             calculate();
@@ -235,7 +248,7 @@
                             appendValue(mappedValue);
                         }
                     }
-                }, index * 600); 
+                }, index * 800); 
             });
         };
 
