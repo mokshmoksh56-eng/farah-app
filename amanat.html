@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>آلة حاسبة صوتية</title>
+    <title>آلة حاسبة صوتية ذكية</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -95,7 +95,6 @@
 
 <div class="calculator">
     <input type="text" id="display" disabled placeholder="0">
-    <!-- مربع عرض الكلام المنطوق -->
     <div id="speechBox">الكلام اللي هتقوله هيظهر هنا...</div>
     
     <div class="buttons">
@@ -129,6 +128,7 @@
     const micBtn = document.getElementById('micBtn');
     const speechBox = document.getElementById('speechBox');
 
+    // تم تحديث القاموس ليشمل الرموز الرياضية المباشرة
     const voiceMap = {
         'صفر': '0', '0': '0',
         'واحد': '1', '1': '1',
@@ -140,11 +140,11 @@
         'سبعة': '7', 'سبعه': '7', '7': '7',
         'ثمانية': '8', 'تمانيه': '8', '8': '8',
         'تسعة': '9', 'تسعه': '9', '9': '9',
-        'زائد': '+', 'جمع': '+',
-        'ناقص': '-', 'طرح': '-',
-        'في': '*', 'ضرب': '*',
-        'على': '/', 'قسمه': '/', 'قسمة': '/',
-        'يساوي': '=', 'النتيجه': '=', 'النتيجة': '='
+        'زائد': '+', 'جمع': '+', '+': '+', 'و': '+',
+        'ناقص': '-', 'طرح': '-', '-': '-',
+        'في': '*', 'ضرب': '*', '*': '*', 'x': '*', 'X': '*',
+        'على': '/', 'قسمه': '/', 'قسمة': '/', '/': '/',
+        'يساوي': '=', 'النتيجه': '=', 'النتيجة': '=', '=': '='
     };
 
     function appendValue(val) {
@@ -202,12 +202,22 @@
         };
 
         recognition.onresult = function(event) {
-            const fullTranscript = event.results[0][0].transcript.trim();
+            let fullTranscript = event.results[0][0].transcript.trim();
             
-            // عرض الكلام اللي قلته على الشاشة
             speechBox.innerText = `قلت: "${fullTranscript}"`;
             speechBox.style.color = "#1abc9c";
 
+            // الذكاء هنا: بنفكك الرموز عن الأرقام بمسافات عشان لو المتصفح كتب "1+1" لازقة في بعض
+            fullTranscript = fullTranscript.replace(/\+/g, ' + ')
+                                           .replace(/-/g, ' - ')
+                                           .replace(/\*/g, ' * ')
+                                           .replace(/\//g, ' / ')
+                                           .replace(/=/g, ' = ')
+                                           .replace(/x/gi, ' * '); // لو كتب حرف x كضرب
+            
+            // بنشيل المسافات الزايدة
+            fullTranscript = fullTranscript.replace(/\s+/g, ' ').trim();
+            
             const transcriptWords = fullTranscript.split(' ');
             
             transcriptWords.forEach((word, index) => {
@@ -224,9 +234,8 @@
             });
         };
 
-        // معالجة الأخطاء وإظهارها على الشاشة
         recognition.onerror = function(event) {
-            speechBox.innerText = `خطأ: ${event.error} (تأكد من صلاحيات المايك وأن الرابط آمن HTTPS)`;
+            speechBox.innerText = `خطأ: ${event.error}`;
             speechBox.style.color = "#e74c3c";
         };
 
