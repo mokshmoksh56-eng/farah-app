@@ -49,6 +49,15 @@
         <p id="aiStatus" style="color: #e74c3c; margin-top: 10px; font-weight: bold; display: none;"></p>
     </div>
 
+    <!-- الخانات الأساسية -->
+    <div class="form-group">
+        <label>موقع الوحدة:</label>
+        <select id="cabinetPosition">
+            <option value="bottom">سفلي</option>
+            <option value="top">علوي</option>
+        </select>
+    </div>
+    
     <div class="form-group">
         <label>الارتفاع الخارجي (سم):</label>
         <input type="number" id="externalHeight">
@@ -78,10 +87,9 @@
 </div>
 
 <script>
-    // ⚠️ مفتاح جوجل الخاص بقراءة الصور فقط (المايك سيعمل بدونه)
     const API_KEY = "حط_مفتاحك_هنا";
 
-    // --- 1. دالة تسجيل الصوت ---
+    // --- دالة تسجيل الصوت ---
     function startDictation() {
         if (window.hasOwnProperty('webkitSpeechRecognition') || window.hasOwnProperty('SpeechRecognition')) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -109,7 +117,6 @@
                 textDisplay.innerText = `أنت قلت: "${spokenText}"`;
                 textDisplay.style.display = "block";
                 
-                // إرسال النص للتحليل المباشر السريع
                 processTextFast(spokenText);
             };
 
@@ -125,33 +132,38 @@
         }
     }
 
-    // --- 2. دالة تحليل النص الصوتي (مباشرة وبسرعة البرق بدون إنترنت) ---
+    // --- دالة تحليل النص الصوتي (سريعة بدون إنترنت) ---
     function processTextFast(text) {
         let status = document.getElementById('aiStatus');
         status.style.display = 'block';
         
         try {
-            // استخراج الأرقام بناءً على الكلمات
+            // استخراج المقاسات
             let heightMatch = text.match(/ارتفاع\s*(\d+)/) || text.match(/طول\s*(\d+)/);
             let widthMatch = text.match(/عرض\s*(\d+)/);
             let depthMatch = text.match(/عمق\s*(\d+)/);
 
-            // توزيع الأرقام في الخانات
             if(heightMatch) document.getElementById('externalHeight').value = heightMatch[1];
             if(widthMatch) document.getElementById('externalWidth').value = widthMatch[1];
             if(depthMatch) document.getElementById('externalDepth').value = depthMatch[1];
 
-            // تحديد نوع الضلف
+            // استخراج نوع الضلف
             if(text.includes("ضلفتين") || text.includes("اثنين") || text.includes("2")) {
                 document.getElementById('unitType').value = 'double';
             } else if (text.includes("ضلفة") || text.includes("واحد") || text.includes("1")) {
                 document.getElementById('unitType').value = 'single';
             }
 
+            // استخراج موقع الوحدة (سفلي أو علوي)
+            if(text.includes("علو") || text.includes("فوق")) {
+                document.getElementById('cabinetPosition').value = 'top';
+            } else if (text.includes("سفل") || text.includes("تحت")) {
+                document.getElementById('cabinetPosition').value = 'bottom';
+            }
+
             status.style.color = "#27ae60";
             status.innerText = "تم إدخال المقاسات بنجاح!";
             
-            // الضغط على زرار الحساب أوتوماتيكياً لتوفير الوقت
             calculateFinalSizes();
             
         } catch (error) {
@@ -160,7 +172,7 @@
         }
     }
 
-    // --- 3. دالة تحليل الصورة (تحتاج مفتاح جوجل API) ---
+    // --- دالة تحليل الصورة ---
     async function processImage(event) {
         let input = event.target;
         if (!input.files || !input.files[0]) return;
@@ -185,8 +197,8 @@
                     body: JSON.stringify({
                         contents: [{
                             parts: [
-                                { text: `استخرج المقاسات: الارتفاع، العرض، العمق، عدد الضلف (1 أو 2). 
-                                رُد بـ JSON فقط: {"height": رقم, "width": رقم, "depth": رقم, "doors": رقم}` },
+                                { text: `استخرج المقاسات: الارتفاع، العرض، العمق، عدد الضلف (1 أو 2)، وموقع الوحدة (علوي أم سفلي). 
+                                رُد بـ JSON فقط: {"height": رقم, "width": رقم, "depth": رقم, "doors": رقم, "position": "top" أو "bottom"}` },
                                 { inline_data: { mime_type: "image/jpeg", data: base64Image } }
                             ]
                         }]
@@ -197,73 +209,4 @@
                 if(data.error) throw new Error(data.error.message);
 
                 let aiText = data.candidates[0].content.parts[0].text;
-                let cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
-                let extractedData = JSON.parse(cleanJson);
-                
-                document.getElementById('externalHeight').value = extractedData.height || '';
-                document.getElementById('externalWidth').value = extractedData.width || '';
-                document.getElementById('externalDepth').value = extractedData.depth || '';
-                document.getElementById('unitType').value = (extractedData.doors == 2) ? 'double' : 'single';
-                
-                loader.style.display = 'none';
-                status.style.color = "#27ae60";
-                status.innerText = "تم استخراج المقاسات من الصورة بنجاح!";
-                
-                calculateFinalSizes(); // حساب تلقائي
-                
-            } catch (error) {
-                loader.style.display = 'none';
-                status.style.color = "#e74c3c";
-                status.innerText = "حدث خطأ. تأكد من وضع مفتاح API صحيح للصورة.";
-                console.error(error);
-            }
-        }
-        reader.readAsDataURL(input.files[0]);
-    }
-
-    // --- 4. دالة حساب التقطيع النهائية ---
-    function calculateFinalSizes() {
-        let extH = parseFloat(document.getElementById('externalHeight').value);
-        let extW = parseFloat(document.getElementById('externalWidth').value);
-        let extD = parseFloat(document.getElementById('externalDepth').value);
-        let type = document.getElementById('unitType').value;
-        let resultBody = document.getElementById('resultBody');
-        let resultTable = document.getElementById('resultTable');
-        
-        if (isNaN(extH) || isNaN(extW) || isNaN(extD)) {
-            // لا تظهر رسالة خطأ إذا كانت الخانات فارغة لسه
-            return;
-        }
-
-        resultBody.innerHTML = ""; 
-        resultTable.style.display = "table";
-
-        resultBody.innerHTML += `<tr><td colspan="3" class="section-title">تقطيع الشاسيه (علبة 2.5 سم)</td></tr>`;
-        addRow('قوايم الارتفاع', extH.toFixed(1), '4');
-        addRow('عوارض العرض', (extW - 5).toFixed(1), '4');
-        addRow('عوارض العمق', (extD - 5).toFixed(1), '4');
-
-        resultBody.innerHTML += `<tr><td colspan="3" class="section-title">الضلف والفيبر</td></tr>`;
-        let innerH = extH - 5;
-        let innerW = extW - 5;
-
-        if (type === 'single') {
-            let doorH = innerH + 2.5;
-            let doorW = innerW + 2.5;
-            addRow('الضلفة (ارتفاع × عرض)', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '1');
-            addRow('فيبر الضلفة (ارتفاع × عرض)', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '1');
-        } else if (type === 'double') {
-            let doorH = innerH + 2.5;
-            let doorW = (innerW + 2.6) / 2;
-            addRow('الضلفة (ارتفاع × عرض)', `${doorH.toFixed(1)} × ${doorW.toFixed(1)}`, '2');
-            addRow('فيبر الضلفة (ارتفاع × عرض)', `${(doorH - 0.2).toFixed(1)} × ${(doorW - 0.2).toFixed(1)}`, '2');
-        }
-    }
-
-    function addRow(name, size, count) {
-        document.getElementById('resultBody').innerHTML += `<tr><td>${name}</td><td>${size}</td><td>${count}</td></tr>`;
-    }
-</script>
-
-</body>
-</html>
+                let cleanJson = aiText.replace(/```json/g, '').replace(/
