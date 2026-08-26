@@ -28,21 +28,23 @@
             border: none;
             border-radius: 5px;
             margin-bottom: 10px;
-            font-size: 28px;
+            font-size: 24px;
             text-align: left;
             padding: 10px;
             box-sizing: border-box;
-            direction: ltr;
+            direction: ltr; /* اتجاه الأرقام دايماً من اليسار لليمين */
+            color: #2c3e50;
+            font-weight: bold;
         }
         #speechBox {
             width: 100%;
-            min-height: 30px;
+            min-height: 35px;
             background-color: #1a252f;
             color: #1abc9c;
             border-radius: 5px;
             margin-bottom: 20px;
-            padding: 5px 10px;
-            font-size: 14px;
+            padding: 8px 10px;
+            font-size: 15px;
             box-sizing: border-box;
             text-align: center;
             display: flex;
@@ -127,6 +129,7 @@
     const display = document.getElementById('display');
     const micBtn = document.getElementById('micBtn');
     const speechBox = document.getElementById('speechBox');
+    let isCalculated = false; // متغير عشان نعرف إذا كنا طلعنا النتيجة ولا لأ
 
     const voiceMap = {
         'صفر': '0', '0': '0',
@@ -148,13 +151,31 @@
     };
 
     function appendValue(val) {
-        // لو القيمة جاية كنص طويل (زي "10") نتعامل معاها صح
         let stringVal = String(val);
         
-        if(display.value === '0') display.value = stringVal;
-        else display.value += stringVal;
+        if (isCalculated) {
+            // لو اليوزر ضغط علامة (+ - * /) بعد النتيجة، نكمل على النتيجة
+            if (['+', '-', '*', '/'].includes(stringVal)) {
+                let previousResult = display.value.split('=')[1].trim();
+                display.value = previousResult + ' ' + stringVal + ' ';
+            } else {
+                // لو قال رقم جديد، نبدأ مسألة جديدة
+                display.value = stringVal;
+            }
+            isCalculated = false;
+        } else {
+            if (display.value === '0' || display.value === '') {
+                display.value = stringVal;
+            } else {
+                // لو المدخل علامة، نحط قبلها وبعدها مسافة عشان تظهر في المنتصف بوضوح
+                if (['+', '-', '*', '/'].includes(stringVal)) {
+                    display.value += ' ' + stringVal + ' ';
+                } else {
+                    display.value += stringVal;
+                }
+            }
+        }
         
-        // إضاءة الأزرار بالترتيب (مثلاً لو 10 هينور 1 وبعدين 0)
         for (let i = 0; i < stringVal.length; i++) {
             setTimeout(() => {
                 flashButton(stringVal[i]);
@@ -163,15 +184,20 @@
     }
 
     function clearDisplay() {
-        display.value = '';
+        display.value = '0';
+        isCalculated = false;
         flashButton('C');
     }
 
     function calculate() {
+        if (isCalculated) return; // منع التكرار لو تم الحساب
         try {
-            let result = eval(display.value);
+            let expression = display.value;
+            let result = eval(expression);
             if(result !== undefined) {
-                display.value = result;
+                // وضع النتيجة مع المسألة بالكامل وعلامة =
+                display.value = expression + ' = ' + result;
+                isCalculated = true;
                 flashButton('=');
                 speakResult(result);
             }
@@ -215,7 +241,8 @@
         recognition.onresult = function(event) {
             let fullTranscript = event.results[0][0].transcript.trim();
             
-            speechBox.innerText = `قلت: "${fullTranscript}"`;
+            // إضافة خاصية (dir="ltr") عشان الأرقام والعلامات تظهر بالترتيب الإنجليزي من اليسار لليمين
+            speechBox.innerHTML = `قلت: <span dir="ltr" style="display:inline-block; font-weight:bold; color:#f1c40f; margin: 0 5px;">${fullTranscript}</span>`;
             speechBox.style.color = "#1abc9c";
 
             fullTranscript = fullTranscript.replace(/\+/g, ' + ')
@@ -230,11 +257,9 @@
             const transcriptWords = fullTranscript.split(' ');
             
             transcriptWords.forEach((word, index) => {
-                // زودنا وقت التأخير شوية عشان لو رقم كبير ياخد وقته في الإضاءة والكتابة
                 setTimeout(() => {
                     let mappedValue = voiceMap[word];
                     
-                    // الحل السحري: لو الكلمة مش في القاموس بس هي رقم (زي 10 أو 81)، اقبلها زي ما هي
                     if (!mappedValue && !isNaN(word) && word.trim() !== '') {
                         mappedValue = word;
                     }
