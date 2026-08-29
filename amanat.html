@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>آلة حاسبة صوتية ذكية</title>
     <style>
+        /* إعدادات التصميم الأساسية وتوسيط المحتوى */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
@@ -14,6 +15,8 @@
             height: 100vh;
             margin: 0;
         }
+
+        /* تصميم هيكل الآلة الحاسبة */
         .calculator {
             background-color: #2c3e50;
             padding: 20px;
@@ -21,6 +24,8 @@
             box-shadow: 0px 10px 30px rgba(0,0,0,0.2);
             width: 320px;
         }
+
+        /* شاشة العرض الرئيسية */
         #display {
             width: 100%;
             height: 60px;
@@ -29,13 +34,15 @@
             border-radius: 5px;
             margin-bottom: 10px;
             font-size: 24px;
-            text-align: left;
+            text-align: left; /* من اليسار لليمين للأرقام */
             padding: 10px;
             box-sizing: border-box;
             direction: ltr;
             color: #2c3e50;
             font-weight: bold;
         }
+
+        /* مربع عرض النص المنطوق */
         #speechBox {
             width: 100%;
             min-height: 35px;
@@ -51,11 +58,15 @@
             align-items: center;
             justify-content: center;
         }
+
+        /* شبكة الأزرار (Grid) */
         .buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
         }
+
+        /* التصميم العام للأزرار */
         button {
             padding: 20px;
             font-size: 20px;
@@ -66,10 +77,13 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+
+        /* ألوان مخصصة للعمليات والمسح واليساوي */
         button.operator { background-color: #e67e22; }
         button.clear { background-color: #e74c3c; grid-column: span 2; }
         button.equal { background-color: #27ae60; grid-column: span 2; }
         
+        /* تأثير النقر على الزر أو تفعيله بالصوت */
         button.active, button:active {
             background-color: #f1c40f !important;
             color: #333;
@@ -77,15 +91,19 @@
             transform: scale(1.05);
         }
 
+        /* زر المايكروفون */
         .mic-btn {
             grid-column: span 4;
             background-color: #3498db;
             font-weight: bold;
         }
+
+        /* تأثير النبض أثناء الاستماع */
         .listening {
             background-color: #e74c3c !important;
             animation: pulse 1s infinite;
         }
+
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
@@ -126,11 +144,13 @@
 </div>
 
 <script>
+    // --- 1. تعريف عناصر الواجهة والمتغيرات ---
     const display = document.getElementById('display');
     const micBtn = document.getElementById('micBtn');
     const speechBox = document.getElementById('speechBox');
-    let isCalculated = false; 
+    let isCalculated = false; // لمنع تكرار العمليات بعد ظهور النتيجة
 
+    // --- 2. قاموس تحويل الكلمات العربية إلى رموز رياضية ---
     const voiceMap = {
         'صفر': '0', '0': '0',
         'واحد': '1', '1': '1',
@@ -150,21 +170,26 @@
         'مسح': 'C', 'امسح': 'C', 'حذف': 'C', 'c': 'C', 'C': 'C'
     };
 
+    // --- 3. الدوال الأساسية للآلة الحاسبة ---
+
+    // إضافة قيمة للشاشة
     function appendValue(val) {
         let stringVal = String(val);
         
         if (isCalculated) {
+            // لو النتيجة ظاهرة والمستخدم طلب عملية حسابية جديدة، نكمل على النتيجة القديمة
             if (['+', '-', '*', '/'].includes(stringVal)) {
                 let previousResult = display.value.split('=')[1].trim();
                 display.value = previousResult + ' ' + stringVal + ' ';
             } else {
-                display.value = stringVal;
+                display.value = stringVal; // لو رقم جديد، نبدأ من الأول
             }
             isCalculated = false;
         } else {
             if (display.value === '0' || display.value === '') {
                 display.value = stringVal;
             } else {
+                // إضافة مسافات حول العمليات الحسابية لشكل أفضل
                 if (['+', '-', '*', '/'].includes(stringVal)) {
                     display.value += ' ' + stringVal + ' ';
                 } else {
@@ -173,6 +198,7 @@
             }
         }
         
+        // تأثير وميض الأزرار
         for (let i = 0; i < stringVal.length; i++) {
             setTimeout(() => {
                 flashButton(stringVal[i]);
@@ -180,50 +206,54 @@
         }
     }
 
+    // مسح الشاشة
     function clearDisplay() {
         display.value = '0';
         isCalculated = false;
         flashButton('C');
     }
 
+    // حساب النتيجة
     function calculate() {
         if (isCalculated) return; 
         try {
             let expression = display.value;
-            let result = eval(expression);
+            let result = eval(expression); // تقييم المعادلة
             if(result !== undefined) {
                 display.value = expression + ' = ' + result;
                 isCalculated = true;
                 flashButton('=');
-                speakResult(result);
+                speakResult(result); // نطق النتيجة
             }
         } catch (e) {
-            // تجاهل الخطأ بصمت لو كانت العملية لسة مش مكتملة
+            // يتم تجاهل الخطأ لو كانت المعادلة غير مكتملة بعد
         }
     }
 
+    // إضاءة الزر المطلوب برمجياً
     function flashButton(val) {
         const buttons = document.querySelectorAll('button');
         buttons.forEach(btn => {
             if (btn.getAttribute('data-val') === val) {
                 btn.classList.add('active');
-                setTimeout(() => {
-                    btn.classList.remove('active');
-                }, 500);
+                setTimeout(() => btn.classList.remove('active'), 500);
             }
         });
     }
 
+    // نطق النتيجة بالصوت
     function speakResult(text) {
         const utterance = new SpeechSynthesisUtterance("النتيجة هي " + text);
         utterance.lang = 'ar-SA'; 
         window.speechSynthesis.speak(utterance);
     }
 
+    // --- 4. إعدادات التعرف على الصوت (Speech Recognition) ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.lang = 'ar-EG'; 
+        recognition.lang = 'ar-EG'; // اللهجة المصرية
         recognition.continuous = false;
         recognition.interimResults = false;
 
@@ -235,59 +265,56 @@
         };
 
         recognition.onresult = function(event) {
+            // تنظيف النص المستلم
             let fullTranscript = event.results[0][0].transcript.trim();
             
+            // عرض النص للمستخدم
             speechBox.innerHTML = `قلت: <span dir="ltr" style="display:inline-block; font-weight:bold; color:#f1c40f; margin: 0 5px;">${fullTranscript}</span>`;
             speechBox.style.color = "#1abc9c";
 
+            // معالجة الرموز لو المتصفح كتبها كرموز مش كلمات
             fullTranscript = fullTranscript.replace(/\+/g, ' + ')
                                            .replace(/-/g, ' - ')
                                            .replace(/\*/g, ' * ')
                                            .replace(/\//g, ' / ')
                                            .replace(/=/g, ' = ')
-                                           .replace(/x/gi, ' * '); 
-            
-            fullTranscript = fullTranscript.replace(/\s+/g, ' ').trim();
+                                           .replace(/x/gi, ' * ')
+                                           .replace(/\s+/g, ' ').trim();
             
             const transcriptWords = fullTranscript.split(' ');
             let totalDelay = 0;
             
+            // محاكاة كتابة العمليات خطوة بخطوة بالتأخير الزمني
             transcriptWords.forEach((word, index) => {
-                totalDelay = index * 800; // حساب الوقت المطلوب لكتابة كل الكلمات
+                totalDelay = index * 800; 
                 setTimeout(() => {
                     let mappedValue = voiceMap[word];
                     
+                    // لو الكلمة رقم مباشر ومش موجودة في القاموس
                     if (!mappedValue && !isNaN(word) && word.trim() !== '') {
                         mappedValue = word;
                     }
 
                     if (mappedValue) {
-                        if (mappedValue === '=') {
-                            calculate();
-                        } else if (mappedValue === 'C') {
-                            clearDisplay();
-                        } else {
-                            appendValue(mappedValue);
-                        }
+                        if (mappedValue === '=') calculate();
+                        else if (mappedValue === 'C') clearDisplay();
+                        else appendValue(mappedValue);
                     }
                 }, totalDelay); 
             });
 
-            // --- الميزة الجديدة: الحساب التلقائي ---
-            // ننتظر ثانية واحدة بعد آخر كلمة اتكتبت
+            // ميزة الحساب التلقائي: استخراج النتيجة بعد انتهاء الكلام بثانية ونصف
             setTimeout(() => {
                 if (!isCalculated && display.value !== '0' && display.value.trim() !== '') {
-                    // نجيب آخر حرف مكتوب في الشاشة
                     let trimmedDisplay = display.value.trim();
                     let lastChar = trimmedDisplay.charAt(trimmedDisplay.length - 1);
                     
-                    // لو آخر حاجة رقم ومش علامة (+ أو - إلخ)، نحسب النتيجة فوراً
+                    // حساب النتيجة تلقائياً لو آخر مدخل كان رقماً وليس علامة رياضية
                     if (!['+', '-', '*', '/'].includes(lastChar)) {
                         calculate();
                     }
                 }
-            }, totalDelay + 1500); // 1500 مللي ثانية (ثانية ونص) بعد آخر كلمة
-
+            }, totalDelay + 1500); 
         };
 
         recognition.onerror = function(event) {
@@ -304,6 +331,7 @@
             recognition.start();
         };
     } else {
+        // رسالة تظهر لو المتصفح مش بيدعم الـ Speech API
         micBtn.innerText = "المتصفح لا يدعم الصوت";
         speechBox.innerText = "يرجى استخدام متصفح Google Chrome";
         micBtn.disabled = true;
