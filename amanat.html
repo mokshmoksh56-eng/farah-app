@@ -99,7 +99,6 @@
     </div>
 </div>
 
-<!-- مربع الشات الجديد -->
 <div class="chat-container">
     <input type="text" id="chatInput" placeholder="اكتب رسالتك للروبوت هنا..." onkeypress="handleEnter(event)">
     <button id="sendBtn" onclick="sendChat()">➤</button>
@@ -111,7 +110,8 @@
 </div>
 
 <script>
-    const GEMINI_API_KEY = 'AQ.Ab8RN6JUfjF2KWHmNKl225CUjgVjS0wgHYBv2Xo69IulJhE0Tg'; 
+    // 🔑 ضع المفتاح الجديد هنا (تأكد إنه بيبدأ بـ AIzaSy) 🔑
+    const GEMINI_API_KEY = 'AIzaSy_ضع_مفتاحك_الصحيح_هنا'; 
 
     const display = document.getElementById('display');
     const micBtn = document.getElementById('micBtn');
@@ -200,6 +200,12 @@
     }
 
     async function askAI(promptText) {
+        if (!GEMINI_API_KEY || GEMINI_API_KEY.includes('ضع_مفتاحك') || !GEMINI_API_KEY.startsWith('AIzaSy')) {
+            speakText("المفتاح غير صحيح أو لم يتم إضافته. يرجى مراجعة الكود.");
+            speechBox.innerText = "يرجى وضع المفتاح الصحيح الذي يبدأ بـ AIzaSy في الكود.";
+            return;
+        }
+
         robotFace.classList.add('thinking');
         speechBox.innerText = "فرح بوت بيفكر...";
 
@@ -218,19 +224,24 @@
                     }]
                 })
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
             const aiReply = data.candidates[0].content.parts[0].text;
             speechBox.innerText = aiReply;
             speakText(aiReply);
         } catch (error) {
-            speakText("حصلت مشكلة في الاتصال، جرب تاني.");
-            speechBox.innerText = "خطأ في الاتصال بالخادم.";
+            console.error("تفاصيل خطأ الذكاء الاصطناعي:", error);
+            speakText("في مشكلة في الاتصال بالسيرفر، راجع كونسول المتصفح.");
+            speechBox.innerText = "خطأ في الاتصال (اضغط F12 لمعرفة السبب). تأكد من صلاحية المفتاح.";
         } finally {
             robotFace.classList.remove('thinking');
         }
     }
 
-    // --- الدالة الموحدة لمعالجة النص (سواء من المايك أو من الشات) ---
     function processUserInput(fullTranscript) {
         speechBox.innerHTML = `رسالتك: <span dir="ltr" style="display:inline-block; font-weight:bold; color:#f1c40f; margin: 0 5px;">${fullTranscript}</span>`;
         speechBox.style.color = "#1abc9c";
@@ -278,22 +289,18 @@
         }, totalDelay + 1500); 
     }
 
-    // --- دوال إرسال الشات المكتوب ---
     function sendChat() {
         const text = chatInput.value.trim();
         if (text) {
             processUserInput(text);
-            chatInput.value = ''; // تفريغ المربع بعد الإرسال
+            chatInput.value = ''; 
         }
     }
 
     function handleEnter(event) {
-        if (event.key === 'Enter') {
-            sendChat();
-        }
+        if (event.key === 'Enter') sendChat();
     }
 
-    // --- إعدادات المايكروفون ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
