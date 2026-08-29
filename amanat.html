@@ -7,7 +7,6 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; transition: background-color 0.5s ease; }
         
-        /* الوضع الليلي */
         body.dark-mode { background-color: #121212; }
         body.dark-mode .calculator { background-color: #1e272e; box-shadow: 0px 10px 30px rgba(255, 255, 255, 0.05); }
         body.dark-mode #display { background-color: #2f3640; color: #f5f6fa; }
@@ -17,7 +16,6 @@
 
         .calculator { background-color: #2c3e50; padding: 20px; border-radius: 10px; box-shadow: 0px 10px 30px rgba(0,0,0,0.2); width: 320px; transition: all 0.5s ease; }
         
-        /* الروبوت */
         .robot-container { display: flex; justify-content: center; margin-bottom: 15px; }
         .robot { width: 70px; height: 55px; background-color: #34495e; border-radius: 15px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 3px solid #1abc9c; transition: all 0.3s ease; }
         .robot-eyes { display: flex; gap: 12px; margin-bottom: 8px; }
@@ -50,14 +48,12 @@
         .mic-btn { grid-column: span 4; background-color: #3498db !important; font-weight: bold; }
         .listening-btn { background-color: #e74c3c !important; animation: pulse-btn 1s infinite; }
         
-        /* قسم الشات النصي */
         .chat-container { width: 320px; margin-top: 15px; display: flex; gap: 10px; }
         #chatInput { flex: 1; padding: 12px; border: none; border-radius: 8px; background-color: #ecf0f1; color: #2c3e50; font-family: inherit; font-size: 15px; outline: none; transition: all 0.3s; }
         #chatInput:focus { box-shadow: 0 0 10px rgba(26, 188, 156, 0.5); }
         #sendBtn { padding: 0 20px; background-color: #1abc9c; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; transition: 0.3s; }
         #sendBtn:hover { background-color: #16a085; }
 
-        /* قسم السجل */
         .history-panel { width: 320px; margin-top: 15px; background-color: #ecf0f1; border-radius: 10px; padding: 15px; box-sizing: border-box; max-height: 150px; overflow-y: auto; color: #2c3e50; }
         .history-panel h4 { margin: 0 0 10px 0; font-size: 16px; }
         #historyList { list-style: none; padding: 0; margin: 0; font-size: 14px; direction: ltr; text-align: left; }
@@ -110,8 +106,8 @@
 </div>
 
 <script>
-    // 🔑 ضع المفتاح الجديد هنا (تأكد إنه بيبدأ بـ AIzaSy) 🔑
-    const GEMINI_API_KEY = 'AIzaSy_ضع_مفتاحك_الصحيح_هنا'; 
+    // المفتاح الخاص بك تم وضعه هنا مباشرة
+    const GEMINI_API_KEY = 'AQ.Ab8RN6JUfjF2KWHmNKl225CUjgVjS0wgHYBv2Xo69IulJhE0Tg'; 
 
     const display = document.getElementById('display');
     const micBtn = document.getElementById('micBtn');
@@ -200,12 +196,6 @@
     }
 
     async function askAI(promptText) {
-        if (!GEMINI_API_KEY || GEMINI_API_KEY.includes('ضع_مفتاحك') || !GEMINI_API_KEY.startsWith('AIzaSy')) {
-            speakText("المفتاح غير صحيح أو لم يتم إضافته. يرجى مراجعة الكود.");
-            speechBox.innerText = "يرجى وضع المفتاح الصحيح الذي يبدأ بـ AIzaSy في الكود.";
-            return;
-        }
-
         robotFace.classList.add('thinking');
         speechBox.innerText = "فرح بوت بيفكر...";
 
@@ -226,17 +216,20 @@
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorDetails = await response.text();
+                console.error("سبب رفض السيرفر للمفتاح:", errorDetails);
+                throw new Error("API Key Rejected");
             }
 
             const data = await response.json();
             const aiReply = data.candidates[0].content.parts[0].text;
             speechBox.innerText = aiReply;
             speakText(aiReply);
+            
         } catch (error) {
-            console.error("تفاصيل خطأ الذكاء الاصطناعي:", error);
-            speakText("في مشكلة في الاتصال بالسيرفر، راجع كونسول المتصفح.");
-            speechBox.innerText = "خطأ في الاتصال (اضغط F12 لمعرفة السبب). تأكد من صلاحية المفتاح.";
+            console.error("تفاصيل الخطأ:", error);
+            speakText("المفتاح غير صالح. جوجل ترفض الاتصال بهذا المفتاح.");
+            speechBox.innerText = "خطأ: المفتاح (API Key) المضاف غير صالح للاستخدام مع Gemini. يرجى استخراج مفتاح جديد.";
         } finally {
             robotFace.classList.remove('thinking');
         }
