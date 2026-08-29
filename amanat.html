@@ -3,17 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>آلة حاسبة صوتية ذكية</title>
+    <title>آلة حاسبة صوتية ذكية مع روبوت</title>
     <style>
         /* إعدادات التصميم الأساسية وتوسيط المحتوى */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            transition: background-color 0.5s ease;
+        }
+
+        /* --- الوضع الليلي --- */
+        body.dark-mode {
+            background-color: #121212;
+        }
+        body.dark-mode .calculator {
+            background-color: #1e272e;
+            box-shadow: 0px 10px 30px rgba(255, 255, 255, 0.05);
+        }
+        body.dark-mode #display {
+            background-color: #2f3640;
+            color: #f5f6fa;
+        }
+        body.dark-mode .history-panel {
+            background-color: #1e272e;
+            color: #f5f6fa;
+            border-top: 2px solid #34495e;
+        }
+        body.dark-mode .history-panel li {
+            border-bottom: 1px solid #2f3640;
         }
 
         /* تصميم هيكل الآلة الحاسبة */
@@ -23,9 +46,91 @@
             border-radius: 10px;
             box-shadow: 0px 10px 30px rgba(0,0,0,0.2);
             width: 320px;
+            transition: all 0.5s ease;
         }
 
-        /* شاشة العرض الرئيسية */
+        /* --- تصميم الروبوت التفاعلي --- */
+        .robot-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .robot {
+            width: 70px;
+            height: 55px;
+            background-color: #34495e;
+            border-radius: 15px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 3px solid #1abc9c;
+            transition: all 0.3s ease;
+        }
+
+        .robot-eyes {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .eye {
+            width: 12px;
+            height: 12px;
+            background-color: #1abc9c;
+            border-radius: 50%;
+            animation: blink 4s infinite;
+            transition: all 0.3s;
+        }
+
+        .robot-mouth {
+            width: 25px;
+            height: 4px;
+            background-color: #1abc9c;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        /* حركة الرمش */
+        @keyframes blink {
+            0%, 96%, 98% { transform: scaleY(1); }
+            97% { transform: scaleY(0.1); }
+        }
+
+        /* حالة الروبوت أثناء الاستماع */
+        .robot.listening { 
+            border-color: #e74c3c; 
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.6); 
+            transform: scale(1.05);
+        }
+        .robot.listening .eye { background-color: #e74c3c; animation: none; }
+        .robot.listening .robot-mouth { 
+            background-color: #e74c3c; 
+            width: 10px; 
+            height: 10px; 
+            border-radius: 50%; 
+        }
+
+        /* حالة الروبوت أثناء التحدث */
+        .robot.speaking { 
+            border-color: #f1c40f; 
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.6); 
+        }
+        .robot.speaking .eye { background-color: #f1c40f; }
+        .robot.speaking .robot-mouth {
+            background-color: #f1c40f;
+            animation: talk 0.2s infinite alternate;
+        }
+
+        /* حركة الفم أثناء الكلام */
+        @keyframes talk {
+            0% { width: 15px; height: 4px; }
+            100% { width: 22px; height: 12px; border-radius: 8px;}
+        }
+
         #display {
             width: 100%;
             height: 60px;
@@ -34,15 +139,15 @@
             border-radius: 5px;
             margin-bottom: 10px;
             font-size: 24px;
-            text-align: left; /* من اليسار لليمين للأرقام */
+            text-align: left; 
             padding: 10px;
             box-sizing: border-box;
             direction: ltr;
             color: #2c3e50;
             font-weight: bold;
+            transition: all 0.3s;
         }
 
-        /* مربع عرض النص المنطوق */
         #speechBox {
             width: 100%;
             min-height: 35px;
@@ -59,14 +164,12 @@
             justify-content: center;
         }
 
-        /* شبكة الأزرار (Grid) */
         .buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
         }
 
-        /* التصميم العام للأزرار */
         button {
             padding: 20px;
             font-size: 20px;
@@ -78,12 +181,10 @@
             transition: all 0.2s;
         }
 
-        /* ألوان مخصصة للعمليات والمسح واليساوي */
         button.operator { background-color: #e67e22; }
         button.clear { background-color: #e74c3c; grid-column: span 2; }
         button.equal { background-color: #27ae60; grid-column: span 2; }
         
-        /* تأثير النقر على الزر أو تفعيله بالصوت */
         button.active, button:active {
             background-color: #f1c40f !important;
             color: #333;
@@ -91,20 +192,50 @@
             transform: scale(1.05);
         }
 
-        /* زر المايكروفون */
         .mic-btn {
             grid-column: span 4;
             background-color: #3498db;
             font-weight: bold;
         }
 
-        /* تأثير النبض أثناء الاستماع */
-        .listening {
+        .listening-btn {
             background-color: #e74c3c !important;
-            animation: pulse 1s infinite;
+            animation: pulse-btn 1s infinite;
         }
 
-        @keyframes pulse {
+        .history-panel {
+            width: 320px;
+            margin-top: 15px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            padding: 15px;
+            box-sizing: border-box;
+            max-height: 150px;
+            overflow-y: auto;
+            color: #2c3e50;
+            transition: all 0.5s ease;
+        }
+        
+        .history-panel h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        
+        #historyList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 14px;
+            direction: ltr;
+            text-align: left;
+        }
+        
+        #historyList li {
+            padding: 5px 0;
+            border-bottom: 1px solid #dcdde1;
+        }
+
+        @keyframes pulse-btn {
             0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
             100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
@@ -114,6 +245,18 @@
 <body>
 
 <div class="calculator">
+    
+    <!-- واجهة الروبوت -->
+    <div class="robot-container">
+        <div class="robot" id="robotFace">
+            <div class="robot-eyes">
+                <div class="eye"></div>
+                <div class="eye"></div>
+            </div>
+            <div class="robot-mouth"></div>
+        </div>
+    </div>
+
     <input type="text" id="display" disabled placeholder="0">
     <div id="speechBox">الكلام اللي هتقوله هيظهر هنا...</div>
     
@@ -143,14 +286,19 @@
     </div>
 </div>
 
+<div class="history-panel">
+    <h4>📜 سجل العمليات</h4>
+    <ul id="historyList"></ul>
+</div>
+
 <script>
-    // --- 1. تعريف عناصر الواجهة والمتغيرات ---
     const display = document.getElementById('display');
     const micBtn = document.getElementById('micBtn');
     const speechBox = document.getElementById('speechBox');
-    let isCalculated = false; // لمنع تكرار العمليات بعد ظهور النتيجة
+    const historyList = document.getElementById('historyList');
+    const robotFace = document.getElementById('robotFace');
+    let isCalculated = false; 
 
-    // --- 2. قاموس تحويل الكلمات العربية إلى رموز رياضية ---
     const voiceMap = {
         'صفر': '0', '0': '0',
         'واحد': '1', '1': '1',
@@ -170,27 +318,22 @@
         'مسح': 'C', 'امسح': 'C', 'حذف': 'C', 'c': 'C', 'C': 'C'
     };
 
-    // --- 3. الدوال الأساسية للآلة الحاسبة ---
-
-    // إضافة قيمة للشاشة
     function appendValue(val) {
         let stringVal = String(val);
         
         if (isCalculated) {
-            // لو النتيجة ظاهرة والمستخدم طلب عملية حسابية جديدة، نكمل على النتيجة القديمة
-            if (['+', '-', '*', '/'].includes(stringVal)) {
+            if (['+', '-', '*', '/'].includes(stringVal) || stringVal === '**2') {
                 let previousResult = display.value.split('=')[1].trim();
                 display.value = previousResult + ' ' + stringVal + ' ';
             } else {
-                display.value = stringVal; // لو رقم جديد، نبدأ من الأول
+                display.value = stringVal;
             }
             isCalculated = false;
         } else {
             if (display.value === '0' || display.value === '') {
                 display.value = stringVal;
             } else {
-                // إضافة مسافات حول العمليات الحسابية لشكل أفضل
-                if (['+', '-', '*', '/'].includes(stringVal)) {
+                if (['+', '-', '*', '/'].includes(stringVal) || stringVal === '**2') {
                     display.value += ' ' + stringVal + ' ';
                 } else {
                     display.value += stringVal;
@@ -198,39 +341,48 @@
             }
         }
         
-        // تأثير وميض الأزرار
-        for (let i = 0; i < stringVal.length; i++) {
-            setTimeout(() => {
-                flashButton(stringVal[i]);
-            }, i * 300);
+        if(stringVal.length === 1) {
+            setTimeout(() => flashButton(stringVal), 100);
         }
     }
 
-    // مسح الشاشة
     function clearDisplay() {
         display.value = '0';
         isCalculated = false;
         flashButton('C');
     }
 
-    // حساب النتيجة
     function calculate() {
         if (isCalculated) return; 
         try {
             let expression = display.value;
-            let result = eval(expression); // تقييم المعادلة
-            if(result !== undefined) {
-                display.value = expression + ' = ' + result;
+            let openP = (expression.match(/\(/g) || []).length;
+            let closeP = (expression.match(/\)/g) || []).length;
+            for(let i=0; i < openP - closeP; i++) expression += ')';
+
+            let result = eval(expression); 
+            
+            if(result !== undefined && !isNaN(result)) {
+                let finalEquation = expression + ' = ' + result;
+                display.value = finalEquation;
                 isCalculated = true;
                 flashButton('=');
-                speakResult(result); // نطق النتيجة
+                speakResult(result); 
+                addToHistory(finalEquation);
             }
         } catch (e) {
-            // يتم تجاهل الخطأ لو كانت المعادلة غير مكتملة بعد
+            display.value = 'خطأ في المعادلة';
+            speakText("عفواً، المعادلة غير واضحة، يرجى إعادتها.");
+            setTimeout(clearDisplay, 2500);
         }
     }
 
-    // إضاءة الزر المطلوب برمجياً
+    function addToHistory(equation) {
+        const li = document.createElement('li');
+        li.textContent = equation;
+        historyList.prepend(li);
+    }
+
     function flashButton(val) {
         const buttons = document.querySelectorAll('button');
         buttons.forEach(btn => {
@@ -241,38 +393,76 @@
         });
     }
 
-    // نطق النتيجة بالصوت
-    function speakResult(text) {
-        const utterance = new SpeechSynthesisUtterance("النتيجة هي " + text);
+    // --- تفاعل الروبوت أثناء التحدث ---
+    function speakText(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'ar-SA'; 
+        
+        utterance.onstart = function() {
+            robotFace.classList.add('speaking');
+        };
+        
+        utterance.onend = function() {
+            robotFace.classList.remove('speaking');
+        };
+
         window.speechSynthesis.speak(utterance);
     }
 
-    // --- 4. إعدادات التعرف على الصوت (Speech Recognition) ---
+    function speakResult(result) {
+        const phrases = [
+            "النتيجة هي ", 
+            "حسبتها لك، تطلع ", 
+            "النتيجة النهائية "
+        ];
+        const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+        speakText(randomPhrase + result);
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.lang = 'ar-EG'; // اللهجة المصرية
+        recognition.lang = 'ar-EG'; 
         recognition.continuous = false;
         recognition.interimResults = false;
 
+        // --- تفاعل الروبوت أثناء الاستماع ---
         recognition.onstart = function() {
-            micBtn.classList.add('listening');
+            micBtn.classList.add('listening-btn');
+            robotFace.classList.add('listening'); // تشغيل حالة الاستماع للروبوت
             micBtn.innerText = "🎤 جاري الاستماع...";
             speechBox.innerText = "أنا أسمعك الآن...";
             speechBox.style.color = "#f1c40f";
         };
 
         recognition.onresult = function(event) {
-            // تنظيف النص المستلم
             let fullTranscript = event.results[0][0].transcript.trim();
-            
-            // عرض النص للمستخدم
             speechBox.innerHTML = `قلت: <span dir="ltr" style="display:inline-block; font-weight:bold; color:#f1c40f; margin: 0 5px;">${fullTranscript}</span>`;
             speechBox.style.color = "#1abc9c";
 
-            // معالجة الرموز لو المتصفح كتبها كرموز مش كلمات
+            if (fullTranscript.includes('وضع ليلي') || fullTranscript.includes('الوضع الليلي') || fullTranscript.includes('ضلمه')) {
+                document.body.classList.add('dark-mode');
+                speakText("تم تفعيل الوضع الليلي");
+                return;
+            }
+            if (fullTranscript.includes('وضع عادي') || fullTranscript.includes('الوضع العادي') || fullTranscript.includes('نور')) {
+                document.body.classList.remove('dark-mode');
+                speakText("تم تفعيل الوضع العادي");
+                return;
+            }
+            if (fullTranscript.includes('امسح السجل') || fullTranscript.includes('نظف السجل')) {
+                historyList.innerHTML = '';
+                speakText("تم مسح السجل بنجاح");
+                return;
+            }
+
+            fullTranscript = fullTranscript.replace(/في المية/g, '/100')
+                                           .replace(/بالمية/g, '/100')
+                                           .replace(/في المائه/g, '/100')
+                                           .replace(/جذر/g, 'Math.sqrt(')
+                                           .replace(/تربيع/g, '**2');
+
             fullTranscript = fullTranscript.replace(/\+/g, ' + ')
                                            .replace(/-/g, ' - ')
                                            .replace(/\*/g, ' * ')
@@ -284,16 +474,15 @@
             const transcriptWords = fullTranscript.split(' ');
             let totalDelay = 0;
             
-            // محاكاة كتابة العمليات خطوة بخطوة بالتأخير الزمني
             transcriptWords.forEach((word, index) => {
-                totalDelay = index * 800; 
+                totalDelay = index * 600; 
                 setTimeout(() => {
                     let mappedValue = voiceMap[word];
                     
-                    // لو الكلمة رقم مباشر ومش موجودة في القاموس
-                    if (!mappedValue && !isNaN(word) && word.trim() !== '') {
-                        mappedValue = word;
-                    }
+                    if (!mappedValue && word === 'Math.sqrt(') mappedValue = word;
+                    if (!mappedValue && word === '**2') mappedValue = word;
+                    if (!mappedValue && word === '/100') mappedValue = word;
+                    if (!mappedValue && !isNaN(word) && word.trim() !== '') mappedValue = word;
 
                     if (mappedValue) {
                         if (mappedValue === '=') calculate();
@@ -303,14 +492,12 @@
                 }, totalDelay); 
             });
 
-            // ميزة الحساب التلقائي: استخراج النتيجة بعد انتهاء الكلام بثانية ونصف
             setTimeout(() => {
                 if (!isCalculated && display.value !== '0' && display.value.trim() !== '') {
                     let trimmedDisplay = display.value.trim();
                     let lastChar = trimmedDisplay.charAt(trimmedDisplay.length - 1);
                     
-                    // حساب النتيجة تلقائياً لو آخر مدخل كان رقماً وليس علامة رياضية
-                    if (!['+', '-', '*', '/'].includes(lastChar)) {
+                    if (!['+', '-', '*', '/'].includes(lastChar) && trimmedDisplay !== 'Math.sqrt(') {
                         calculate();
                     }
                 }
@@ -320,10 +507,13 @@
         recognition.onerror = function(event) {
             speechBox.innerText = `خطأ: ${event.error}`;
             speechBox.style.color = "#e74c3c";
+            robotFace.classList.remove('listening');
         };
 
+        // --- إنهاء تفاعل الروبوت بعد إغلاق المايك ---
         recognition.onend = function() {
-            micBtn.classList.remove('listening');
+            micBtn.classList.remove('listening-btn');
+            robotFace.classList.remove('listening'); // إيقاف حالة الاستماع للروبوت
             micBtn.innerText = "🎤 اضغط وتحدث";
         };
 
@@ -331,7 +521,6 @@
             recognition.start();
         };
     } else {
-        // رسالة تظهر لو المتصفح مش بيدعم الـ Speech API
         micBtn.innerText = "المتصفح لا يدعم الصوت";
         speechBox.innerText = "يرجى استخدام متصفح Google Chrome";
         micBtn.disabled = true;
