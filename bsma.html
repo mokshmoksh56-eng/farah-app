@@ -148,7 +148,6 @@
             background: var(--primary-hover);
         }
 
-        /* رسالة تم الحفظ */
         .toast {
             position: fixed;
             top: 20px;
@@ -217,11 +216,12 @@
             align-items: center;
             justify-content: space-between;
             padding: 12px 14px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
             background: white;
             border-radius: 8px;
             margin-bottom: 6px;
             gap: 10px;
+            transition: background 0.3s ease;
         }
 
         .record-item .date-info {
@@ -263,7 +263,7 @@
         }
 
         .delete-btn:active {
-            background: #fce8e6;
+            background: rgba(0,0,0,0.1);
         }
 
         .empty-msg {
@@ -291,6 +291,15 @@
         .clear-all-btn:active {
             background: #f8d7d5;
         }
+
+        /* ألوان مميزة حسب اليوم */
+        .day-saturday { background: #FFE0B2; }  /* برتقالي فاتح */
+        .day-sunday { background: #FFCDD2; }    /* أحمر فاتح */
+        .day-monday { background: #F8BBD0; }    /* وردي فاتح */
+        .day-tuesday { background: #E1BEE7; }   /* بنفسجي فاتح */
+        .day-wednesday { background: #D1C4E9; } /* أرجواني فاتح */
+        .day-thursday { background: #C5CAE9; }  /* أزرق فاتح */
+        .day-friday { background: #BBDEFB; }    /* أزرق سماوي */
     </style>
 </head>
 <body>
@@ -388,6 +397,19 @@
             return daysArabic[date.getDay()];
         }
 
+        function getDayColorClass(dayName) {
+            switch(dayName) {
+                case 'السبت': return 'day-saturday';
+                case 'الأحد': return 'day-sunday';
+                case 'الاثنين': return 'day-monday';
+                case 'الثلاثاء': return 'day-tuesday';
+                case 'الأربعاء': return 'day-wednesday';
+                case 'الخميس': return 'day-thursday';
+                case 'الجمعة': return 'day-friday';
+                default: return '';
+            }
+        }
+
         function formatDateShort(dateStr) {
             if (!dateStr) return '--';
             const parts = dateStr.split('-');
@@ -398,7 +420,6 @@
             return dateStr;
         }
 
-        // دالة تشغيل صوت قصير
         function playSuccessSound() {
             try {
                 if (!audioContext) {
@@ -415,9 +436,7 @@
                 gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
                 osc.start(audioContext.currentTime);
                 osc.stop(audioContext.currentTime + 0.25);
-            } catch (e) {
-                // تجاهل أخطاء الصوت
-            }
+            } catch (e) {}
         }
 
         function showToast(message) {
@@ -476,9 +495,10 @@
                 const delayDisplay = delay > 0 ? `${delay} دقيقة` : 'لا يوجد';
                 const isLate = delay > 0;
                 const delayClass = isLate ? 'late' : 'on-time';
+                const dayColorClass = getDayColorClass(dayName);
 
                 html += `
-                    <div class="record-item" data-record-id="${record.id}">
+                    <div class="record-item ${dayColorClass}" data-record-id="${record.id}">
                         <div class="date-info">
                             <div class="day">${dayName}</div>
                             <div class="full-date">${fullDate}</div>
@@ -526,7 +546,13 @@
 
             delayInput.value = '';
             dateInput.value = getTodayDateString();
-            delayInput.focus();
+
+            // إخفاء الكيبورد بعد الحفظ
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+            // إزالة التركيز من حقل الدقائق تحديداً
+            delayInput.blur();
 
             showToast('✔️ تم الحفظ بنجاح');
             playSuccessSound();
