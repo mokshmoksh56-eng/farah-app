@@ -151,12 +151,10 @@
             box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
         }
 
-        .form-group input[type="date"],
-        .form-group input[type="time"] {
+        .form-group input[type="date"] {
             cursor: pointer;
         }
 
-        /* منع ظهور أسهم حقول الأرقام إذا كانت من نوع number */
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -243,7 +241,6 @@
             font-size: 0.8rem;
         }
 
-        /* ملخص التأخيرات */
         .delay-summary {
             background: #fff3e0;
             border: 2px solid #ffcc80;
@@ -433,7 +430,6 @@
 <body>
 
     <div class="container">
-        <!-- الهيدر -->
         <div class="header">
             <h1>
                 <span class="icon">⏰</span>
@@ -445,7 +441,6 @@
             </div>
         </div>
 
-        <!-- معلومات موعد العمل -->
         <div class="schedule-info">
             <span>🕘</span>
             <span>موعد بدء العمل الرسمي:</span>
@@ -455,22 +450,22 @@
             <input type="time" id="officialTime" value="09:00" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; font-size:0.9rem;">
         </div>
 
-        <!-- نموذج الإدخال -->
         <div class="input-section">
             <div class="form-row">
                 <div class="form-group">
                     <label for="employeeNumber">🔢 رقم الموظف</label>
                     <input type="text" id="employeeNumber" inputmode="numeric" pattern="[0-9]*" 
                            oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
-                           placeholder="أدخل رقم الموظف (أرقام فقط)" autocomplete="off">
+                           placeholder="أرقام فقط" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="dateInput">📅 التاريخ</label>
                     <input type="date" id="dateInput">
                 </div>
                 <div class="form-group">
-                    <label for="arrivalTime">🕐 وقت الحضور الفعلي</label>
-                    <input type="time" id="arrivalTime">
+                    <label for="delayMinutes">⏱️ مدة التأخير (دقائق)</label>
+                    <input type="number" id="delayMinutes" min="0" step="1" 
+                           placeholder="أدخل عدد الدقائق" autocomplete="off">
                 </div>
             </div>
             <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
@@ -483,7 +478,6 @@
             </div>
         </div>
 
-        <!-- ملخص التأخيرات -->
         <div class="delay-summary" id="delaySummaryBox">
             <div class="title">
                 📊 تجميع التأخيرات
@@ -501,20 +495,18 @@
             </div>
         </div>
 
-        <!-- شريط الإحصائيات العام -->
         <div class="summary-bar" id="summaryBar">
             <div class="summary-item">
                 📋 إجمالي السجلات: <span class="count" id="totalCount">0</span>
             </div>
             <div class="summary-item" style="color:var(--success);">
-                ✅ في الموعد: <span class="count" id="onTimeCount">0</span>
+                ✅ بدون تأخير: <span class="count" id="onTimeCount">0</span>
             </div>
             <div class="summary-item" style="color:var(--danger);">
                 ⚠️ متأخر: <span class="count" id="lateCount">0</span>
             </div>
         </div>
 
-        <!-- جدول النتائج -->
         <div class="results-table" id="resultsTable">
             <table>
                 <thead>
@@ -522,15 +514,12 @@
                         <th>#</th>
                         <th>📅 التاريخ</th>
                         <th>🔢 رقم الموظف</th>
-                        <th>🕘 وقت الحضور</th>
                         <th>⏱️ مدة التأخير</th>
                         <th>📌 الحالة</th>
                         <th>🗑️</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
-                    <!-- سيتم ملؤها بالجافاسكريبت -->
-                </tbody>
+                <tbody id="tableBody"></tbody>
             </table>
             <div id="emptyState" class="empty-state">
                 <span class="emoji">📭</span>
@@ -538,7 +527,6 @@
             </div>
         </div>
 
-        <!-- أزرار أسفل -->
         <div class="footer-actions">
             <button class="btn btn-danger btn-sm" onclick="clearAllRecords()">
                 🗑️ مسح جميع السجلات
@@ -555,7 +543,6 @@
     </div>
 
     <script>
-        // ====================== إدارة البيانات ======================
         const STORAGE_KEY = 'attendance_late_records';
         const OFFICIAL_TIME_KEY = 'official_start_time';
 
@@ -563,7 +550,6 @@
         let officialStartTime = '09:00';
         let lastAddedId = null;
 
-        // تحميل البيانات من التخزين المحلي
         function loadData() {
             try {
                 const stored = localStorage.getItem(STORAGE_KEY);
@@ -572,7 +558,6 @@
                 } else {
                     attendanceRecords = [];
                 }
-
                 const storedTime = localStorage.getItem(OFFICIAL_TIME_KEY);
                 if (storedTime) {
                     officialStartTime = storedTime;
@@ -592,7 +577,6 @@
             }
         }
 
-        // ====================== دوال الوقت والتاريخ ======================
         function getTodayDateString() {
             const now = new Date();
             const year = now.getFullYear();
@@ -601,39 +585,14 @@
             return `${year}-${month}-${day}`;
         }
 
-        function getCurrentTimeString() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            return `${hours}:${minutes}`;
-        }
-
-        function formatDateForDisplay(dateStr) {
+        // تنسيق التاريخ المختصر: يوم/شهر/سنة
+        function formatDateShort(dateStr) {
             if (!dateStr) return '--';
-            try {
-                const parts = dateStr.split('-');
-                if (parts.length === 3) {
-                    const [year, month, day] = parts;
-                    const date = new Date(year, month - 1, day);
-                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                    return date.toLocaleDateString('ar-EG', options);
-                }
-                return dateStr;
-            } catch (e) {
-                return dateStr;
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
             }
-        }
-
-        function formatTimeForDisplay(timeStr) {
-            if (!timeStr) return '--';
-            try {
-                const [hours, minutes] = timeStr.split(':').map(Number);
-                const period = hours >= 12 ? 'مساءً' : 'صباحاً';
-                const displayHours = hours % 12 || 12;
-                return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
-            } catch (e) {
-                return timeStr;
-            }
+            return dateStr;
         }
 
         function formatTime12Hour(timeStr) {
@@ -644,39 +603,9 @@
             return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
         }
 
-        // ====================== حساب التأخير ======================
-        function calculateDelay(arrivalTime, officialTime) {
-            if (!arrivalTime || !officialTime) return { delayMinutes: 0, isLate: false, delayText: '--' };
-
-            const [arrHours, arrMinutes] = arrivalTime.split(':').map(Number);
-            const [offHours, offMinutes] = officialTime.split(':').map(Number);
-
-            const arrivalTotalMinutes = arrHours * 60 + arrMinutes;
-            const officialTotalMinutes = offHours * 60 + offMinutes;
-
-            const diff = arrivalTotalMinutes - officialTotalMinutes;
-
-            if (diff <= 0) {
-                return { delayMinutes: 0, isLate: false, delayText: 'لا يوجد تأخير' };
-            } else {
-                const hours = Math.floor(diff / 60);
-                const mins = diff % 60;
-                let text = '';
-                if (hours > 0) {
-                    text += `${hours} ساعة `;
-                }
-                if (mins > 0) {
-                    text += `${mins} دقيقة`;
-                }
-                text = text.trim() || '0 دقيقة';
-                return { delayMinutes: diff, isLate: true, delayText: text };
-            }
-        }
-
-        // ====================== دوال الواجهة ======================
         function updateDateDisplay() {
             const dateStr = getTodayDateString();
-            const display = formatDateForDisplay(dateStr);
+            const display = formatDateShort(dateStr);
             document.getElementById('dateText').textContent = display;
             document.getElementById('todayDateDisplay').title = dateStr;
         }
@@ -687,20 +616,17 @@
             document.getElementById('officialTime').value = officialStartTime;
         }
 
-        // تحديث ملخص التأخيرات
         function updateDelaySummary() {
             let totalLate = 0;
             let totalDelayMin = 0;
             let maxDelay = 0;
 
             attendanceRecords.forEach(record => {
-                const delayInfo = calculateDelay(record.arrivalTime, record.officialTime || officialStartTime);
-                if (delayInfo.isLate) {
+                const delay = record.delayMinutes || 0;
+                if (delay > 0) {
                     totalLate++;
-                    totalDelayMin += delayInfo.delayMinutes;
-                    if (delayInfo.delayMinutes > maxDelay) {
-                        maxDelay = delayInfo.delayMinutes;
-                    }
+                    totalDelayMin += delay;
+                    if (delay > maxDelay) maxDelay = delay;
                 }
             });
 
@@ -722,24 +648,19 @@
                 document.querySelector('.results-table table').style.display = 'table';
 
                 const sorted = [...attendanceRecords].sort((a, b) => {
-                    const dateA = new Date(a.date + 'T' + (a.arrivalTime || '00:00'));
-                    const dateB = new Date(b.date + 'T' + (b.arrivalTime || '00:00'));
-                    return dateB - dateA;
+                    return new Date(b.date) - new Date(a.date);
                 });
 
                 let html = '';
                 sorted.forEach((record, index) => {
-                    const delayInfo = calculateDelay(record.arrivalTime, record.officialTime || officialStartTime);
+                    const delay = record.delayMinutes || 0;
                     const employeeNumber = record.employeeNumber || 'غير محدد';
-                    const dateDisplay = formatDateForDisplay(record.date);
-                    const timeDisplay = formatTimeForDisplay(record.arrivalTime);
+                    const dateDisplay = formatDateShort(record.date);
+                    const delayDisplay = delay > 0 ? `${delay} دقيقة` : 'لا يوجد';
+                    const isLate = delay > 0;
 
-                    let statusClass = 'status-on-time';
-                    let statusText = '✅ في الموعد';
-                    if (delayInfo.isLate) {
-                        statusClass = 'status-late';
-                        statusText = '⚠️ متأخر';
-                    }
+                    let statusClass = isLate ? 'status-late' : 'status-on-time';
+                    let statusText = isLate ? '⚠️ متأخر' : '✅ في الموعد';
 
                     const highlightClass = (record.id === lastAddedId) ? 'row-highlight' : '';
 
@@ -748,15 +669,12 @@
                             <td>${index + 1}</td>
                             <td>${dateDisplay}</td>
                             <td>${escapeHtml(employeeNumber)}</td>
-                            <td>${timeDisplay}</td>
-                            <td style="font-weight:600; ${delayInfo.isLate ? 'color:var(--danger);' : 'color:var(--success);'}">
-                                ${delayInfo.delayText}
+                            <td style="font-weight:600; ${isLate ? 'color:var(--danger);' : 'color:var(--success);'}">
+                                ${delayDisplay}
                             </td>
                             <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                             <td>
-                                <button class="btn btn-danger btn-sm" onclick="deleteRecord(${index})" title="حذف">
-                                    🗑️
-                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteRecord(${index})" title="حذف">🗑️</button>
                             </td>
                         </tr>
                     `;
@@ -781,18 +699,15 @@
 
         function updateSummary() {
             document.getElementById('totalCount').textContent = attendanceRecords.length;
-
             let onTime = 0;
             let late = 0;
             attendanceRecords.forEach(record => {
-                const delayInfo = calculateDelay(record.arrivalTime, record.officialTime || officialStartTime);
-                if (delayInfo.isLate) {
+                if ((record.delayMinutes || 0) > 0) {
                     late++;
                 } else {
                     onTime++;
                 }
             });
-
             document.getElementById('onTimeCount').textContent = onTime;
             document.getElementById('lateCount').textContent = late;
         }
@@ -803,18 +718,17 @@
             return div.innerHTML;
         }
 
-        // ====================== إضافة وحذف السجلات ======================
         function addAttendance() {
             const numberInput = document.getElementById('employeeNumber');
             const dateInput = document.getElementById('dateInput');
-            const timeInput = document.getElementById('arrivalTime');
+            const delayInput = document.getElementById('delayMinutes');
 
             const employeeNumber = numberInput.value.trim();
             const date = dateInput.value;
-            const arrivalTime = timeInput.value;
+            const delayMinutes = parseInt(delayInput.value) || 0;
 
             if (!employeeNumber) {
-                alert('⚠️ الرجاء إدخال رقم الموظف (أرقام فقط)');
+                alert('⚠️ الرجاء إدخال رقم الموظف');
                 numberInput.focus();
                 return;
             }
@@ -825,9 +739,9 @@
                 return;
             }
 
-            if (!arrivalTime) {
-                alert('⚠️ الرجاء إدخال وقت الحضور');
-                timeInput.focus();
+            if (delayMinutes < 0) {
+                alert('⚠️ مدة التأخير يجب أن تكون صفراً أو أكبر');
+                delayInput.focus();
                 return;
             }
 
@@ -835,8 +749,7 @@
                 id: Date.now(),
                 employeeNumber: employeeNumber,
                 date: date,
-                arrivalTime: arrivalTime,
-                officialTime: officialStartTime,
+                delayMinutes: delayMinutes,
                 recordedAt: new Date().toISOString()
             };
 
@@ -846,7 +759,7 @@
             renderTable();
 
             numberInput.value = '';
-            timeInput.value = '';
+            delayInput.value = '';
             dateInput.value = getTodayDateString();
             numberInput.focus();
         }
@@ -854,17 +767,12 @@
         function deleteRecord(index) {
             if (confirm('هل أنت متأكد من حذف هذا السجل؟')) {
                 const sorted = [...attendanceRecords].sort((a, b) => {
-                    const dateA = new Date(a.date + 'T' + (a.arrivalTime || '00:00'));
-                    const dateB = new Date(b.date + 'T' + (b.arrivalTime || '00:00'));
-                    return dateB - dateA;
+                    return new Date(b.date) - new Date(a.date);
                 });
-
                 const recordToDelete = sorted[index];
                 if (recordToDelete) {
                     attendanceRecords = attendanceRecords.filter(r => r.id !== recordToDelete.id);
-                    if (lastAddedId === recordToDelete.id) {
-                        lastAddedId = null;
-                    }
+                    if (lastAddedId === recordToDelete.id) lastAddedId = null;
                     saveData();
                     renderTable();
                 }
@@ -876,8 +784,7 @@
                 alert('لا توجد سجلات لمسحها.');
                 return;
             }
-
-            if (confirm('⚠️ هل أنت متأكد من مسح جميع السجلات؟ لا يمكن التراجع عن هذا الإجراء.')) {
+            if (confirm('⚠️ هل أنت متأكد من مسح جميع السجلات؟')) {
                 attendanceRecords = [];
                 lastAddedId = null;
                 saveData();
@@ -888,32 +795,22 @@
         function resetForm() {
             document.getElementById('employeeNumber').value = '';
             document.getElementById('dateInput').value = getTodayDateString();
-            document.getElementById('arrivalTime').value = '';
+            document.getElementById('delayMinutes').value = '';
             document.getElementById('employeeNumber').focus();
         }
 
-        // ====================== تصدير وطباعة ======================
         function exportData() {
             if (attendanceRecords.length === 0) {
                 alert('لا توجد بيانات للتصدير.');
                 return;
             }
-
-            const sorted = [...attendanceRecords].sort((a, b) => {
-                const dateA = new Date(a.date + 'T' + (a.arrivalTime || '00:00'));
-                const dateB = new Date(b.date + 'T' + (b.arrivalTime || '00:00'));
-                return dateB - dateA;
-            });
-
-            let csv = 'التاريخ,رقم الموظف,وقت الحضور,مدة التأخير,الحالة\n';
+            const sorted = [...attendanceRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
+            let csv = 'التاريخ,رقم الموظف,مدة التأخير (دقائق),الحالة\n';
             sorted.forEach(record => {
-                const delayInfo = calculateDelay(record.arrivalTime, record.officialTime || officialStartTime);
-                const status = delayInfo.isLate ? 'متأخر' : 'في الموعد';
-                const delayText = delayInfo.isLate ? delayInfo.delayText : 'لا يوجد';
-                csv +=
-                    `${record.date},${record.employeeNumber || 'غير محدد'},${record.arrivalTime},${delayText},${status}\n`;
+                const delay = record.delayMinutes || 0;
+                const status = delay > 0 ? 'متأخر' : 'في الموعد';
+                csv += `${formatDateShort(record.date)},${record.employeeNumber || 'غير محدد'},${delay},${status}\n`;
             });
-
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -926,38 +823,24 @@
             window.print();
         }
 
-        // ====================== التهيئة ======================
         function init() {
             loadData();
-
             const dateInput = document.getElementById('dateInput');
             dateInput.value = getTodayDateString();
-
-            const timeInput = document.getElementById('arrivalTime');
-            timeInput.value = getCurrentTimeString();
-
             updateDateDisplay();
             updateOfficialTimeBadge();
-
             document.getElementById('officialTime').addEventListener('change', function(e) {
                 officialStartTime = e.target.value;
                 updateOfficialTimeBadge();
                 saveData();
                 renderTable();
             });
-
-            setInterval(() => {
-                updateDateDisplay();
-            }, 60000);
-
+            setInterval(updateDateDisplay, 60000);
             renderTable();
         }
 
         document.addEventListener('DOMContentLoaded', init);
-
-        window.addEventListener('beforeunload', function() {
-            saveData();
-        });
+        window.addEventListener('beforeunload', saveData);
     </script>
 
 </body>
