@@ -109,6 +109,7 @@
             padding: 20px;
             margin-bottom: 20px;
             border: 1px solid var(--border);
+            position: relative;
         }
 
         .form-row {
@@ -217,6 +218,20 @@
             padding: 6px 14px;
             font-size: 0.85rem;
             border-radius: 6px;
+        }
+
+        /* الأزرار الملتصقة أسفل النموذج لتظهر فوق الكيبورد */
+        .sticky-actions {
+            position: sticky;
+            bottom: 0;
+            background: #f8fafd;
+            padding: 12px 0 8px;
+            margin-top: 15px;
+            border-top: 1px solid var(--border);
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .delay-summary {
@@ -401,6 +416,10 @@
                 align-items: stretch;
                 text-align: center;
             }
+
+            .sticky-actions {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -427,10 +446,12 @@
                 <div class="form-group">
                     <label for="delayMinutes">⏱️ مدة التأخير (دقائق)</label>
                     <input type="number" id="delayMinutes" min="0" step="1" 
-                           placeholder="أدخل عدد الدقائق" autocomplete="off">
+                           placeholder="أدخل الدقائق ثم اضغط Enter"
+                           enterkeyhint="done"
+                           autocomplete="off">
                 </div>
             </div>
-            <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+            <div class="sticky-actions">
                 <button class="btn btn-primary" onclick="addAttendance()">
                     ➕ إضافة التأخير
                 </button>
@@ -531,7 +552,6 @@
             return `${year}-${month}-${day}`;
         }
 
-        // دالة لجلب اسم اليوم بالعربية
         function getDayNameArabic(dateStr) {
             if (!dateStr) return '';
             const daysArabic = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -539,7 +559,6 @@
             return daysArabic[date.getDay()];
         }
 
-        // تنسيق التاريخ المختصر مع اسم اليوم
         function formatDateShort(dateStr) {
             if (!dateStr) return '--';
             const parts = dateStr.split('-');
@@ -728,6 +747,15 @@
             updateDateDisplay();
             setInterval(updateDateDisplay, 60000);
             renderTable();
+
+            // إضافة مستمع لحدث Enter في حقل الدقائق
+            const delayInput = document.getElementById('delayMinutes');
+            delayInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addAttendance();
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', init);
