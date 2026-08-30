@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 روبوت azemaa proo المتصل بالسحابة</title>
+    <title>🤖 روبوت azemaa proo (مع تسجيل الدخول)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -34,6 +34,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
         }
         .chat-header h2 {
             font-size: 1.1rem;
@@ -53,6 +55,7 @@
         #conn-status.online { background: #4CAF50; color: white; }
         #conn-status.offline { background: #f44336; color: white; }
         #conn-status.loading { background: #ff9800; color: white; }
+        
         .chat-messages {
             flex: 1;
             padding: 15px 20px;
@@ -184,15 +187,73 @@
             .message { font-size: 13px; }
             .quick-replies button { font-size: 11px; padding: 4px 10px; }
         }
-        .data-badge {
-            background: #075E54;
-            color: white;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            display: inline-block;
-            margin: 2px 0;
+
+        /* ===== شاشة تسجيل الدخول ===== */
+        #loginScreen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 20px;
+            background: #f8f9fa;
+            min-height: 300px;
+            gap: 15px;
         }
+        #loginScreen h3 {
+            color: #075E54;
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+        #loginScreen input {
+            width: 100%;
+            max-width: 320px;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+        }
+        #loginScreen input:focus { border-color: #128C7E; }
+        #loginScreen .login-btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #loginScreen .login-btns button {
+            padding: 10px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        #loginScreen .login-btns .btn-login { background: #128C7E; color: white; }
+        #loginScreen .login-btns .btn-login:hover { background: #075E54; }
+        #loginScreen .login-btns .btn-signup { background: #facc15; color: #1e293b; }
+        #loginScreen .login-btns .btn-signup:hover { background: #eab308; }
+        #loginScreen .login-error {
+            color: #dc2626;
+            font-size: 13px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+        .logout-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .logout-btn:hover { background: #b91c1c; }
+        #chatArea { display: none; flex-direction: column; flex: 1; }
+        #chatArea.active { display: flex; }
+        #loginScreen.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -201,48 +262,69 @@
     <!-- Header -->
     <div class="chat-header">
         <h2>🤖 روبوت azemaa proo</h2>
-        <span id="conn-status" class="loading">⏳ جاري الاتصال...</span>
-    </div>
-
-    <!-- Messages -->
-    <div class="chat-messages" id="chatMessages">
-        <div class="message bot">
-            <span class="bot-name">🤖 azemaa proo</span>
-            مرحباً! أنا الآن <strong>متصل بالسحابة</strong> وأستطيع قراءة بياناتك الحية. 🌐<br><br>
-            جرب أن تسألني:<br>
-            • "كم عدد العمال؟"<br>
-            • "إجمالي المديونيات؟"<br>
-            • "صافي اليومية لليوم؟"<br>
-            • "أرني آخر الملاحظات"<br>
-            • "كم عميل مسجل؟"<br><br>
-            أو اسأل عن طريقة الاستخدام (كيف أضيف، كيف أعدل، إلخ).
-            <span class="time">الآن</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="conn-status" class="loading">⏳ جاري الاتصال...</span>
+            <button id="logoutBtn" class="logout-btn" style="display:none;" onclick="logoutUser()">🚪 خروج</button>
         </div>
     </div>
 
-    <!-- Quick Replies -->
-    <div class="quick-replies" id="quickReplies">
-        <button onclick="sendQuick('كم عدد العمال؟')">👷 عدد العمال</button>
-        <button onclick="sendQuick('إجمالي المديونيات؟')">💰 المديونيات</button>
-        <button onclick="sendQuick('صافي اليومية اليوم؟')">📊 صافي اليوم</button>
-        <button onclick="sendQuick('أرني آخر الملاحظات')">📝 الملاحظات</button>
-        <button onclick="sendQuick('كيف أضيف زبون؟')">🧑‍💼 إضافة زبون</button>
+    <!-- ===== شاشة تسجيل الدخول ===== -->
+    <div id="loginScreen">
+        <h3>🔐 تسجيل الدخول إلى حسابك</h3>
+        <p style="color: #555; font-size: 14px; margin-bottom: 5px;">استخدم نفس البيانات المسجلة في تطبيقات azemaa proo</p>
+        <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" value="">
+        <input type="password" id="loginPassword" placeholder="كلمة المرور" value="">
+        <div class="login-btns">
+            <button class="btn-login" onclick="loginUser()">🚀 تسجيل الدخول</button>
+            <button class="btn-signup" onclick="signupUser()">🆕 إنشاء حساب جديد</button>
+        </div>
+        <div id="loginError" class="login-error"></div>
     </div>
 
-    <!-- Input -->
-    <div class="chat-input">
-        <input type="text" id="userInput" placeholder="اكتب سؤالك هنا..." onkeydown="if(event.key==='Enter') sendMessage()" disabled>
-        <button id="sendBtn" onclick="sendMessage()" disabled>إرسال</button>
+    <!-- ===== منطقة الدردشة ===== -->
+    <div id="chatArea">
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <span class="bot-name">🤖 azemaa proo</span>
+                مرحباً! أنا متصل بالسحابة وأقرأ بياناتك الحية. 🌐<br><br>
+                جرب تسألني:<br>
+                • "كم عدد العمال؟"<br>
+                • "إجمالي المديونيات؟"<br>
+                • "صافي اليومية اليوم؟"<br>
+                • "أرني آخر الملاحظات"<br><br>
+                أو اسأل عن طريقة الاستخدام.
+                <span class="time">الآن</span>
+            </div>
+        </div>
+
+        <div class="quick-replies" id="quickReplies">
+            <button onclick="sendQuick('كم عدد العمال؟')">👷 العمال</button>
+            <button onclick="sendQuick('إجمالي المديونيات؟')">💰 المديونيات</button>
+            <button onclick="sendQuick('صافي اليومية اليوم؟')">📊 صافي اليوم</button>
+            <button onclick="sendQuick('أرني آخر الملاحظات')">📝 الملاحظات</button>
+            <button onclick="sendQuick('كيف أضيف زبون؟')">🧑‍💼 زبون</button>
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="اكتب سؤالك هنا..." onkeydown="if(event.key==='Enter') sendMessage()" disabled>
+            <button id="sendBtn" onclick="sendMessage()" disabled>إرسال</button>
+        </div>
     </div>
 </div>
 
 <script type="module">
     // ============================================================
-    // استيراد Firebase (نفس إعداداتك)
+    // استيراد Firebase
     // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { 
+        getAuth, 
+        onAuthStateChanged, 
+        signInWithEmailAndPassword, 
+        createUserWithEmailAndPassword,
+        signOut 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
@@ -258,16 +340,20 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // متغيرات عامة
+    // متغيرات
     let currentUid = null;
     let isReady = false;
     let cachedData = {};
 
     // عناصر DOM
+    const loginScreen = document.getElementById('loginScreen');
+    const chatArea = document.getElementById('chatArea');
     const statusEl = document.getElementById('conn-status');
+    const logoutBtn = document.getElementById('logoutBtn');
     const chatMessages = document.getElementById('chatMessages');
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
+    const loginError = document.getElementById('loginError');
 
     // ============================================================
     // دوال مساعدة
@@ -308,8 +394,15 @@
         statusEl.className = type;
     }
 
+    function enableChat(enable) {
+        isReady = enable;
+        userInput.disabled = !enable;
+        sendBtn.disabled = !enable;
+        if (enable) userInput.focus();
+    }
+
     // ============================================================
-    // دوال جلب البيانات الحية من Firebase
+    // دوال جلب البيانات
     // ============================================================
     async function fetchAllData() {
         if (!currentUid) return null;
@@ -337,20 +430,18 @@
         }
     }
 
-    // دالة لحساب إجمالي المديونيات
+    // ============================================================
+    // حساب الإحصائيات
+    // ============================================================
     function calcTotalDebt(clients) {
-        let total = 0;
-        let count = 0;
-        let paidCount = 0;
+        let total = 0, count = 0, paidCount = 0;
         for (let id in clients) {
             if (id === 'settings') continue;
             const c = clients[id];
             if (c.isArchived) continue;
             const totalVal = parseFloat(c.t) || 0;
             let paidVal = 0;
-            if (c.pays) {
-                c.pays.forEach(p => paidVal += parseFloat(p.v || 0));
-            }
+            if (c.pays) c.pays.forEach(p => paidVal += parseFloat(p.v || 0));
             const rem = totalVal - paidVal;
             if (totalVal > 0) {
                 total += rem > 0 ? rem : 0;
@@ -361,28 +452,19 @@
         return { totalDebt: Math.round(total), totalClients: count, paidClients: paidCount };
     }
 
-    // دالة لحساب صافي اليومية
     function calcYomStats(yom) {
         const now = new Date();
         const todayStr = now.toISOString().slice(0, 10);
         const monthStr = todayStr.slice(0, 7);
-        
-        let dayIn = 0, dayOut = 0;
-        let monthIn = 0, monthOut = 0;
-        
+        let dayIn = 0, dayOut = 0, monthIn = 0, monthOut = 0;
         for (let id in yom) {
             const item = yom[id];
             if (!item || !item.date) continue;
             const dateStr = item.date.slice(0, 10);
             const inVal = parseFloat(item.inVal) || 0;
             const outVal = parseFloat(item.outVal) || 0;
-            
-            if (dateStr === todayStr) {
-                dayIn += inVal; dayOut += outVal;
-            }
-            if (dateStr.startsWith(monthStr)) {
-                monthIn += inVal; monthOut += outVal;
-            }
+            if (dateStr === todayStr) { dayIn += inVal; dayOut += outVal; }
+            if (dateStr.startsWith(monthStr)) { monthIn += inVal; monthOut += outVal; }
         }
         return {
             dayNet: Math.round(dayIn - dayOut),
@@ -392,7 +474,7 @@
     }
 
     // ============================================================
-    // منطق الإجابة الذكي (مع بيانات حية)
+    // منطق الإجابة الذكي
     // ============================================================
     async function getAnswer(query) {
         if (!currentUid || !cachedData) {
@@ -403,41 +485,33 @@
 
         const q = query.toLowerCase().trim();
 
-        // --- 1. الأسئلة الإحصائية (بيانات حية) ---
-
-        // العمال
-        if (q.includes('عدد العمال') || q.includes('كم عامل') || q.includes('العمال المسجلين')) {
+        // إحصائيات حية
+        if (q.includes('عدد العمال') || q.includes('كم عامل')) {
             const count = data.workers.length;
             const weeks = Object.keys(data.weeks);
             const lastWeek = weeks.length > 0 ? weeks.sort().pop() : 'لا يوجد';
             return `👷 **عدد العمال المسجلين**: ${count} عامل.\n📅 آخر أسبوع محفوظ: ${lastWeek}`;
         }
 
-        // المديونيات
-        if (q.includes('المديونيات') || q.includes('إجمالي المديونيات') || q.includes('كم مديونية')) {
+        if (q.includes('المديونيات') || q.includes('إجمالي المديونيات')) {
             const stats = calcTotalDebt(data.clients);
             return `💰 **إجمالي المديونيات**: ${stats.totalDebt.toLocaleString()} ج.م\n🧑‍💼 عدد العملاء: ${stats.totalClients}\n✅ المخلصون: ${stats.paidClients}`;
         }
 
-        // عدد العملاء
-        if (q.includes('كم عميل') || q.includes('عدد الزبائن') || q.includes('عدد العملاء')) {
+        if (q.includes('كم عميل') || q.includes('عدد الزبائن')) {
             let count = 0;
-            for (let id in data.clients) {
-                if (id !== 'settings' && !data.clients[id].isArchived) count++;
-            }
+            for (let id in data.clients) if (id !== 'settings' && !data.clients[id].isArchived) count++;
             return `🧑‍💼 **عدد العملاء النشطين**: ${count}`;
         }
 
-        // صافي اليومية
-        if (q.includes('اليومية') || q.includes('صافي اليوم') || q.includes('صافي الشهر') || q.includes('اليوم')) {
+        if (q.includes('اليومية') || q.includes('صافي اليوم') || q.includes('صافي الشهر')) {
             const stats = calcYomStats(data.yom);
             return `📊 **اليومية**:
 • صافي اليوم: ${stats.dayNet.toLocaleString()} ج.م (دخل: ${stats.dayIn} - خرج: ${stats.dayOut})
 • صافي الشهر: ${stats.monthNet.toLocaleString()} ج.م (دخل: ${stats.monthIn} - خرج: ${stats.monthOut})`;
         }
 
-        // الملاحظات
-        if (q.includes('آخر الملاحظات') || q.includes('أرني الملاحظات') || q.includes('الملاحظات')) {
+        if (q.includes('آخر الملاحظات') || q.includes('أرني الملاحظات')) {
             const notesArr = Object.values(data.notes).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
             if (notesArr.length === 0) return "📝 لا توجد ملاحظات مسجلة.";
             const latest = notesArr.slice(0, 3);
@@ -449,157 +523,140 @@
             return msg;
         }
 
-        // --- 2. الأسئلة الإجرائية (معرفة ثابتة) ---
+        // الأسئلة الإجرائية (ثابتة)
         const staticKnowledge = [
-            {
-                keywords: ['أضيف عامل', 'إضافة عامل', 'عامل جديد', 'حضور'],
-                answer: `👷 **إضافة عامل جديد (في gyab.html)**:
-• اكتب اسم العامل في حقل "اسم عامل جديد".
-• اختر (اختيارياً) "☀️ صيفي" لو كان موسمياً.
-• اضغط "إضافة 🧑‍🏭".
-• سيظهر كرت العامل الجديد، ويمكنك تعيين راتبه وتسجيل حضوره.`
-            },
-            {
-                keywords: ['أضيف زبون', 'إضافة زبون', 'زبون جديد', 'عميل جديد'],
-                answer: `🧑‍💼 **إضافة زبون جديد (في zbon.html)**:
-• اضغط على زر **+** (الموجود أسفل يمين الشاشة).
-• سيظهر كرت جديد فارغ. اضغط "🔒 اضغط للتعديل" لفتحه.
-• اكتب الاسم، رقم الموبايل، تاريخ الاستلام، الإجمالي، وأضف الدفعات.
-• اضغط "💾 حفظ وقفل" لحفظ البيانات في السحابة.`
-            },
-            {
-                keywords: ['أضيف قيد', 'إضافة قيد', 'عملية يومية', 'تسجيل دخل', 'تسجيل خرج'],
-                answer: `💰 **إضافة قيد في اليومية (في yom.html)**:
-• اختر القسم (زبون، عمال، ألومنيوم، ...).
-• اكتب الاسم والبيان.
-• حدد التاريخ.
-• اكتب المبلغ في حقل "خارج" (مصروف) أو "داخل" (إيراد).
-• اضغط "حفظ العملية بالسحابة".`
-            },
-            {
-                keywords: ['كيف أضيف ملاحظة', 'إضافة ملاحظة', 'ملاحظة جديدة'],
-                answer: `📝 **إضافة ملاحظة (في notmop.html)**:
-• اكتب النص في المربع الكبير، أو استخدم زر "🎙️ استماع" للإملاء الصوتي، أو "🖼️ إرفاق صورة".
-• اضغط "حفظ المهمة بالسحابة ✅".
-• ستظهر الملاحظة في القائمة، ويمكنك ترحيلها لليومية لاحقاً.`
-            },
-            {
-                keywords: ['أرسل واتساب', 'واتساب', 'مشاركة', 'فاتورة'],
-                answer: `📤 **مشاركة واتساب**:
-• **للزبون**: في zbon.html، زر "واتساب مباشر" للتواصل، و "واتساب فاتورة" لإرسال تفاصيل الحساب كامل.
-• **للعامل**: في gyab.html، زر "واتساب" بجانب العامل لإرسال تقرير الأسبوع.
-• **لليومية**: في yom.html، زر واتساب بجانب كل قيد لمشاركة العملية.`
-            },
-            {
-                keywords: ['أرشيف', 'أرشفة', 'حفظ أرشيف'],
-                answer: `📁 **الأرشفة**:
-• **الزبون**: في zbon.html، زر 📁 بجانب كل زبون ينقله للأرشيف، ويمكن استعادته لاحقاً.
-• **الحضور**: يوجد زر "📦 حفظ جميع العمال في الأرشيف الآن" لحفظ الأسبوع الحالي يدوياً، ويتم الحفظ التلقائي يومياً.
-• **اليومية**: جميع البيانات محفوظة في السحابة ولا تحتاج لأرشفة.`
-            },
-            {
-                keywords: ['كيف أبحث', 'بحث', 'فلتر'],
-                answer: `🔍 **البحث**:
-• **الزبون**: استخدم حقل البحث العلوي (يبحث بالاسم، الكود، الموبايل).
-• **الملاحظات**: حقل بحث يبحث في النص والاسم والمقاسات.
-• **اليومية**: حقل بحث شامل في كل الأعمدة.
-• جميع عمليات البحث فورية أثناء الكتابة.`
-            },
-            {
-                keywords: ['قفل', 'فتح', 'تعديل'],
-                answer: `🔒 **القفل والفتح**:
-• في تطبيق **الزبون** و **الحضور**، كل بطاقة لها زر "قفل/فتح".
-• عند القفل، تصبح الحقول للقراءة فقط لحماية البيانات من التعديل غير المقصود.
-• لفتحها، اضغط الزر مرة أخرى لتعديل البيانات، ثم احفظها مجدداً.`
-            }
+            { keywords: ['أضيف عامل', 'إضافة عامل', 'عامل جديد', 'حضور'], answer: `👷 **إضافة عامل جديد (في gyab.html)**: اكتب اسم العامل في حقل "اسم عامل جديد"، اختر (اختيارياً) "☀️ صيفي"، واضغط "إضافة".` },
+            { keywords: ['أضيف زبون', 'إضافة زبون', 'زبون جديد'], answer: `🧑‍💼 **إضافة زبون (في zbon.html)**: اضغط زر **+** (أسفل يمين)، افتح البطاقة بضغط "تعديل"، اكتب البيانات، واضغط "حفظ وقفل".` },
+            { keywords: ['أضيف قيد', 'إضافة قيد', 'عملية يومية'], answer: `💰 **إضافة قيد (في yom.html)**: اختر القسم، اكتب الاسم والبيان، حدد التاريخ، اكتب المبلغ في "خارج" أو "داخل"، واضغط حفظ.` },
+            { keywords: ['أرسل واتساب', 'واتساب', 'فاتورة'], answer: `📤 **واتساب**: للزبون (فاتورة/مباشر)، للعامل (تقرير أسبوعي)، ولليومية (مشاركة قيد).` },
+            { keywords: ['أرشيف', 'أرشفة'], answer: `📁 **الأرشفة**: الزبون (زر 📁 في zbon.html)، الحضور (زر حفظ الأرشيف)، اليومية (محفوظة تلقائياً).` },
+            { keywords: ['قفل', 'فتح', 'تعديل'], answer: `🔒 **القفل**: في الزبون والحضور، زر "قفل/فتح" لحماية البيانات من التعديل غير المقصود.` }
         ];
-
         for (let item of staticKnowledge) {
             for (let kw of item.keywords) {
-                if (q.includes(kw)) {
-                    return item.answer;
-                }
+                if (q.includes(kw)) return item.answer;
             }
         }
 
-        // --- 3. الرد الافتراضي ---
-        return `🤔 لم أفهم سؤالك تماماً. إليك بعض الأمثلة لما يمكنك سؤالي عنه:
-
-📊 **إحصائيات حية**:
-• "كم عدد العمال؟"
-• "إجمالي المديونيات؟"
-• "صافي اليومية اليوم؟"
-• "أرني آخر الملاحظات"
-
-🔧 **استفسارات إجرائية**:
-• "كيف أضيف عامل؟"
-• "كيف أضيف زبون؟"
-• "كيف أضيف قيد في اليومية؟"
-• "كيف أرسل فاتورة واتساب؟"
-• "كيف تعمل الأرشفة؟"
-
-🌐 **حالة الاتصال**: أنا متصل بقاعدة بياناتك الفعلية، لذا أجيبك بأرقامك الحقيقية!`;
+        return `🤔 لم أفهم سؤالك. جرب:
+📊 "كم عدد العمال؟"
+📊 "إجمالي المديونيات؟"
+📊 "صافي اليومية اليوم؟"
+📊 "أرني آخر الملاحظات"
+🔧 "كيف أضيف عامل؟" أو "كيف أضيف زبون؟"`;
     }
 
     // ============================================================
     // دوال إرسال الرسائل
     // ============================================================
-    async function sendMessage() {
+    window.sendMessage = async function() {
         const text = userInput.value.trim();
         if (!text || !isReady) return;
-
         addMessage(text, 'user');
         userInput.value = '';
         showTyping();
         sendBtn.disabled = true;
         userInput.disabled = true;
-
         try {
             const reply = await getAnswer(text);
             hideTyping();
             addMessage(reply, 'bot');
         } catch (e) {
             hideTyping();
-            addMessage("⚠️ حدث خطأ أثناء معالجة طلبك. تأكد من اتصال الإنترنت.", 'bot');
-            console.error(e);
+            addMessage("⚠️ حدث خطأ أثناء معالجة طلبك.", 'bot');
         } finally {
             sendBtn.disabled = false;
             userInput.disabled = false;
             userInput.focus();
         }
-    }
+    };
 
-    function sendQuick(text) {
+    window.sendQuick = function(text) {
         userInput.value = text;
-        sendMessage();
-    }
+        window.sendMessage();
+    };
 
     // ============================================================
-    // تهيئة البوت وتفعيل الاستماع للـAuth
+    // دوال تسجيل الدخول / الخروج
+    // ============================================================
+    window.loginUser = async function() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value.trim();
+        if (!email || !pass) {
+            loginError.innerText = "⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور.";
+            return;
+        }
+        loginError.innerText = "⏳ جاري تسجيل الدخول...";
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+            loginError.innerText = "✅ تم تسجيل الدخول بنجاح!";
+        } catch (e) {
+            loginError.innerText = "❌ فشل الدخول: " + e.message;
+        }
+    };
+
+    window.signupUser = async function() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value.trim();
+        if (!email || !pass) {
+            loginError.innerText = "⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور.";
+            return;
+        }
+        if (pass.length < 6) {
+            loginError.innerText = "⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
+            return;
+        }
+        loginError.innerText = "⏳ جاري إنشاء الحساب...";
+        try {
+            await createUserWithEmailAndPassword(auth, email, pass);
+            loginError.innerText = "✅ تم إنشاء الحساب وتسجيل الدخول!";
+        } catch (e) {
+            loginError.innerText = "❌ فشل إنشاء الحساب: " + e.message;
+        }
+    };
+
+    window.logoutUser = async function() {
+        try {
+            await signOut(auth);
+            loginScreen.classList.remove('hidden');
+            chatArea.classList.remove('active');
+            logoutBtn.style.display = 'none';
+            enableChat(false);
+            setStatus('🔴 غير مصادق', 'offline');
+            loginError.innerText = "تم تسجيل الخروج.";
+        } catch (e) {
+            alert("خطأ في الخروج: " + e.message);
+        }
+    };
+
+    // ============================================================
+    // مراقبة حالة المصادقة
     // ============================================================
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUid = user.uid;
-            setStatus('🟢 متصل (مصادق)', 'online');
+            loginScreen.classList.add('hidden');
+            chatArea.classList.add('active');
+            logoutBtn.style.display = 'inline-block';
+            setStatus('🟢 مصادق', 'online');
+            loginError.innerText = "";
+            
             await fetchAllData();
-            isReady = true;
-            userInput.disabled = false;
-            sendBtn.disabled = false;
-            userInput.focus();
+            enableChat(true);
             addMessage("✅ تم الاتصال بقاعدة البيانات بنجاح. أنا جاهز للإجابة عن أسئلتك الحية!", 'bot');
         } else {
+            currentUid = null;
+            loginScreen.classList.remove('hidden');
+            chatArea.classList.remove('active');
+            logoutBtn.style.display = 'none';
+            enableChat(false);
             setStatus('🔴 غير مصادق', 'offline');
-            userInput.disabled = true;
-            sendBtn.disabled = true;
-            addMessage("⚠️ يرجى تسجيل الدخول من التطبيقات الرئيسية (azemaa proo) أولاً حتى أتمكن من قراءة بياناتك.", 'bot');
+            // نعرض رسالة ترحيب في شاشة الدخول
+            document.querySelector('#loginScreen h3').innerHTML = '🔐 تسجيل الدخول إلى حسابك';
         }
     });
 
-    // جعل الدوال عامة للاستخدام في HTML
-    window.sendMessage = sendMessage;
-    window.sendQuick = sendQuick;
-
-    console.log("🤖 روبوت azemaa proo متصل بالسحابة وجاهز!");
+    console.log("🤖 روبوت azemaa proo مع تسجيل دخول مدمج جاهز!");
 </script>
 </body>
 </html>
