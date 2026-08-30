@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🤖 روبوت azemaa proo النهائي</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #eef2f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 750px;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+            max-height: 850px;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #075E54, #128C7E);
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .chat-header .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chat-header .brand h2 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin: 0;
+        }
+        .chat-header .brand small {
+            font-weight: 400;
+            font-size: 0.7rem;
+            opacity: 0.85;
+        }
+        #userBadge {
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+        }
+        #conn-status {
+            font-size: 11px;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-weight: 600;
+        }
+        #conn-status.online { background: #4CAF50; color: white; }
+        #conn-status.offline { background: #f44336; color: white; }
+        #conn-status.loading { background: #ff9800; color: white; }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px 18px;
+            overflow-y: auto;
+            background: #e5ddd5;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .message {
+            max-width: 88%;
+            padding: 10px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            animation: fadeIn 0.25s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .message.bot {
+            background: #ffffff;
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+            border-left: 4px solid #128C7E;
+        }
+        .message.user {
+            background: #dcf8c6;
+            align-self: flex-end;
+            border-bottom-right-radius: 6px;
+        }
+        .message .time {
+            font-size: 10px;
+            color: #888;
+            margin-top: 5px;
+            display: block;
+            text-align: left;
+        }
+        .message.bot .time { text-align: right; }
+        .message .bot-name {
+            font-weight: 700;
+            color: #075E54;
+            margin-bottom: 4px;
+            display: block;
+            font-size: 13px;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 12px 16px;
+            background: #ffffff;
+            gap: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 30px;
+            outline: none;
+            font-size: 14px;
+            font-weight: 600;
+            background: #f8fafc;
+            transition: 0.2s;
+        }
+        .chat-input input:focus { border-color: #128C7E; background: #fff; }
+        .chat-input button {
+            background: #128C7E;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .chat-input button:hover { background: #075E54; }
+        .chat-input button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 8px 16px 12px;
+            background: #ffffff;
+            border-top: 1px solid #ececec;
+        }
+        .quick-replies button {
+            background: #f1f5f9;
+            border: 1px solid #d0d7de;
+            border-radius: 30px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .quick-replies button:hover {
+            background: #dbeafe;
+            border-color: #128C7E;
+            color: #075E54;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 8px 14px;
+            background: #fff;
+            border-radius: 20px;
+            align-self: flex-start;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #aaa;
+            border-radius: 50%;
+            animation: typing 1.5s infinite both;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0% { transform: scale(0.8); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.3; }
+        }
+
+        /* شاشة تسجيل الدخول */
+        #loginScreen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 24px;
+            background: #f8fafc;
+            min-height: 300px;
+            gap: 16px;
+            flex: 1;
+        }
+        #loginScreen h3 {
+            color: #075E54;
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+        #loginScreen p.sub {
+            color: #475569;
+            font-size: 14px;
+            text-align: center;
+            margin-top: -4px;
+        }
+        #loginScreen input {
+            width: 100%;
+            max-width: 340px;
+            padding: 14px 18px;
+            border: 2px solid #d0d7de;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: 0.2s;
+            font-weight: 600;
+        }
+        #loginScreen input:focus { border-color: #128C7E; }
+        #loginScreen .login-btns {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #loginScreen .login-btns button {
+            padding: 12px 36px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        #loginScreen .login-btns .btn-login { background: #128C7E; color: white; }
+        #loginScreen .login-btns .btn-login:hover { background: #075E54; }
+        #loginScreen .login-btns .btn-signup { background: #facc15; color: #1e293b; }
+        #loginScreen .login-btns .btn-signup:hover { background: #eab308; }
+        #loginScreen .login-error {
+            color: #dc2626;
+            font-size: 14px;
+            font-weight: 700;
+            min-height: 24px;
+            text-align: center;
+        }
+        .logout-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .logout-btn:hover { background: #b91c1c; }
+        #chatArea { display: none; flex-direction: column; flex: 1; }
+        #chatArea.active { display: flex; }
+        #loginScreen.hidden { display: none; }
+
+        @media (max-width: 500px) {
+            .chat-container { height: 98vh; max-height: none; border-radius: 16px; }
+            .message { font-size: 13px; }
+            .chat-header .brand h2 { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <!-- Header -->
+    <div class="chat-header">
+        <div class="brand">
+            <h2>💬 روبوت azemaa</h2>
+            <small>البيانات الحية</small>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span id="userBadge">👤 ...</span>
+            <span id="conn-status" class="loading">⏳ جاري...</span>
+            <button id="logoutBtn" class="logout-btn" style="display:none;" onclick="logoutUser()">خروج</button>
+        </div>
+    </div>
+
+    <!-- شاشة الدخول -->
+    <div id="loginScreen">
+        <h3>🔐 مرحباً بك</h3>
+        <p class="sub">سجل الدخول لترى بياناتك الفعلية</p>
+        <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" value="">
+        <input type="password" id="loginPassword" placeholder="كلمة المرور" value="">
+        <div class="login-btns">
+            <button class="btn-login" onclick="loginUser()">🚀 تسجيل الدخول</button>
+            <button class="btn-signup" onclick="signupUser()">🆕 حساب جديد</button>
+        </div>
+        <div id="loginError" class="login-error"></div>
+    </div>
+
+    <!-- منطقة الدردشة -->
+    <div id="chatArea">
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <span class="bot-name">🤖 روبوت البيانات</span>
+                مرحباً! أنا متصل بقاعدتك الفعلية.<br>
+                <strong>اسألني عن أي رقم حقيقي:</strong><br>
+                • "قائمة العمال مع الرواتب"<br>
+                • "إجمالي المديونيات؟"<br>
+                • "صافي اليومية اليوم؟"<br>
+                • "آخر الملاحظات"<br>
+                • "كم عميل نشط؟"<br><br>
+                جميع الردود من بياناتك مباشرة.
+                <span class="time">الآن</span>
+            </div>
+        </div>
+
+        <div class="quick-replies">
+            <button onclick="sendQuick('قائمة العمال مع الرواتب')">👷 العمال والرواتب</button>
+            <button onclick="sendQuick('إجمالي المديونيات؟')">💰 المديونيات</button>
+            <button onclick="sendQuick('صافي اليومية اليوم؟')">📊 صافي اليوم</button>
+            <button onclick="sendQuick('آخر الملاحظات')">📝 ملاحظات</button>
+            <button onclick="sendQuick('كم عميل نشط؟')">🧑‍💼 العملاء</button>
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="اكتب سؤالك..." onkeydown="if(event.key==='Enter') sendMessage()" disabled>
+            <button id="sendBtn" onclick="sendMessage()" disabled>إرسال</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // ============================================================
+    // Firebase
+    // ============================================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+        authDomain: "azemaa-proo.firebaseapp.com",
+        databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+        projectId: "azemaa-proo",
+        storageBucket: "azemaa-proo.firebasestorage.app",
+        messagingSenderId: "787350492977",
+        appId: "1:787350492977:web:84061dcf31622fcb07c210"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    // ============================================================
+    // متغيرات
+    // ============================================================
+    let currentUid = null;
+    let isReady = false;
+    let cachedData = {};
+
+    // عناصر
+    const loginScreen = document.getElementById('loginScreen');
+    const chatArea = document.getElementById('chatArea');
+    const statusEl = document.getElementById('conn-status');
+    const userBadge = document.getElementById('userBadge');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const loginError = document.getElementById('loginError');
+
+    console.log("✅ الروبوت بدأ تحميله");
+
+    // ============================================================
+    // دوال مساعدة
+    // ============================================================
+    function getTime() {
+        return new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function addMessage(text, sender) {
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        if (sender === 'bot') {
+            div.innerHTML = `<span class="bot-name">🤖 روبوت البيانات</span>${text}<span class="time">${getTime()}</span>`;
+        } else {
+            div.innerHTML = `${text}<span class="time">${getTime()}</span>`;
+        }
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        console.log(`📨 رسالة ${sender}:`, text.substring(0, 50));
+    }
+
+    function showTyping() {
+        const typing = document.createElement('div');
+        typing.className = 'typing-indicator';
+        typing.id = 'typingIndicator';
+        typing.innerHTML = '<span></span><span></span><span></span>';
+        chatMessages.appendChild(typing);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideTyping() {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+    }
+
+    function setStatus(text, type = 'loading') {
+        statusEl.innerText = text;
+        statusEl.className = type;
+        console.log(`📡 الحالة: ${text} (${type})`);
+    }
+
+    function enableChat(enable) {
+        isReady = enable;
+        userInput.disabled = !enable;
+        sendBtn.disabled = !enable;
+        if (enable) userInput.focus();
+        console.log(`💬 الدردشة ${enable ? 'مفعلة' : 'معطلة'}`);
+    }
+
+    // ============================================================
+    // جلب البيانات من Firebase
+    // ============================================================
+    async function fetchAllData() {
+        if (!currentUid) return null;
+        try {
+            setStatus('⏳ جلب البيانات...', 'loading');
+            const snapshot = await get(ref(db, `backups`));
+            const all = snapshot.val() || {};
+            const uid = currentUid;
+
+            cachedData = {
+                workers: all.workers_master?.[uid] || [],
+                weeks: all.workers_weeks?.[uid] || {},
+                yom: all.yomya_users?.[uid] || {},
+                clients: all.users?.[uid] || {},
+                notes: all.notes_users?.[uid] || {},
+                settings: all.users?.[uid]?.settings || {}
+            };
+
+            console.log("📦 البيانات المستلمة:", {
+                workers: cachedData.workers.length,
+                clients: Object.keys(cachedData.clients).filter(k=>k!=='settings').length,
+                notes: Object.keys(cachedData.notes).length,
+                yom: Object.keys(cachedData.yom).length
+            });
+
+            setStatus('🟢 متصل', 'online');
+            return cachedData;
+        } catch (e) {
+            console.error("❌ جلب البيانات فشل:", e);
+            setStatus('🔴 خطأ', 'offline');
+            return null;
+        }
+    }
+
+    // ============================================================
+    // حساب الإحصائيات
+    // ============================================================
+    function calcTotalDebt(clients) {
+        let total = 0, count = 0, paidCount = 0;
+        for (let id in clients) {
+            if (id === 'settings') continue;
+            const c = clients[id];
+            if (c.isArchived) continue;
+            const totalVal = parseFloat(c.t) || 0;
+            let paidVal = 0;
+            if (c.pays) c.pays.forEach(p => paidVal += parseFloat(p.v || 0));
+            const rem = totalVal - paidVal;
+            if (totalVal > 0) {
+                total += rem > 0 ? rem : 0;
+                count++;
+                if (rem <= 0) paidCount++;
+            }
+        }
+        return { totalDebt: Math.round(total), totalClients: count, paidClients: paidCount };
+    }
+
+    function calcYomStats(yom) {
+        const now = new Date();
+        const todayStr = now.toISOString().slice(0, 10);
+        const monthStr = todayStr.slice(0, 7);
+        let dayIn = 0, dayOut = 0, monthIn = 0, monthOut = 0;
+        for (let id in yom) {
+            const item = yom[id];
+            if (!item || !item.date) continue;
+            const dateStr = item.date.slice(0, 10);
+            const inVal = parseFloat(item.inVal) || 0;
+            const outVal = parseFloat(item.outVal) || 0;
+            if (dateStr === todayStr) { dayIn += inVal; dayOut += outVal; }
+            if (dateStr.startsWith(monthStr)) { monthIn += inVal; monthOut += outVal; }
+        }
+        return {
+            dayNet: Math.round(dayIn - dayOut),
+            monthNet: Math.round(monthIn - monthOut),
+            dayIn, dayOut, monthIn, monthOut
+        };
+    }
+
+    // ============================================================
+    // ردود ذكية بأرقام حقيقية
+    // ============================================================
+    async function getAnswer(query) {
+        console.log("🔍 سؤال ورد:", query);
+        if (!currentUid || !cachedData) {
+            console.log("⏳ جلب البيانات قبل الرد...");
+            await fetchAllData();
+        }
+        const data = cachedData;
+        if (!data) return "⚠️ لا أستطيع الاتصال بقاعدتك. تحقق من الإنترنت.";
+
+        const q = query.toLowerCase().trim();
+
+        // ---- العمال مع الرواتب ----
+        if (q.includes('قائمة العمال') || q.includes('العمال والرواتب') || 
+            (q.includes('عدد العمال') && q.includes('الرواتب')) ||
+            (q.includes('العمال') && (q.includes('الراتب') || q.includes('رواتب')))) {
+            
+            if (data.workers.length === 0) return "👷 لا يوجد عمال مسجلين حالياً.";
+            
+            let totalSalary = 0;
+            let list = `👷 **قائمة العمال المسجلين (${data.workers.length} عامل)**:\n━━━━━━━━━━━━━━━\n`;
+            
+            data.workers.forEach((w, i) => {
+                const salary = w.sal || 'غير محدد';
+                const summer = w.isSummer ? ' ☀️' : '';
+                list += `${i+1}. ${w.name}${summer}  |  الراتب: ${salary}\n`;
+                if (w.sal && !isNaN(w.sal)) totalSalary += parseFloat(w.sal);
+            });
+            
+            list += `━━━━━━━━━━━━━━━\n💰 **إجمالي الرواتب**: ${totalSalary.toLocaleString()}`;
+            return list;
+        }
+
+        // ---- مجرد عدد العمال ----
+        if (q.includes('عدد العمال') || q.includes('كم عامل')) {
+            const count = data.workers.length;
+            const weeks = Object.keys(data.weeks);
+            const lastWeek = weeks.length > 0 ? weeks.sort().pop() : 'لا يوجد';
+            return `👷 **عدد العمال المسجلين**: ${count} عامل.\n📅 آخر أسبوع محفوظ: ${lastWeek}`;
+        }
+
+        // ---- المديونيات ----
+        if (q.includes('المديونيات') || q.includes('إجمالي المديونيات')) {
+            const stats = calcTotalDebt(data.clients);
+            const curr = data.settings?.country ? 
+                ({ EG:'ج.م', SA:'ر.س', AE:'د.إ', KW:'د.ك', QA:'ر.ق' }[data.settings.country] || 'ج.م') 
+                : 'ج.م';
+            return `💰 **إجمالي المديونيات**: ${stats.totalDebt.toLocaleString()} ${curr}\n🧑‍💼 عدد العملاء: ${stats.totalClients}\n✅ المخلصون: ${stats.paidClients}`;
+        }
+
+        // ---- العملاء النشطون ----
+        if (q.includes('كم عميل') || q.includes('عدد الزبائن') || q.includes('العملاء النشطين')) {
+            let count = 0;
+            for (let id in data.clients) if (id !== 'settings' && !data.clients[id].isArchived) count++;
+            return `🧑‍💼 **عدد العملاء النشطين**: ${count}`;
+        }
+
+        // ---- اليومية ----
+        if (q.includes('اليومية') || q.includes('صافي اليوم') || q.includes('صافي الشهر')) {
+            const stats = calcYomStats(data.yom);
+            const curr = data.settings?.country ? 
+                ({ EG:'ج.م', SA:'ر.س', AE:'د.إ', KW:'د.ك', QA:'ر.ق' }[data.settings.country] || 'ج.م') 
+                : 'ج.م';
+            return `📊 **اليومية**:
+• صافي اليوم: ${stats.dayNet.toLocaleString()} ${curr} (دخل: ${stats.dayIn} - خرج: ${stats.dayOut})
+• صافي الشهر: ${stats.monthNet.toLocaleString()} ${curr} (دخل: ${stats.monthIn} - خرج: ${stats.monthOut})`;
+        }
+
+        // ---- آخر الملاحظات ----
+        if (q.includes('آخر الملاحظات') || q.includes('أرني الملاحظات') || q.includes('الملاحظات')) {
+            const notesArr = Object.values(data.notes).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+            if (notesArr.length === 0) return "📝 لا توجد ملاحظات مسجلة.";
+            const latest = notesArr.slice(0, 3);
+            let msg = "📝 **آخر 3 ملاحظات**:\n";
+            latest.forEach((n, i) => {
+                const text = n.text ? n.text.slice(0, 60) : '(بدون نص)';
+                msg += `${i+1}. ${text}${n.text && n.text.length > 60 ? '...' : ''} [${n.person || 'عام'}]\n`;
+            });
+            return msg;
+        }
+
+        // ---- الأسئلة الإجرائية ----
+        if (q.includes('كيف أضيف عامل') || q.includes('إضافة عامل')) {
+            return `👷 **إضافة عامل**: في تطبيق الحضور (gyab.html)، اكتب اسمه في حقل "اسم عامل جديد"، اختار (اختيارياً) "صيفي"، واضغط "إضافة".`;
+        }
+        if (q.includes('كيف أضيف زبون') || q.includes('إضافة زبون')) {
+            return `🧑‍💼 **إضافة زبون**: في تطبيق الزبائن (zbon.html)، اضغط زر **+** (أسفل يمين)، افتح البطاقة بضغط "تعديل"، اكتب البيانات، واضغط "حفظ وقفل".`;
+        }
+        if (q.includes('كيف أضيف قيد') || q.includes('إضافة قيد في اليومية')) {
+            return `💰 **إضافة قيد يومية**: في yom.html، اختر القسم، اكتب الاسم والبيان، حدد التاريخ، اكتب المبلغ في "خارج" أو "داخل"، واضغط حفظ.`;
+        }
+        if (q.includes('واتساب') || q.includes('فاتورة')) {
+            return `📤 **واتساب**: متوفر في كل تطبيق:
+• للزبون: زر "واتساب فاتورة" يرسل التفاصيل الكاملة.
+• للعامل: زر "واتساب" يرسل تقرير الأسبوع.
+• لليومية: زر واتساب بجانب كل قيد.`;
+        }
+
+        // ---- الرد الافتراضي ----
+        return `🤔 سؤالك غير واضح. جرب أحد هذه الأسئلة:
+📊 "قائمة العمال مع الرواتب"
+📊 "إجمالي المديونيات؟"
+📊 "صافي اليومية اليوم؟"
+📊 "آخر الملاحظات"
+📊 "كم عميل نشط؟"
+🔧 "كيف أضيف عامل؟" أو "كيف أضيف زبون؟"`;
+    }
+
+    // ============================================================
+    // دوال إرسال الرسائل (تعريف عام للاستخدام في HTML)
+    // ============================================================
+    window.sendMessage = async function() {
+        console.log("📤 زر الإرسال نقر");
+        if (!currentUid) {
+            addMessage("⚠️ يرجى تسجيل الدخول أولاً باستخدام البريد الإلكتروني.", 'bot');
+            return;
+        }
+        if (!isReady) {
+            addMessage("⏳ جاري تحميل البيانات... انتظر قليلاً.", 'bot');
+            return;
+        }
+        const text = userInput.value.trim();
+        if (!text) {
+            addMessage("✏️ اكتب سؤالاً أولاً.", 'bot');
+            return;
+        }
+        addMessage(text, 'user');
+        userInput.value = '';
+        showTyping();
+        sendBtn.disabled = true;
+        userInput.disabled = true;
+        try {
+            const reply = await getAnswer(text);
+            hideTyping();
+            addMessage(reply, 'bot');
+        } catch (e) {
+            console.error("❌ خطأ في الرد:", e);
+            hideTyping();
+            addMessage("⚠️ حدث خطأ أثناء المعالجة: " + e.message, 'bot');
+        } finally {
+            sendBtn.disabled = false;
+            userInput.disabled = false;
+            userInput.focus();
+        }
+    };
+
+    window.sendQuick = function(text) {
+        console.log("⚡ زر سريع نقر:", text);
+        userInput.value = text;
+        window.sendMessage();
+    };
+
+    // ============================================================
+    // دوال تسجيل الدخول / الخروج (تعريف عام)
+    // ============================================================
+    window.loginUser = async function() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value.trim();
+        if (!email || !pass) {
+            loginError.innerText = "⚠️ أدخل البريد وكلمة المرور.";
+            return;
+        }
+        loginError.innerText = "⏳ جاري الدخول...";
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+            loginError.innerText = "✅ تم الدخول!";
+        } catch (e) {
+            console.error("❌ فشل الدخول:", e);
+            loginError.innerText = "❌ فشل: " + e.message;
+        }
+    };
+
+    window.signupUser = async function() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value.trim();
+        if (!email || !pass) {
+            loginError.innerText = "⚠️ أدخل البريد وكلمة المرور.";
+            return;
+        }
+        if (pass.length < 6) {
+            loginError.innerText = "⚠️ كلمة المرور 6 أحرف على الأقل.";
+            return;
+        }
+        loginError.innerText = "⏳ جاري إنشاء الحساب...";
+        try {
+            await createUserWithEmailAndPassword(auth, email, pass);
+            loginError.innerText = "✅ تم إنشاء الحساب!";
+        } catch (e) {
+            console.error("❌ فشل إنشاء الحساب:", e);
+            loginError.innerText = "❌ فشل: " + e.message;
+        }
+    };
+
+    window.logoutUser = async function() {
+        try {
+            await signOut(auth);
+            loginScreen.classList.remove('hidden');
+            chatArea.classList.remove('active');
+            logoutBtn.style.display = 'none';
+            enableChat(false);
+            setStatus('🔴 غير مصادق', 'offline');
+            userBadge.innerText = '👤 ...';
+            loginError.innerText = "تم الخروج.";
+        } catch (e) {
+            console.error("❌ خطأ في الخروج:", e);
+            alert("خطأ في الخروج: " + e.message);
+        }
+    };
+
+    // ============================================================
+    // مراقبة المصادقة
+    // ============================================================
+    onAuthStateChanged(auth, async (user) => {
+        console.log("👤 تغير حالة المصادقة:", user ? user.email : 'لا يوجد');
+        if (user) {
+            currentUid = user.uid;
+            userBadge.innerText = `👤 ${user.email?.split('@')[0] || 'مستخدم'}`;
+            loginScreen.classList.add('hidden');
+            chatArea.classList.add('active');
+            logoutBtn.style.display = 'inline-block';
+            setStatus('🟢 متصل', 'online');
+            loginError.innerText = "";
+            await fetchAllData();
+            enableChat(true);
+            addMessage("✅ تم الاتصال بقاعدتك. اسألني عن **قائمة العمال والرواتب**!", 'bot');
+        } else {
+            currentUid = null;
+            loginScreen.classList.remove('hidden');
+            chatArea.classList.remove('active');
+            logoutBtn.style.display = 'none';
+            enableChat(false);
+            setStatus('🔴 غير مصادق', 'offline');
+            userBadge.innerText = '👤 ...';
+            document.querySelector('#loginScreen h3').innerHTML = '🔐 مرحباً بك';
+            // إضافة رسالة ترحيب في منطقة الدردشة (إذا كانت مخفية)
+        }
+    });
+
+    console.log("🤖 الروبوت النهائي (مع تصحيح الأخطاء) جاهز!");
+</script>
+</body>
+</html>
