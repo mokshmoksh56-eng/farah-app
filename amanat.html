@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حاسبة تأخيرات العمل - إدخال رقمي</title>
+    <title>حاسبة تأخيرات العمل - دقائق فقط</title>
     <style>
         * {
             margin: 0;
@@ -45,7 +45,7 @@
 
         .container {
             width: 100%;
-            max-width: 1000px;
+            max-width: 800px;
             background: var(--card);
             border-radius: var(--radius);
             box-shadow: var(--shadow-lg);
@@ -217,28 +217,6 @@
             padding: 6px 14px;
             font-size: 0.85rem;
             border-radius: 6px;
-        }
-
-        .schedule-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            padding: 12px 16px;
-            background: #fff8e1;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ffe082;
-            font-size: 0.9rem;
-        }
-
-        .schedule-info .badge {
-            background: var(--warning);
-            color: #333;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 0.8rem;
         }
 
         .delay-summary {
@@ -433,7 +411,7 @@
         <div class="header">
             <h1>
                 <span class="icon">⏰</span>
-                حاسبة تأخيرات العمل
+                سجل التأخيرات اليومي
             </h1>
             <div class="date-display" id="todayDateDisplay">
                 <span class="date-icon">📅</span>
@@ -441,23 +419,8 @@
             </div>
         </div>
 
-        <div class="schedule-info">
-            <span>🕘</span>
-            <span>موعد بدء العمل الرسمي:</span>
-            <span class="badge" id="officialStartBadge">09:00 صباحاً</span>
-            <span style="margin-right:auto;"></span>
-            <label for="officialTime" style="font-size:0.8rem; color:var(--text-light);">تعديل:</label>
-            <input type="time" id="officialTime" value="09:00" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; font-size:0.9rem;">
-        </div>
-
         <div class="input-section">
             <div class="form-row">
-                <div class="form-group">
-                    <label for="employeeNumber">🔢 رقم الموظف</label>
-                    <input type="text" id="employeeNumber" inputmode="numeric" pattern="[0-9]*" 
-                           oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
-                           placeholder="أرقام فقط" autocomplete="off">
-                </div>
                 <div class="form-group">
                     <label for="dateInput">📅 التاريخ</label>
                     <input type="date" id="dateInput">
@@ -470,7 +433,7 @@
             </div>
             <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
                 <button class="btn btn-primary" onclick="addAttendance()">
-                    ➕ إضافة وتسجيل
+                    ➕ إضافة التأخير
                 </button>
                 <button class="btn btn-secondary" onclick="resetForm()">
                     🔄 إعادة تعيين
@@ -484,10 +447,10 @@
             </div>
             <div class="delay-stats">
                 <div class="delay-stat-item">
-                    ⚠️ عدد المتأخرين: <span class="value" id="totalLateCount">0</span>
+                    ⚠️ عدد أيام التأخير: <span class="value" id="totalLateCount">0</span>
                 </div>
                 <div class="delay-stat-item">
-                    ⏱️ إجمالي مدة التأخير: <span class="value" id="totalDelayMinutes">0</span> دقيقة
+                    ⏱️ إجمالي الدقائق: <span class="value" id="totalDelayMinutes">0</span> دقيقة
                 </div>
                 <div class="delay-stat-item">
                     🔝 أطول تأخير: <span class="value" id="maxDelayMinutes">0</span> دقيقة
@@ -513,7 +476,6 @@
                     <tr>
                         <th>#</th>
                         <th>📅 التاريخ</th>
-                        <th>🔢 رقم الموظف</th>
                         <th>⏱️ مدة التأخير</th>
                         <th>📌 الحالة</th>
                         <th>🗑️</th>
@@ -523,7 +485,7 @@
             </table>
             <div id="emptyState" class="empty-state">
                 <span class="emoji">📭</span>
-                لا توجد سجلات بعد. قم بإضافة أول حضور!
+                لا توجد سجلات بعد. قم بإضافة أول تأخير!
             </div>
         </div>
 
@@ -543,11 +505,9 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'attendance_late_records';
-        const OFFICIAL_TIME_KEY = 'official_start_time';
+        const STORAGE_KEY = 'attendance_delay_records';
 
         let attendanceRecords = [];
-        let officialStartTime = '09:00';
         let lastAddedId = null;
 
         function loadData() {
@@ -558,10 +518,6 @@
                 } else {
                     attendanceRecords = [];
                 }
-                const storedTime = localStorage.getItem(OFFICIAL_TIME_KEY);
-                if (storedTime) {
-                    officialStartTime = storedTime;
-                }
             } catch (e) {
                 console.error('خطأ في تحميل البيانات:', e);
                 attendanceRecords = [];
@@ -571,7 +527,6 @@
         function saveData() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(attendanceRecords));
-                localStorage.setItem(OFFICIAL_TIME_KEY, officialStartTime);
             } catch (e) {
                 console.error('خطأ في حفظ البيانات:', e);
             }
@@ -585,7 +540,6 @@
             return `${year}-${month}-${day}`;
         }
 
-        // تنسيق التاريخ المختصر: يوم/شهر/سنة
         function formatDateShort(dateStr) {
             if (!dateStr) return '--';
             const parts = dateStr.split('-');
@@ -595,25 +549,11 @@
             return dateStr;
         }
 
-        function formatTime12Hour(timeStr) {
-            if (!timeStr) return '--';
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            const period = hours >= 12 ? 'مساءً' : 'صباحاً';
-            const displayHours = hours % 12 || 12;
-            return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
-        }
-
         function updateDateDisplay() {
             const dateStr = getTodayDateString();
             const display = formatDateShort(dateStr);
             document.getElementById('dateText').textContent = display;
             document.getElementById('todayDateDisplay').title = dateStr;
-        }
-
-        function updateOfficialTimeBadge() {
-            const display = formatTime12Hour(officialStartTime);
-            document.getElementById('officialStartBadge').textContent = display;
-            document.getElementById('officialTime').value = officialStartTime;
         }
 
         function updateDelaySummary() {
@@ -654,7 +594,6 @@
                 let html = '';
                 sorted.forEach((record, index) => {
                     const delay = record.delayMinutes || 0;
-                    const employeeNumber = record.employeeNumber || 'غير محدد';
                     const dateDisplay = formatDateShort(record.date);
                     const delayDisplay = delay > 0 ? `${delay} دقيقة` : 'لا يوجد';
                     const isLate = delay > 0;
@@ -668,7 +607,6 @@
                         <tr class="${highlightClass}" data-record-id="${record.id}">
                             <td>${index + 1}</td>
                             <td>${dateDisplay}</td>
-                            <td>${escapeHtml(employeeNumber)}</td>
                             <td style="font-weight:600; ${isLate ? 'color:var(--danger);' : 'color:var(--success);'}">
                                 ${delayDisplay}
                             </td>
@@ -719,19 +657,11 @@
         }
 
         function addAttendance() {
-            const numberInput = document.getElementById('employeeNumber');
             const dateInput = document.getElementById('dateInput');
             const delayInput = document.getElementById('delayMinutes');
 
-            const employeeNumber = numberInput.value.trim();
             const date = dateInput.value;
             const delayMinutes = parseInt(delayInput.value) || 0;
-
-            if (!employeeNumber) {
-                alert('⚠️ الرجاء إدخال رقم الموظف');
-                numberInput.focus();
-                return;
-            }
 
             if (!date) {
                 alert('⚠️ الرجاء اختيار التاريخ');
@@ -747,7 +677,6 @@
 
             const newRecord = {
                 id: Date.now(),
-                employeeNumber: employeeNumber,
                 date: date,
                 delayMinutes: delayMinutes,
                 recordedAt: new Date().toISOString()
@@ -758,10 +687,9 @@
             saveData();
             renderTable();
 
-            numberInput.value = '';
             delayInput.value = '';
             dateInput.value = getTodayDateString();
-            numberInput.focus();
+            delayInput.focus();
         }
 
         function deleteRecord(index) {
@@ -793,10 +721,9 @@
         }
 
         function resetForm() {
-            document.getElementById('employeeNumber').value = '';
             document.getElementById('dateInput').value = getTodayDateString();
             document.getElementById('delayMinutes').value = '';
-            document.getElementById('employeeNumber').focus();
+            document.getElementById('delayMinutes').focus();
         }
 
         function exportData() {
@@ -805,11 +732,11 @@
                 return;
             }
             const sorted = [...attendanceRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
-            let csv = 'التاريخ,رقم الموظف,مدة التأخير (دقائق),الحالة\n';
+            let csv = 'التاريخ,مدة التأخير (دقائق),الحالة\n';
             sorted.forEach(record => {
                 const delay = record.delayMinutes || 0;
                 const status = delay > 0 ? 'متأخر' : 'في الموعد';
-                csv += `${formatDateShort(record.date)},${record.employeeNumber || 'غير محدد'},${delay},${status}\n`;
+                csv += `${formatDateShort(record.date)},${delay},${status}\n`;
             });
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -828,13 +755,6 @@
             const dateInput = document.getElementById('dateInput');
             dateInput.value = getTodayDateString();
             updateDateDisplay();
-            updateOfficialTimeBadge();
-            document.getElementById('officialTime').addEventListener('change', function(e) {
-                officialStartTime = e.target.value;
-                updateOfficialTimeBadge();
-                saveData();
-                renderTable();
-            });
             setInterval(updateDateDisplay, 60000);
             renderTable();
         }
