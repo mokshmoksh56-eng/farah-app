@@ -293,13 +293,13 @@
         }
 
         /* ألوان مميزة حسب اليوم */
-        .day-saturday { background: #FFE0B2; }  /* برتقالي فاتح */
-        .day-sunday { background: #FFCDD2; }    /* أحمر فاتح */
-        .day-monday { background: #F8BBD0; }    /* وردي فاتح */
-        .day-tuesday { background: #E1BEE7; }   /* بنفسجي فاتح */
-        .day-wednesday { background: #D1C4E9; } /* أرجواني فاتح */
-        .day-thursday { background: #C5CAE9; }  /* أزرق فاتح */
-        .day-friday { background: #BBDEFB; }    /* أزرق سماوي */
+        .day-saturday { background: #FFE0B2; }
+        .day-sunday { background: #FFCDD2; }
+        .day-monday { background: #F8BBD0; }
+        .day-tuesday { background: #E1BEE7; }
+        .day-wednesday { background: #D1C4E9; }
+        .day-thursday { background: #C5CAE9; }
+        .day-friday { background: #BBDEFB; }
     </style>
 </head>
 <body>
@@ -339,8 +339,8 @@
                 <div class="value" id="totalDelayMinutes">0</div>
             </div>
             <div class="stat-box success">
-                <div class="label">أطول تأخير</div>
-                <div class="value" id="maxDelayMinutes">0</div>
+                <div class="label">المتبقي من الدقائق</div>
+                <div class="value" id="remainingMinutes">60</div>
             </div>
         </div>
 
@@ -357,6 +357,7 @@
 
     <script>
         const STORAGE_KEY = 'attendance_delay_records';
+        const MAX_DELAY_LIMIT = 60; // تم التعديل إلى 60 دقيقة
 
         let attendanceRecords = [];
         let lastAddedId = null;
@@ -457,20 +458,20 @@
         function updateQuickSummary() {
             let totalLate = 0;
             let totalDelayMin = 0;
-            let maxDelay = 0;
 
             attendanceRecords.forEach(record => {
                 const delay = record.delayMinutes || 0;
                 if (delay > 0) {
                     totalLate++;
                     totalDelayMin += delay;
-                    if (delay > maxDelay) maxDelay = delay;
                 }
             });
 
+            const remaining = Math.max(0, MAX_DELAY_LIMIT - totalDelayMin);
+
             document.getElementById('totalLateCount').textContent = totalLate;
             document.getElementById('totalDelayMinutes').textContent = totalDelayMin;
-            document.getElementById('maxDelayMinutes').textContent = maxDelay;
+            document.getElementById('remainingMinutes').textContent = remaining;
         }
 
         function renderRecords() {
@@ -547,11 +548,9 @@
             delayInput.value = '';
             dateInput.value = getTodayDateString();
 
-            // إخفاء الكيبورد بعد الحفظ
             if (document.activeElement) {
                 document.activeElement.blur();
             }
-            // إزالة التركيز من حقل الدقائق تحديداً
             delayInput.blur();
 
             showToast('✔️ تم الحفظ بنجاح');
