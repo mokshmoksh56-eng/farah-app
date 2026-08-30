@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حاسبة تأخيرات العمل - دقائق فقط</title>
+    <title>سجل التأخيرات اليومي</title>
     <style>
         * {
             margin: 0;
@@ -361,8 +361,7 @@
 
         .footer-actions {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            justify-content: center;
             margin-top: 20px;
             flex-wrap: wrap;
             gap: 10px;
@@ -493,14 +492,6 @@
             <button class="btn btn-danger btn-sm" onclick="clearAllRecords()">
                 🗑️ مسح جميع السجلات
             </button>
-            <div style="display:flex; gap:8px;">
-                <button class="btn btn-secondary btn-sm" onclick="exportData()">
-                    📥 تصدير CSV
-                </button>
-                <button class="btn btn-secondary btn-sm" onclick="printTable()">
-                    🖨️ طباعة
-                </button>
-            </div>
         </div>
     </div>
 
@@ -540,11 +531,21 @@
             return `${year}-${month}-${day}`;
         }
 
+        // دالة لجلب اسم اليوم بالعربية
+        function getDayNameArabic(dateStr) {
+            if (!dateStr) return '';
+            const daysArabic = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const date = new Date(dateStr + 'T00:00:00');
+            return daysArabic[date.getDay()];
+        }
+
+        // تنسيق التاريخ المختصر مع اسم اليوم
         function formatDateShort(dateStr) {
             if (!dateStr) return '--';
             const parts = dateStr.split('-');
             if (parts.length === 3) {
-                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                const dayName = getDayNameArabic(dateStr);
+                return `${dayName} ${parts[2]}/${parts[1]}/${parts[0]}`;
             }
             return dateStr;
         }
@@ -650,12 +651,6 @@
             document.getElementById('lateCount').textContent = late;
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         function addAttendance() {
             const dateInput = document.getElementById('dateInput');
             const delayInput = document.getElementById('delayMinutes');
@@ -724,30 +719,6 @@
             document.getElementById('dateInput').value = getTodayDateString();
             document.getElementById('delayMinutes').value = '';
             document.getElementById('delayMinutes').focus();
-        }
-
-        function exportData() {
-            if (attendanceRecords.length === 0) {
-                alert('لا توجد بيانات للتصدير.');
-                return;
-            }
-            const sorted = [...attendanceRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
-            let csv = 'التاريخ,مدة التأخير (دقائق),الحالة\n';
-            sorted.forEach(record => {
-                const delay = record.delayMinutes || 0;
-                const status = delay > 0 ? 'متأخر' : 'في الموعد';
-                csv += `${formatDateShort(record.date)},${delay},${status}\n`;
-            });
-            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `تقرير_التأخيرات_${getTodayDateString()}.csv`;
-            link.click();
-            URL.revokeObjectURL(link.href);
-        }
-
-        function printTable() {
-            window.print();
         }
 
         function init() {
