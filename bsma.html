@@ -75,7 +75,7 @@
         .lock-btn { background: var(--danger); color: white; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 900; cursor: pointer; transition: 0.3s; }
         .lock-btn.unlocked { background: var(--whatsapp-green); }
 
-        .btn-tgl:disabled, .note-input:disabled, .delay-input:disabled, .btn-save-manual:disabled, .btn-delete:disabled { opacity: 0.5; cursor: not-allowed !important; background-color: #f0f0f0 !important; color: #888 !important; }
+        .btn-tgl:disabled, .note-input:disabled, .btn-save-manual:disabled, .btn-delete:disabled { opacity: 0.5; cursor: not-allowed !important; background-color: #f0f0f0 !important; color: #888 !important; }
         .btn-tgl.active:disabled { opacity: 0.9; }
 
         .month-summary { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 10px; border-radius: 8px; border: 1px solid #eee; width: 100%;}
@@ -99,7 +99,7 @@
         .day-date { font-size: 9px; color: #777; display: block; font-weight: bold; margin-top: 2px;}
         .friday-label { color: var(--danger); font-size: 9px; margin-right: 2px; background: #fadbd8; padding: 2px 4px; border-radius: 4px;}
         
-        /* تصميم خانة التأخير البارزة بجوار الحضور والغياب */
+        /* خانة التأخير مفتوحة دائماً وقابلة للتعديل مباشرة */
         .delay-box { display: flex; align-items: center; gap: 2px; background: #fce8e6; padding: 2px 4px; border-radius: 6px; border: 1px solid #f5c6cb; }
         .delay-box span { font-size: 9px; color: var(--danger); font-weight: bold; }
         .delay-input { width: 42px; padding: 6px 2px; border: 1px solid var(--danger); border-radius: 4px; text-align: center; font-size: 11px; font-weight: bold; background: #fff; color: var(--danger); }
@@ -368,13 +368,14 @@
             card.setAttribute('data-locked', 'false');
             lockBtn.innerHTML = '🔓 مفتوح للتعديل';
             lockBtn.classList.add('unlocked');
-            card.querySelectorAll('.btn-tgl, .note-input, .delay-input, .btn-save-manual, .btn-delete').forEach(el => el.removeAttribute('disabled'));
+            // ملاحظة: خانة التأخير (.delay-input) والأزرار تفتح للتعديل فوراً
+            card.querySelectorAll('.btn-tgl, .note-input, .btn-save-manual, .btn-delete').forEach(el => el.removeAttribute('disabled'));
             showToast('تم فتح الكارت للتعديل 🔓');
         } else {
             card.setAttribute('data-locked', 'true');
             lockBtn.innerHTML = '🔒 كارت مقفول';
             lockBtn.classList.remove('unlocked');
-            card.querySelectorAll('.btn-tgl, .note-input, .delay-input, .btn-save-manual, .btn-delete').forEach(el => el.setAttribute('disabled', 'true'));
+            card.querySelectorAll('.btn-tgl, .note-input, .btn-save-manual, .btn-delete').forEach(el => el.setAttribute('disabled', 'true'));
             showToast('تم قفل الكارت 🔒');
         }
     }
@@ -480,10 +481,10 @@
                         <span class="day-date">${dStr}/${m}/${y}</span>
                     </div>
                     
-                    <!-- خانة التأخير بارزة وواضحة بجوار التصاريح والغياب -->
+                    <!-- خانة التأخير مفتوحة دائماً وغير مقيدة بقفل الكارت لتسجيلها بسرعة -->
                     <div class="delay-box">
                         <span>⏱️</span>
-                        <input type="number" class="delay-input" placeholder="د" value="${delayVal}" onchange="saveDelay('${empId}', '${fullD}', this.value)" min="0" ${disabledAttr}>
+                        <input type="number" class="delay-input" placeholder="د" value="${delayVal}" onchange="saveDelay('${empId}', '${fullD}', this.value)" min="0">
                     </div>
 
                     <div class="att-btns">
@@ -545,9 +546,7 @@
     }
 
     function saveDelay(empId, dateStr, delayVal) {
-        const card = document.getElementById(`card-${empId}`);
-        if (card.getAttribute('data-locked') === 'true') return;
-
+        // تم جعل خانة التأخير تقبل الحفظ مباشرة دون اشتراط فتح قفل الكارت
         let minutes = parseInt(delayVal) || 0;
         if(minutes < 0) minutes = 0;
 
