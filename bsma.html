@@ -3,606 +3,704 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>سجل التأخيرات</title>
+    <title>لوحة المدير العام 👑 | مطابخ فرح</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         :root {
-            --bg: #f5f7fa;
-            --card: #ffffff;
-            --primary: #1a73e8;
-            --primary-hover: #1557b0;
-            --danger: #d93025;
+            --whatsapp-green: #25D366; --dark-green: #075E54; --teal: #128C7E;
+            --bg-gray: #f0f2f5; --white: #ffffff; --danger: #d32f2f;
+            --warning: #f57c00; --gold: #D4AF37; --blue: #1976d2;
+            --friday-bg: #f9ebea; 
             --success: #188038;
-            --text: #202124;
-            --text-light: #5f6368;
-            --border: #e0e0e0;
-            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            --radius: 14px;
         }
 
-        body {
-            font-family: -apple-system, 'Segoe UI', 'Tahoma', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            padding: 10px;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-gray); margin: 0; padding: 0; font-weight: 600; padding-bottom: 80px; }
+        
+        header { 
+            background: linear-gradient(135deg, var(--dark-green), var(--teal)); 
+            color: var(--white); padding: 15px 10px; text-align: center; 
+            border-radius: 0 0 25px 25px; position: sticky; top: 0; z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
-        .container {
-            width: 100%;
-            max-width: 500px;
-            background: var(--card);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 16px;
-            margin: 0 auto;
-            position: relative;
+        #toastMsg {
+            position: fixed; bottom: -60px; left: 50%; transform: translateX(-50%);
+            background: var(--whatsapp-green); color: white; padding: 12px 25px;
+            border-radius: 30px; font-size: 15px; font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 99999; pointer-events: none;
         }
+        #toastMsg.show { bottom: 30px; }
 
-        .header {
-            text-align: center;
-            margin-bottom: 16px;
-            padding: 12px 0;
-            border-bottom: 2px solid #f0f0f0;
-        }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 10px; }
+        .header-date { font-size: 13px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); }
+        .sync-indicator { font-size: 11px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; }
+        
+        .header-title { font-size: 1.3rem; font-weight: 900; }
+        .header-title span { color: var(--gold); }
 
-        .header h1 {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
+        .tabs-container { display: flex; justify-content: center; gap: 10px; margin: 15px auto; padding: 0 10px; max-width: 800px; }
+        .tab-btn { flex: 1; background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.4); padding: 10px; border-radius: 12px; font-weight: 900; font-size: 13px; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: var(--gold); color: #3b2a0f; border-color: var(--gold); box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
 
-        .header .date-display {
-            margin-top: 8px;
-            font-size: 0.95rem;
-            color: var(--text-light);
-            font-weight: 600;
-        }
+        .main-container { padding: 12px; max-width: 1200px; margin: auto; }
+        .section-view { display: none; }
+        .section-view.active { display: block; }
 
-        .input-card {
-            background: #fafbfc;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            border: 1px solid var(--border);
-        }
+        .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px; }
+        .dash-card { background: white; padding: 10px 2px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-bottom: 3px solid var(--teal);}
+        .dash-card span { font-size: 11px; color: #555;}
+        .dash-card strong { font-size: 18px; display: block; margin-top: 5px; color: var(--dark-green); }
 
-        .input-field {
-            margin-bottom: 14px;
-        }
+        .config-box { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .date-selectors { display: flex; gap: 8px; justify-content: center; align-items: center;}
+        .date-selectors input, .date-selectors select { flex: 1; padding: 12px; border-radius: 12px; border: 2px solid var(--teal); font-weight: 900; background: #f9f9f9; text-align: center; font-family: inherit;}
+        .week-label { font-size: 12px; color: var(--dark-green); font-weight: bold; background: #e0f2f1; padding: 10px; border-radius: 10px; flex: 1.5; text-align: center;}
 
-        .input-field label {
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 700;
-            margin-bottom: 6px;
-            color: var(--text);
-        }
+        .search-bar { margin-bottom: 15px; }
+        .search-bar input { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid var(--gold); font-weight: 900; font-size: 15px; text-align: center; box-sizing: border-box; background: #fffcf5; outline: none; transition: 0.3s; }
+        .search-bar input:focus { box-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
 
-        .input-field input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            font-size: 1.1rem;
-            background: white;
-            color: var(--text);
-            font-family: inherit;
-            text-align: right;
-            direction: rtl;
-            transition: border-color 0.2s;
-            -webkit-appearance: none;
-            appearance: none;
-        }
+        #cardsList { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 15px; }
+        .worker-card { background: var(--white); border-radius: 15px; padding: 15px; border-top: 5px solid var(--gold); box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative; transition: 0.3s;}
+        
+        .card-name { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--dark-green); margin-bottom: 15px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
+        .emp-id-badge { color: var(--danger); font-size: 13px; background: #ffebee; padding: 2px 6px; border-radius: 6px; }
+        .employee-dept { font-size: 12px; background: #eee; padding: 3px 8px; border-radius: 8px; color: #555; }
+        
+        .lock-btn { background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; cursor: pointer; transition: 0.3s; }
+        .lock-btn.unlocked { background: var(--whatsapp-green); }
 
-        .input-field input:focus {
-            border-color: var(--primary);
-            outline: none;
-        }
+        .btn-tgl:disabled { opacity: 0.5; cursor: not-allowed !important; }
+        .btn-tgl.active:disabled { opacity: 0.9; }
+        .note-input:disabled { background-color: #f0f0f0; color: #888; cursor: not-allowed; }
+        .delay-input:disabled { background-color: #f0f0f0; cursor: not-allowed; }
+        .btn-save-manual:disabled, .btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .input-field input[type="date"] {
-            cursor: pointer;
-        }
+        .month-summary { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 10px; border-radius: 8px; border: 1px solid #eee;}
+        .summary-top { display: flex; justify-content: space-between; align-items: center; width: 100%;}
+        .card-dropdowns { display: flex; gap: 5px; }
+        .card-dropdowns select, .card-dropdowns input { padding: 6px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-weight: bold; font-size: 12px; background: #fff; outline: none;}
+        .summary-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+        .summary-badges span { padding: 5px 8px; border-radius: 5px; color: white; font-weight: bold; font-size: 11px; display: inline-block;}
+        
+        .days-list-container { max-height: 260px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-bottom: 10px; background: #fafafa; }
+        .days-list-container::-webkit-scrollbar { width: 6px; }
+        .days-list-container::-webkit-scrollbar-thumb { background: var(--teal); border-radius: 4px; }
 
-        .btn {
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 8px;
-            -webkit-tap-highlight-color: transparent;
-        }
+        .day-row { display: flex; align-items: center; background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 5px 8px; gap: 6px; margin-bottom: 6px; transition: 0.2s;}
+        .day-row.today-glow { background: linear-gradient(145deg, #fff9e6, #fff6e0); border: 1px solid var(--gold); }
+        .day-row.friday-row { background-color: var(--friday-bg); border: 1px solid #e6b0aa; }
+        
+        .day-info { flex: 1; font-size: 13px; font-weight: 900; text-align: right; color: var(--dark-green); line-height: 1.2;}
+        .day-date { font-size: 11px; color: #777; display: block; font-weight: bold; margin-top: 2px;}
+        .friday-label { color: var(--danger); font-size: 10px; margin-right: 5px; background: #fadbd8; padding: 2px 5px; border-radius: 4px;}
+        
+        /* حقل التأخير الجديد */
+        .delay-input { width: 65px; padding: 6px 4px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-size: 11px; font-weight: bold; background: #fff; outline: none; }
+        .delay-input:focus { border-color: var(--danger); box-shadow: 0 0 5px rgba(217, 48, 37, 0.3); }
 
-        .btn:active {
-            transform: scale(0.98);
-        }
+        .att-btns { display: flex; gap: 3px; flex: 2; }
+        .btn-tgl { flex: 1; border: 1px solid #ccc; background: #f9f9f9; font-size: 11px; font-weight: 900; padding: 8px 0; border-radius: 6px; cursor: pointer; transition: 0.2s;}
+        .btn-tgl.active[data-v="حضور"] { background: var(--whatsapp-green); color: white; border-color: var(--whatsapp-green); }
+        .btn-tgl.active[data-v="تصريح"] { background: var(--warning); color: white; border-color: var(--warning); }
+        .btn-tgl.active[data-v="غياب"] { background: var(--danger); color: white; border-color: var(--danger); }
+        
+        .note-input { width: 100%; padding: 10px; border-radius: 8px; border: 1.5px solid #ccc; font-size: 12px; background: #fffef2; box-sizing: border-box; resize: none; min-height: 50px; font-weight: 700;}
+        
+        .card-buttons { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-save-manual { flex: 2; background: var(--teal); color: white; border: none; padding: 10px; border-radius: 10px; font-weight: 900; cursor: pointer; transition: 0.3s; }
+        .btn-delete { flex: 1; background: #ffebee; color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 10px; font-weight: 900; cursor: pointer; font-size: 12px;}
 
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
+        /* الجداول والتقارير */
+        .report-box { background: white; border-radius: 15px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-top: 4px solid var(--dark-green); overflow: hidden; }
+        .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;}
+        .report-header h2 { margin: 0; font-size: 18px; color: var(--dark-green); }
+        .table-responsive { width: 100%; overflow-x: auto; border-radius: 10px; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; font-size: 13px; text-align: center; }
+        th, td { padding: 10px 5px; border: 1px solid #eee; white-space: nowrap; }
+        th { background: var(--teal); color: white; font-weight: 900; position: sticky; top: 0; }
+        .sticky-col { position: sticky; right: 0; background: #fdfdfd; font-weight: bold; border-left: 2px solid #ddd; z-index: 1;}
+        th.sticky-col { background: var(--dark-green); color: var(--gold); z-index: 2; }
+        tbody tr:hover { background: #f5f5f5; }
+        tbody tr:hover .sticky-col { background: #f0f0f0; }
+        .friday-col { background-color: #faf8f8; }
 
-        .btn-primary:active {
-            background: var(--primary-hover);
-        }
-
-        .toast {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--success);
-            color: white;
-            padding: 14px 28px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 1rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-
-        .quick-summary {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .stat-box {
-            background: #f0f7ff;
-            border-radius: 10px;
-            padding: 12px 8px;
-            text-align: center;
-        }
-
-        .stat-box .label {
-            font-size: 0.75rem;
-            color: var(--text-light);
-            font-weight: 600;
-        }
-
-        .stat-box .value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-top: 4px;
-        }
-
-        .stat-box.danger .value {
-            color: var(--danger);
-        }
-
-        .stat-box.success .value {
-            color: var(--success);
-        }
-
-        .records-list {
-            margin-top: 10px;
-        }
-
-        .record-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 14px;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 6px;
-            gap: 10px;
-            transition: background 0.3s ease;
-        }
-
-        .record-item .date-info {
-            flex: 1;
-        }
-
-        .record-item .date-info .day {
-            font-weight: 700;
-            font-size: 0.95rem;
-        }
-
-        .record-item .date-info .full-date {
-            font-size: 0.8rem;
-            color: var(--text-light);
-        }
-
-        .record-item .delay-info {
-            text-align: left;
-            font-weight: 700;
-            font-size: 0.95rem;
-        }
-
-        .record-item .delay-info.late {
-            color: var(--danger);
-        }
-
-        .record-item .delay-info.on-time {
-            color: var(--success);
-        }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 6px;
-            border-radius: 50%;
-            transition: background 0.2s;
-        }
-
-        .delete-btn:active {
-            background: rgba(0,0,0,0.1);
-        }
-
-        .empty-msg {
-            text-align: center;
-            padding: 30px 16px;
-            color: var(--text-light);
-            font-size: 0.95rem;
-        }
-
-        .clear-all-btn {
-            width: 100%;
-            padding: 12px;
-            background: #fce8e6;
-            color: var(--danger);
-            border: none;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 10px;
-            font-family: inherit;
-            transition: background 0.2s;
-        }
-
-        .clear-all-btn:active {
-            background: #f8d7d5;
-        }
-
-        /* ألوان مميزة حسب اليوم */
-        .day-saturday { background: #FFE0B2; }
-        .day-sunday { background: #FFCDD2; }
-        .day-monday { background: #F8BBD0; }
-        .day-tuesday { background: #E1BEE7; }
-        .day-wednesday { background: #D1C4E9; }
-        .day-thursday { background: #C5CAE9; }
-        .day-friday { background: #BBDEFB; }
+        .badge { display: inline-block; width: 22px; height: 22px; line-height: 22px; border-radius: 5px; font-size: 11px; font-weight: bold; color: white; }
+        .bg-h { background-color: var(--whatsapp-green); }
+        .bg-a { background-color: var(--danger); }
+        .bg-p { background-color: var(--warning); }
+        .bg-delay { background-color: var(--danger); }
+        .bg-rem { background-color: var(--success); }
+        .bg-rem.danger { background-color: var(--danger); }
+        .bg-none { background-color: #bdc3c7; color: #fff; }
+        .summary-cell { font-size: 11px; text-align: right; line-height: 1.6; }
+        .summary-cell span { display: inline-block; padding: 2px 5px; border-radius: 4px; margin: 1px; color: white; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="toast" id="toast">✔️ تم الحفظ بنجاح</div>
+<div id="toastMsg">تم الحفظ بنجاح ✔️</div>
 
-    <div class="container">
-        <div class="header">
-            <h1>⏰ سجل التأخيرات</h1>
-            <div class="date-display" id="todayDateText">--</div>
+<header>
+    <div class="top-bar">
+        <div class="header-date" id="headerDateDisplay">جاري التحميل...</div>
+        <div class="sync-indicator">✅ النظام يعمل محلياً</div>
+    </div>
+    <div class="header-title">نظام المدير العام <span>👑</span></div>
+    
+    <div class="tabs-container">
+        <button class="tab-btn active" onclick="switchTab('dailyTab', this)">📝 سجل الكروت</button>
+        <button class="tab-btn" onclick="switchTab('monthlyTab', this)">📅 التقرير الشهري</button>
+        <button class="tab-btn" onclick="switchTab('annualTab', this)">📊 التقرير السنوي</button>
+    </div>
+</header>
+
+<div class="main-container">
+
+    <!-- ================= 1. قسم الكروت واليومية ================= -->
+    <div id="dailyTab" class="section-view active">
+        <div class="dashboard">
+            <div class="dash-card"><span>إجمالي العمالة</span><strong id="stat-total">0</strong></div>
+            <div class="dash-card"><span>حضور اليوم</span><strong id="stat-present" style="color:var(--whatsapp-green)">0</strong></div>
+            <div class="dash-card"><span>غياب اليوم</span><strong id="stat-absent" style="color:var(--danger)">0</strong></div>
+            <div class="dash-card"><span>تصاريح اليوم</span><strong id="stat-permit" style="color:var(--warning)">0</strong></div>
         </div>
 
-        <div class="input-card">
-            <div class="input-field">
-                <label>📅 التاريخ</label>
-                <input type="date" id="dateInput">
+        <div class="config-box">
+            <div class="date-selectors">
+                <input type="date" id="recordDate" onchange="loadDayData()">
+                <div class="week-label">تحديد التاريخ لتمييزه في القوائم وإحصائيات اليوم</div>
             </div>
-            <div class="input-field">
-                <label>⏱️ مدة التأخير (دقائق)</label>
-                <input type="number" id="delayMinutes" min="0" step="1" 
-                       placeholder="اكتب الدقائق..."
-                       enterkeyhint="done"
-                       autocomplete="off">
-            </div>
-            <button class="btn btn-primary" onclick="addAttendance()">
-                ➕ إضافة التأخير
-            </button>
+            <details style="margin-top: 15px;">
+                <summary style="font-weight: 900; color: var(--gold); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 10px;">➕ إضافة موظف جديد</summary>
+                <div style="display:flex; gap:5px; margin-top:15px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="empNumInp" style="flex:0.5; border: 1px solid #ddd; padding: 10px; border-radius: 8px; min-width: 80px;" placeholder="رقم الموظف">
+                    <input type="text" id="empNameInp" style="flex:2; border: 1px solid #ddd; padding: 10px; border-radius: 8px;" placeholder="اسم الموظف رباعي">
+                    <input type="text" id="empDeptInp" style="flex:1; border: 1px solid #ddd; padding: 10px; border-radius: 8px;" placeholder="التخصص (مثل: فني تجميع)">
+                    <button onclick="addNewEmployee()" style="background:var(--gold); color:#3b2a0f; border:none; padding:10px 15px; border-radius:8px; font-weight: 900;">إضافة 👤</button>
+                </div>
+            </details>
         </div>
 
-        <div class="quick-summary">
-            <div class="stat-box">
-                <div class="label">أيام التأخير</div>
-                <div class="value" id="totalLateCount">0</div>
-            </div>
-            <div class="stat-box danger">
-                <div class="label">إجمالي الدقائق</div>
-                <div class="value" id="totalDelayMinutes">0</div>
-            </div>
-            <div class="stat-box success">
-                <div class="label">المتبقي من الدقائق</div>
-                <div class="value" id="remainingMinutes">60</div>
-            </div>
+        <div class="search-bar">
+            <input type="text" id="searchEmpNum" placeholder="🔍 ابحث برقم الموظف هنا..." onkeyup="filterCards()">
         </div>
 
-        <div class="records-list" id="recordsList">
-            <div class="empty-msg" id="emptyState">
-                📭 لا توجد سجلات بعد
-            </div>
-        </div>
-
-        <button class="clear-all-btn" onclick="clearAllRecords()">
-            🗑️ مسح جميع السجلات
-        </button>
+        <div id="cardsList"></div>
     </div>
 
-    <script>
-        const STORAGE_KEY = 'attendance_delay_records';
-        const MAX_DELAY_LIMIT = 60; // تم التعديل إلى 60 دقيقة
+    <!-- ================= 2. التقرير الشهري ================= -->
+    <div id="monthlyTab" class="section-view">
+        <div class="report-box">
+            <div class="report-header">
+                <h2>📅 التقرير الشهري التفصيلي</h2>
+                <div class="date-selectors" style="margin: 0; flex: 1; max-width: 300px;">
+                    <select id="monthSelect" onchange="generateMonthlyReport()"></select>
+                    <input type="number" id="yearSelectMonth" onchange="generateMonthlyReport()">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table id="monthlyTable"></table>
+            </div>
+        </div>
+    </div>
 
-        let attendanceRecords = [];
-        let lastAddedId = null;
-        let toastTimeout;
-        let audioContext = null;
+    <!-- ================= 3. التقرير السنوي ================= -->
+    <div id="annualTab" class="section-view">
+        <div class="report-box" style="border-top-color: var(--warning);">
+            <div class="report-header">
+                <h2>📊 التقرير السنوي الشامل</h2>
+                <div class="date-selectors" style="margin: 0;">
+                    <input type="number" id="yearSelectAnnual" onchange="generateAnnualReport()" style="max-width: 150px;">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table id="annualTable"></table>
+            </div>
+        </div>
+    </div>
 
-        function loadData() {
-            try {
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) {
-                    attendanceRecords = JSON.parse(stored);
-                } else {
-                    attendanceRecords = [];
-                }
-            } catch (e) {
-                attendanceRecords = [];
-            }
-        }
+</div>
 
-        function saveData() {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(attendanceRecords));
-            } catch (e) {}
-        }
+<script>
+    // ================= الأصوات والإشعارات =================
+    function playSaveSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(900, ctx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+            
+            osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15);
+        } catch (e) {}
+    }
 
-        function getTodayDateString() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
+    let toastTimeout;
+    function showToast(message) {
+        const toast = document.getElementById('toastMsg');
+        toast.innerText = message;
+        toast.classList.add('show');
+        playSaveSound();
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 1500);
+    }
 
-        function getDayNameArabic(dateStr) {
-            if (!dateStr) return '';
-            const daysArabic = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-            const date = new Date(dateStr + 'T00:00:00');
-            return daysArabic[date.getDay()];
-        }
+    // ================= تهيئة النظام =================
+    const monthNamesList = [
+        "يناير (1)", "فبراير (2)", "مارس (3)", "أبريل (4)", "مايو (5)", "يونيو (6)", 
+        "يوليو (7)", "أغسطس (8)", "سبتمبر (9)", "أكتوبر (10)", "نوفمبر (11)", "ديسمبر (12)"
+    ];
+    const arabicDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const MAX_DELAY_MINUTES = 60;
 
-        function getDayColorClass(dayName) {
-            switch(dayName) {
-                case 'السبت': return 'day-saturday';
-                case 'الأحد': return 'day-sunday';
-                case 'الاثنين': return 'day-monday';
-                case 'الثلاثاء': return 'day-tuesday';
-                case 'الأربعاء': return 'day-wednesday';
-                case 'الخميس': return 'day-thursday';
-                case 'الجمعة': return 'day-friday';
-                default: return '';
-            }
-        }
+    let employees = JSON.parse(localStorage.getItem('gm_employees')) || [];
+    let dailyRecords = JSON.parse(localStorage.getItem('gm_daily_records')) || {};
 
-        function formatDateShort(dateStr) {
-            if (!dateStr) return '--';
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                const dayName = getDayNameArabic(dateStr);
-                return `${dayName} ${parts[2]}/${parts[1]}/${parts[0]}`;
-            }
-            return dateStr;
-        }
+    const today = new Date();
+    document.getElementById('recordDate').valueAsDate = today;
+    document.getElementById('yearSelectMonth').value = today.getFullYear();
+    document.getElementById('yearSelectAnnual').value = today.getFullYear();
 
-        function playSuccessSound() {
-            try {
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, audioContext.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
-                osc.start(audioContext.currentTime);
-                osc.stop(audioContext.currentTime + 0.25);
-            } catch (e) {}
-        }
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('headerDateDisplay').innerText = "📅 " + today.toLocaleDateString('ar-EG', dateOptions);
 
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2000);
-        }
+    let monthOptionsGlobal = "";
+    for(let i=0; i<12; i++) {
+        let val = String(i+1).padStart(2, '0');
+        let sel = (i === today.getMonth()) ? 'selected' : '';
+        monthOptionsGlobal += `<option value="${val}" ${sel}>${monthNamesList[i]}</option>`;
+    }
+    document.getElementById('monthSelect').innerHTML = monthOptionsGlobal;
 
-        function updateDateDisplay() {
-            const dateStr = getTodayDateString();
-            document.getElementById('todayDateText').textContent = formatDateShort(dateStr);
-        }
+    function switchTab(tabId, btnElement) {
+        document.querySelectorAll('.section-view').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btnElement.classList.add('active');
 
-        function updateQuickSummary() {
-            let totalLate = 0;
-            let totalDelayMin = 0;
+        if(tabId === 'dailyTab') loadDayData();
+        if(tabId === 'monthlyTab') generateMonthlyReport();
+        if(tabId === 'annualTab') generateAnnualReport();
+    }
 
-            attendanceRecords.forEach(record => {
-                const delay = record.delayMinutes || 0;
-                if (delay > 0) {
-                    totalLate++;
-                    totalDelayMin += delay;
-                }
-            });
+    function getEmpDailyData(dateStr, empId) {
+        let [y, m, d] = dateStr.split('-');
+        let isFriday = new Date(parseInt(y), parseInt(m)-1, parseInt(d)).getDay() === 5;
+        let defaultStatus = isFriday ? 'عطلة' : 'حضور';
 
-            const remaining = Math.max(0, MAX_DELAY_LIMIT - totalDelayMin);
-
-            document.getElementById('totalLateCount').textContent = totalLate;
-            document.getElementById('totalDelayMinutes').textContent = totalDelayMin;
-            document.getElementById('remainingMinutes').textContent = remaining;
-        }
-
-        function renderRecords() {
-            const list = document.getElementById('recordsList');
-
-            if (attendanceRecords.length === 0) {
-                list.innerHTML = '<div class="empty-msg">📭 لا توجد سجلات بعد</div>';
-                updateQuickSummary();
-                return;
-            }
-
-            const sorted = [...attendanceRecords].sort((a, b) => {
-                return new Date(b.date) - new Date(a.date);
-            });
-
-            let html = '';
-            sorted.forEach((record, index) => {
-                const delay = record.delayMinutes || 0;
-                const dayName = getDayNameArabic(record.date);
-                const parts = record.date.split('-');
-                const fullDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : record.date;
-                const delayDisplay = delay > 0 ? `${delay} دقيقة` : 'لا يوجد';
-                const isLate = delay > 0;
-                const delayClass = isLate ? 'late' : 'on-time';
-                const dayColorClass = getDayColorClass(dayName);
-
-                html += `
-                    <div class="record-item ${dayColorClass}" data-record-id="${record.id}">
-                        <div class="date-info">
-                            <div class="day">${dayName}</div>
-                            <div class="full-date">${fullDate}</div>
-                        </div>
-                        <div class="delay-info ${delayClass}">${delayDisplay}</div>
-                        <button class="delete-btn" onclick="deleteRecord(${index})" title="حذف">🗑️</button>
-                    </div>
-                `;
-            });
-
-            list.innerHTML = html;
-            updateQuickSummary();
-        }
-
-        function addAttendance() {
-            const dateInput = document.getElementById('dateInput');
-            const delayInput = document.getElementById('delayMinutes');
-
-            const date = dateInput.value;
-            const delayMinutes = parseInt(delayInput.value) || 0;
-
-            if (!date) {
-                showToast('⚠️ الرجاء اختيار التاريخ');
-                dateInput.focus();
-                return;
-            }
-
-            if (delayMinutes < 0) {
-                showToast('⚠️ مدة التأخير يجب أن تكون صفراً أو أكبر');
-                delayInput.focus();
-                return;
-            }
-
-            const newRecord = {
-                id: Date.now(),
-                date: date,
-                delayMinutes: delayMinutes,
-                recordedAt: new Date().toISOString()
+        if(dailyRecords[dateStr] && dailyRecords[dateStr][empId]) {
+            return {
+                status: dailyRecords[dateStr][empId].status || defaultStatus,
+                delay: dailyRecords[dateStr][empId].delay || 0
             };
+        }
+        return { status: defaultStatus, delay: 0 };
+    }
 
-            attendanceRecords.push(newRecord);
-            lastAddedId = newRecord.id;
-            saveData();
-            renderRecords();
+    function addNewEmployee() {
+        const empNum = document.getElementById('empNumInp').value.trim();
+        const name = document.getElementById('empNameInp').value.trim();
+        const dept = document.getElementById('empDeptInp').value.trim();
+        
+        if(!name || !empNum) return alert('الرجاء إدخال رقم واسم الموظف!');
+        if(employees.some(e => e.empNum === empNum)) return alert('رقم الموظف مسجل مسبقاً لموظف آخر!');
 
-            delayInput.value = '';
-            dateInput.value = getTodayDateString();
+        employees.push({ id: Date.now().toString(), empNum: empNum, name: name, dept: dept || 'عام', note: '' });
+        localStorage.setItem('gm_employees', JSON.stringify(employees));
+        
+        document.getElementById('empNumInp').value = ''; 
+        document.getElementById('empNameInp').value = ''; 
+        document.getElementById('empDeptInp').value = '';
+        
+        loadDayData();
+        showToast('تم إضافة الموظف بنجاح 👤');
+    }
 
-            if (document.activeElement) {
-                document.activeElement.blur();
-            }
-            delayInput.blur();
+    function removeEmployee(empId) {
+        if(confirm("⚠️ هل أنت متأكد من حذف هذا الموظف؟")) {
+            employees = employees.filter(e => e.id !== empId);
+            localStorage.setItem('gm_employees', JSON.stringify(employees));
+            loadDayData();
+        }
+    }
 
-            showToast('✔️ تم الحفظ بنجاح');
-            playSuccessSound();
+    function filterCards() {
+        const query = document.getElementById('searchEmpNum').value.trim();
+        const cards = document.querySelectorAll('.worker-card');
+        cards.forEach(card => {
+            const empNum = card.getAttribute('data-empnum');
+            if(empNum.includes(query)) card.style.display = 'block';
+            else card.style.display = 'none';
+        });
+    }
+
+    function getDaysInMonth(month, year) {
+        return new Date(year, month, 0).getDate();
+    }
+
+    function toggleEditCard(empId) {
+        const card = document.getElementById(`card-${empId}`);
+        if (!card) return;
+        const isLocked = card.getAttribute('data-locked') === 'true';
+        const lockBtn = card.querySelector('.lock-btn');
+        
+        if (isLocked) {
+            card.setAttribute('data-locked', 'false');
+            lockBtn.innerHTML = '🔓 مفتوح';
+            lockBtn.classList.add('unlocked');
+            card.querySelectorAll('.btn-tgl, .note-input, .delay-input, .btn-save-manual, .btn-delete').forEach(el => el.removeAttribute('disabled'));
+            showToast('تم فتح الكارت للتعديل 🔓');
+        } else {
+            card.setAttribute('data-locked', 'true');
+            lockBtn.innerHTML = '🔒 مقفول';
+            lockBtn.classList.remove('unlocked');
+            card.querySelectorAll('.btn-tgl, .note-input, .delay-input, .btn-save-manual, .btn-delete').forEach(el => el.setAttribute('disabled', 'true'));
+            showToast('تم قفل الكارت 🔒');
+        }
+    }
+
+    function loadDayData() {
+        const selectedDateStr = document.getElementById('recordDate').value;
+        const [selYear, selMonth] = selectedDateStr.split('-');
+
+        let htmlCards = '';
+        let monthOptionsCard = "";
+        for(let i=0; i<12; i++) {
+            let val = String(i+1).padStart(2, '0');
+            let sel = (val === selMonth) ? 'selected' : '';
+            monthOptionsCard += `<option value="${val}" ${sel}>${monthNamesList[i]}</option>`;
         }
 
-        function deleteRecord(index) {
-            if (confirm('حذف هذا السجل؟')) {
-                const sorted = [...attendanceRecords].sort((a, b) => {
-                    return new Date(b.date) - new Date(a.date);
-                });
-                const recordToDelete = sorted[index];
-                if (recordToDelete) {
-                    attendanceRecords = attendanceRecords.filter(r => r.id !== recordToDelete.id);
-                    saveData();
-                    renderRecords();
-                    showToast('🗑️ تم حذف السجل');
+        employees.forEach((emp) => {
+            let displayNum = emp.empNum || '-';
+            
+            htmlCards += `
+                <div class="worker-card" id="card-${emp.id}" data-empnum="${displayNum}" data-locked="true">
+                    <div class="card-name">
+                        <div style="display:flex; align-items:center; gap: 8px;">
+                            <span class="emp-id-badge">#${displayNum}</span>
+                            <span>👤 ${emp.name}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap: 8px;">
+                            <button class="lock-btn" onclick="toggleEditCard('${emp.id}')" title="اضغط لفتح التعديل">🔒 مقفول</button>
+                            <span class="employee-dept">${emp.dept}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="month-summary">
+                        <div class="summary-top">
+                            <div class="card-dropdowns">
+                                <select id="sel-month-${emp.id}" onchange="renderCardMonth('${emp.id}')">${monthOptionsCard}</select>
+                                <input type="number" id="sel-year-${emp.id}" value="${selYear}" style="width: 65px;" onchange="renderCardMonth('${emp.id}')">
+                            </div>
+                            <div style="font-size: 11px; font-weight: bold; color: var(--danger);">مسموح: 60 دقيقة</div>
+                        </div>
+                        <div class="summary-badges" id="badges-${emp.id}"></div>
+                    </div>
+
+                    <div class="days-list-container" id="days-list-${emp.id}"></div>
+
+                    <textarea class="note-input" id="note-${emp.id}" placeholder="ملاحظات عامة للموظف..." disabled>${emp.note || ''}</textarea>
+                    
+                    <div class="card-buttons">
+                        <button class="btn-save-manual" disabled onclick="saveGeneralNote('${emp.id}')">حفظ الملاحظة 💾</button>
+                        <button class="btn-delete" disabled onclick="removeEmployee('${emp.id}')">حذف الموظف</button>
+                    </div>
+                </div>`;
+        });
+        
+        document.getElementById('cardsList').innerHTML = htmlCards || '<p style="text-align:center; width:100%;">لا يوجد موظفين. ابدأ بالإضافة من الأعلى.</p>';
+        
+        employees.forEach(emp => renderCardMonth(emp.id));
+        updateTopDashboard();
+        filterCards();
+    }
+
+    function renderCardMonth(empId) {
+        const m = document.getElementById(`sel-month-${empId}`).value;
+        const y = document.getElementById(`sel-year-${empId}`).value;
+        const daysCount = getDaysInMonth(parseInt(m), parseInt(y));
+        const globalSelectedDate = document.getElementById('recordDate').value;
+        
+        const cardElem = document.getElementById(`card-${empId}`);
+        const isLocked = cardElem ? cardElem.getAttribute('data-locked') === 'true' : true;
+        const disabledAttr = isLocked ? 'disabled' : '';
+
+        let daysHtml = '';
+        let monthH = 0, monthA = 0, monthP = 0, totalDelayMin = 0;
+
+        for(let d = 1; d <= daysCount; d++) {
+            let dStr = String(d).padStart(2, '0');
+            let fullD = `${y}-${m}-${dStr}`;
+            
+            let dailyData = getEmpDailyData(fullD, empId);
+
+            let hActive = dailyData.status === 'حضور' ? 'active' : '';
+            let pActive = dailyData.status === 'تصريح' ? 'active' : '';
+            let aActive = dailyData.status === 'غياب' ? 'active' : '';
+
+            if (dailyData.status === 'حضور') monthH++;
+            else if (dailyData.status === 'غياب') monthA++;
+            else if (dailyData.status === 'تصريح') monthP++;
+
+            totalDelayMin += dailyData.delay;
+
+            let dateObj = new Date(parseInt(y), parseInt(m)-1, d);
+            let isFriday = dateObj.getDay() === 5;
+            let dayName = arabicDays[dateObj.getDay()];
+            
+            let isSelectedDay = fullD === globalSelectedDate ? 'today-glow' : '';
+            let fridayClass = isFriday ? 'friday-row' : '';
+            let fridayLabel = isFriday ? '<span class="friday-label">عطلة</span>' : '';
+            let delayVal = dailyData.delay > 0 ? dailyData.delay : '';
+
+            daysHtml += `
+                <div class="day-row ${isSelectedDay} ${fridayClass}" id="row-${empId}-${fullD}">
+                    <div class="day-info">
+                        <span>${dayName} ${fridayLabel}</span>
+                        <span class="day-date">${dStr}/${m}/${y}</span>
+                    </div>
+                    <input type="number" class="delay-input" placeholder="تأخير(د)" value="${delayVal}" onchange="saveDelay('${empId}', '${fullD}', this.value)" min="0" ${disabledAttr}>
+                    <div class="att-btns">
+                        <button class="btn-tgl ${hActive}" data-v="حضور" onclick="toggleMonthAtt(this, '${empId}', '${fullD}')" ${disabledAttr}>حضور</button>
+                        <button class="btn-tgl ${pActive}" data-v="تصريح" onclick="toggleMonthAtt(this, '${empId}', '${fullD}')" ${disabledAttr}>تصريح</button>
+                        <button class="btn-tgl ${aActive}" data-v="غياب" onclick="toggleMonthAtt(this, '${empId}', '${fullD}')" ${disabledAttr}>غياب</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        let remaining = Math.max(0, MAX_DELAY_MINUTES - totalDelayMin);
+        let remClass = remaining > 0 ? 'bg-rem' : 'bg-rem danger';
+
+        document.getElementById(`days-list-${empId}`).innerHTML = daysHtml;
+        document.getElementById(`badges-${empId}`).innerHTML = `
+            <span class="bg-h">ح: ${monthH}</span>
+            <span class="bg-a">غ: ${monthA}</span>
+            <span class="bg-p">ت: ${monthP}</span>
+            <span class="bg-delay">إجمالي تأخير: ${totalDelayMin} د</span>
+            <span class="${remClass}">متبقي: ${remaining} د</span>
+        `;
+        
+        const highlightedRow = document.getElementById(`row-${empId}-${globalSelectedDate}`);
+        if(highlightedRow) {
+            highlightedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function toggleMonthAtt(btn, empId, dateStr) {
+        const card = document.getElementById(`card-${empId}`);
+        if (card.getAttribute('data-locked') === 'true') return;
+
+        let status = btn.dataset.v;
+        let wasActive = btn.classList.contains('active');
+
+        if(!dailyRecords[dateStr]) dailyRecords[dateStr] = {};
+        if(!dailyRecords[dateStr][empId]) dailyRecords[dateStr][empId] = {};
+
+        if (wasActive) {
+            delete dailyRecords[dateStr][empId].status;
+        } else {
+            dailyRecords[dateStr][empId].status = status;
+        }
+
+        localStorage.setItem('gm_daily_records', JSON.stringify(dailyRecords));
+
+        let currentData = getEmpDailyData(dateStr, empId);
+        Array.from(btn.parentElement.children).forEach(b => {
+            if(b.dataset.v === currentData.status) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+
+        updateCardBadges(empId);
+        updateTopDashboard();
+        
+        if(wasActive) showToast('تم مسح التسجيل والعودة للافتراضي 🔄');
+        else showToast('تم التحديث بنجاح ✔️');
+    }
+
+    function saveDelay(empId, dateStr, delayVal) {
+        const card = document.getElementById(`card-${empId}`);
+        if (card.getAttribute('data-locked') === 'true') return;
+
+        let minutes = parseInt(delayVal) || 0;
+        if(minutes < 0) minutes = 0;
+
+        if(!dailyRecords[dateStr]) dailyRecords[dateStr] = {};
+        if(!dailyRecords[dateStr][empId]) dailyRecords[dateStr][empId] = {};
+
+        dailyRecords[dateStr][empId].delay = minutes;
+        localStorage.setItem('gm_daily_records', JSON.stringify(dailyRecords));
+
+        updateCardBadges(empId);
+        showToast('تم حفظ وقت التأخير ⏱️');
+    }
+
+    function updateCardBadges(empId) {
+        const m = document.getElementById(`sel-month-${empId}`).value;
+        const y = document.getElementById(`sel-year-${empId}`).value;
+        const daysCount = getDaysInMonth(parseInt(m), parseInt(y));
+
+        let monthH = 0, monthA = 0, monthP = 0, totalDelayMin = 0;
+        for(let d = 1; d <= daysCount; d++) {
+            let fullD = `${y}-${m}-${String(d).padStart(2, '0')}`;
+            let dailyData = getEmpDailyData(fullD, empId);
+            
+            if (dailyData.status === 'حضور') monthH++;
+            else if (dailyData.status === 'غياب') monthA++;
+            else if (dailyData.status === 'تصريح') monthP++;
+
+            totalDelayMin += dailyData.delay;
+        }
+
+        let remaining = Math.max(0, MAX_DELAY_MINUTES - totalDelayMin);
+        let remClass = remaining > 0 ? 'bg-rem' : 'bg-rem danger';
+
+        document.getElementById(`badges-${empId}`).innerHTML = `
+            <span class="bg-h">ح: ${monthH}</span>
+            <span class="bg-a">غ: ${monthA}</span>
+            <span class="bg-p">ت: ${monthP}</span>
+            <span class="bg-delay">إجمالي تأخير: ${totalDelayMin} د</span>
+            <span class="${remClass}">متبقي: ${remaining} د</span>
+        `;
+    }
+
+    function updateTopDashboard() {
+        const selectedDateStr = document.getElementById('recordDate').value;
+        let p=0, a=0, pm=0;
+        employees.forEach(emp => {
+            let dailyData = getEmpDailyData(selectedDateStr, emp.id);
+            if(dailyData.status === 'حضور') p++; 
+            else if(dailyData.status === 'غياب') a++; 
+            else if(dailyData.status === 'تصريح') pm++;
+        });
+        document.getElementById('stat-total').innerText = employees.length;
+        document.getElementById('stat-present').innerText = p;
+        document.getElementById('stat-absent').innerText = a;
+        document.getElementById('stat-permit').innerText = pm;
+    }
+
+    function saveGeneralNote(empId) {
+        const card = document.getElementById(`card-${empId}`);
+        if (card.getAttribute('data-locked') === 'true') return;
+
+        const note = document.getElementById(`note-${empId}`).value;
+        let empIndex = employees.findIndex(e => e.id === empId);
+        if(empIndex > -1) {
+            employees[empIndex].note = note;
+            localStorage.setItem('gm_employees', JSON.stringify(employees));
+            
+            const saveBtn = card.querySelector('.btn-save-manual');
+            
+            saveBtn.innerText = "تم الحفظ ✔️";
+            saveBtn.style.background = "var(--whatsapp-green)";
+            
+            showToast('تم حفظ الملاحظة 📝');
+            
+            setTimeout(() => { saveBtn.innerText = "حفظ الملاحظة 💾"; saveBtn.style.background = "var(--teal)"; }, 1500);
+        }
+    }
+
+    // ================= التقارير =================
+    function generateMonthlyReport() {
+        const monthStr = document.getElementById('monthSelect').value;
+        const yearStr = document.getElementById('yearSelectMonth').value;
+        const daysCount = getDaysInMonth(parseInt(monthStr), parseInt(yearStr));
+        
+        let table = document.getElementById('monthlyTable');
+        let thead = `<thead><tr><th class="sticky-col">رقم</th><th class="sticky-col" style="right:45px;">الاسم</th>`;
+        for(let i=1; i<=daysCount; i++) {
+            let isFriday = new Date(parseInt(yearStr), parseInt(monthStr)-1, i).getDay() === 5;
+            let dayName = arabicDays[new Date(parseInt(yearStr), parseInt(monthStr)-1, i).getDay()];
+            thead += `<th title="${dayName}" ${isFriday ? 'style="color:var(--danger);"' : ''}>${i}</th>`;
+        }
+        thead += `<th>ملخص الدوام</th><th>التأخير</th></tr></thead>`;
+        
+        let tbody = `<tbody>`;
+        if(employees.length === 0) tbody += `<tr><td colspan="${daysCount + 4}">لا توجد بيانات</td></tr>`;
+        
+        employees.forEach(emp => {
+            let h = 0, a = 0, p = 0, tDelay = 0;
+            let displayNum = emp.empNum || '-';
+            tbody += `<tr><td class="sticky-col" style="color:var(--danger); font-weight:bold;">#${displayNum}</td><td class="sticky-col" style="right:45px;">${emp.name}</td>`;
+            
+            for(let i=1; i<=daysCount; i++) {
+                let fullDate = `${yearStr}-${monthStr}-${String(i).padStart(2, '0')}`;
+                let isFriday = new Date(parseInt(yearStr), parseInt(monthStr)-1, i).getDay() === 5;
+                
+                let dailyData = getEmpDailyData(fullDate, emp.id);
+                let colClass = isFriday ? 'class="friday-col"' : '';
+                
+                if(dailyData.status === 'عطلة') {
+                    tbody += `<td ${colClass}><span class="badge bg-none">-</span></td>`;
                 }
+                else if(dailyData.status === 'حضور') { h++; tbody += `<td ${colClass}><span class="badge bg-h">ح</span></td>`; }
+                else if(dailyData.status === 'غياب') { a++; tbody += `<td ${colClass}><span class="badge bg-a">غ</span></td>`; }
+                else if(dailyData.status === 'تصريح') { p++; tbody += `<td ${colClass}><span class="badge bg-p">ت</span></td>`; }
+                
+                tDelay += dailyData.delay;
             }
-        }
+            tbody += `<td class="summary-cell"><span class="bg-h">ح:${h}</span> <span class="bg-a">غ:${a}</span> <span class="bg-p">ت:${p}</span></td>`;
+            tbody += `<td style="color:var(--danger); font-weight:bold;">${tDelay} دقيقة</td></tr>`;
+        });
+        
+        table.innerHTML = thead + tbody + `</tbody>`;
+    }
 
-        function clearAllRecords() {
-            if (attendanceRecords.length === 0) {
-                showToast('لا توجد سجلات للمسح');
-                return;
-            }
-            if (confirm('مسح جميع السجلات؟')) {
-                attendanceRecords = [];
-                saveData();
-                renderRecords();
-                showToast('🗑️ تم مسح جميع السجلات');
-            }
-        }
+    function generateAnnualReport() {
+        const yearStr = document.getElementById('yearSelectAnnual').value;
+        let table = document.getElementById('annualTable');
+        
+        let thead = `<thead><tr><th class="sticky-col">رقم</th><th class="sticky-col" style="right:45px;">الاسم</th>`;
+        monthNamesList.forEach(m => thead += `<th>${m.split(' ')[0]}</th>`);
+        thead += `<th>الصافي السنوي</th></tr></thead>`;
+        
+        let tbody = `<tbody>`;
+        if(employees.length === 0) tbody += `<tr><td colspan="15">لا توجد بيانات</td></tr>`;
 
-        function init() {
-            loadData();
-            document.getElementById('dateInput').value = getTodayDateString();
-            updateDateDisplay();
-            renderRecords();
-
-            const delayInput = document.getElementById('delayMinutes');
-            delayInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addAttendance();
+        employees.forEach(emp => {
+            let totalH = 0, totalA = 0, totalDelay = 0;
+            let displayNum = emp.empNum || '-';
+            tbody += `<tr><td class="sticky-col" style="color:var(--danger); font-weight:bold;">#${displayNum}</td><td class="sticky-col" style="right:45px;">${emp.name}</td>`;
+            
+            for(let m=1; m<=12; m++) {
+                let monthStr = String(m).padStart(2, '0');
+                let daysCount = getDaysInMonth(m, parseInt(yearStr));
+                
+                let monthH = 0, monthA = 0, monthDelay = 0;
+                for(let d=1; d<=daysCount; d++) {
+                    let dailyData = getEmpDailyData(`${yearStr}-${monthStr}-${String(d).padStart(2, '0')}`, emp.id);
+                    if(dailyData.status === 'حضور') monthH++;
+                    else if(dailyData.status === 'غياب') monthA++;
+                    
+                    monthDelay += dailyData.delay;
                 }
-            });
-        }
+                
+                totalH += monthH; totalA += monthA; totalDelay += monthDelay;
+                
+                tbody += `<td class="summary-cell"><span class="bg-h">ح:${monthH}</span><br><span class="bg-a">غ:${monthA}</span><br><span style="background:var(--danger); color:white;">${monthDelay} دقيقة</span></td>`;
+            }
+            
+            tbody += `<td class="summary-cell" style="background:#fff8e7; border-right: 2px solid var(--gold);">
+                <span class="bg-h" style="display:block; margin-bottom:3px;">إجمالي الحضور: ${totalH}</span>
+                <span class="bg-a" style="display:block; margin-bottom:3px;">إجمالي الغياب: ${totalA}</span>
+                <span style="background:var(--danger); color:white; display:block; padding: 2px 5px; border-radius: 4px;">إجمالي التأخير: ${totalDelay} دقيقة</span>
+            </td></tr>`;
+        });
+        
+        table.innerHTML = thead + tbody + `</tbody>`;
+    }
 
-        document.addEventListener('DOMContentLoaded', init);
-        window.addEventListener('beforeunload', saveData);
-    </script>
-
+    loadDayData();
+</script>
 </body>
 </html>
