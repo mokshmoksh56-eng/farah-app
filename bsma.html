@@ -128,14 +128,13 @@
         .btn-save-manual { flex: 2; background: var(--teal); color: white; border: none; padding: 12px 10px; border-radius: 8px; font-weight: 900; cursor: pointer; transition: 0.3s; font-size: 12px;}
         .btn-delete { flex: 1; background: #ffebee; color: var(--danger); border: 1px solid var(--danger); padding: 12px 10px; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 12px;}
 
-        /* الجداول الرأسية - تعديل العرض لتفادي تمدد عمود التاريخ */
+        /* الجداول الرأسية - ديناميكية ودائمة التحديث */
         .report-box { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-top: 4px solid var(--dark-green); overflow: hidden; }
         .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;}
         .report-header h2 { margin: 0; font-size: 18px; color: var(--dark-green); width: 100%; text-align: center;}
         
         .table-responsive { width: 100%; overflow-x: auto; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; border: 1px solid #ddd; position: relative;}
         
-        /* تقليص عرض الجدول لمنع التمدد المبالغ فيه */
         table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; text-align: center; }
         
         th, td { padding: 10px 4px; border-bottom: 1px solid #eee; border-left: 1px solid #eee; white-space: nowrap; }
@@ -155,6 +154,22 @@
         .bg-none { background-color: #bdc3c7; color: #fff; }
         .summary-cell { font-size: 13px; text-align: center; line-height: 1.6; }
 
+        /* تأثير إضاءة الشهر الحالي الدائم */
+        @keyframes month-glow-anim {
+            0% { background-color: #fffae6; }
+            50% { background-color: #ffe082; }
+            100% { background-color: #fffae6; }
+        }
+        .current-month-row td:not(.sticky-col) {
+            animation: month-glow-anim 2s infinite alternate;
+        }
+        .current-month-row .sticky-col {
+            background-color: #ffc107 !important;
+            color: #900 !important;
+            border-right: 5px solid var(--danger) !important;
+            font-size: 15px !important;
+        }
+
         @media (min-width: 768px) {
             .dashboard { grid-template-columns: repeat(4, 1fr); }
             .week-label { width: auto; flex: 1.5; }
@@ -169,7 +184,7 @@
 <header>
     <div class="top-bar">
         <div class="header-date" id="headerDateDisplay">جاري التحميل...</div>
-        <div class="sync-indicator">📱 التاريخ متزامن مع الهاتف</div>
+        <div class="sync-indicator">📱 التاريخ يتحدث تلقائياً مع الهاتف</div>
     </div>
     <div class="header-title">نظام المدير العام <span>👑</span></div>
     
@@ -194,7 +209,7 @@
         <div class="config-box">
             <div class="date-selectors">
                 <input type="date" id="recordDate" onchange="loadDayData()">
-                <div class="week-label">التاريخ مسحوب تلقائياً من الهاتف، وكل شهر ينتقل لجدول جديد</div>
+                <div class="week-label">نظام دائم: الأعوام تتحدث تلقائياً كل سنة وكل شهر جديد يحفظ مستقلاً</div>
             </div>
             <details style="margin-top: 15px;">
                 <summary style="font-weight: 900; color: var(--gold); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 8px;">➕ إضافة موظف جديد</summary>
@@ -292,12 +307,14 @@
     let employees = JSON.parse(localStorage.getItem('gm_employees')) || [];
     let dailyRecords = JSON.parse(localStorage.getItem('gm_daily_records')) || {};
 
+    // استدعاء التاريخ اللحظي والدائم من الهاتف
     const now = new Date();
     const localYear = now.getFullYear();
     const localMonth = String(now.getMonth() + 1).padStart(2, '0');
     const localDay = String(now.getDate()).padStart(2, '0');
     const todayStr = `${localYear}-${localMonth}-${localDay}`;
 
+    // إعداد واجهات السنوات لتتزامن دائماً مع أي سنة مستقبلية
     document.getElementById('recordDate').value = todayStr;
     document.getElementById('yearSelectMonth').value = localYear;
     document.getElementById('yearSelectAnnual').value = localYear;
@@ -671,7 +688,6 @@
         
         let table = document.getElementById('monthlyTable');
         
-        // تحديد حجم أقصى ثابت لعمود التاريخ لمنعه من التمدد
         let thead = `<thead><tr><th class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; padding: 8px 4px; line-height: 1.3;">اليوم / التاريخ</th>`;
         employees.forEach(emp => {
             thead += `<th style="min-width: 100px; vertical-align: middle;">
@@ -697,7 +713,6 @@
             let rowClass = isFriday ? 'class="friday-col"' : '';
             let dateColor = isFriday ? 'color:var(--danger);' : '';
 
-            // تطبيق العرض الثابت على خلايا التاريخ
             tbody += `<tr ${rowClass}>
                         <td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:bold; font-size:14px; line-height:1.4; ${dateColor}">${dayName}<br>${i}</td>`;
             
@@ -752,9 +767,13 @@
 
     function generateAnnualReport() {
         const yearStr = toEnglishDigits(document.getElementById('yearSelectAnnual').value);
+        const selectedYearNum = parseInt(yearStr);
+        const realCurrentYear = new Date().getFullYear();
+        const realCurrentMonth = new Date().getMonth() + 1; // لمعرفة الشهر الحقيقي
+
         let table = document.getElementById('annualTable');
         
-        let thead = `<thead><tr><th class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; padding: 8px 4px;">الشهر</th>`;
+        let thead = `<thead><tr><th class="sticky-col" style="width: 100px; min-width: 100px; max-width: 100px; padding: 8px 4px;">الشهر</th>`;
         employees.forEach(emp => {
             thead += `<th style="min-width: 120px; vertical-align: middle;">
                         <span style="color:var(--gold); font-size:13px;">${emp.empNum || '-'}</span><br>
@@ -771,8 +790,13 @@
         }
 
         for(let m=1; m<=12; m++) {
-            let monthName = monthNamesList[m-1].split(' ')[0];
-            tbody += `<tr><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; font-weight:bold; font-size: 14px;">${monthName}</td>`;
+            let monthNameWithNum = monthNamesList[m-1]; 
+            
+            // تحقق إذا كان هذا الصف هو الشهر الحالي للسنة الحالية لتمييزه وإضاءته
+            let isCurrentMonth = (m === realCurrentMonth && selectedYearNum === realCurrentYear);
+            let rowClass = isCurrentMonth ? 'class="current-month-row"' : '';
+            
+            tbody += `<tr ${rowClass}><td class="sticky-col" style="width: 100px; min-width: 100px; max-width: 100px; font-weight:bold; font-size: 14px; white-space: normal; line-height: 1.4;">${monthNameWithNum}</td>`;
             
             employees.forEach(emp => {
                 let monthStr = String(m).padStart(2, '0');
@@ -794,7 +818,7 @@
             tbody += `</tr>`;
         }
         
-        let sumTotal = `<tr style="background:#fff8e7; border-top: 3px solid var(--gold);"><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:900; font-size:13px; line-height:1.4;">الصافي السنوي</td>`;
+        let sumTotal = `<tr style="background:#fff8e7; border-top: 3px solid var(--gold);"><td class="sticky-col" style="width: 100px; min-width: 100px; max-width: 100px; white-space: normal; font-weight:900; font-size:13px; line-height:1.4;">الصافي السنوي</td>`;
         
         employees.forEach(emp => {
             let totalH = 0, totalA = 0, totalDelay = 0;
