@@ -128,15 +128,17 @@
         .btn-save-manual { flex: 2; background: var(--teal); color: white; border: none; padding: 12px 10px; border-radius: 8px; font-weight: 900; cursor: pointer; transition: 0.3s; font-size: 12px;}
         .btn-delete { flex: 1; background: #ffebee; color: var(--danger); border: 1px solid var(--danger); padding: 12px 10px; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 12px;}
 
-        /* الجداول الرأسية بتكبير الخطوط */
+        /* الجداول الرأسية - تعديل العرض لتفادي تمدد عمود التاريخ */
         .report-box { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-top: 4px solid var(--dark-green); overflow: hidden; }
         .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;}
         .report-header h2 { margin: 0; font-size: 18px; color: var(--dark-green); width: 100%; text-align: center;}
         
         .table-responsive { width: 100%; overflow-x: auto; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; border: 1px solid #ddd; position: relative;}
-        table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 600px; font-size: 14px; text-align: center; }
         
-        th, td { padding: 12px 6px; border-bottom: 1px solid #eee; border-left: 1px solid #eee; white-space: nowrap; }
+        /* تقليص عرض الجدول لمنع التمدد المبالغ فيه */
+        table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; text-align: center; }
+        
+        th, td { padding: 10px 4px; border-bottom: 1px solid #eee; border-left: 1px solid #eee; white-space: nowrap; }
         th { background: var(--teal); color: white; font-weight: 900; position: sticky; top: 0; z-index: 2; font-size: 14px;}
         
         .sticky-col { position: sticky; right: 0; background: #fdfdfd; font-weight: bold; border-left: 2px solid #ddd; z-index: 3; box-shadow: -2px 0 5px rgba(0,0,0,0.05);}
@@ -661,7 +663,7 @@
         }
     }
 
-    // ================= التقارير (رأسية مع تكبير الخطوط) =================
+    // ================= التقارير (إصلاح تمدد عمود التاريخ) =================
     function generateMonthlyReport() {
         const monthStr = document.getElementById('monthSelect').value;
         const yearStr = toEnglishDigits(document.getElementById('yearSelectMonth').value);
@@ -669,8 +671,8 @@
         
         let table = document.getElementById('monthlyTable');
         
-        // الهيدر بتكبير أسماء الموظفين والأرقام
-        let thead = `<thead><tr><th class="sticky-col">اليوم / التاريخ</th>`;
+        // تحديد حجم أقصى ثابت لعمود التاريخ لمنعه من التمدد
+        let thead = `<thead><tr><th class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; padding: 8px 4px; line-height: 1.3;">اليوم / التاريخ</th>`;
         employees.forEach(emp => {
             thead += `<th style="min-width: 100px; vertical-align: middle;">
                         <span style="color:var(--gold); font-size:13px;">${emp.empNum || '-'}</span><br>
@@ -686,7 +688,6 @@
             return;
         }
 
-        // الأيام في الصفوف بخط كبير
         for(let i=1; i<=daysCount; i++) {
             let fullDate = `${yearStr}-${monthStr}-${String(i).padStart(2, '0')}`;
             let dateObj = new Date(parseInt(yearStr), parseInt(monthStr)-1, i);
@@ -696,8 +697,9 @@
             let rowClass = isFriday ? 'class="friday-col"' : '';
             let dateColor = isFriday ? 'color:var(--danger);' : '';
 
+            // تطبيق العرض الثابت على خلايا التاريخ
             tbody += `<tr ${rowClass}>
-                        <td class="sticky-col" style="font-weight:bold; font-size:14px; ${dateColor}">${dayName}<br>${i}</td>`;
+                        <td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:bold; font-size:14px; line-height:1.4; ${dateColor}">${dayName}<br>${i}</td>`;
             
             employees.forEach(emp => {
                 let dailyData = getEmpDailyData(fullDate, emp.id);
@@ -721,11 +723,10 @@
             tbody += `</tr>`;
         }
         
-        // صفوف الإجماليات أسفل الجدول بخطوط أكبر
-        let sumH = `<tr style="background:#e8f5e9;"><td class="sticky-col" style="font-weight:bold; font-size:13px;">إجمالي الحضور</td>`;
-        let sumA = `<tr style="background:#fbe9e7;"><td class="sticky-col" style="font-weight:bold; font-size:13px;">إجمالي الغياب</td>`;
-        let sumP = `<tr style="background:#fff3e0;"><td class="sticky-col" style="font-weight:bold; font-size:13px;">إجمالي التصاريح</td>`;
-        let sumD = `<tr style="background:#fce8e6; border-top: 2px solid var(--danger);"><td class="sticky-col" style="font-weight:bold; color:var(--danger); font-size:13px;">التأخير (دقيقة)</td>`;
+        let sumH = `<tr style="background:#e8f5e9;"><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:bold; font-size:13px; line-height: 1.3;">إجمالي الحضور</td>`;
+        let sumA = `<tr style="background:#fbe9e7;"><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:bold; font-size:13px; line-height: 1.3;">إجمالي الغياب</td>`;
+        let sumP = `<tr style="background:#fff3e0;"><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:bold; font-size:13px; line-height: 1.3;">إجمالي التصاريح</td>`;
+        let sumD = `<tr style="background:#fce8e6; border-top: 2px solid var(--danger);"><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:bold; color:var(--danger); font-size:13px; line-height: 1.3;">التأخير (دقيقة)</td>`;
         
         employees.forEach(emp => {
             let h = 0, a = 0, p = 0, tDelay = 0;
@@ -753,8 +754,7 @@
         const yearStr = toEnglishDigits(document.getElementById('yearSelectAnnual').value);
         let table = document.getElementById('annualTable');
         
-        // الهيدر بتكبير أسماء الموظفين
-        let thead = `<thead><tr><th class="sticky-col">الشهر</th>`;
+        let thead = `<thead><tr><th class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; padding: 8px 4px;">الشهر</th>`;
         employees.forEach(emp => {
             thead += `<th style="min-width: 120px; vertical-align: middle;">
                         <span style="color:var(--gold); font-size:13px;">${emp.empNum || '-'}</span><br>
@@ -770,10 +770,9 @@
             return;
         }
 
-        // الشهور في الصفوف بخطوط كبيرة وواضحة
         for(let m=1; m<=12; m++) {
             let monthName = monthNamesList[m-1].split(' ')[0];
-            tbody += `<tr><td class="sticky-col" style="font-weight:bold; font-size: 14px;">${monthName}</td>`;
+            tbody += `<tr><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; font-weight:bold; font-size: 14px;">${monthName}</td>`;
             
             employees.forEach(emp => {
                 let monthStr = String(m).padStart(2, '0');
@@ -795,8 +794,7 @@
             tbody += `</tr>`;
         }
         
-        // إجمالي العام أسفل الجدول بخط أكبر
-        let sumTotal = `<tr style="background:#fff8e7; border-top: 3px solid var(--gold);"><td class="sticky-col" style="font-weight:900; font-size:14px;">الصافي السنوي</td>`;
+        let sumTotal = `<tr style="background:#fff8e7; border-top: 3px solid var(--gold);"><td class="sticky-col" style="width: 80px; min-width: 80px; max-width: 80px; white-space: normal; font-weight:900; font-size:13px; line-height:1.4;">الصافي السنوي</td>`;
         
         employees.forEach(emp => {
             let totalH = 0, totalA = 0, totalDelay = 0;
