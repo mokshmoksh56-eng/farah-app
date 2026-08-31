@@ -40,8 +40,8 @@
         .header-title { font-size: 1.2rem; font-weight: 900; margin: 5px 0;}
         .header-title span { color: var(--gold); }
 
-        .tabs-container { display: flex; justify-content: center; gap: 8px; margin: 10px auto 0; max-width: 800px; flex-wrap: wrap;}
-        .tab-btn { flex: 1; min-width: 100px; background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.4); padding: 10px 5px; border-radius: 10px; font-weight: 900; font-size: 12px; cursor: pointer; transition: 0.3s; }
+        .tabs-container { display: flex; justify-content: center; gap: 5px; margin: 10px auto 0; max-width: 950px; flex-wrap: wrap;}
+        .tab-btn { flex: 1; min-width: 80px; background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.4); padding: 10px 3px; border-radius: 10px; font-weight: 900; font-size: 10px; cursor: pointer; transition: 0.3s; }
         .tab-btn.active { background: var(--gold); color: #3b2a0f; border-color: var(--gold); box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
 
         .main-container { padding: 10px; max-width: 1200px; margin: auto; }
@@ -70,7 +70,6 @@
         
         .card-name { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--dark-green); margin-bottom: 12px; font-weight: 900; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
         .emp-id-badge { color: var(--danger); font-size: 12px; background: #ffebee; padding: 2px 6px; border-radius: 6px; }
-        .employee-dept { font-size: 11px; background: #eee; padding: 3px 6px; border-radius: 6px; color: #555; }
         
         .lock-btn { background: var(--danger); color: white; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 900; cursor: pointer; transition: 0.3s; }
         .lock-btn.unlocked { background: var(--whatsapp-green); }
@@ -117,7 +116,7 @@
         .btn-save-manual { flex: 2; background: var(--teal); color: white; border: none; padding: 12px 10px; border-radius: 8px; font-weight: 900; cursor: pointer; transition: 0.3s; font-size: 12px;}
         .btn-delete { flex: 1; background: #ffebee; color: var(--danger); border: 1px solid var(--danger); padding: 12px 10px; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 12px;}
 
-        /* الجداول */
+        /* الجداول والأرشيف */
         .report-box { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-top: 4px solid var(--dark-green); overflow: hidden; }
         .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;}
         .report-header h2 { margin: 0; font-size: 16px; color: var(--dark-green); width: 100%; text-align: center;}
@@ -158,7 +157,7 @@
 <header>
     <div class="top-bar">
         <div class="header-date" id="headerDateDisplay">جاري التحميل...</div>
-        <div class="sync-indicator">✅ النظام يعمل محلياً</div>
+        <div class="sync-indicator">📱 التاريخ متزامن مع الهاتف</div>
     </div>
     <div class="header-title">نظام المدير العام <span>👑</span></div>
     
@@ -166,6 +165,7 @@
         <button class="tab-btn active" onclick="switchTab('dailyTab', this)">📝 سجل الكروت</button>
         <button class="tab-btn" onclick="switchTab('monthlyTab', this)">📅 التقرير الشهري</button>
         <button class="tab-btn" onclick="switchTab('annualTab', this)">📊 التقرير السنوي</button>
+        <button class="tab-btn" onclick="switchTab('archiveTab', this)">📁 الأرشيف الشهري</button>
     </div>
 </header>
 
@@ -183,7 +183,7 @@
         <div class="config-box">
             <div class="date-selectors">
                 <input type="date" id="recordDate" onchange="loadDayData()">
-                <div class="week-label">سيعرض الكارت الشهر المرتبط بهذا التاريخ تلقائياً</div>
+                <div class="week-label">التاريخ مسحوب تلقائياً من الهاتف، وكل شهر ينتقل لجدول جديد بينما يُحفظ القديم في الأرشيف</div>
             </div>
             <details style="margin-top: 15px;">
                 <summary style="font-weight: 900; color: var(--gold); cursor: pointer; text-align: center; background: #f9f9f9; padding: 10px; border-radius: 8px;">➕ إضافة موظف جديد</summary>
@@ -207,7 +207,7 @@
     <div id="monthlyTab" class="section-view">
         <div class="report-box">
             <div class="report-header">
-                <h2>📅 التقرير الشهري التفصيلي</h2>
+                <h2>📅 التقرير الشهري (الشهر الحالي)</h2>
                 <div class="date-selectors" style="margin: 0; flex: 1; max-width: 100%; justify-content: center;">
                     <select id="monthSelect" onchange="generateMonthlyReport()"></select>
                     <input type="number" id="yearSelectMonth" onchange="generateMonthlyReport()" style="max-width: 100px;" oninput="this.value = toEnglishDigits(this.value)">
@@ -230,6 +230,22 @@
             </div>
             <div class="table-responsive">
                 <table id="annualTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 4. الأرشيف الشهري ================= -->
+    <div id="archiveTab" class="section-view">
+        <div class="report-box" style="border-top-color: var(--teal);">
+            <div class="report-header">
+                <h2>📁 أرشيف الشهور السابقة (الجداول القديمة)</h2>
+                <div class="date-selectors" style="margin: 0; flex: 1; max-width: 100%; justify-content: center;">
+                    <select id="archiveMonthSelect" onchange="generateArchiveReport()"></select>
+                    <input type="number" id="archiveYearSelect" onchange="generateArchiveReport()" style="max-width: 100px;" oninput="this.value = toEnglishDigits(this.value)">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table id="archiveTable"></table>
             </div>
         </div>
     </div>
@@ -282,21 +298,31 @@
     let employees = JSON.parse(localStorage.getItem('gm_employees')) || [];
     let dailyRecords = JSON.parse(localStorage.getItem('gm_daily_records')) || {};
 
-    const today = new Date();
-    document.getElementById('recordDate').valueAsDate = today;
-    document.getElementById('yearSelectMonth').value = today.getFullYear();
-    document.getElementById('yearSelectAnnual').value = today.getFullYear();
+    // جلب التاريخ المحلي من هاتف المستخدم بدقة تامة وتجنب أي فروق توقيت
+    const now = new Date();
+    const localYear = now.getFullYear();
+    const localMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const localDay = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${localYear}-${localMonth}-${localDay}`;
+
+    document.getElementById('recordDate').value = todayStr;
+    document.getElementById('yearSelectMonth').value = localYear;
+    document.getElementById('yearSelectAnnual').value = localYear;
+    document.getElementById('archiveYearSelect').value = localYear;
 
     const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('headerDateDisplay').innerText = "📅 " + today.toLocaleDateString('ar-EG', dateOptions);
+    document.getElementById('headerDateDisplay').innerText = "📅 " + now.toLocaleDateString('ar-EG', dateOptions);
 
     let monthOptionsGlobal = "";
+    let archiveMonthOptions = "";
     for(let i=0; i<12; i++) {
         let val = String(i+1).padStart(2, '0');
-        let sel = (i === today.getMonth()) ? 'selected' : '';
+        let sel = (i === now.getMonth()) ? 'selected' : '';
         monthOptionsGlobal += `<option value="${val}" ${sel}>${monthNamesList[i]}</option>`;
+        archiveMonthOptions += `<option value="${val}" ${sel}>${monthNamesList[i]}</option>`;
     }
     document.getElementById('monthSelect').innerHTML = monthOptionsGlobal;
+    document.getElementById('archiveMonthSelect').innerHTML = archiveMonthOptions;
 
     function switchTab(tabId, btnElement) {
         document.querySelectorAll('.section-view').forEach(el => el.classList.remove('active'));
@@ -307,6 +333,7 @@
         if(tabId === 'dailyTab') loadDayData();
         if(tabId === 'monthlyTab') generateMonthlyReport();
         if(tabId === 'annualTab') generateAnnualReport();
+        if(tabId === 'archiveTab') generateArchiveReport();
     }
 
     function getEmpDailyData(dateStr, empId) {
@@ -629,7 +656,7 @@
         }
     }
 
-    // ================= التقارير =================
+    // ================= التقارير والأرشيف =================
     function generateMonthlyReport() {
         const monthStr = document.getElementById('monthSelect').value;
         const yearStr = toEnglishDigits(document.getElementById('yearSelectMonth').value);
@@ -726,6 +753,57 @@
                 <span class="bg-a" style="display:block; margin-bottom:3px;">غياب: ${totalA}</span>
                 <span style="background:var(--danger); color:white; display:block; padding: 2px 4px; border-radius: 4px;">تأخير: ${totalDelay}د</span>
             </td></tr>`;
+        });
+        
+        table.innerHTML = thead + tbody + `</tbody>`;
+    }
+
+    // تقرير الأرشيف للشهور السابقة
+    function generateArchiveReport() {
+        const monthStr = document.getElementById('archiveMonthSelect').value;
+        const yearStr = toEnglishDigits(document.getElementById('archiveYearSelect').value);
+        const daysCount = getDaysInMonth(parseInt(monthStr), parseInt(yearStr));
+        
+        let table = document.getElementById('archiveTable');
+        
+        let thead = `<thead><tr><th class="sticky-col" style="min-width: 120px;">الموظف</th>`;
+        for(let i=1; i<=daysCount; i++) {
+            let isFriday = new Date(parseInt(yearStr), parseInt(monthStr)-1, i).getDay() === 5;
+            let dayName = arabicDays[new Date(parseInt(yearStr), parseInt(monthStr)-1, i).getDay()];
+            thead += `<th title="${dayName}" ${isFriday ? 'style="color:var(--danger);"' : ''}>${i}</th>`;
+        }
+        thead += `<th>أرشيف الشهر</th><th>إجمالي التأخير</th></tr></thead>`;
+        
+        let tbody = `<tbody>`;
+        if(employees.length === 0) tbody += `<tr><td colspan="${daysCount + 3}">لا توجد بيانات أرشيفية</td></tr>`;
+        
+        employees.forEach(emp => {
+            let h = 0, a = 0, p = 0, tDelay = 0;
+            let displayNum = emp.empNum || '-';
+            
+            tbody += `<tr><td class="sticky-col" style="text-align: right; line-height: 1.4;">
+                        <span style="color:var(--danger); font-weight:bold; font-size: 10px;">#${displayNum}</span><br>
+                        <span style="font-size: 12px; font-weight: bold;">${emp.name}</span>
+                      </td>`;
+            
+            for(let i=1; i<=daysCount; i++) {
+                let fullDate = `${yearStr}-${monthStr}-${String(i).padStart(2, '0')}`;
+                let isFriday = new Date(parseInt(yearStr), parseInt(monthStr)-1, i).getDay() === 5;
+                
+                let dailyData = getEmpDailyData(fullDate, emp.id);
+                let colClass = isFriday ? 'class="friday-col"' : '';
+                
+                if(dailyData.status === 'عطلة') {
+                    tbody += `<td ${colClass}><span class="badge bg-none">-</span></td>`;
+                }
+                else if(dailyData.status === 'حضور') { h++; tbody += `<td ${colClass}><span class="badge bg-h">ح</span></td>`; }
+                else if(dailyData.status === 'غياب') { a++; tbody += `<td ${colClass}><span class="badge bg-a">غ</span></td>`; }
+                else if(dailyData.status === 'تصريح') { p++; tbody += `<td ${colClass}><span class="badge bg-p">ت</span></td>`; }
+                
+                tDelay += parseInt(dailyData.delay) || 0;
+            }
+            tbody += `<td class="summary-cell"><span class="bg-h">ح:${h}</span> <span class="bg-a">غ:${a}</span> <span class="bg-p">ت:${p}</span></td>`;
+            tbody += `<td style="color:var(--danger); font-weight:bold; font-size: 11px;">${tDelay} دقيقة</td></tr>`;
         });
         
         table.innerHTML = thead + tbody + `</tbody>`;
