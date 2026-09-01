@@ -176,6 +176,20 @@
     </div>
 </div>
 
+<!-- نافذة تعديل المهمة المخصصة -->
+<div id="edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100000; justify-content:center; align-items:center;">
+    <div style="background:white; padding:20px; border-radius:10px; width:90%; max-width:400px; text-align:center;">
+        <h3 style="margin-top:0;">تعديل المهمة</h3>
+        <!-- مربع النص الذي يتمدد تلقائياً -->
+        <textarea id="edit-modal-text" style="width:100%; min-height:80px; padding:12px; border:2px solid var(--primary); border-radius:8px; font-family:'Cairo'; font-size:15px; font-weight:700; box-sizing:border-box; background:#f8fafc; outline:none; resize:none; overflow:hidden;" placeholder="اكتب التعديل هنا..."></textarea>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button id="edit-modal-confirm" class="btn-main" style="margin:0;">حفظ التعديل ✅</button>
+            <button onclick="document.getElementById('edit-modal').style.display='none'" class="icon-btn btn-out" style="padding:12px;">إلغاء ✖️</button>
+        </div>
+    </div>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, set, child, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -401,18 +415,52 @@
     window.editNote = function(id) {
         if (!currentUid || !localNotes[id]) return;
         let note = localNotes[id];
-        let newText = prompt("قم بتعديل تفاصيل المهمة:", note.text);
         
-        if (newText !== null && newText.trim() !== "") {
-            note.text = newText.trim();
-            let assignedPerson = "عام";
-            for (let name of teamMembers) { if (note.text.includes(name)) { assignedPerson = name; break; } }
+        // استدعاء عناصر نافذة التعديل الجديدة
+        let modal = document.getElementById('edit-modal');
+        let textarea = document.getElementById('edit-modal-text');
+        let confirmBtn = document.getElementById('edit-modal-confirm');
+        
+        // تعبئة المربع بالنص الحالي للمهمة
+        textarea.value = note.text;
+        
+        // إظهار النافذة
+        modal.style.display = 'flex';
+        
+        // ضبط ارتفاع المربع المبدئي بناءً على حجم النص الموجود
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+        
+        // كود التمدد التلقائي عند الكتابة (يفتح لتحت)
+        textarea.oninput = function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        };
+        
+        // عند الضغط على زر حفظ التعديل
+        confirmBtn.onclick = function() {
+            let newText = textarea.value.trim();
             
-            note.person = assignedPerson;
-            note.tags = analyzeText(note.text);
-            
-            set(child(dbRef, id), note);
-        }
+            if (newText !== "") {
+                note.text = newText;
+                let assignedPerson = "عام";
+                // فحص الأسماء لتحديث الشخص المسؤول
+                for (let name of teamMembers) { 
+                    if (note.text.includes(name)) { assignedPerson = name; break; } 
+                }
+                
+                note.person = assignedPerson;
+                note.tags = analyzeText(note.text); // تحديث التاجات (الوسوم)
+                
+                // رفع التعديل للسحابة
+                set(child(dbRef, id), note);
+                
+                // إخفاء النافذة بعد الحفظ
+                modal.style.display = 'none';
+            } else {
+                alert("لا يمكن حفظ مهمة فارغة!");
+            }
+        };
     }
 
     // --- دالة الترحيل لصفحة اليومية (yom.html) مع إخفاء الكارت والبقاء في نفس الصفحة ---
