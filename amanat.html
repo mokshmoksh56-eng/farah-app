@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق نقل العفش - دخول سريع</title>
+    <title>تطبيق نقل العفش</title>
     <style>
         body { font-family: Tahoma, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .app-container { background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; box-sizing: border-box; }
@@ -22,17 +22,22 @@
         .btn-orange:hover { background: #e65c00; }
         .btn-dark { background: #333; color: white; }
         .btn-dark:hover { background: #1a1a1a; }
+        .btn-green { background: #28a745; color: white; width: auto; padding: 8px 15px; font-size: 14px; margin: 0; }
         .btn-back { background: transparent; color: #888; border: 1px solid #ddd; margin-top: 10px; font-size: 16px; }
 
         .status-box { background: #f9f9f9; border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid #eee; }
         .status-box p { margin: 0 0 10px 0; font-weight: bold; color: #333; }
-        .status-buttons { display: flex; gap: 10px; }
+        .status-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
         .btn-status { flex: 1; padding: 10px; font-size: 16px; border-radius: 8px; opacity: 0.5; border: 2px solid transparent; transition: 0.2s; }
         .btn-status.active { opacity: 1; border-color: #333; transform: scale(1.05); }
         .bg-green { background: #28a745; color: white; }
         .bg-red { background: #dc3545; color: white; }
 
-        .drivers-list { text-align: right; max-height: 250px; overflow-y: auto; padding-right: 5px; }
+        #statusMessage { padding: 10px; border-radius: 8px; font-size: 15px; font-weight: bold; transition: 0.3s; }
+        .msg-available { background-color: #e6f6ea; color: #28a745; border: 1px solid #28a745; }
+        .msg-busy { background-color: #fcebeb; color: #dc3545; border: 1px solid #dc3545; }
+
+        .drivers-list { text-align: right; max-height: 280px; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; }
         .driver-card { background: #fff; border: 1px solid #eee; padding: 12px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
         .driver-info h4 { margin: 0 0 5px 0; color: #333; font-size: 15px; }
         .driver-info span { font-size: 13px; color: #777; }
@@ -49,11 +54,48 @@
     <div class="app-container" id="roleScreen">
         <div class="logo">نقلتك السريعة</div>
         <div class="subtitle">هل تريد طلب سيارة أم العمل معنا؟</div>
-        <button class="btn-orange" onclick="alert('سيتم توجيهك لصفحة طلب سيارة النقل قريباً...')">أنا زبـون (أطلب خدمة)</button>
-        <button class="btn-dark" onclick="switchScreen('roleScreen', 'registerScreen')">أنا سـواق (أقدم خدمة)</button>
+        <button class="btn-orange" onclick="navigateTo('customerBookingScreen')">أنا زبـون (أطلب خدمة)</button>
+        <button class="btn-dark" onclick="navigateTo('registerScreen')">أنا سـواق (أقدم خدمة)</button>
     </div>
 
-    <!-- 2. شاشة تسجيل السائق -->
+    <!-- ================= مسار الزبون ================= -->
+    
+    <!-- شاشة الزبون: طلب خدمة -->
+    <div class="app-container hidden" id="customerBookingScreen">
+        <div class="logo">طلب سيارة نقل</div>
+        <div class="subtitle">حدد مسارك ونوع السيارة المطلوبة</div>
+        
+        <input type="text" id="pickupLocation" placeholder="مكان التحميل (منين؟)">
+        <input type="text" id="dropoffLocation" placeholder="مكان التنزيل (لفين؟)">
+        
+        <select id="requestedVehicle">
+            <option value="" disabled selected>-- اختر نوع المركبة المطلوبة --</option>
+            <option value="ربع نقل">ربع نقل</option>
+            <option value="ربع نقل بصندوق">ربع نقل بصندوق</option>
+            <option value="تروسيكل">تروسيكل</option>
+            <option value="نصف نقل">نصف نقل</option>
+            <option value="ونش رفع عفش">ونش رفع عفش</option>
+        </select>
+
+        <button class="btn-orange" onclick="searchAvailableDrivers()">البحث عن سواقين متاحين</button>
+        <button class="btn-back" onclick="history.back()">رجوع</button>
+    </div>
+
+    <!-- شاشة الزبون: السائقين المتاحين -->
+    <div class="app-container hidden" id="availableDriversScreen">
+        <div class="logo">السواقين المتاحين</div>
+        <div class="subtitle" id="searchResultText" style="color: #28a745; font-weight: bold;"></div>
+        
+        <div class="drivers-list" id="customerDriversList">
+            <!-- سيتم إضافة السائقين المتاحين هنا -->
+        </div>
+
+        <button class="btn-back" onclick="history.back()">⬅️ تعديل الطلب (رجوع)</button>
+    </div>
+
+    <!-- ================= مسار السواق ================= -->
+
+    <!-- شاشة تسجيل السائق -->
     <div class="app-container hidden" id="registerScreen">
         <div class="logo">تسجيل سائق جديد</div>
         <div class="subtitle">يرجى إدخال بياناتك وصورة لمركبتك</div>
@@ -74,10 +116,10 @@
         <img id="imagePreview" alt="معاينة الصورة">
 
         <button class="btn-orange" onclick="submitDriverData()">تأكيد الدخول</button>
-        <button class="btn-back" onclick="switchScreen('registerScreen', 'roleScreen')">رجوع</button>
+        <button class="btn-back" onclick="history.back()">رجوع</button>
     </div>
 
-    <!-- 3. لوحة تحكم السائق -->
+    <!-- لوحة تحكم السائق -->
     <div class="app-container hidden" id="dashboardScreen">
         <div class="logo">لوحة القيادة</div>
         <div class="subtitle" id="welcomeMessage">مرحباً يا كابتن</div>
@@ -86,32 +128,104 @@
             <p>حالتك الحالية:</p>
             <div class="status-buttons">
                 <button id="btnAvailable" class="btn-status bg-green active" onclick="setMyStatus('available')">متاح للعمل</button>
-                <button id="btnBusy" class="btn-status bg-red" onclick="setMyStatus('busy')">مشغول/غير متاح</button>
+                <button id="btnBusy" class="btn-status bg-red" onclick="setMyStatus('busy')">مشغول</button>
             </div>
+            <div id="statusMessage" class="msg-available">✓ أنت الآن متاح للعمل وبانتظار الطلبات</div>
         </div>
 
         <h4 style="text-align:right; margin-bottom:10px; color:#555;">السائقين في منطقتك:</h4>
-        <div class="drivers-list" id="driversList">
-            <!-- سيتم الإضافة هنا تلقائياً -->
-        </div>
+        <div class="drivers-list" id="driversList"></div>
 
-        <button class="btn-back" onclick="logout()" style="margin-top:20px;">🚪 تسجيل الخروج</button>
+        <button class="btn-back" onclick="history.back()" style="margin-top:10px;">⬅️ خروج / رجوع</button>
     </div>
 
+    <!-- ================= الأكواد البرمجية ================= -->
     <script>
-        let myDriverData = null;
-        let mockDrivers = [
-            { name: "محمود سيد", vehicle: "ربع نقل بصندوق", status: "green" },
-            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red" },
-            { name: "خالد حسن", vehicle: "تروسيكل", status: "green" },
-            { name: "مصطفى كمال", vehicle: "نصف نقل", status: "red" }
-        ];
+        // إعداد الصفحة الأولى للرجوع
+        window.onload = function() {
+            history.replaceState({ screen: 'roleScreen' }, '', '#home');
+        };
 
-        function switchScreen(hideId, showId) {
-            document.getElementById(hideId).classList.add('hidden');
+        // دالة التنقل الموحدة
+        function navigateTo(showId) {
+            document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             document.getElementById(showId).classList.remove('hidden');
+            history.pushState({ screen: showId }, '', '#' + showId);
         }
 
+        // التحكم في الرجوع وزر الهاتف
+        window.addEventListener('popstate', function(event) {
+            document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
+            let targetScreen = event.state && event.state.screen ? event.state.screen : 'roleScreen';
+
+            // تنظيف بيانات السائق عند الخروج من اللوحة
+            if (targetScreen !== 'dashboardScreen' && myDriverData !== null) {
+                let index = mockDrivers.indexOf(myDriverData);
+                if (index > -1) mockDrivers.splice(index, 1);
+                myDriverData = null;
+                
+                document.getElementById('driverName').value = "";
+                document.getElementById('vehicleType').value = "";
+                document.getElementById('imagePreview').style.display = "none";
+                document.getElementById('vehiclePhoto').value = "";
+                
+                document.getElementById('btnAvailable').classList.add('active');
+                document.getElementById('btnBusy').classList.remove('active');
+                let msgBox = document.getElementById('statusMessage');
+                msgBox.innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
+                msgBox.className = "msg-available";
+            }
+            
+            document.getElementById(targetScreen).classList.remove('hidden');
+        });
+
+        // قاعدة بيانات وهمية تحتوي على تقييمات للسائقين
+        let myDriverData = null;
+        let mockDrivers = [
+            { name: "محمود سيد", vehicle: "ربع نقل", status: "green", rate: "4.8" },
+            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red", rate: "4.5" },
+            { name: "خالد حسن", vehicle: "تروسيكل", status: "green", rate: "4.9" },
+            { name: "مصطفى كمال", vehicle: "نصف نقل", status: "green", rate: "4.7" },
+            { name: "سعد متولي", vehicle: "ربع نقل بصندوق", status: "red", rate: "4.2" },
+            { name: "علي رمضان", vehicle: "ربع نقل", status: "green", rate: "5.0" }
+        ];
+
+        // --- دوال الزبون ---
+        function searchAvailableDrivers() {
+            const requestedVehicle = document.getElementById('requestedVehicle').value;
+            if (!requestedVehicle) {
+                alert("برجاء اختيار نوع المركبة المطلوبة أولاً.");
+                return;
+            }
+
+            const listContainer = document.getElementById('customerDriversList');
+            listContainer.innerHTML = "";
+            
+            // فلترة السائقين: يجب أن يكون متاحاً (green) ونفس نوع المركبة المطلوبة
+            let available = mockDrivers.filter(d => d.status === 'green' && d.vehicle === requestedVehicle);
+
+            if (available.length > 0) {
+                document.getElementById('searchResultText').innerText = `وجدنا ${available.length} سواقين متاحين لطلبك`;
+                available.forEach(driver => {
+                    listContainer.innerHTML += `
+                        <div class="driver-card">
+                            <div class="driver-info">
+                                <h4>${driver.name} ⭐ ${driver.rate}</h4>
+                                <span>${driver.vehicle}</span>
+                            </div>
+                            <button class="btn-green" onclick="alert('تم إرسال طلبك للكابتن ${driver.name}\\nسيقوم بالتواصل معك قريباً.')">اطلب الآن</button>
+                        </div>
+                    `;
+                });
+            } else {
+                document.getElementById('searchResultText').innerText = "";
+                listContainer.innerHTML = `<p style="color:red; font-weight:bold; padding:20px;">عذراً، لا يوجد سائقين متاحين حالياً لهذه المركبة. يرجى المحاولة لاحقاً.</p>`;
+            }
+
+            navigateTo('availableDriversScreen');
+        }
+
+        // --- دوال السواق ---
         function previewImage(event) {
             const reader = new FileReader();
             reader.onload = function() {
@@ -123,39 +237,40 @@
         }
 
         function submitDriverData() {
-            // جلب البيانات أو وضع قيم افتراضية فورية دون تعطيل الدخول
             const name = document.getElementById('driverName').value.trim() || "كابتن (بدون اسم)";
             const vehicle = document.getElementById('vehicleType').value || "غير محدد";
 
-            // تم إزالة شروط (if) الخاصة بالتحقق للدخول المباشر
-
-            myDriverData = { name: name + " (أنت)", vehicle: vehicle, status: "green" };
-            
+            myDriverData = { name: name + " (أنت)", vehicle: vehicle, status: "green", rate: "جديد" };
             mockDrivers.unshift(myDriverData);
 
             document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
 
-            renderDrivers();
-            switchScreen('registerScreen', 'dashboardScreen');
+            renderDashboardDrivers();
+            navigateTo('dashboardScreen'); 
         }
 
         function setMyStatus(status) {
             const btnAvailable = document.getElementById('btnAvailable');
             const btnBusy = document.getElementById('btnBusy');
+            const msgBox = document.getElementById('statusMessage');
 
             if(status === 'available') {
                 btnAvailable.classList.add('active');
                 btnBusy.classList.remove('active');
                 myDriverData.status = 'green'; 
+                msgBox.innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
+                msgBox.className = "msg-available";
             } else {
                 btnBusy.classList.add('active');
                 btnAvailable.classList.remove('active');
                 myDriverData.status = 'red';
+                msgBox.innerText = "✗ أنت غير متاح حالياً ولا تستقبل طلبات";
+                msgBox.className = "msg-busy";
             }
-            renderDrivers(); 
+            renderDashboardDrivers(); 
         }
 
-        function renderDrivers() {
+        function renderDashboardDrivers() {
             const listContainer = document.getElementById('driversList');
             listContainer.innerHTML = ""; 
 
@@ -173,19 +288,6 @@
                     </div>
                 `;
             });
-        }
-
-        function logout() {
-            mockDrivers.shift(); 
-            document.getElementById('driverName').value = "";
-            document.getElementById('vehicleType').value = "";
-            document.getElementById('imagePreview').style.display = "none";
-            document.getElementById('vehiclePhoto').value = "";
-            
-            document.getElementById('btnAvailable').classList.add('active');
-            document.getElementById('btnBusy').classList.remove('active');
-
-            switchScreen('dashboardScreen', 'roleScreen');
         }
     </script>
 </body>
