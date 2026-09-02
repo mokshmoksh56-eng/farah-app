@@ -57,9 +57,7 @@
 
         .hidden { display: none !important; }
         
-        #sync-indicator { position: absolute; top: 10px; right: 10px; font-size: 12px; font-weight: bold; padding: 5px 10px; border-radius: 12px; background: #e2e8f0; color: #333; }
-        
-        /* زر التحميل لبيان حالة الإرسال */
+        #sync-indicator { position: absolute; top: 10px; right: 10px; font-size: 12px; font-weight: bold; padding: 5px 10px; border-radius: 12px; background: #e2e8f0; color: #333; z-index: 1000; }
         .btn-loading { opacity: 0.7; pointer-events: none; }
     </style>
 </head>
@@ -206,6 +204,7 @@
         <button class="btn-back" onclick="logoutDriver()" style="margin-top:10px; color: #dc3545; border-color: #dc3545;">🚪 تسجيل خروج نهائي</button>
     </div>
 
+    <!-- استخدام type="module" تماماً مثل ملف yom_2.html -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -227,16 +226,16 @@
         window.uploadedImageBase64 = "";
         window.currentDriverToRate = "";
         window.executionStatus = null;
-
         window.myDriverId = localStorage.getItem('myDriverId') || null;
 
         const driversRef = ref(db, 'drivers_app/active_drivers');
         
         onValue(driversRef, (snapshot) => {
             window.onlineDrivers = [];
-            document.getElementById('sync-indicator').innerText = "🟢 متصل";
-            document.getElementById('sync-indicator').style.background = "#d4edda";
-            document.getElementById('sync-indicator').style.color = "#155724";
+            const indicator = document.getElementById('sync-indicator');
+            indicator.innerText = "🟢 متصل";
+            indicator.style.background = "#d4edda";
+            indicator.style.color = "#155724";
 
             snapshot.forEach((childSnapshot) => {
                 window.onlineDrivers.push(childSnapshot.val());
@@ -248,24 +247,37 @@
             if (!document.getElementById('availableDriversScreen').classList.contains('hidden')) {
                 renderCustomerTable(document.getElementById('requestedVehicle').value);
             }
+        }, (error) => {
+            const indicator = document.getElementById('sync-indicator');
+            indicator.innerText = "🔴 مرفوض (تأكد من Rules)";
+            indicator.style.background = "#f8d7da";
+            indicator.style.color = "#721c24";
+            alert("السيرفر يرفض الاتصال! السبب: " + error.message);
         });
+
+        window.safeReplaceState = function(state, title, url) {
+            try { history.replaceState(state, title, url); } catch(e) {}
+        }
+        window.safePushState = function(state, title, url) {
+            try { history.pushState(state, title, url); } catch(e) {}
+        }
 
         window.onload = function() {
             if (window.myDriverId) {
                 const savedName = localStorage.getItem('myDriverName') || "كابتن";
                 document.getElementById('welcomeMessage').innerText = "مرحباً يا " + savedName;
-                history.replaceState({ screen: 'dashboardScreen' }, '', '#dashboardScreen');
+                window.safeReplaceState({ screen: 'dashboardScreen' }, '', '#dashboardScreen');
                 document.getElementById('roleScreen').classList.add('hidden');
                 document.getElementById('dashboardScreen').classList.remove('hidden');
             } else {
-                history.replaceState({ screen: 'roleScreen' }, '', '#home');
+                window.safeReplaceState({ screen: 'roleScreen' }, '', '#home');
             }
         };
 
         window.navigateTo = function(showId) {
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             document.getElementById(showId).classList.remove('hidden');
-            history.pushState({ screen: showId }, '', '#' + showId);
+            window.safePushState({ screen: showId }, '', '#' + showId);
         }
 
         window.addEventListener('popstate', function(event) {
@@ -273,7 +285,7 @@
 
             if (targetScreen === 'roleScreen' && window.myDriverId) {
                 targetScreen = 'dashboardScreen';
-                history.pushState({ screen: 'dashboardScreen' }, '', '#dashboardScreen');
+                window.safePushState({ screen: 'dashboardScreen' }, '', '#dashboardScreen');
             }
 
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
@@ -297,7 +309,7 @@
                 document.getElementById('imagePreview').src = "";
                 window.uploadedImageBase64 = "";
                 
-                navigateTo('roleScreen');
+                window.navigateTo('roleScreen');
             }
         }
 
@@ -312,7 +324,6 @@
             document.getElementById('imageModal').style.display = "none";
         }
 
-        // دالة ضغط الصورة قبل رفعها لجعل العملية سريعة
         window.previewAndCompressImage = function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -327,7 +338,6 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // تحديد أقصى عرض للصورة لتقليل حجمها
                     const maxWidth = 400;
                     let width = img.width;
                     let height = img.height;
@@ -341,8 +351,6 @@
                     canvas.height = height;
                     
                     ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // تحويل الصورة المضغوطة إلى Base64 بجودة 70%
                     window.uploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
                     
                     const imgElement = document.getElementById('imagePreview');
@@ -359,7 +367,7 @@
                 return;
             }
             renderCustomerTable(requestedVehicle);
-            navigateTo('availableDriversScreen');
+            window.navigateTo('availableDriversScreen');
         }
 
         function renderCustomerTable(requestedVehicle) {
@@ -413,7 +421,7 @@
             document.getElementById('starsSection').classList.add('hidden');
             window.executionStatus = null;
 
-            navigateTo('ratingScreen');
+            window.navigateTo('ratingScreen');
         }
 
         window.toggleExecution = function(didExecute) {
@@ -457,7 +465,6 @@
                 alert("برجاء تحديد نوع المركبة"); return;
             }
 
-            // إظهار حالة التحميل
             btnSubmit.innerText = "⏳ جاري التسجيل...";
             btnSubmit.classList.add('btn-loading');
 
@@ -481,11 +488,10 @@
 
                 document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
                 
-                // إعادة الزر لحالته الطبيعية
                 btnSubmit.innerText = "تأكيد الدخول";
                 btnSubmit.classList.remove('btn-loading');
                 
-                navigateTo('dashboardScreen'); 
+                window.navigateTo('dashboardScreen'); 
             }).catch(err => {
                 btnSubmit.innerText = "تأكيد الدخول";
                 btnSubmit.classList.remove('btn-loading');
