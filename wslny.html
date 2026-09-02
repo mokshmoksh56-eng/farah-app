@@ -24,7 +24,6 @@
         .btn-dark:hover { background: #1a1a1a; }
         .btn-back { background: transparent; color: #888; border: 1px solid #ddd; margin-top: 10px; font-size: 16px; }
 
-        /* أزرار التواصل داخل الجدول */
         .action-td { display: flex; gap: 5px; justify-content: center; }
         .btn-whatsapp { background: #25D366; color: white; padding: 6px 10px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; }
         .btn-phone { background: #007bff; color: white; padding: 6px 10px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; }
@@ -42,7 +41,6 @@
         .msg-available { background-color: #e6f6ea; color: #28a745; border: 1px solid #28a745; }
         .msg-busy { background-color: #fcebeb; color: #dc3545; border: 1px solid #dc3545; }
 
-        /* تصميم الجدول (Table Design) */
         .table-container { max-height: 300px; overflow-y: auto; margin-bottom: 15px; border-radius: 8px; border: 1px solid #eee; }
         .drivers-table { width: 100%; border-collapse: collapse; text-align: right; background: #fff; font-size: 14px; }
         .drivers-table th { background: #f8f9fa; color: #333; padding: 10px; border-bottom: 2px solid #ddd; position: sticky; top: 0; }
@@ -53,17 +51,19 @@
         .dot-green { background-color: #28a745; box-shadow: 0 0 5px #28a745; }
         .dot-red { background-color: #dc3545; box-shadow: 0 0 5px #dc3545; }
 
-        /* نافذة تكبير الصورة */
         .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); justify-content: center; align-items: center; flex-direction: column; }
         .modal-content { max-width: 92%; max-height: 80vh; border-radius: 10px; object-fit: contain; }
         .close-modal { position: absolute; top: 20px; left: 20px; color: white; font-size: 35px; font-weight: bold; cursor: pointer; background: rgba(0,0,0,0.5); width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; border-radius: 50%; }
 
         .hidden { display: none !important; }
+        
+        #sync-indicator { position: absolute; top: 10px; right: 10px; font-size: 12px; font-weight: bold; padding: 5px 10px; border-radius: 12px; background: #e2e8f0; color: #333; }
     </style>
 </head>
 <body>
 
-    <!-- نافذة تكبير الصورة المنبثقة -->
+    <div id="sync-indicator">⏳ جاري الاتصال...</div>
+
     <div id="imageModal" class="modal" onclick="closeImageModal()">
         <span class="close-modal">&times;</span>
         <img class="modal-content" id="modalImg">
@@ -77,7 +77,7 @@
         <button class="btn-dark" onclick="navigateTo('registerScreen')">أنا سـواق (أقدم خدمة)</button>
     </div>
 
-    <!-- شاشة الزبون: طلب خدمة -->
+    <!-- شاشة الزبون -->
     <div class="app-container hidden" id="customerBookingScreen">
         <div class="logo">طلب سيارة نقل</div>
         <div class="subtitle">حدد مسارك ونوع السيارة المطلوبة</div>
@@ -98,7 +98,7 @@
         <button class="btn-back" onclick="history.back()">رجوع</button>
     </div>
 
-    <!-- شاشة الزبون: السائقين المتاحين (على شكل جدول) -->
+    <!-- شاشة عرض السائقين للزبون -->
     <div class="app-container hidden" id="availableDriversScreen">
         <div class="logo">السواقين المتاحين</div>
         <div class="subtitle" id="searchResultText" style="color: #28a745; font-weight: bold;"></div>
@@ -113,15 +113,13 @@
                     </tr>
                 </thead>
                 <tbody id="customerDriversTableBody">
-                    <!-- سيتم تعبئة الجدول عبر البرمجة -->
                 </tbody>
             </table>
         </div>
-
         <button class="btn-back" onclick="history.back()">⬅️ تعديل الطلب (رجوع)</button>
     </div>
 
-    <!-- شاشة تقييم الكابتن -->
+    <!-- شاشة التقييم -->
     <div class="app-container hidden" id="ratingScreen">
         <div class="logo" style="color: #ffc107;">تقييم الرحلة ⭐</div>
         <div class="subtitle" id="ratingDriverName" style="font-weight: bold; font-size: 16px; color:#333;">تقييم الكابتن: </div>
@@ -174,7 +172,7 @@
         <button class="btn-back" onclick="history.back()">رجوع</button>
     </div>
 
-    <!-- لوحة تحكم السائق (على شكل جدول أيضاً) -->
+    <!-- لوحة تحكم السائق -->
     <div class="app-container hidden" id="dashboardScreen">
         <div class="logo">لوحة القيادة</div>
         <div class="subtitle" id="welcomeMessage">مرحباً يا كابتن</div>
@@ -188,7 +186,7 @@
             <div id="statusMessage" class="msg-available">✓ أنت الآن متاح للعمل وبانتظار الطلبات</div>
         </div>
 
-        <h4 style="text-align:right; margin-bottom:10px; color:#555;">السائقين في منطقتك:</h4>
+        <h4 style="text-align:right; margin-bottom:10px; color:#555;">السائقين في منطقتك (مباشر):</h4>
         <div class="table-container">
             <table class="drivers-table">
                 <thead>
@@ -198,20 +196,65 @@
                     </tr>
                 </thead>
                 <tbody id="dashboardDriversTableBody">
-                    <!-- جدول السائقين في لوحة التحكم -->
                 </tbody>
             </table>
         </div>
 
-        <button class="btn-back" onclick="history.back()" style="margin-top:10px;">⬅️ خروج / رجوع</button>
+        <button class="btn-back" onclick="history.back()" style="margin-top:10px;">⬅️ خروج / حذف الحساب مؤقتاً</button>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // إعدادات Firebase مأخوذة من yom.html
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
+            authDomain: "azemaa-proo.firebaseapp.com",
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
+            projectId: "azemaa-proo",
+            storageBucket: "azemaa-proo.firebasestorage.app",
+            messagingSenderId: "787350492977",
+            appId: "1:787350492977:web:84061dcf31622fcb07c210"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // المتغيرات العامة
+        window.onlineDrivers = [];
+        window.myDriverId = null;
+        window.uploadedImageBase64 = "";
+        window.currentDriverToRate = "";
+        window.executionStatus = null;
+
+        // الاتصال اللحظي بقاعدة البيانات للسائقين
+        const driversRef = ref(db, 'drivers_app/active_drivers');
+        
+        onValue(driversRef, (snapshot) => {
+            window.onlineDrivers = [];
+            document.getElementById('sync-indicator').innerText = "🟢 متصل";
+            document.getElementById('sync-indicator').style.background = "#d4edda";
+            document.getElementById('sync-indicator').style.color = "#155724";
+
+            snapshot.forEach((childSnapshot) => {
+                window.onlineDrivers.push(childSnapshot.val());
+            });
+
+            // تحديث الشاشات تلقائياً إذا كانت مفتوحة
+            if (!document.getElementById('dashboardScreen').classList.contains('hidden')) {
+                renderDashboardDrivers();
+            }
+            if (!document.getElementById('availableDriversScreen').classList.contains('hidden')) {
+                renderCustomerTable(document.getElementById('requestedVehicle').value);
+            }
+        });
+
         window.onload = function() {
             history.replaceState({ screen: 'roleScreen' }, '', '#home');
         };
 
-        function navigateTo(showId) {
+        window.navigateTo = function(showId) {
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             document.getElementById(showId).classList.remove('hidden');
             history.pushState({ screen: showId }, '', '#' + showId);
@@ -221,10 +264,10 @@
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             let targetScreen = event.state && event.state.screen ? event.state.screen : 'roleScreen';
 
-            if (targetScreen !== 'dashboardScreen' && myDriverData !== null) {
-                let index = mockDrivers.indexOf(myDriverData);
-                if (index > -1) mockDrivers.splice(index, 1);
-                myDriverData = null;
+            // مسح السائق من السيرفر عند الخروج من لوحة القيادة (تسجيل خروج)
+            if (targetScreen !== 'dashboardScreen' && window.myDriverId !== null) {
+                remove(ref(db, 'drivers_app/active_drivers/' + window.myDriverId));
+                window.myDriverId = null;
                 
                 document.getElementById('driverName').value = "";
                 document.getElementById('driverPhone').value = "";
@@ -241,59 +284,51 @@
             document.getElementById(targetScreen).classList.remove('hidden');
         });
 
-        function openImageModal(imgSrc) {
+        window.openImageModal = function(imgSrc) {
             const modal = document.getElementById('imageModal');
             const modalImg = document.getElementById('modalImg');
             modal.style.display = "flex";
             modalImg.src = imgSrc;
         }
 
-        function closeImageModal() {
+        window.closeImageModal = function() {
             document.getElementById('imageModal').style.display = "none";
         }
 
-        let myDriverData = null;
-        let mockDrivers = [
-            { name: "محمود سيد", vehicle: "ربع نقل", status: "green", rate: "4.8", phone: "01000000001", photo: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&q=80" },
-            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red", rate: "4.5", phone: "01000000002", photo: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=300&q=80" },
-            { name: "خالد حسن", vehicle: "تروسيكل", status: "green", rate: "4.9", phone: "01000000003", photo: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=300&q=80" },
-            { name: "مصطفى كمال", vehicle: "نصف نقل كبير", status: "green", rate: "4.7", phone: "01000000004", photo: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=300&q=80" }
-        ];
-
-        let uploadedImageBase64 = "";
-
-        function previewImage(event) {
+        window.previewImage = function(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    uploadedImageBase64 = e.target.result;
+                    window.uploadedImageBase64 = e.target.result;
                     const imgElement = document.getElementById('imagePreview');
-                    imgElement.src = uploadedImageBase64;
+                    imgElement.src = window.uploadedImageBase64;
                     imgElement.style.display = 'block';
                 }
                 reader.readAsDataURL(file);
             }
         }
 
-        // عرض السائقين المتاحين للزبون داخل جدول HTML
-        function searchAvailableDrivers() {
+        window.searchAvailableDrivers = function() {
             const requestedVehicle = document.getElementById('requestedVehicle').value;
-            let pickup = document.getElementById('pickupLocation').value.trim() || "غير محدد";
-            let dropoff = document.getElementById('dropoffLocation').value.trim() || "غير محدد";
-
             if (!requestedVehicle) {
                 alert("برجاء اختيار نوع المركبة المطلوبة أولاً.");
                 return;
             }
+            renderCustomerTable(requestedVehicle);
+            navigateTo('availableDriversScreen');
+        }
 
+        function renderCustomerTable(requestedVehicle) {
+            let pickup = document.getElementById('pickupLocation').value.trim() || "غير محدد";
+            let dropoff = document.getElementById('dropoffLocation').value.trim() || "غير محدد";
             const tableBody = document.getElementById('customerDriversTableBody');
             tableBody.innerHTML = "";
-            let available = mockDrivers.filter(d => d.status === 'green' && d.vehicle === requestedVehicle);
+            
+            let available = window.onlineDrivers.filter(d => d.status === 'green' && d.vehicle === requestedVehicle);
 
             if (available.length > 0) {
                 document.getElementById('searchResultText').innerText = `وجدنا ${available.length} سواقين متاحين لطلبك`;
-                
                 available.forEach(driver => {
                     let whatsappPhone = driver.phone.startsWith("0") ? "2" + driver.phone : driver.phone;
                     let message = `مرحباً كابتن ${driver.name}، أريد نقل عفش من (${pickup}) إلى (${dropoff}). هل أنت متاح؟`;
@@ -324,27 +359,22 @@
                 document.getElementById('searchResultText').innerText = "";
                 tableBody.innerHTML = `<tr><td colspan="3" style="color:red; font-weight:bold; text-align:center; padding:20px;">عذراً، لا يوجد سائقين متاحين حالياً لهذه المركبة.</td></tr>`;
             }
-
-            navigateTo('availableDriversScreen');
         }
 
-        let currentDriverToRate = "";
-        let executionStatus = null;
-
-        function openRatingScreen(driverName) {
-            currentDriverToRate = driverName;
+        window.openRatingScreen = function(driverName) {
+            window.currentDriverToRate = driverName;
             document.getElementById('ratingDriverName').innerText = "الكابتن: " + driverName;
             
             document.getElementById('btnExeYes').classList.remove('active');
             document.getElementById('btnExeNo').classList.remove('active');
             document.getElementById('starsSection').classList.add('hidden');
-            executionStatus = null;
+            window.executionStatus = null;
 
             navigateTo('ratingScreen');
         }
 
-        function toggleExecution(didExecute) {
-            executionStatus = didExecute;
+        window.toggleExecution = function(didExecute) {
+            window.executionStatus = didExecute;
             const btnYes = document.getElementById('btnExeYes');
             const btnNo = document.getElementById('btnExeNo');
             const starsBox = document.getElementById('starsSection');
@@ -360,29 +390,35 @@
             }
         }
 
-        function submitRating() {
-            if (executionStatus === null) {
+        window.submitRating = function() {
+            if (window.executionStatus === null) {
                 alert("برجاء تحديد هل تم التنفيذ أم لا أولاً.");
                 return;
             }
-            if (executionStatus === true) {
+            if (window.executionStatus === true) {
                 let stars = document.getElementById('driverRatingStars').value;
-                alert(`تم تأكيد الرحلة وتم إرسال تقييمك (${stars} نجوم) للكابتن ${currentDriverToRate} بنجاح.\nشكراً لثقتك بنا!`);
+                alert(`تم إرسال تقييمك (${stars} نجوم) للكابتن ${window.currentDriverToRate} بنجاح.\nشكراً لثقتك بنا!`);
             } else {
-                alert(`تم تسجيل أن الرحلة لم تتم مع الكابتن ${currentDriverToRate}.\nنأسف لذلك وسنقوم بمراجعة الأمر.`);
+                alert(`تم تسجيل أن الرحلة لم تتم مع الكابتن ${window.currentDriverToRate}.\nنأسف لذلك وسنقوم بمراجعة الأمر.`);
             }
             history.back();
         }
 
-        function submitDriverData() {
+        window.submitDriverData = function() {
             const name = document.getElementById('driverName').value.trim() || "كابتن";
             const phone = document.getElementById('driverPhone').value.trim() || "01000000000";
-            const vehicle = document.getElementById('vehicleType').value || "غير محدد";
+            const vehicle = document.getElementById('vehicleType').value;
             
-            const vehiclePhoto = uploadedImageBase64 !== "" ? uploadedImageBase64 : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&q=80";
+            if (!vehicle) {
+                alert("برجاء تحديد نوع المركبة"); return;
+            }
 
-            myDriverData = { 
-                name: name + " (أنت)", 
+            const vehiclePhoto = window.uploadedImageBase64 !== "" ? window.uploadedImageBase64 : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&q=80";
+            
+            window.myDriverId = 'id_' + Date.now();
+            const newDriverData = { 
+                id: window.myDriverId,
+                name: name, 
                 vehicle: vehicle, 
                 status: "green", 
                 rate: "جديد", 
@@ -390,44 +426,57 @@
                 photo: vehiclePhoto 
             };
             
-            mockDrivers.unshift(myDriverData);
-
-            document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
-
-            renderDashboardDrivers();
-            navigateTo('dashboardScreen'); 
+            // رفع البيانات لقاعدة البيانات
+            set(ref(db, 'drivers_app/active_drivers/' + window.myDriverId), newDriverData)
+            .then(() => {
+                document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
+                navigateTo('dashboardScreen'); 
+            }).catch(err => {
+                alert("فشل التسجيل السحابي: " + err.message);
+            });
         }
 
-        function setMyStatus(status) {
+        window.setMyStatus = function(status) {
+            if(!window.myDriverId) return;
+
             const btnAvailable = document.getElementById('btnAvailable');
             const btnBusy = document.getElementById('btnBusy');
             const msgBox = document.getElementById('statusMessage');
+            
+            let statusColor = status === 'available' ? 'green' : 'red';
 
             if(status === 'available') {
                 btnAvailable.classList.add('active');
                 btnBusy.classList.remove('active');
-                myDriverData.status = 'green'; 
                 msgBox.innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
                 msgBox.className = "msg-available";
             } else {
                 btnBusy.classList.add('active');
                 btnAvailable.classList.remove('active');
-                myDriverData.status = 'red';
                 msgBox.innerText = "✗ أنت غير متاح حالياً ولا تستقبل طلبات";
                 msgBox.className = "msg-busy";
             }
-            renderDashboardDrivers(); 
+            
+            // تحديث الحالة في قاعدة البيانات لحظياً
+            update(ref(db, 'drivers_app/active_drivers/' + window.myDriverId), {
+                status: statusColor
+            });
         }
 
-        // عرض السائقين داخل جدول لوحة القيادة
         function renderDashboardDrivers() {
             const tableBody = document.getElementById('dashboardDriversTableBody');
             tableBody.innerHTML = ""; 
+            
+            // ترتيب بحيث يظهر حسابي في الأعلى إن وجد
+            let sortedDrivers = [...window.onlineDrivers];
+            sortedDrivers.sort((a, b) => (a.id === window.myDriverId ? -1 : 1));
 
-            mockDrivers.forEach(driver => {
+            sortedDrivers.forEach(driver => {
                 const dotClass = driver.status === "green" ? "dot-green" : "dot-red";
-                const nameStyle = driver === myDriverData ? "color: #ff6600; font-weight: bold;" : "";
-                
+                const isMe = driver.id === window.myDriverId;
+                const nameStyle = isMe ? "color: #ff6600; font-weight: bold;" : "";
+                const displayName = isMe ? driver.name + " (أنت)" : driver.name;
+
                 tableBody.innerHTML += `
                     <tr>
                         <td style="text-align: center;"><span class="status-dot ${dotClass}"></span></td>
@@ -435,7 +484,7 @@
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <img src="${driver.photo}" class="table-img" alt="صورة" onclick="openImageModal('${driver.photo}')" style="width: 35px; height: 35px;">
                                 <div>
-                                    <strong style="${nameStyle}">${driver.name}</strong><br>
+                                    <strong style="${nameStyle}">${displayName}</strong><br>
                                     <span style="font-size: 12px; color: #666;">${driver.vehicle}</span>
                                 </div>
                             </div>
