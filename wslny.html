@@ -150,7 +150,6 @@
                 ☕ إيقاف للراحة (مؤقت)
             </button>
 
-            <!-- تمت إضافة زر الرجوع هنا -->
             <button onclick="window.history.back()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-xl shadow-sm transition duration-200 text-lg flex justify-center items-center gap-2">
                 ⬅️ الرجوع للرئيسية
             </button>
@@ -201,7 +200,7 @@
         </button>
     </div>
 
-    <!-- سكريبت التنقل والرجوع الاحترافي المرتبط بأسهم الهاتف -->
+    <!-- سكريبت التنقل والرجوع الاحترافي -->
     <script>
         function showView(viewId) {
             window.location.hash = viewId;
@@ -291,10 +290,11 @@
             }
         });
 
+        // 1. تسجيل سائق جديد (مع التحقق من عدم التكرار)
         window.registerDriver = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnRegister');
-            btn.innerText = "⏳ جاري التسجيل...";
+            btn.innerText = "⏳ جاري التحقق والتسجيل...";
 
             const name = document.getElementById('regDriverName').value;
             const phone = document.getElementById('regDriverPhone').value;
@@ -304,17 +304,31 @@
             const driverKey = "driver_" + phone;
             const permanentRef = ref(db, 'wslny_app/registered_drivers/' + driverKey);
             
-            set(permanentRef, {
-                name: name, phone: phone, vType: vType, vCond: vCond, joinDate: Date.now()
-            }).then(() => {
-                activateDriverSession(name, phone, vType, vCond);
-                btn.innerText = "حفظ البيانات وبدء العمل";
+            // فحص هل الرقم مسجل مسبقاً في السحابة
+            get(permanentRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    // إذا كان مسجلاً، نوقف التسجيل ونعطيه رسالة
+                    alert("هذا الرقم مسجل مسبقاً في التطبيق! يرجى العودة لصفحة 'تسجيل الدخول' بدلاً من ذلك.");
+                    btn.innerText = "حفظ البيانات وبدء العمل";
+                } else {
+                    // إذا لم يكن مسجلاً، نقوم بحفظ البيانات
+                    set(permanentRef, {
+                        name: name, phone: phone, vType: vType, vCond: vCond, joinDate: Date.now()
+                    }).then(() => {
+                        activateDriverSession(name, phone, vType, vCond);
+                        btn.innerText = "حفظ البيانات وبدء العمل";
+                    }).catch(err => {
+                        alert("خطأ أثناء الحفظ: " + err.message);
+                        btn.innerText = "حفظ البيانات وبدء العمل";
+                    });
+                }
             }).catch(err => {
-                alert("خطأ: " + err.message);
+                alert("خطأ في الاتصال بالسحابة: " + err.message);
                 btn.innerText = "حفظ البيانات وبدء العمل";
             });
         };
 
+        // 2. تسجيل دخول سائق
         window.loginDriver = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnLogin');
@@ -332,7 +346,7 @@
                     activateDriverSession(data.name, data.phone, data.vType, data.vCond);
                     btn.innerText = "دخول وبدء العمل";
                 } else {
-                    alert("رقم الهاتف غير مسجل! يرجى التسجيل كمستخدم جديد أولاً.");
+                    alert("رقم الهاتف غير مسجل! يرجى العودة والتسجيل كمستخدم جديد أولاً.");
                     btn.innerText = "دخول وبدء العمل";
                 }
             }).catch(err => {
