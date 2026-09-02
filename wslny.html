@@ -44,7 +44,8 @@
             <button onclick="showView('homeView')" class="text-orange-500 font-bold hover:text-orange-600">الرجوع</button>
         </div>
 
-        <form onsubmit="alert('تم التسجيل بنجاح في وصلني! سيتم مراجعة بياناتك.'); showView('homeView'); return false;" class="space-y-5">
+        <!-- تم التعديل هنا: التسجيل أصبح فورياً ينقل السائق لشاشة العمل -->
+        <form onsubmit="activateDriver(event)" class="space-y-5">
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">الاسم ورقم الهاتف</label>
                 <div class="flex gap-2">
@@ -78,12 +79,32 @@
             </div>
 
             <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 text-orange-500 font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
-                تأكيد التسجيل
+                تسجيل الدخول وبدء العمل فوراً
             </button>
         </form>
     </div>
 
-    <!-- 3. واجهة الزبون (الطلب) -->
+    <!-- 3. شاشة السائق بعد التسجيل الفوري (جديدة) -->
+    <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-green-500 transform transition-all duration-300 text-center">
+        <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">
+            ✓
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">تم تفعيل حسابك بنجاح!</h2>
+        <p class="text-gray-500 font-semibold mb-6">أنت الآن متصل وجاهز لاستقبال طلبات النقل.</p>
+        
+        <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200 mb-6">
+            <div class="animate-pulse flex space-x-3 space-x-reverse items-center justify-center">
+                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span class="text-gray-700 font-bold">جاري البحث عن زبائن بالقرب منك...</span>
+            </div>
+        </div>
+
+        <button onclick="showView('homeView')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
+            إيقاف العمل والرجوع للرئيسية
+        </button>
+    </div>
+
+    <!-- 4. واجهة الزبون (الطلب) -->
     <div id="customerView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-orange-500 transform transition-all duration-300">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">تفاصيل النقل</h2>
@@ -119,7 +140,7 @@
         </form>
     </div>
 
-    <!-- 4. شاشة السائقين المتاحين (للاتفاق عبر الاتصال أو الواتساب) -->
+    <!-- 5. شاشة السائقين المتاحين (للاتفاق عبر الاتصال أو الواتساب) -->
     <div id="driversListView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-gray-800">السائقين بالقرب منك</h2>
@@ -182,20 +203,26 @@
         function showView(viewId) {
             document.getElementById('homeView').classList.add('hidden');
             document.getElementById('driverView').classList.add('hidden');
+            document.getElementById('driverActiveView').classList.add('hidden');
             document.getElementById('customerView').classList.add('hidden');
             document.getElementById('driversListView').classList.add('hidden');
             
             document.getElementById(viewId).classList.remove('hidden');
         }
 
+        // دالة التفعيل الفوري للسائق
+        function activateDriver(e) {
+            e.preventDefault();
+            // الانتقال فوراً لشاشة العمل
+            showView('driverActiveView');
+        }
+
         function findDrivers(e) {
             e.preventDefault();
             
-            // جلب البيانات من اختيارات الزبون
             const selectedVehicle = document.getElementById('vehicleType').value;
             const selectedCondition = document.getElementById('vehicleCondition').value;
             
-            // تمرير البيانات لكروت السائقين
             document.getElementById('driver1Vehicle').innerText = selectedVehicle;
             document.getElementById('driver2Vehicle').innerText = selectedVehicle;
             
@@ -229,6 +256,10 @@
                 if (!document.getElementById('driverView').classList.contains('hidden')) {
                     showView('homeView');
                 } 
+                else if (!document.getElementById('driverActiveView').classList.contains('hidden')) {
+                    // سحب للرجوع من لوحة تحكم السائق يرجعه للرئيسية
+                    showView('homeView');
+                }
                 else if (!document.getElementById('customerView').classList.contains('hidden')) {
                     showView('homeView');
                 } 
