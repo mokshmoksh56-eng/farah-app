@@ -3,27 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق وصلني | Wslny</title>
+    <title>تطبيق وصلني | Wslny - أونلاين</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background-color: #f3f4f6; 
-            overflow-x: hidden; 
-        }
+        body { font-family: 'Cairo', sans-serif; background-color: #f3f4f6; overflow-x: hidden; }
         .glass-panel { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
         .gradient-text { background: linear-gradient(90deg, #f97316, #ea580c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* شاشة التحميل السحابي من ملفك */
+        #auth-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6;
+            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 16px; color: #f97316; font-weight: bold;
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 text-gray-800 bg-gray-200">
 
+    <div id="auth-loader">⏳ جاري الاتصال بالسحابة...</div>
+
     <!-- 1. واجهة الاختيار الرئيسية -->
-    <div id="homeView" class="glass-panel shadow-2xl rounded-3xl w-full max-w-md p-8 text-center border-t-4 border-orange-500 transform transition-all duration-300">
+    <div id="homeView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-md p-8 text-center border-t-4 border-orange-500 transform transition-all duration-300">
         <div class="mb-8">
-            <h1 class="text-5xl font-extrabold mb-2 text-gray-800"><span class="text-gray-800">وصلني</span></h1>
+            <h1 class="text-5xl font-extrabold mb-2 text-gray-800">وصلني</h1>
             <p class="text-orange-500 font-bold tracking-widest uppercase text-sm mb-2">W S L N Y</p>
             <p class="text-gray-500 font-semibold text-sm">أسرع تطبيق لنقل البضائع والعفش</p>
+            <div id="sync-status" class="mt-2 text-xs font-bold text-green-600">🟢 متصل بالسيرفر</div>
         </div>
 
         <div class="space-y-4">
@@ -40,32 +46,30 @@
     <!-- 2. واجهة السواق (تسجيل) -->
     <div id="driverView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">تسجيل سائق جديد</h2>
+            <h2 class="text-2xl font-bold text-gray-800">تسجيل كسائق أونلاين</h2>
             <button onclick="showView('homeView')" class="text-orange-500 font-bold hover:text-orange-600">الرجوع</button>
         </div>
 
-        <!-- تم التعديل هنا: التسجيل أصبح فورياً ينقل السائق لشاشة العمل -->
         <form onsubmit="activateDriver(event)" class="space-y-5">
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">الاسم ورقم الهاتف</label>
                 <div class="flex gap-2">
-                    <input type="text" required placeholder="الاسم ثلاثي" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                    <input type="tel" required placeholder="01xxxxxxxx" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-left" dir="ltr">
+                    <input type="text" id="driverName" required placeholder="الاسم ثلاثي" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                    <input type="tel" id="driverPhone" required placeholder="01xxxxxxxx" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-left" dir="ltr">
                 </div>
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">نوع السيارة</label>
-                <select required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none mb-3">
+                <label class="block text-sm font-bold text-gray-700 mb-2">نوع وحالة السيارة</label>
+                <select id="driverVType" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none mb-3">
                     <option value="" disabled selected>اختر سيارتك...</option>
-                    <option value="tricycle">تروسيكل</option>
-                    <option value="pickup_small">سيارة ربع نقل</option>
-                    <option value="pickup_large">نصف نقل كبيرة</option>
-                    <option value="furniture_crane">عربية عفش ونش</option>
+                    <option value="تروسيكل">تروسيكل</option>
+                    <option value="سيارة ربع نقل">سيارة ربع نقل</option>
+                    <option value="نصف نقل كبيرة">نصف نقل كبيرة</option>
+                    <option value="عربية عفش ونش">عربية عفش ونش</option>
                 </select>
                 
-                <label class="block text-sm font-bold text-gray-700 mb-2">حالة السيارة</label>
-                <select required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                <select id="driverVCond" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
                     <option value="" disabled selected>حدد حالة سيارتك...</option>
                     <option value="حديثة">حديثة</option>
                     <option value="تفي بالغرض">تفي بالغرض</option>
@@ -73,34 +77,27 @@
                 </select>
             </div>
 
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">صورة السيارة</label>
-                <input type="file" accept="image/*" required class="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none">
-            </div>
-
             <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 text-orange-500 font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
-                تسجيل الدخول وبدء العمل فوراً
+                بدء العمل (مزامنة للسحابة)
             </button>
         </form>
     </div>
 
-    <!-- 3. شاشة السائق بعد التسجيل الفوري (جديدة) -->
+    <!-- 3. شاشة السائق بعد التسجيل الفوري -->
     <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-green-500 transform transition-all duration-300 text-center">
-        <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">
-            ✓
-        </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">تم تفعيل حسابك بنجاح!</h2>
-        <p class="text-gray-500 font-semibold mb-6">أنت الآن متصل وجاهز لاستقبال طلبات النقل.</p>
+        <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">✓</div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">تم رفع بياناتك للسحابة!</h2>
+        <p class="text-gray-500 font-semibold mb-6">أنت الآن متصل ويستطيع الزبائن رؤيتك والاتصال بك.</p>
         
         <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200 mb-6">
             <div class="animate-pulse flex space-x-3 space-x-reverse items-center justify-center">
                 <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span class="text-gray-700 font-bold">جاري البحث عن زبائن بالقرب منك...</span>
+                <span class="text-gray-700 font-bold">حسابك نشط أونلاين...</span>
             </div>
         </div>
 
-        <button onclick="showView('homeView')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
-            إيقاف العمل والرجوع للرئيسية
+        <button onclick="goOffline()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
+            إيقاف العمل (حذف من السحابة)
         </button>
     </div>
 
@@ -111,94 +108,34 @@
             <button onclick="showView('homeView')" class="text-gray-500 font-bold hover:text-gray-800">الرجوع</button>
         </div>
 
-        <form onsubmit="findDrivers(event)" class="space-y-4">
-            <div class="flex gap-2">
-                <input type="text" id="pickupLocation" required placeholder="مكان الاستلام" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                <input type="text" id="dropoffLocation" required placeholder="مكان الوصول" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
-            </div>
+        <form onsubmit="fetchDriversFromCloud(event)" class="space-y-4">
+            <select id="custVType" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none mb-4">
+                <option value="" disabled selected>ما هو نوع النقل المطلوب؟</option>
+                <option value="تروسيكل">تروسيكل (أغراض خفيفة)</option>
+                <option value="سيارة ربع نقل">سيارة ربع نقل</option>
+                <option value="نصف نقل كبيرة">نصف نقل كبيرة</option>
+                <option value="عربية عفش ونش">عربية عفش ونش</option>
+            </select>
 
-            <div>
-                <select id="vehicleType" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none mb-4">
-                    <option value="" disabled selected>نوع النقل المطلوب...</option>
-                    <option value="تروسيكل">تروسيكل (أغراض خفيفة)</option>
-                    <option value="سيارة ربع نقل">سيارة ربع نقل</option>
-                    <option value="نصف نقل كبيرة">نصف نقل كبيرة</option>
-                    <option value="عربية عفش ونش">عربية عفش ونش</option>
-                </select>
-
-                <select id="vehicleCondition" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                    <option value="" disabled selected>اختيار نوعية / حالة السيارة...</option>
-                    <option value="حديثة">حديثة (موديل حديث ومجهزة)</option>
-                    <option value="تفي بالغرض">تفي بالغرض (حالة متوسطة وجيدة)</option>
-                    <option value="قديمة نوعا ما">قديمة نوعاً ما (اقتصادية)</option>
-                </select>
-            </div>
-
-            <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200 text-lg mt-4">
-                بحث عن السائقين المتاحين
+            <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200 text-lg mt-4">
+                بحث في السحابة عن سائقين
             </button>
         </form>
     </div>
 
-    <!-- 5. شاشة السائقين المتاحين (للاتفاق عبر الاتصال أو الواتساب) -->
+    <!-- 5. شاشة السائقين المتاحين (جلب ديناميكي) -->
     <div id="driversListView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-bold text-gray-800">السائقين بالقرب منك</h2>
+            <h2 class="text-xl font-bold text-gray-800">السائقين الأونلاين حالياً</h2>
             <button onclick="showView('customerView')" class="text-orange-500 font-bold text-sm hover:text-orange-600">تعديل الطلب</button>
         </div>
         
         <div class="space-y-4" id="driverListContainer">
-            <!-- الكارت الأول لسائق -->
-            <div class="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex flex-col gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-2xl">👨‍✈️</div>
-                    <div class="flex-1">
-                        <h4 class="font-bold text-gray-800 text-lg">محمود السيد</h4>
-                        <div class="text-sm mt-1">
-                            <span class="text-gray-800 font-bold" id="driver1Vehicle">سيارة ربع نقل</span> • 
-                            <span class="text-gray-500 font-semibold" id="driver1Condition">حديثة</span>
-                        </div>
-                        <div class="text-xs text-orange-500 font-bold mt-1">يبعد 3 دقائق</div>
-                    </div>
-                </div>
-                <!-- أزرار الاتصال -->
-                <div class="flex gap-2">
-                    <a href="tel:+201000000000" class="w-1/2 bg-gray-800 text-white py-2 rounded-xl font-bold hover:bg-gray-900 text-sm flex justify-center items-center gap-2">
-                        📞 اتصال
-                    </a>
-                    <a href="https://wa.me/201000000000?text=مرحباً،%20محتاج%20أنقل%20أغراض%20من%20تطبيق%20وصلني" target="_blank" class="w-1/2 bg-[#25D366] text-white py-2 rounded-xl font-bold hover:bg-green-600 text-sm flex justify-center items-center gap-2">
-                        💬 واتساب
-                    </a>
-                </div>
-            </div>
-
-            <!-- الكارت الثاني لسائق -->
-            <div class="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex flex-col gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-2xl">👨‍✈️</div>
-                    <div class="flex-1">
-                        <h4 class="font-bold text-gray-800 text-lg">أحمد رضا</h4>
-                        <div class="text-sm mt-1">
-                            <span class="text-gray-800 font-bold" id="driver2Vehicle">سيارة ربع نقل</span> • 
-                            <span class="text-gray-500 font-semibold" id="driver2Condition">حديثة</span>
-                        </div>
-                        <div class="text-xs text-orange-500 font-bold mt-1">يبعد 5 دقائق</div>
-                    </div>
-                </div>
-                <!-- أزرار الاتصال -->
-                <div class="flex gap-2">
-                    <a href="tel:+201100000000" class="w-1/2 bg-gray-800 text-white py-2 rounded-xl font-bold hover:bg-gray-900 text-sm flex justify-center items-center gap-2">
-                        📞 اتصال
-                    </a>
-                    <a href="https://wa.me/201100000000?text=مرحباً،%20محتاج%20أنقل%20أغراض%20من%20تطبيق%20وصلني" target="_blank" class="w-1/2 bg-[#25D366] text-white py-2 rounded-xl font-bold hover:bg-green-600 text-sm flex justify-center items-center gap-2">
-                        💬 واتساب
-                    </a>
-                </div>
-            </div>
+            <!-- سيتم إضافة السائقين من قاعدة البيانات هنا برمجياً -->
         </div>
     </div>
 
-    <!-- سكريبت التحكم وميزة السحب -->
+    <!-- سكريبت إدارة الواجهات وميزة السحب -->
     <script>
         function showView(viewId) {
             document.getElementById('homeView').classList.add('hidden');
@@ -206,68 +143,156 @@
             document.getElementById('driverActiveView').classList.add('hidden');
             document.getElementById('customerView').classList.add('hidden');
             document.getElementById('driversListView').classList.add('hidden');
-            
             document.getElementById(viewId).classList.remove('hidden');
         }
 
-        // دالة التفعيل الفوري للسائق
-        function activateDriver(e) {
-            e.preventDefault();
-            // الانتقال فوراً لشاشة العمل
-            showView('driverActiveView');
-        }
-
-        function findDrivers(e) {
-            e.preventDefault();
-            
-            const selectedVehicle = document.getElementById('vehicleType').value;
-            const selectedCondition = document.getElementById('vehicleCondition').value;
-            
-            document.getElementById('driver1Vehicle').innerText = selectedVehicle;
-            document.getElementById('driver2Vehicle').innerText = selectedVehicle;
-            
-            document.getElementById('driver1Condition').innerText = selectedCondition;
-            document.getElementById('driver2Condition').innerText = selectedCondition;
-
-            showView('driversListView');
-        }
-
-        // ==========================================
-        // ميزة السحب للرجوع (Swipe to Go Back)
-        // ==========================================
-        let touchstartX = 0;
-        let touchendX = 0;
-
-        document.addEventListener('touchstart', e => {
-            touchstartX = e.changedTouches[0].screenX;
-        }, false);
-
-        document.addEventListener('touchend', e => {
-            touchendX = e.changedTouches[0].screenX;
-            handleSwipe();
-        }, false);
-
+        let touchstartX = 0; let touchendX = 0;
+        document.addEventListener('touchstart', e => { touchstartX = e.changedTouches[0].screenX; }, false);
+        document.addEventListener('touchend', e => { touchendX = e.changedTouches[0].screenX; handleSwipe(); }, false);
         function handleSwipe() {
-            const screenWidth = window.innerWidth;
-            const swipedFromLeft = (touchstartX < 50 && touchendX > touchstartX + 60);
-            const swipedFromRight = (screenWidth - touchstartX < 50 && touchendX < touchstartX - 60);
-
-            if (swipedFromLeft || swipedFromRight) {
-                if (!document.getElementById('driverView').classList.contains('hidden')) {
-                    showView('homeView');
-                } 
-                else if (!document.getElementById('driverActiveView').classList.contains('hidden')) {
-                    // سحب للرجوع من لوحة تحكم السائق يرجعه للرئيسية
-                    showView('homeView');
-                }
-                else if (!document.getElementById('customerView').classList.contains('hidden')) {
-                    showView('homeView');
-                } 
-                else if (!document.getElementById('driversListView').classList.contains('hidden')) {
-                    showView('customerView');
-                }
+            const screenW = window.innerWidth;
+            if ((touchstartX < 50 && touchendX > touchstartX + 60) || (screenW - touchstartX < 50 && touchendX < touchstartX - 60)) {
+                if (!document.getElementById('driverView').classList.contains('hidden')) showView('homeView');
+                else if (!document.getElementById('customerView').classList.contains('hidden')) showView('homeView');
+                else if (!document.getElementById('driversListView').classList.contains('hidden')) showView('customerView');
             }
         }
+    </script>
+
+    <!-- سكريبت الاتصال بقاعدة بيانات Firebase (مطابق لملف yom) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";[span_2](start_span)[span_2](end_span)
+        import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";[span_3](start_span)[span_3](end_span)
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";[span_4](start_span)[span_4](end_span)
+
+        // بيانات السيرفر من ملفك[span_5](start_span)[span_5](end_span)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",[span_6](start_span)[span_6](end_span)
+            authDomain: "azemaa-proo.firebaseapp.com",[span_7](start_span)[span_7](end_span)
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",[span_8](start_span)[span_8](end_span)
+            projectId: "azemaa-proo",[span_9](start_span)[span_9](end_span)
+            storageBucket: "azemaa-proo.firebasestorage.app",[span_10](start_span)[span_10](end_span)
+            messagingSenderId: "787350492977",[span_11](start_span)[span_11](end_span)
+            appId: "1:787350492977:web:84061dcf31622fcb07c210",[span_12](start_span)[span_12](end_span)
+            measurementId: "G-R28J7010TH[span_13](start_span)"[span_13](end_span)
+        };
+
+        const app = initializeApp(firebaseConfig);[span_14](start_span)[span_14](end_span)
+        const db = getDatabase(app);[span_15](start_span)[span_15](end_span)
+        const auth = getAuth(app);[span_16](start_span)[span_16](end_span)
+        
+        let currentDriverRef = null;
+
+        // تسجيل دخول مخفي لضمان صلاحيات الكتابة والقراءة[span_17](start_span)[span_17](end_span)
+        signInAnonymously(auth).catch((error) => console.error("Auth Error:", error));
+        
+        onAuthStateChanged(auth, (user) => {[span_18](start_span)[span_18](end_span)
+            if (user) {
+                document.getElementById('auth-loader').style.display = 'none';
+                showView('homeView');
+            }
+        });[span_19](start_span)[span_19](end_span)
+
+        // رفع بيانات السائق للسحابة
+        window.activateDriver = function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('driverName').value;
+            const phone = document.getElementById('driverPhone').value;
+            const vType = document.getElementById('driverVType').value;
+            const vCond = document.getElementById('driverVCond').value;
+
+            // إنشاء مسار جديد في السحابة لبيانات تطبيق وصلني
+            const driversNode = ref(db, 'wslny_app/active_drivers');
+            currentDriverRef = push(driversNode); 
+
+            set(currentDriverRef, {
+                name: name,
+                phone: phone,
+                vType: vType,
+                vCond: vCond,
+                timestamp: Date.now()
+            }).then(() => {
+                showView('driverActiveView');
+            }).catch(err => {
+                alert("خطأ في الاتصال: " + err.message);
+            });
+        };
+
+        // حذف بيانات السائق من السحابة عند التوقف
+        window.goOffline = function() {
+            if(currentDriverRef) {
+                remove(currentDriverRef);
+            }
+            showView('homeView');
+        };
+
+        // جلب السائقين للزبون من السحابة
+        window.fetchDriversFromCloud = function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSearch');
+            btn.innerText = "⏳ جاري البحث في السحابة...";
+            
+            const requiredType = document.getElementById('custVType').value;
+            const driversNode = ref(db, 'wslny_app/active_drivers');
+
+            onValue(driversNode, (snapshot) => {[span_20](start_span)[span_20](end_span)
+                const data = snapshot.val();[span_21](start_span)[span_21](end_span)
+                const container = document.getElementById('driverListContainer');
+                container.innerHTML = ""; 
+                
+                let foundAny = false;
+
+                if(data) {
+                    // تحويل البيانات لكروت
+                    Object.keys(data).forEach(key => {
+                        const driver = data[key];
+                        // عرض السائقين المطابقين للنوع المطلوب فقط
+                        if(driver.vType === requiredType) {
+                            foundAny = true;
+                            
+                            // تنظيف رقم الهاتف للواتساب
+                            let cleanPhone = driver.phone.replace(/^0+/, ''); 
+                            let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent("مرحباً، محتاج أنقل أغراض من تطبيق وصلني")}`;
+                            
+                            container.innerHTML += `
+                            <div class="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex flex-col gap-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-2xl">👨‍✈️</div>
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-gray-800 text-lg">${driver.name}</h4>
+                                        <div class="text-sm mt-1">
+                                            <span class="text-gray-800 font-bold">${driver.vType}</span> • 
+                                            <span class="text-gray-500 font-semibold">${driver.vCond}</span>
+                                        </div>
+                                        <div class="text-xs text-green-600 font-bold mt-1">🟢 متصل الآن ومستعد</div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <a href="tel:${driver.phone}" class="w-1/2 bg-gray-800 text-white py-2 rounded-xl font-bold hover:bg-gray-900 text-sm flex justify-center items-center gap-2">📞 اتصال</a>
+                                    <a href="${waLink}" target="_blank" class="w-1/2 bg-[#25D366] text-white py-2 rounded-xl font-bold hover:bg-green-600 text-sm flex justify-center items-center gap-2">💬 واتساب</a>
+                                </div>
+                            </div>`;
+                        }
+                    });
+                }
+
+                if(!foundAny) {
+                    container.innerHTML = `
+                    <div class="text-center p-6 bg-red-50 rounded-2xl border border-red-200 text-red-600 font-bold">
+                        عفواً، لا يوجد سائقين (${requiredType}) متصلين بالسحابة في الوقت الحالي. حاول مرة أخرى لاحقاً.
+                    </div>`;
+                }
+
+                btn.innerText = "بحث في السحابة عن سائقين";
+                showView('driversListView');
+            }, { onlyOnce: true }); // onlyOnce لجلب البيانات مرة واحدة عند الطلب وليس استماع مستمر
+        };
+        
+        // إزالة السائق من السحابة تلقائياً لو أغلق المتصفح
+        window.addEventListener('beforeunload', () => {
+            if(currentDriverRef) remove(currentDriverRef);
+        });
     </script>
 
 </body>
