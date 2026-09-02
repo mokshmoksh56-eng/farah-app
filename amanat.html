@@ -1,449 +1,201 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق نقل العفش - جدول السائقين</title>
+    <title>تطبيق نقل</title>
     <style>
-        body { font-family: Tahoma, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .app-container { background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); width: 95%; max-width: 450px; text-align: center; box-sizing: border-box; }
-        .logo { font-size: 26px; font-weight: bold; color: #ff6600; margin-bottom: 10px; }
-        .subtitle { color: #666; margin-bottom: 20px; font-size: 15px; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f5f7;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
 
-        input[type="text"], select { width: 100%; padding: 14px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; box-sizing: border-box; outline: none; }
-        select { border: 2px solid #ff6600; cursor: pointer; }
-        
-        .custom-file-upload { display: inline-block; width: 100%; padding: 14px; margin: 10px 0; border-radius: 8px; border: 2px dashed #ff6600; background-color: #fff9f5; color: #ff6600; font-size: 16px; font-weight: bold; cursor: pointer; box-sizing: border-box; }
-        input[type="file"] { display: none; }
-        #imagePreview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; margin-top: 10px; display: none; border: 1px solid #ddd; cursor: pointer; }
+        .card-container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            text-align: center;
+        }
 
-        button { width: 100%; padding: 14px; margin: 10px 0 0 0; border-radius: 8px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-orange { background: #ff6600; color: white; }
-        .btn-orange:hover { background: #e65c00; }
-        .btn-dark { background: #333; color: white; }
-        .btn-dark:hover { background: #1a1a1a; }
-        .btn-back { background: transparent; color: #888; border: 1px solid #ddd; margin-top: 10px; font-size: 16px; }
+        .header-title {
+            color: #ff7b42;
+            font-size: 24px;
+            margin-bottom: 5px;
+            margin-top: 0;
+        }
 
-        /* أزرار التواصل داخل الجدول */
-        .action-td { display: flex; gap: 5px; justify-content: center; }
-        .btn-whatsapp { background: #25D366; color: white; padding: 6px 10px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; }
-        .btn-phone { background: #007bff; color: white; padding: 6px 10px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; }
-        .btn-rate { background: #ffc107; color: #000; width: 100%; padding: 8px; font-size: 13px; border-radius: 6px; margin-top: 5px; border: none; cursor: pointer; }
+        .subtitle {
+            color: #28a745;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
 
-        .status-box { background: #f9f9f9; border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid #eee; }
-        .status-box p { margin: 0 0 10px 0; font-weight: bold; color: #333; }
-        .status-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
-        .btn-status { flex: 1; padding: 10px; font-size: 16px; border-radius: 8px; opacity: 0.5; border: 2px solid transparent; transition: 0.2s; cursor: pointer; }
-        .btn-status.active { opacity: 1; border-color: #333; transform: scale(1.05); }
-        .bg-green { background: #28a745; color: white; }
-        .bg-red { background: #dc3545; color: white; }
+        .driver-box {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
 
-        #statusMessage { padding: 10px; border-radius: 8px; font-size: 15px; font-weight: bold; transition: 0.3s; }
-        .msg-available { background-color: #e6f6ea; color: #28a745; border: 1px solid #28a745; }
-        .msg-busy { background-color: #fcebeb; color: #dc3545; border: 1px solid #dc3545; }
+        .driver-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
 
-        /* تصميم الجدول (Table Design) */
-        .table-container { max-height: 300px; overflow-y: auto; margin-bottom: 15px; border-radius: 8px; border: 1px solid #eee; }
-        .drivers-table { width: 100%; border-collapse: collapse; text-align: right; background: #fff; font-size: 14px; }
-        .drivers-table th { background: #f8f9fa; color: #333; padding: 10px; border-bottom: 2px solid #ddd; position: sticky; top: 0; }
-        .drivers-table td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        
-        .table-img { width: 45px; height: 45px; border-radius: 6px; object-fit: cover; border: 1px solid #ccc; cursor: pointer; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-        .dot-green { background-color: #28a745; box-shadow: 0 0 5px #28a745; }
-        .dot-red { background-color: #dc3545; box-shadow: 0 0 5px #dc3545; }
+        .driver-details {
+            text-align: right;
+            flex-grow: 1;
+            margin-right: 15px;
+        }
 
-        /* نافذة تكبير الصورة */
-        .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); justify-content: center; align-items: center; flex-direction: column; }
-        .modal-content { max-width: 92%; max-height: 80vh; border-radius: 10px; object-fit: contain; }
-        .close-modal { position: absolute; top: 20px; left: 20px; color: white; font-size: 35px; font-weight: bold; cursor: pointer; background: rgba(0,0,0,0.5); width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; border-radius: 50%; }
+        .driver-name-rating {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
 
-        .hidden { display: none !important; }
+        .rating {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .car-type {
+            color: #888;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .driver-phone {
+            color: #000;
+            font-size: 15px;
+            font-weight: bold;
+            margin: 5px 0 0 0;
+            background-color: #f0f0f0;
+            padding: 5px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        .driver-image {
+            width: 60px;
+            height: 40px;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #28a745;
+            border-radius: 50%;
+            margin-top: 5px;
+        }
+
+        .buttons-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-call {
+            background-color: #007bff;
+        }
+
+        .btn-whatsapp {
+            background-color: #25d366;
+        }
+
+        .btn-rate {
+            width: 100%;
+            background-color: #ffc107;
+            color: #333;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+
+        .btn-back {
+            width: 100%;
+            background-color: transparent;
+            color: #666;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <!-- نافذة تكبير الصورة المنبثقة -->
-    <div id="imageModal" class="modal" onclick="closeImageModal()">
-        <span class="close-modal">&times;</span>
-        <img class="modal-content" id="modalImg">
-    </div>
+    <div class="card-container">
+        <h2 class="header-title">السواقين المتاحين</h2>
+        <p class="subtitle">وجدنا 1 سواقين متاحين لطلبك</p>
 
-    <!-- شاشة البداية -->
-    <div class="app-container" id="roleScreen">
-        <div class="logo">نقلتك السريعة</div>
-        <div class="subtitle">هل تريد طلب سيارة أم العمل معنا؟</div>
-        <button class="btn-orange" onclick="navigateTo('customerBookingScreen')">أنا زبـون (أطلب خدمة)</button>
-        <button class="btn-dark" onclick="navigateTo('registerScreen')">أنا سـواق (أقدم خدمة)</button>
-    </div>
+        <div class="driver-box">
+            <div class="driver-info-header">
+                <div class="status-dot"></div>
+                
+                <div class="driver-details">
+                    <div class="driver-name-rating">
+                        محمود سيد <span class="rating">4.8 ⭐</span>
+                    </div>
+                    <p class="car-type">ربع نقل</p>
+                    
+                    <!-- رقم الموبايل ظاهر للزبون هنا -->
+                    <p class="driver-phone">📞 01012345678</p>
+                </div>
 
-    <!-- شاشة الزبون: طلب خدمة -->
-    <div class="app-container hidden" id="customerBookingScreen">
-        <div class="logo">طلب سيارة نقل</div>
-        <div class="subtitle">حدد مسارك ونوع السيارة المطلوبة</div>
-        
-        <input type="text" id="pickupLocation" placeholder="مكان التحميل (منين؟)">
-        <input type="text" id="dropoffLocation" placeholder="مكان التنزيل (لفين؟)">
-        
-        <select id="requestedVehicle">
-            <option value="" disabled selected>-- اختر نوع المركبة المطلوبة --</option>
-            <option value="ربع نقل">🛻 ربع نقل (مكشوف)</option>
-            <option value="ربع نقل بصندوق">🚐 ربع نقل (بصندوق مغلق)</option>
-            <option value="تروسيكل">🛵 تروسيكل (للحمولات الخفيفة)</option>
-            <option value="نصف نقل كبير">🚚 نصف نقل كبير (للعفش الكامل)</option>
-            <option value="ونش رفع عفش">🏗️ ونش رفع عفش (للأدوار العليا)</option>
-        </select>
-
-        <button class="btn-orange" onclick="searchAvailableDrivers()">البحث عن سواقين متاحين</button>
-        <button class="btn-back" onclick="history.back()">رجوع</button>
-    </div>
-
-    <!-- شاشة الزبون: السائقين المتاحين (على شكل جدول) -->
-    <div class="app-container hidden" id="availableDriversScreen">
-        <div class="logo">السواقين المتاحين</div>
-        <div class="subtitle" id="searchResultText" style="color: #28a745; font-weight: bold;"></div>
-        
-        <div class="table-container">
-            <table class="drivers-table">
-                <thead>
-                    <tr>
-                        <th>المركبة</th>
-                        <th>الكابتن</th>
-                        <th>التواصل</th>
-                    </tr>
-                </thead>
-                <tbody id="customerDriversTableBody">
-                    <!-- سيتم تعبئة الجدول عبر البرمجة -->
-                </tbody>
-            </table>
-        </div>
-
-        <button class="btn-back" onclick="history.back()">⬅️ تعديل الطلب (رجوع)</button>
-    </div>
-
-    <!-- شاشة تقييم الكابتن -->
-    <div class="app-container hidden" id="ratingScreen">
-        <div class="logo" style="color: #ffc107;">تقييم الرحلة ⭐</div>
-        <div class="subtitle" id="ratingDriverName" style="font-weight: bold; font-size: 16px; color:#333;">تقييم الكابتن: </div>
-        
-        <div class="status-box">
-            <p>هل تم تنفيذ عملية النقل بنجاح؟</p>
-            <div class="status-buttons" style="margin-bottom: 0;">
-                <button id="btnExeYes" class="btn-status bg-green" onclick="toggleExecution(true)">نعم، تم</button>
-                <button id="btnExeNo" class="btn-status bg-red" onclick="toggleExecution(false)">لا، لم يتم</button>
+                <!-- استبدل الرابط بصورة السيارة الحقيقية -->
+                <img src="https://via.placeholder.com/60x40" alt="صورة السيارة" class="driver-image">
             </div>
-        </div>
 
-        <div id="starsSection" class="hidden" style="text-align: right; margin-bottom: 15px;">
-            <p style="font-weight: bold; color: #333; margin-bottom: 5px;">تقييم أداء السائق:</p>
-            <select id="driverRatingStars">
-                <option value="5" selected>⭐⭐⭐⭐⭐ - ممتاز جداً</option>
-                <option value="4">⭐⭐⭐⭐ - جيد جداً</option>
-                <option value="3">⭐⭐⭐ - مقبول</option>
-                <option value="2">⭐⭐ - سيء</option>
-                <option value="1">⭐ - سيء جداً</option>
-            </select>
-        </div>
-
-        <button class="btn-orange" onclick="submitRating()">إرسال التقييم</button>
-        <button class="btn-back" onclick="history.back()">إلغاء (رجوع)</button>
-    </div>
-
-    <!-- شاشة تسجيل السائق -->
-    <div class="app-container hidden" id="registerScreen">
-        <div class="logo">تسجيل سائق جديد</div>
-        <div class="subtitle">يرجى إدخال بياناتك وصورة لمركبتك</div>
-        
-        <input type="text" id="driverName" placeholder="الاسم الثلاثي للسائق">
-        <input type="text" id="driverPhone" placeholder="رقم الموبايل (مثال: 01012345678)">
-        
-        <select id="vehicleType">
-            <option value="" disabled selected>-- اختر نوع المركبة التي تعمل عليها --</option>
-            <option value="ربع نقل">🛻 ربع نقل (مكشوف)</option>
-            <option value="ربع نقل بصندوق">🚐 ربع نقل (بصندوق مغلق)</option>
-            <option value="تروسيكل">🛵 تروسيكل</option>
-            <option value="نصف نقل كبير">🚚 نصف نقل كبير</option>
-            <option value="ونش رفع عفش">🏗️ ونش رفع عفش</option>
-        </select>
-        
-        <label for="vehiclePhoto" class="custom-file-upload">📸 تصوير / رفع صورة المركبة الحقيقية</label>
-        <input type="file" id="vehiclePhoto" accept="image/*" onchange="previewImage(event)">
-        <img id="imagePreview" alt="معاينة الصورة" onclick="openImageModal(this.src)">
-
-        <button class="btn-orange" onclick="submitDriverData()">تأكيد الدخول</button>
-        <button class="btn-back" onclick="history.back()">رجوع</button>
-    </div>
-
-    <!-- لوحة تحكم السائق (على شكل جدول أيضاً) -->
-    <div class="app-container hidden" id="dashboardScreen">
-        <div class="logo">لوحة القيادة</div>
-        <div class="subtitle" id="welcomeMessage">مرحباً يا كابتن</div>
-        
-        <div class="status-box">
-            <p>حالتك الحالية:</p>
-            <div class="status-buttons">
-                <button id="btnAvailable" class="btn-status bg-green active" onclick="setMyStatus('available')">متاح للعمل</button>
-                <button id="btnBusy" class="btn-status bg-red" onclick="setMyStatus('busy')">مشغول</button>
+            <div class="buttons-row">
+                <!-- زرار الواتس (قم بتغيير الرقم للرقم الفعلي) -->
+                <a href="https://wa.me/+201012345678" class="btn btn-whatsapp">💬 واتس</a>
+                
+                <!-- زرار الاتصال (قم بتغيير الرقم للرقم الفعلي) -->
+                <a href="tel:01012345678" class="btn btn-call">📞 اتصال</a>
             </div>
-            <div id="statusMessage" class="msg-available">✓ أنت الآن متاح للعمل وبانتظار الطلبات</div>
+
+            <button class="btn-rate">⭐ هل تمت الرحلة؟ (قيّم الكابتن)</button>
         </div>
 
-        <h4 style="text-align:right; margin-bottom:10px; color:#555;">السائقين في منطقتك:</h4>
-        <div class="table-container">
-            <table class="drivers-table">
-                <thead>
-                    <tr>
-                        <th>الحالة</th>
-                        <th>الكابتن والسيارة</th>
-                    </tr>
-                </thead>
-                <tbody id="dashboardDriversTableBody">
-                    <!-- جدول السائقين في لوحة التحكم -->
-                </tbody>
-            </table>
-        </div>
-
-        <button class="btn-back" onclick="history.back()" style="margin-top:10px;">⬅️ خروج / رجوع</button>
+        <button class="btn-back">⬅️ تعديل الطلب (رجوع)</button>
     </div>
 
-    <script>
-        window.onload = function() {
-            history.replaceState({ screen: 'roleScreen' }, '', '#home');
-        };
-
-        function navigateTo(showId) {
-            document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
-            document.getElementById(showId).classList.remove('hidden');
-            history.pushState({ screen: showId }, '', '#' + showId);
-        }
-
-        window.addEventListener('popstate', function(event) {
-            document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
-            let targetScreen = event.state && event.state.screen ? event.state.screen : 'roleScreen';
-
-            if (targetScreen !== 'dashboardScreen' && myDriverData !== null) {
-                let index = mockDrivers.indexOf(myDriverData);
-                if (index > -1) mockDrivers.splice(index, 1);
-                myDriverData = null;
-                
-                document.getElementById('driverName').value = "";
-                document.getElementById('driverPhone').value = "";
-                document.getElementById('vehicleType').value = "";
-                document.getElementById('imagePreview').style.display = "none";
-                document.getElementById('imagePreview').src = "";
-                document.getElementById('vehiclePhoto').value = "";
-                document.getElementById('btnAvailable').classList.add('active');
-                document.getElementById('btnBusy').classList.remove('active');
-                document.getElementById('statusMessage').innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
-                document.getElementById('statusMessage').className = "msg-available";
-            }
-            
-            document.getElementById(targetScreen).classList.remove('hidden');
-        });
-
-        function openImageModal(imgSrc) {
-            const modal = document.getElementById('imageModal');
-            const modalImg = document.getElementById('modalImg');
-            modal.style.display = "flex";
-            modalImg.src = imgSrc;
-        }
-
-        function closeImageModal() {
-            document.getElementById('imageModal').style.display = "none";
-        }
-
-        let myDriverData = null;
-        let mockDrivers = [
-            { name: "محمود سيد", vehicle: "ربع نقل", status: "green", rate: "4.8", phone: "01000000001", photo: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&q=80" },
-            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red", rate: "4.5", phone: "01000000002", photo: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=300&q=80" },
-            { name: "خالد حسن", vehicle: "تروسيكل", status: "green", rate: "4.9", phone: "01000000003", photo: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=300&q=80" },
-            { name: "مصطفى كمال", vehicle: "نصف نقل كبير", status: "green", rate: "4.7", phone: "01000000004", photo: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=300&q=80" }
-        ];
-
-        let uploadedImageBase64 = "";
-
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    uploadedImageBase64 = e.target.result;
-                    const imgElement = document.getElementById('imagePreview');
-                    imgElement.src = uploadedImageBase64;
-                    imgElement.style.display = 'block';
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // عرض السائقين المتاحين للزبون داخل جدول HTML
-        function searchAvailableDrivers() {
-            const requestedVehicle = document.getElementById('requestedVehicle').value;
-            let pickup = document.getElementById('pickupLocation').value.trim() || "غير محدد";
-            let dropoff = document.getElementById('dropoffLocation').value.trim() || "غير محدد";
-
-            if (!requestedVehicle) {
-                alert("برجاء اختيار نوع المركبة المطلوبة أولاً.");
-                return;
-            }
-
-            const tableBody = document.getElementById('customerDriversTableBody');
-            tableBody.innerHTML = "";
-            let available = mockDrivers.filter(d => d.status === 'green' && d.vehicle === requestedVehicle);
-
-            if (available.length > 0) {
-                document.getElementById('searchResultText').innerText = `وجدنا ${available.length} سواقين متاحين لطلبك`;
-                
-                available.forEach(driver => {
-                    let whatsappPhone = driver.phone.startsWith("0") ? "2" + driver.phone : driver.phone;
-                    let message = `مرحباً كابتن ${driver.name}، أريد نقل عفش من (${pickup}) إلى (${dropoff}). هل أنت متاح؟`;
-                    let encodedMessage = encodeURIComponent(message);
-                    let whatsappLink = `https://wa.me/${whatsappPhone}?text=${encodedMessage}`;
-                    let callLink = `tel:${driver.phone}`;
-
-                    tableBody.innerHTML += `
-                        <tr>
-                            <td>
-                                <img src="${driver.photo}" class="table-img" alt="صورة" onclick="openImageModal('${driver.photo}')">
-                            </td>
-                            <td style="text-align: right;">
-                                <strong>${driver.name}</strong><br>
-                                <span style="font-size: 12px; color: #666;">⭐ ${driver.rate}</span>
-                            </td>
-                            <td>
-                                <div class="action-td">
-                                    <button class="btn-phone" onclick="window.location.href='${callLink}'">📞 اتصال</button>
-                                    <button class="btn-whatsapp" onclick="window.open('${whatsappLink}', '_blank')">💬 واتس</button>
-                                </div>
-                                <button class="btn-rate" onclick="openRatingScreen('${driver.name}')">⭐ تقييم</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } else {
-                document.getElementById('searchResultText').innerText = "";
-                tableBody.innerHTML = `<tr><td colspan="3" style="color:red; font-weight:bold; text-align:center; padding:20px;">عذراً، لا يوجد سائقين متاحين حالياً لهذه المركبة.</td></tr>`;
-            }
-
-            navigateTo('availableDriversScreen');
-        }
-
-        let currentDriverToRate = "";
-        let executionStatus = null;
-
-        function openRatingScreen(driverName) {
-            currentDriverToRate = driverName;
-            document.getElementById('ratingDriverName').innerText = "الكابتن: " + driverName;
-            
-            document.getElementById('btnExeYes').classList.remove('active');
-            document.getElementById('btnExeNo').classList.remove('active');
-            document.getElementById('starsSection').classList.add('hidden');
-            executionStatus = null;
-
-            navigateTo('ratingScreen');
-        }
-
-        function toggleExecution(didExecute) {
-            executionStatus = didExecute;
-            const btnYes = document.getElementById('btnExeYes');
-            const btnNo = document.getElementById('btnExeNo');
-            const starsBox = document.getElementById('starsSection');
-
-            if (didExecute) {
-                btnYes.classList.add('active');
-                btnNo.classList.remove('active');
-                starsBox.classList.remove('hidden');
-            } else {
-                btnNo.classList.add('active');
-                btnYes.classList.remove('active');
-                starsBox.classList.add('hidden');
-            }
-        }
-
-        function submitRating() {
-            if (executionStatus === null) {
-                alert("برجاء تحديد هل تم التنفيذ أم لا أولاً.");
-                return;
-            }
-            if (executionStatus === true) {
-                let stars = document.getElementById('driverRatingStars').value;
-                alert(`تم تأكيد الرحلة وتم إرسال تقييمك (${stars} نجوم) للكابتن ${currentDriverToRate} بنجاح.\nشكراً لثقتك بنا!`);
-            } else {
-                alert(`تم تسجيل أن الرحلة لم تتم مع الكابتن ${currentDriverToRate}.\nنأسف لذلك وسنقوم بمراجعة الأمر.`);
-            }
-            history.back();
-        }
-
-        function submitDriverData() {
-            const name = document.getElementById('driverName').value.trim() || "كابتن";
-            const phone = document.getElementById('driverPhone').value.trim() || "01000000000";
-            const vehicle = document.getElementById('vehicleType').value || "غير محدد";
-            
-            const vehiclePhoto = uploadedImageBase64 !== "" ? uploadedImageBase64 : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&q=80";
-
-            myDriverData = { 
-                name: name + " (أنت)", 
-                vehicle: vehicle, 
-                status: "green", 
-                rate: "جديد", 
-                phone: phone, 
-                photo: vehiclePhoto 
-            };
-            
-            mockDrivers.unshift(myDriverData);
-
-            document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
-
-            renderDashboardDrivers();
-            navigateTo('dashboardScreen'); 
-        }
-
-        function setMyStatus(status) {
-            const btnAvailable = document.getElementById('btnAvailable');
-            const btnBusy = document.getElementById('btnBusy');
-            const msgBox = document.getElementById('statusMessage');
-
-            if(status === 'available') {
-                btnAvailable.classList.add('active');
-                btnBusy.classList.remove('active');
-                myDriverData.status = 'green'; 
-                msgBox.innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
-                msgBox.className = "msg-available";
-            } else {
-                btnBusy.classList.add('active');
-                btnAvailable.classList.remove('active');
-                myDriverData.status = 'red';
-                msgBox.innerText = "✗ أنت غير متاح حالياً ولا تستقبل طلبات";
-                msgBox.className = "msg-busy";
-            }
-            renderDashboardDrivers(); 
-        }
-
-        // عرض السائقين داخل جدول لوحة القيادة
-        function renderDashboardDrivers() {
-            const tableBody = document.getElementById('dashboardDriversTableBody');
-            tableBody.innerHTML = ""; 
-
-            mockDrivers.forEach(driver => {
-                const dotClass = driver.status === "green" ? "dot-green" : "dot-red";
-                const nameStyle = driver === myDriverData ? "color: #ff6600; font-weight: bold;" : "";
-                
-                tableBody.innerHTML += `
-                    <tr>
-                        <td style="text-align: center;"><span class="status-dot ${dotClass}"></span></td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <img src="${driver.photo}" class="table-img" alt="صورة" onclick="openImageModal('${driver.photo}')" style="width: 35px; height: 35px;">
-                                <div>
-                                    <strong style="${nameStyle}">${driver.name}</strong><br>
-                                    <span style="font-size: 12px; color: #666;">${driver.vehicle}</span>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-    </script>
 </body>
 </html>
