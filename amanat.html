@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق نقل العفش - تواصل واتساب واتصال</title>
+    <title>تطبيق نقل العفش - عرض صورة المركبة</title>
     <style>
         body { font-family: Tahoma, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .app-container { background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; box-sizing: border-box; }
@@ -24,11 +24,13 @@
         .btn-dark:hover { background: #1a1a1a; }
         .btn-back { background: transparent; color: #888; border: 1px solid #ddd; margin-top: 10px; font-size: 16px; }
 
-        .action-buttons { display: flex; gap: 8px; }
-        .btn-whatsapp { background: #25D366; color: white; width: auto; padding: 8px 12px; font-size: 14px; margin: 0; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; }
+        .action-buttons { display: flex; gap: 8px; width: 100%; margin-bottom: 8px; }
+        .btn-whatsapp { background: #25D366; color: white; flex: 1; padding: 10px; font-size: 14px; margin: 0; display: inline-flex; justify-content: center; align-items: center; gap: 5px; border-radius: 8px; }
         .btn-whatsapp:hover { background: #20ba59; }
-        .btn-phone { background: #007bff; color: white; width: auto; padding: 8px 12px; font-size: 14px; margin: 0; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; }
+        .btn-phone { background: #007bff; color: white; flex: 1; padding: 10px; font-size: 14px; margin: 0; display: inline-flex; justify-content: center; align-items: center; gap: 5px; border-radius: 8px; }
         .btn-phone:hover { background: #0056b3; }
+        .btn-rate { background: #ffc107; color: #000; width: 100%; padding: 10px; font-size: 14px; border-radius: 8px; margin: 0; display: flex; justify-content: center; align-items: center; gap: 5px; }
+        .btn-rate:hover { background: #e0a800; }
 
         .status-box { background: #f9f9f9; border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid #eee; }
         .status-box p { margin: 0 0 10px 0; font-weight: bold; color: #333; }
@@ -42,8 +44,14 @@
         .msg-available { background-color: #e6f6ea; color: #28a745; border: 1px solid #28a745; }
         .msg-busy { background-color: #fcebeb; color: #dc3545; border: 1px solid #dc3545; }
 
-        .drivers-list { text-align: right; max-height: 280px; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; }
-        .driver-card { background: #fff; border: 1px solid #eee; padding: 12px; margin-bottom: 10px; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .drivers-list { text-align: right; max-height: 290px; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; }
+        .driver-card { background: #fff; border: 1px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .driver-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        
+        /* تصميم صورة المركبة المصغرة */
+        .driver-vehicle-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; }
+        .driver-header-left { display: flex; align-items: center; gap: 10px; }
+
         .driver-info h4 { margin: 0 0 5px 0; color: #333; font-size: 15px; }
         .driver-info span { font-size: 13px; color: #777; }
         .status-dot { width: 15px; height: 15px; border-radius: 50%; transition: 0.3s; }
@@ -92,6 +100,34 @@
         <div class="drivers-list" id="customerDriversList"></div>
 
         <button class="btn-back" onclick="history.back()">⬅️ تعديل الطلب (رجوع)</button>
+    </div>
+
+    <!-- شاشة الزبون: تقييم الكابتن -->
+    <div class="app-container hidden" id="ratingScreen">
+        <div class="logo" style="color: #ffc107;">تقييم الرحلة ⭐</div>
+        <div class="subtitle" id="ratingDriverName" style="font-weight: bold; font-size: 16px; color:#333;">تقييم الكابتن: </div>
+        
+        <div class="status-box">
+            <p>هل تم تنفيذ عملية النقل بنجاح؟</p>
+            <div class="status-buttons" style="margin-bottom: 0;">
+                <button id="btnExeYes" class="btn-status bg-green" onclick="toggleExecution(true)">نعم، تم</button>
+                <button id="btnExeNo" class="btn-status bg-red" onclick="toggleExecution(false)">لا، لم يتم</button>
+            </div>
+        </div>
+
+        <div id="starsSection" class="hidden" style="text-align: right; margin-bottom: 15px;">
+            <p style="font-weight: bold; color: #333; margin-bottom: 5px;">تقييم أداء السائق:</p>
+            <select id="driverRatingStars">
+                <option value="5" selected>⭐⭐⭐⭐⭐ - ممتاز جداً</option>
+                <option value="4">⭐⭐⭐⭐ - جيد جداً</option>
+                <option value="3">⭐⭐⭐ - مقبول</option>
+                <option value="2">⭐⭐ - سيء</option>
+                <option value="1">⭐ - سيء جداً</option>
+            </select>
+        </div>
+
+        <button class="btn-orange" onclick="submitRating()">إرسال التقييم</button>
+        <button class="btn-back" onclick="history.back()">إلغاء (رجوع)</button>
     </div>
 
     <!-- شاشة تسجيل السائق -->
@@ -163,6 +199,7 @@
                 document.getElementById('driverPhone').value = "";
                 document.getElementById('vehicleType').value = "";
                 document.getElementById('imagePreview').style.display = "none";
+                document.getElementById('imagePreview').src = "";
                 document.getElementById('btnAvailable').classList.add('active');
                 document.getElementById('btnBusy').classList.remove('active');
                 document.getElementById('statusMessage').innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
@@ -172,16 +209,16 @@
             document.getElementById(targetScreen).classList.remove('hidden');
         });
 
-        // قاعدة بيانات السائقين مع تعديل اسم "نصف نقل كبير"
         let myDriverData = null;
+        // أضفنا روابط صور افتراضية (أيقونات) للسائقين الوهميين للتجربة
         let mockDrivers = [
-            { name: "محمود سيد", vehicle: "ربع نقل", status: "green", rate: "4.8", phone: "01000000001" },
-            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red", rate: "4.5", phone: "01000000002" },
-            { name: "خالد حسن", vehicle: "تروسيكل", status: "green", rate: "4.9", phone: "01000000003" },
-            { name: "مصطفى كمال", vehicle: "نصف نقل كبير", status: "green", rate: "4.7", phone: "01000000004" }
+            { name: "محمود سيد", vehicle: "ربع نقل", status: "green", rate: "4.8", phone: "01000000001", photo: "https://cdn-icons-png.flaticon.com/512/3097/3097180.png" },
+            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red", rate: "4.5", phone: "01000000002", photo: "https://cdn-icons-png.flaticon.com/512/2065/2065116.png" },
+            { name: "خالد حسن", vehicle: "تروسيكل", status: "green", rate: "4.9", phone: "01000000003", photo: "https://cdn-icons-png.flaticon.com/512/1986/1986915.png" },
+            { name: "مصطفى كمال", vehicle: "نصف نقل كبير", status: "green", rate: "4.7", phone: "01000000004", photo: "https://cdn-icons-png.flaticon.com/512/1429/1429408.png" }
         ];
 
-        // --- دوال الزبون ---
+        // --- دوال الزبون والبحث ---
         function searchAvailableDrivers() {
             const requestedVehicle = document.getElementById('requestedVehicle').value;
             let pickup = document.getElementById('pickupLocation').value.trim() || "غير محدد";
@@ -201,25 +238,31 @@
                 
                 available.forEach(driver => {
                     let whatsappPhone = driver.phone.startsWith("0") ? "2" + driver.phone : driver.phone;
-                    let message = `مرحباً كابتن ${driver.name}، أريد نقل عفش من (${pickup}) إلى (${dropoff}). هل أنت متاح لمعرفة التكلفة؟`;
+                    let message = `مرحباً كابتن ${driver.name}، أريد نقل عفش من (${pickup}) إلى (${dropoff}). هل أنت متاح؟`;
                     let encodedMessage = encodeURIComponent(message);
                     let whatsappLink = `https://wa.me/${whatsappPhone}?text=${encodedMessage}`;
                     let callLink = `tel:${driver.phone}`;
 
+                    // عرض صورة المركبة بجانب اسم السائق
                     listContainer.innerHTML += `
                         <div class="driver-card">
-                            <div class="driver-info">
-                                <h4>${driver.name} ⭐ ${driver.rate}</h4>
-                                <span>${driver.vehicle}</span>
+                            <div class="driver-header">
+                                <div class="driver-header-left">
+                                    <img src="${driver.photo}" class="driver-vehicle-img" alt="صورة المركبة">
+                                    <div class="driver-info">
+                                        <h4>${driver.name} ⭐ ${driver.rate}</h4>
+                                        <span>${driver.vehicle}</span>
+                                    </div>
+                                </div>
+                                <div class="status-dot dot-green"></div>
                             </div>
+                            
                             <div class="action-buttons">
-                                <button class="btn-phone" onclick="window.location.href='${callLink}'">
-                                    📞 اتصال
-                                </button>
-                                <button class="btn-whatsapp" onclick="window.open('${whatsappLink}', '_blank')">
-                                    💬 واتس
-                                </button>
+                                <button class="btn-phone" onclick="window.location.href='${callLink}'">📞 اتصال</button>
+                                <button class="btn-whatsapp" onclick="window.open('${whatsappLink}', '_blank')">💬 واتس</button>
                             </div>
+                            
+                            <button class="btn-rate" onclick="openRatingScreen('${driver.name}')">⭐ هل تمت الرحلة؟ (قيّم الكابتن)</button>
                         </div>
                     `;
                 });
@@ -229,6 +272,53 @@
             }
 
             navigateTo('availableDriversScreen');
+        }
+
+        // --- دوال التقييم ---
+        let currentDriverToRate = "";
+        let executionStatus = null;
+
+        function openRatingScreen(driverName) {
+            currentDriverToRate = driverName;
+            document.getElementById('ratingDriverName').innerText = "الكابتن: " + driverName;
+            
+            document.getElementById('btnExeYes').classList.remove('active');
+            document.getElementById('btnExeNo').classList.remove('active');
+            document.getElementById('starsSection').classList.add('hidden');
+            executionStatus = null;
+
+            navigateTo('ratingScreen');
+        }
+
+        function toggleExecution(didExecute) {
+            executionStatus = didExecute;
+            const btnYes = document.getElementById('btnExeYes');
+            const btnNo = document.getElementById('btnExeNo');
+            const starsBox = document.getElementById('starsSection');
+
+            if (didExecute) {
+                btnYes.classList.add('active');
+                btnNo.classList.remove('active');
+                starsBox.classList.remove('hidden');
+            } else {
+                btnNo.classList.add('active');
+                btnYes.classList.remove('active');
+                starsBox.classList.add('hidden');
+            }
+        }
+
+        function submitRating() {
+            if (executionStatus === null) {
+                alert("برجاء تحديد هل تم التنفيذ أم لا أولاً.");
+                return;
+            }
+            if (executionStatus === true) {
+                let stars = document.getElementById('driverRatingStars').value;
+                alert(`تم تأكيد الرحلة وتم إرسال تقييمك (${stars} نجوم) للكابتن ${currentDriverToRate} بنجاح.\nشكراً لثقتك بنا!`);
+            } else {
+                alert(`تم تسجيل أن الرحلة لم تتم مع الكابتن ${currentDriverToRate}.\nنأسف لذلك وسنقوم بمراجعة الأمر.`);
+            }
+            history.back();
         }
 
         // --- دوال السواق ---
@@ -246,8 +336,12 @@
             const name = document.getElementById('driverName').value.trim() || "كابتن";
             const phone = document.getElementById('driverPhone').value.trim() || "01000000000";
             const vehicle = document.getElementById('vehicleType').value || "غير محدد";
+            
+            // جلب الصورة التي رفعها السائق (أو وضع أيقونة افتراضية إذا لم يرفع)
+            const imgPreview = document.getElementById('imagePreview');
+            const photoData = imgPreview.style.display === 'block' ? imgPreview.src : "https://cdn-icons-png.flaticon.com/512/3097/3097180.png";
 
-            myDriverData = { name: name + " (أنت)", vehicle: vehicle, status: "green", rate: "جديد", phone: phone };
+            myDriverData = { name: name + " (أنت)", vehicle: vehicle, status: "green", rate: "جديد", phone: phone, photo: photoData };
             mockDrivers.unshift(myDriverData);
 
             document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
@@ -285,13 +379,19 @@
                 const dotClass = driver.status === "green" ? "dot-green" : "dot-red";
                 const nameStyle = driver === myDriverData ? "color: #ff6600; font-weight: bold;" : "";
                 
+                // عرض الصورة أيضاً في لوحة تحكم السائقين
                 listContainer.innerHTML += `
-                    <div class="driver-card">
-                        <div class="driver-info">
-                            <h4 style="${nameStyle}">${driver.name}</h4>
-                            <span>${driver.vehicle}</span>
+                    <div class="driver-card" style="padding:12px; gap:0;">
+                        <div class="driver-header">
+                            <div class="driver-header-left">
+                                <img src="${driver.photo}" class="driver-vehicle-img" alt="صورة المركبة" style="width: 45px; height: 45px;">
+                                <div class="driver-info">
+                                    <h4 style="${nameStyle}">${driver.name}</h4>
+                                    <span>${driver.vehicle}</span>
+                                </div>
+                            </div>
+                            <div class="status-dot ${dotClass}"></div>
                         </div>
-                        <div class="status-dot ${dotClass}"></div>
                     </div>
                 `;
             });
