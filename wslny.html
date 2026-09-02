@@ -36,14 +36,13 @@
                 <span class="text-orange-500 text-2xl">📦</span> أنا زبون (أطلب عربية)
             </button>
 
-            <!-- تم التعديل هنا: يفتح شاشة وسيطة للسائق لاختيار نوع الدخول -->
             <button onclick="showView('driverChoiceView')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl shadow-lg transition duration-300 text-lg flex items-center justify-center gap-3">
                 <span class="text-gray-900 text-2xl">🚚</span> أنا سواق (دخول / تسجيل)
             </button>
         </div>
     </div>
 
-    <!-- 2. (جديد) واجهة اختيار السائق: دخول أم تسجيل جديد -->
+    <!-- 2. واجهة اختيار السائق: دخول أم تسجيل جديد -->
     <div id="driverChoiceView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-md p-8 text-center border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">بوابة السائقين</h2>
@@ -63,7 +62,7 @@
         </div>
     </div>
 
-    <!-- 3. (جديد) واجهة تسجيل دخول السائق (للسائق المسجل مسبقاً) -->
+    <!-- 3. واجهة تسجيل دخول السائق (للسائق المسجل مسبقاً) -->
     <div id="driverLoginView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="mb-6 text-center">
             <h2 class="text-2xl font-bold text-gray-800">تسجيل الدخول</h2>
@@ -197,44 +196,52 @@
         </button>
     </div>
 
-    <!-- سكريبت التنقل والرجوع الذكي -->
+    <!-- سكريبت التنقل والرجوع الاحترافي المرتبط بأسهم الهاتف -->
     <script>
-        window.onload = function() {
-            history.replaceState({ view: 'homeView' }, '', '#homeView');
-        };
-
-        function showView(viewId, pushToHistory = true) {
-            document.getElementById('homeView').classList.add('hidden');
-            document.getElementById('driverChoiceView').classList.add('hidden');
-            document.getElementById('driverLoginView').classList.add('hidden');
-            document.getElementById('driverRegisterView').classList.add('hidden');
-            document.getElementById('driverActiveView').classList.add('hidden');
-            document.getElementById('customerView').classList.add('hidden');
-            document.getElementById('driversListView').classList.add('hidden');
-            
-            document.getElementById(viewId).classList.remove('hidden');
-
-            if (pushToHistory) {
-                history.pushState({ view: viewId }, '', '#' + viewId);
-            }
+        // دالة تغيير الرابط (لتشغيل الرجوع التلقائي في الموبايل)
+        function showView(viewId) {
+            window.location.hash = viewId;
         }
 
-        window.addEventListener('popstate', function(event) {
-            if (event.state && event.state.view) {
-                showView(event.state.view, false);
+        // الاستماع لتغيير الرابط (Hash) لإخفاء وإظهار الشاشات
+        window.addEventListener('hashchange', function() {
+            let viewId = window.location.hash.replace('#', '');
+            if (!viewId) viewId = 'homeView';
+
+            // إخفاء جميع الشاشات
+            const allViews = ['homeView', 'driverChoiceView', 'driverLoginView', 'driverRegisterView', 'driverActiveView', 'customerView', 'driversListView'];
+            allViews.forEach(v => {
+                const el = document.getElementById(v);
+                if(el) el.classList.add('hidden');
+            });
+            
+            // إظهار الشاشة المطلوبة فقط
+            const targetView = document.getElementById(viewId);
+            if (targetView) {
+                targetView.classList.remove('hidden');
             } else {
-                showView('homeView', false);
+                document.getElementById('homeView').classList.remove('hidden');
             }
         });
 
+        // عند تحميل التطبيق لأول مرة
+        window.addEventListener('load', () => {
+            if (!window.location.hash) {
+                window.location.hash = 'homeView';
+            } else {
+                window.dispatchEvent(new Event('hashchange'));
+            }
+        });
+
+        // دعم ميزة السحب للرجوع بالإصبع
         let touchstartX = 0; let touchendX = 0;
         document.addEventListener('touchstart', e => { touchstartX = e.changedTouches[0].screenX; }, false);
         document.addEventListener('touchend', e => { touchendX = e.changedTouches[0].screenX; handleSwipe(); }, false);
         function handleSwipe() {
             const screenW = window.innerWidth;
             if ((touchstartX < 50 && touchendX > touchstartX + 60) || (screenW - touchstartX < 50 && touchendX < touchstartX - 60)) {
-                if (document.getElementById('homeView').classList.contains('hidden')) {
-                    window.history.back();
+                if (window.location.hash !== '#homeView' && window.location.hash !== '') {
+                    window.history.back(); // يحاكي زر الرجوع في الهاتف
                 }
             }
         }
@@ -261,7 +268,7 @@
         const db = getDatabase(app);
         const auth = getAuth(app);
         
-        let currentDriverActiveRef = null; // مسار السائق في قائمة "المتصلين"
+        let currentDriverActiveRef = null; 
 
         signInAnonymously(auth).catch((error) => {
             const loader = document.getElementById('auth-loader');
@@ -271,7 +278,6 @@
             }
         });
         
-        // الدخول التلقائي لو لم يسجل خروج
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('auth-loader').style.display = 'none';
@@ -281,12 +287,11 @@
                 
                 if (isActive === 'true' && savedInfoStr) {
                     const savedInfo = JSON.parse(savedInfoStr);
-                    activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, false);
+                    activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond);
                 }
             }
         });
 
-        // 1. تسجيل سائق جديد (حفظ دائم + تفعيل)
         window.registerDriver = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnRegister');
@@ -298,19 +303,12 @@
             const vCond = document.getElementById('regDriverVCond').value;
 
             const driverKey = "driver_" + phone;
-            
-            // حفظ دائم في قاعدة البيانات للمشتركين
             const permanentRef = ref(db, 'wslny_app/registered_drivers/' + driverKey);
             
             set(permanentRef, {
-                name: name,
-                phone: phone,
-                vType: vType,
-                vCond: vCond,
-                joinDate: Date.now()
+                name: name, phone: phone, vType: vType, vCond: vCond, joinDate: Date.now()
             }).then(() => {
-                // تفعيل الجلسة
-                activateDriverSession(name, phone, vType, vCond, true);
+                activateDriverSession(name, phone, vType, vCond);
                 btn.innerText = "حفظ البيانات وبدء العمل";
             }).catch(err => {
                 alert("خطأ: " + err.message);
@@ -318,7 +316,6 @@
             });
         };
 
-        // 2. تسجيل دخول سائق مسجل مسبقاً (جلب بياناته من السحابة)
         window.loginDriver = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnLogin');
@@ -333,8 +330,7 @@
             get(permanentRef).then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    // تفعيل الجلسة بناءً على البيانات القادمة من السحابة
-                    activateDriverSession(data.name, data.phone, data.vType, data.vCond, true);
+                    activateDriverSession(data.name, data.phone, data.vType, data.vCond);
                     btn.innerText = "دخول وبدء العمل";
                 } else {
                     alert("رقم الهاتف غير مسجل! يرجى التسجيل كمستخدم جديد أولاً.");
@@ -346,30 +342,22 @@
             });
         };
 
-        // دالة مركزية لتفعيل جلسة السائق ورفعه على الخريطة للزبائن
-        function activateDriverSession(name, phone, vType, vCond, pushHistory = true) {
+        function activateDriverSession(name, phone, vType, vCond) {
             localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond }));
             localStorage.setItem('wslny_is_active', 'true');
             
             const lastStatus = localStorage.getItem('wslny_driver_status') || 'active';
-            
             const driverKey = "driver_" + phone;
             currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/' + driverKey);
 
             set(currentDriverActiveRef, {
-                name: name,
-                phone: phone,
-                vType: vType,
-                vCond: vCond,
-                status: lastStatus,
-                timestamp: Date.now()
+                name: name, phone: phone, vType: vType, vCond: vCond, status: lastStatus, timestamp: Date.now()
             }).then(() => {
                 updateDriverUI(lastStatus);
-                showView('driverActiveView', pushHistory);
+                showView('driverActiveView');
             });
         }
 
-        // تحديث ألوان لوحة القيادة
         window.updateDriverUI = function(status) {
             const icon = document.getElementById('statusIcon');
             const title = document.getElementById('statusTitle');
@@ -406,7 +394,6 @@
             if(currentDriverActiveRef) {
                 update(currentDriverActiveRef, { status: newStatus });
             }
-            
             localStorage.setItem('wslny_driver_status', newStatus);
             updateDriverUI(newStatus);
         };
@@ -419,13 +406,12 @@
 
         window.goOffline = function() {
             if(currentDriverActiveRef) {
-                remove(currentDriverActiveRef); // نحذفه من "المتصلين" فقط، وليس من "المسجلين"
+                remove(currentDriverActiveRef); 
             }
             localStorage.setItem('wslny_is_active', 'false');
-            window.history.back(); // الرجوع الذكي
+            window.location.hash = 'homeView'; 
         };
 
-        // بحث الزبون
         window.fetchDriversFromCloud = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSearch');
