@@ -76,7 +76,8 @@
         <div class="logo">نقلتك السريعة</div>
         <div class="subtitle">هل تريد طلب سيارة أم العمل معنا؟</div>
         <button class="btn-orange" onclick="navigateTo('customerBookingScreen')">أنا زبـون (أطلب خدمة)</button>
-        <button class="btn-dark" onclick="navigateTo('registerScreen')">أنا سـواق (أقدم خدمة)</button>
+        <!-- التعديل هنا: دالة ذكية تفحص إذا كان مسجل دخول أم لا -->
+        <button class="btn-dark" onclick="checkDriverLogin()">أنا سـواق (أقدم خدمة)</button>
     </div>
 
     <!-- شاشة الزبون -->
@@ -97,7 +98,7 @@
         </select>
 
         <button class="btn-orange" onclick="searchAvailableDrivers()">البحث عن سواقين متاحين</button>
-        <button class="btn-back" onclick="navigateTo('roleScreen')">رجوع</button>
+        <button class="btn-back" onclick="history.back()">رجوع</button>
     </div>
 
     <!-- شاشة عرض السائقين للزبون -->
@@ -118,7 +119,7 @@
                 </tbody>
             </table>
         </div>
-        <button class="btn-back" onclick="navigateTo('customerBookingScreen')">⬅️ تعديل الطلب (رجوع)</button>
+        <button class="btn-back" onclick="history.back()">⬅️ تعديل الطلب (رجوع)</button>
     </div>
 
     <!-- شاشة التقييم -->
@@ -146,7 +147,7 @@
         </div>
 
         <button class="btn-orange" onclick="submitRating()">إرسال التقييم</button>
-        <button class="btn-back" onclick="navigateTo('availableDriversScreen')">إلغاء (رجوع)</button>
+        <button class="btn-back" onclick="history.back()">إلغاء (رجوع)</button>
     </div>
 
     <!-- شاشة تسجيل السائق -->
@@ -171,7 +172,7 @@
         <img id="imagePreview" alt="معاينة الصورة" onclick="openImageModal(this.src)">
 
         <button id="btnSubmitDriver" class="btn-orange" onclick="submitDriverData()">تأكيد الدخول</button>
-        <button class="btn-back" onclick="navigateTo('roleScreen')">رجوع</button>
+        <button class="btn-back" onclick="history.back()">رجوع</button>
     </div>
 
     <!-- لوحة تحكم السائق -->
@@ -202,11 +203,12 @@
             </table>
         </div>
 
-        <button class="btn-back" onclick="logoutDriver()" style="margin-top:10px; color: #dc3545; border-color: #dc3545;">🚪 تسجيل خروج نهائي</button>
+        <!-- التعديل هنا: إضافة زر رجوع عادي للشاشة الرئيسية -->
+        <button class="btn-back" onclick="navigateTo('roleScreen')" style="margin-top:10px;">⬅️ رجوع للقائمة الرئيسية</button>
+        <button class="btn-back" onclick="logoutDriver()" style="margin-top:5px; color: #dc3545; border-color: #dc3545; font-size: 14px;">🚪 تسجيل خروج نهائي</button>
     </div>
 
     <script>
-        // رابط قاعدة البيانات الخاصة بك مباشرة (REST API)
         const DB_URL = "https://azemaa-proo-default-rtdb.firebaseio.com/drivers_app/active_drivers";
 
         let onlineDrivers = [];
@@ -215,10 +217,8 @@
         let executionStatus = null;
         let myDriverId = localStorage.getItem('myDriverId') || null;
 
-        // دالة جلب البيانات من السحابة تعمل في أي APK بدون مكتبات
         async function fetchDriversData() {
             try {
-                // منع التخزين المؤقت (Cache) لضمان الحصول على بيانات جديدة دائماً
                 const response = await fetch(DB_URL + ".json?_=" + new Date().getTime(), { cache: 'no-store' });
                 const data = await response.json();
                 
@@ -234,7 +234,6 @@
                 indicator.style.background = "#d4edda";
                 indicator.style.color = "#155724";
 
-                // تحديث الشاشات لو كانت مفتوحة
                 if (!document.getElementById('dashboardScreen').classList.contains('hidden')) {
                     renderDashboardDrivers();
                 }
@@ -251,7 +250,6 @@
             }
         }
 
-        // تشغيل الجلب التلقائي كل 4 ثواني لمحاكاة التحديث اللحظي
         fetchDriversData();
         setInterval(fetchDriversData, 4000);
 
@@ -270,12 +268,20 @@
             }
         };
 
+        // دالة ذكية لفحص حالة السائق عند الضغط على زر "أنا سواق"
+        function checkDriverLogin() {
+            if (myDriverId) {
+                navigateTo('dashboardScreen');
+            } else {
+                navigateTo('registerScreen');
+            }
+        }
+
         function navigateTo(showId) {
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             document.getElementById(showId).classList.remove('hidden');
             safePushState({ screen: showId }, '', '#' + showId);
             
-            // عند التنقل للصفحات المهمة، نقوم بتحديث البيانات فوراً
             if (showId === 'availableDriversScreen' || showId === 'dashboardScreen') {
                 fetchDriversData();
             }
@@ -283,10 +289,7 @@
 
         window.addEventListener('popstate', function(event) {
             let targetScreen = event.state && event.state.screen ? event.state.screen : 'roleScreen';
-            if (targetScreen === 'roleScreen' && myDriverId) {
-                targetScreen = 'dashboardScreen';
-                safePushState({ screen: 'dashboardScreen' }, '', '#dashboardScreen');
-            }
+            
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             document.getElementById(targetScreen).classList.remove('hidden');
         });
@@ -295,7 +298,6 @@
             if(confirm("هل أنت متأكد أنك تريد تسجيل الخروج؟ (سيتم مسحك من قائمة السائقين المتاحين)")) {
                 if (myDriverId) {
                     try {
-                        // مسح البيانات من السحابة عبر REST API
                         await fetch(`${DB_URL}/${myDriverId}.json`, { method: 'DELETE' });
                     } catch(e) { console.error(e); }
                 }
@@ -309,7 +311,11 @@
                 document.getElementById('imagePreview').style.display = "none";
                 document.getElementById('imagePreview').src = "";
                 uploadedImageBase64 = "";
-                navigateTo('roleScreen');
+                
+                document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
+                document.getElementById('roleScreen').classList.remove('hidden');
+                safeReplaceState({ screen: 'roleScreen' }, '', '#home');
+                
                 fetchDriversData();
             }
         }
@@ -484,7 +490,6 @@
             };
             
             try {
-                // رفع البيانات عبر REST API
                 await fetch(`${DB_URL}/${myDriverId}.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -498,7 +503,7 @@
                 btnSubmit.innerText = "تأكيد الدخول";
                 btnSubmit.classList.remove('btn-loading');
                 
-                await fetchDriversData(); // تحديث القائمة فوراً
+                await fetchDriversData(); 
                 navigateTo('dashboardScreen'); 
 
             } catch (err) {
@@ -530,7 +535,6 @@
             }
             
             try {
-                // تحديث الحالة عبر REST API
                 await fetch(`${DB_URL}/${myDriverId}.json`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
