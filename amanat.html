@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق نقل العفش</title>
+    <title>تطبيق نقل العفش - تواصل واتساب</title>
     <style>
         body { font-family: Tahoma, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .app-container { background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; box-sizing: border-box; }
@@ -22,8 +22,11 @@
         .btn-orange:hover { background: #e65c00; }
         .btn-dark { background: #333; color: white; }
         .btn-dark:hover { background: #1a1a1a; }
-        .btn-green { background: #28a745; color: white; width: auto; padding: 8px 15px; font-size: 14px; margin: 0; }
         .btn-back { background: transparent; color: #888; border: 1px solid #ddd; margin-top: 10px; font-size: 16px; }
+
+        /* زر الواتساب */
+        .btn-whatsapp { background: #25D366; color: white; width: auto; padding: 8px 15px; font-size: 15px; margin: 0; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; }
+        .btn-whatsapp:hover { background: #20ba59; }
 
         .status-box { background: #f9f9f9; border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid #eee; }
         .status-box p { margin: 0 0 10px 0; font-weight: bold; color: #333; }
@@ -50,7 +53,7 @@
 </head>
 <body>
 
-    <!-- 1. شاشة البداية -->
+    <!-- شاشة البداية -->
     <div class="app-container" id="roleScreen">
         <div class="logo">نقلتك السريعة</div>
         <div class="subtitle">هل تريد طلب سيارة أم العمل معنا؟</div>
@@ -58,8 +61,6 @@
         <button class="btn-dark" onclick="navigateTo('registerScreen')">أنا سـواق (أقدم خدمة)</button>
     </div>
 
-    <!-- ================= مسار الزبون ================= -->
-    
     <!-- شاشة الزبون: طلب خدمة -->
     <div class="app-container hidden" id="customerBookingScreen">
         <div class="logo">طلب سيارة نقل</div>
@@ -86,21 +87,18 @@
         <div class="logo">السواقين المتاحين</div>
         <div class="subtitle" id="searchResultText" style="color: #28a745; font-weight: bold;"></div>
         
-        <div class="drivers-list" id="customerDriversList">
-            <!-- سيتم إضافة السائقين المتاحين هنا -->
-        </div>
+        <div class="drivers-list" id="customerDriversList"></div>
 
         <button class="btn-back" onclick="history.back()">⬅️ تعديل الطلب (رجوع)</button>
     </div>
-
-    <!-- ================= مسار السواق ================= -->
 
     <!-- شاشة تسجيل السائق -->
     <div class="app-container hidden" id="registerScreen">
         <div class="logo">تسجيل سائق جديد</div>
         <div class="subtitle">يرجى إدخال بياناتك وصورة لمركبتك</div>
         
-        <input type="text" id="driverName" placeholder="الاسم الثلاثي للسائق (اختياري للتجربة)">
+        <input type="text" id="driverName" placeholder="الاسم الثلاثي للسائق">
+        <input type="text" id="driverPhone" placeholder="رقم الموبايل (واتساب) مثال: 201012345678">
         
         <select id="vehicleType">
             <option value="" disabled selected>-- اختر نوع المركبة --</option>
@@ -139,60 +137,54 @@
         <button class="btn-back" onclick="history.back()" style="margin-top:10px;">⬅️ خروج / رجوع</button>
     </div>
 
-    <!-- ================= الأكواد البرمجية ================= -->
     <script>
-        // إعداد الصفحة الأولى للرجوع
         window.onload = function() {
             history.replaceState({ screen: 'roleScreen' }, '', '#home');
         };
 
-        // دالة التنقل الموحدة
         function navigateTo(showId) {
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             document.getElementById(showId).classList.remove('hidden');
             history.pushState({ screen: showId }, '', '#' + showId);
         }
 
-        // التحكم في الرجوع وزر الهاتف
         window.addEventListener('popstate', function(event) {
             document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             let targetScreen = event.state && event.state.screen ? event.state.screen : 'roleScreen';
 
-            // تنظيف بيانات السائق عند الخروج من اللوحة
             if (targetScreen !== 'dashboardScreen' && myDriverData !== null) {
                 let index = mockDrivers.indexOf(myDriverData);
                 if (index > -1) mockDrivers.splice(index, 1);
                 myDriverData = null;
                 
                 document.getElementById('driverName').value = "";
+                document.getElementById('driverPhone').value = "";
                 document.getElementById('vehicleType').value = "";
                 document.getElementById('imagePreview').style.display = "none";
-                document.getElementById('vehiclePhoto').value = "";
-                
                 document.getElementById('btnAvailable').classList.add('active');
                 document.getElementById('btnBusy').classList.remove('active');
-                let msgBox = document.getElementById('statusMessage');
-                msgBox.innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
-                msgBox.className = "msg-available";
+                document.getElementById('statusMessage').innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
+                document.getElementById('statusMessage').className = "msg-available";
             }
             
             document.getElementById(targetScreen).classList.remove('hidden');
         });
 
-        // قاعدة بيانات وهمية تحتوي على تقييمات للسائقين
+        // قاعدة بيانات السائقين مضاف إليها أرقام هواتف للتجربة (يُفضل كتابة الرقم بمفتاح الدولة مثل 20 لمصر)
         let myDriverData = null;
         let mockDrivers = [
-            { name: "محمود سيد", vehicle: "ربع نقل", status: "green", rate: "4.8" },
-            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red", rate: "4.5" },
-            { name: "خالد حسن", vehicle: "تروسيكل", status: "green", rate: "4.9" },
-            { name: "مصطفى كمال", vehicle: "نصف نقل", status: "green", rate: "4.7" },
-            { name: "سعد متولي", vehicle: "ربع نقل بصندوق", status: "red", rate: "4.2" },
-            { name: "علي رمضان", vehicle: "ربع نقل", status: "green", rate: "5.0" }
+            { name: "محمود سيد", vehicle: "ربع نقل", status: "green", rate: "4.8", phone: "201000000001" },
+            { name: "أحمد عبد الله", vehicle: "ونش رفع عفش", status: "red", rate: "4.5", phone: "201000000002" },
+            { name: "خالد حسن", vehicle: "تروسيكل", status: "green", rate: "4.9", phone: "201000000003" },
+            { name: "مصطفى كمال", vehicle: "نصف نقل", status: "green", rate: "4.7", phone: "201000000004" }
         ];
 
         // --- دوال الزبون ---
         function searchAvailableDrivers() {
             const requestedVehicle = document.getElementById('requestedVehicle').value;
+            let pickup = document.getElementById('pickupLocation').value.trim() || "غير محدد";
+            let dropoff = document.getElementById('dropoffLocation').value.trim() || "غير محدد";
+
             if (!requestedVehicle) {
                 alert("برجاء اختيار نوع المركبة المطلوبة أولاً.");
                 return;
@@ -200,20 +192,27 @@
 
             const listContainer = document.getElementById('customerDriversList');
             listContainer.innerHTML = "";
-            
-            // فلترة السائقين: يجب أن يكون متاحاً (green) ونفس نوع المركبة المطلوبة
             let available = mockDrivers.filter(d => d.status === 'green' && d.vehicle === requestedVehicle);
 
             if (available.length > 0) {
                 document.getElementById('searchResultText').innerText = `وجدنا ${available.length} سواقين متاحين لطلبك`;
+                
                 available.forEach(driver => {
+                    // رسالة الواتساب الجاهزة للإرسال
+                    let message = `مرحباً كابتن ${driver.name}، أريد نقل عفش من (${pickup}) إلى (${dropoff}). هل أنت متاح لمعرفة التكلفة؟`;
+                    let encodedMessage = encodeURIComponent(message);
+                    let whatsappLink = `https://wa.me/${driver.phone}?text=${encodedMessage}`;
+
+                    // زر الواتساب بدلاً من اطلب الآن
                     listContainer.innerHTML += `
                         <div class="driver-card">
                             <div class="driver-info">
                                 <h4>${driver.name} ⭐ ${driver.rate}</h4>
                                 <span>${driver.vehicle}</span>
                             </div>
-                            <button class="btn-green" onclick="alert('تم إرسال طلبك للكابتن ${driver.name}\\nسيقوم بالتواصل معك قريباً.')">اطلب الآن</button>
+                            <button class="btn-whatsapp" onclick="window.open('${whatsappLink}', '_blank')">
+                                💬 تواصل واتساب
+                            </button>
                         </div>
                     `;
                 });
@@ -237,10 +236,11 @@
         }
 
         function submitDriverData() {
-            const name = document.getElementById('driverName').value.trim() || "كابتن (بدون اسم)";
+            const name = document.getElementById('driverName').value.trim() || "كابتن";
+            const phone = document.getElementById('driverPhone').value.trim() || "201000000000";
             const vehicle = document.getElementById('vehicleType').value || "غير محدد";
 
-            myDriverData = { name: name + " (أنت)", vehicle: vehicle, status: "green", rate: "جديد" };
+            myDriverData = { name: name + " (أنت)", vehicle: vehicle, status: "green", rate: "جديد", phone: phone };
             mockDrivers.unshift(myDriverData);
 
             document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
