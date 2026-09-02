@@ -44,9 +44,8 @@
 
     <!-- 2. واجهة السواق (تسجيل) -->
     <div id="driverView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
-        <div class="flex justify-between items-center mb-6">
+        <div class="mb-6 text-center">
             <h2 class="text-2xl font-bold text-gray-800">تسجيل كسائق أونلاين</h2>
-            <button onclick="showView('homeView')" class="text-orange-500 font-bold hover:text-orange-600">الرجوع</button>
         </div>
 
         <form onsubmit="activateDriver(event)" class="space-y-5">
@@ -76,9 +75,16 @@
                 </select>
             </div>
 
-            <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 text-orange-500 font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
-                بدء العمل (مزامنة للسحابة)
-            </button>
+            <div class="pt-2 space-y-3">
+                <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 text-orange-500 font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
+                    بدء العمل (مزامنة للسحابة)
+                </button>
+                
+                <!-- زر الرجوع بالأسفل -->
+                <button type="button" onclick="showView('homeView')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
+                    الرجوع للرئيسية
+                </button>
+            </div>
         </form>
     </div>
 
@@ -96,15 +102,14 @@
         </div>
 
         <button onclick="goOffline()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
-            إيقاف العمل (حذف من السحابة)
+            إيقاف العمل (الرجوع للرئيسية)
         </button>
     </div>
 
     <!-- 4. واجهة الزبون (الطلب) -->
     <div id="customerView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-orange-500 transform transition-all duration-300">
-        <div class="flex justify-between items-center mb-6">
+        <div class="mb-6 text-center">
             <h2 class="text-2xl font-bold text-gray-800">تفاصيل النقل</h2>
-            <button onclick="showView('homeView')" class="text-gray-500 font-bold hover:text-gray-800">الرجوع</button>
         </div>
 
         <form onsubmit="fetchDriversFromCloud(event)" class="space-y-4">
@@ -116,22 +121,33 @@
                 <option value="عربية عفش ونش">عربية عفش ونش</option>
             </select>
 
-            <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200 text-lg mt-4">
-                بحث في السحابة عن سائقين
-            </button>
+            <div class="pt-2 space-y-3">
+                <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200 text-lg mt-4">
+                    بحث في السحابة عن سائقين
+                </button>
+
+                <!-- زر الرجوع بالأسفل -->
+                <button type="button" onclick="showView('homeView')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
+                    الرجوع للرئيسية
+                </button>
+            </div>
         </form>
     </div>
 
     <!-- 5. شاشة السائقين المتاحين (جلب ديناميكي) -->
     <div id="driversListView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
-        <div class="flex justify-between items-center mb-6">
+        <div class="mb-6 text-center">
             <h2 class="text-xl font-bold text-gray-800">السائقين الأونلاين حالياً</h2>
-            <button onclick="showView('customerView')" class="text-orange-500 font-bold text-sm hover:text-orange-600">تعديل الطلب</button>
         </div>
         
-        <div class="space-y-4" id="driverListContainer">
+        <div class="space-y-4 mb-6" id="driverListContainer">
             <!-- سيتم إضافة السائقين من قاعدة البيانات هنا برمجياً -->
         </div>
+
+        <!-- زر الرجوع وتعديل الطلب بالأسفل -->
+        <button onclick="showView('customerView')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
+            تعديل الطلب (الرجوع)
+        </button>
     </div>
 
     <!-- سكريبت إدارة الواجهات وميزة السحب -->
@@ -181,7 +197,6 @@
         
         let currentDriverRef = null;
 
-        // تسجيل دخول مخفي مع إظهار الخطأ بوضوح إن وجد
         signInAnonymously(auth).catch((error) => {
             console.error("Auth Error:", error);
             const loader = document.getElementById('auth-loader');
@@ -200,7 +215,6 @@
             }
         });
 
-        // رفع بيانات السائق للسحابة
         window.activateDriver = function(e) {
             e.preventDefault();
             
@@ -209,7 +223,6 @@
             const vType = document.getElementById('driverVType').value;
             const vCond = document.getElementById('driverVCond').value;
 
-            // إنشاء مسار جديد في السحابة لبيانات تطبيق وصلني
             const driversNode = ref(db, 'wslny_app/active_drivers');
             currentDriverRef = push(driversNode); 
 
@@ -226,7 +239,6 @@
             });
         };
 
-        // حذف بيانات السائق من السحابة عند التوقف
         window.goOffline = function() {
             if(currentDriverRef) {
                 remove(currentDriverRef);
@@ -234,7 +246,6 @@
             showView('homeView');
         };
 
-        // جلب السائقين للزبون من السحابة
         window.fetchDriversFromCloud = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSearch');
