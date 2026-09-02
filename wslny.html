@@ -80,7 +80,6 @@
                     بدء العمل (مزامنة للسحابة)
                 </button>
                 
-                <!-- زر الرجوع بالأسفل -->
                 <button type="button" onclick="showView('homeView')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
                     الرجوع للرئيسية
                 </button>
@@ -126,7 +125,6 @@
                     بحث في السحابة عن سائقين
                 </button>
 
-                <!-- زر الرجوع بالأسفل -->
                 <button type="button" onclick="showView('homeView')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
                     الرجوع للرئيسية
                 </button>
@@ -144,7 +142,6 @@
             <!-- سيتم إضافة السائقين من قاعدة البيانات هنا برمجياً -->
         </div>
 
-        <!-- زر الرجوع وتعديل الطلب بالأسفل -->
         <button onclick="showView('customerView')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
             تعديل الطلب (الرجوع)
         </button>
@@ -177,7 +174,7 @@
     <!-- سكريبت الاتصال بقاعدة بيانات Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, set, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -197,6 +194,18 @@
         
         let currentDriverRef = null;
 
+        // استرجاع بيانات السائق المحفوظة لتعبئة النموذج تلقائياً
+        const savedInfoStr = localStorage.getItem('wslny_driver_info');
+        if (savedInfoStr) {
+            try {
+                const savedInfo = JSON.parse(savedInfoStr);
+                document.getElementById('driverName').value = savedInfo.name || '';
+                document.getElementById('driverPhone').value = savedInfo.phone || '';
+                document.getElementById('driverVType').value = savedInfo.vType || '';
+                document.getElementById('driverVCond').value = savedInfo.vCond || '';
+            } catch(e) {}
+        }
+
         signInAnonymously(auth).catch((error) => {
             console.error("Auth Error:", error);
             const loader = document.getElementById('auth-loader');
@@ -208,13 +217,35 @@
             }
         });
         
+        // نظام الدخول التلقائي الذكي
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('auth-loader').style.display = 'none';
-                showView('homeView');
+                
+                // فحص إذا كان السائق يعمل ولم يقم بإنهاء الجلسة
+                const isActive = localStorage.getItem('wslny_is_active');
+                if (isActive === 'true' && savedInfoStr) {
+                    const savedInfo = JSON.parse(savedInfoStr);
+                    const driverKey = "driver_" + savedInfo.phone;
+                    currentDriverRef = ref(db, 'wslny_app/active_drivers/' + driverKey);
+                    
+                    // إعادة رفع البيانات للسحابة للتأكيد على تواجده
+                    set(currentDriverRef, {
+                        name: savedInfo.name,
+                        phone: savedInfo.phone,
+                        vType: savedInfo.vType,
+                        vCond: savedInfo.vCond,
+                        timestamp: Date.now()
+                    });
+                    
+                    showView('driverActiveView');
+                } else {
+                    showView('homeView');
+                }
             }
         });
 
+        // زر التسجيل (يمنع التكرار نهائياً)
         window.activateDriver = function(e) {
             e.preventDefault();
             
@@ -223,8 +254,14 @@
             const vType = document.getElementById('driverVType').value;
             const vCond = document.getElementById('driverVCond').value;
 
-            const driversNode = ref(db, 'wslny_app/active_drivers');
-            currentDriverRef = push(driversNode); 
+            // حفظ بيانات السائق في ذاكرة الهاتف لتسهيل الدخول القادم
+            localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond }));
+            localStorage.setItem('wslny_is_active', 'true');
+
+            // 💡 الابتكار هنا: استخدام رقم الهاتف كمفتاح في قاعدة البيانات
+            // هذا يعني أنه لو ضغط تسجيل ألف مرة، سيكتب فوق نفس الكارت ولن يكرر نفسه!
+            const driverKey = "driver_" + phone;
+            currentDriverRef = ref(db, 'wslny_app/active_drivers/' + driverKey);
 
             set(currentDriverRef, {
                 name: name,
@@ -243,6 +280,7 @@
             if(currentDriverRef) {
                 remove(currentDriverRef);
             }
+            localStorage.setItem('wslny_is_active', 'false');
             showView('homeView');
         };
 
@@ -304,6 +342,7 @@
             }, { onlyOnce: true });
         };
         
+        // إزالة السائق فوراً عند إغلاق التبويب ليظهر للزبائن كـ "غير متصل"
         window.addEventListener('beforeunload', () => {
             if(currentDriverRef) remove(currentDriverRef);
         });
