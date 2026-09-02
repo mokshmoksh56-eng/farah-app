@@ -95,7 +95,7 @@
         </select>
 
         <button class="btn-orange" onclick="searchAvailableDrivers()">البحث عن سواقين متاحين</button>
-        <button class="btn-back" onclick="history.back()">رجوع</button>
+        <button class="btn-back" onclick="navigateTo('roleScreen')">رجوع</button>
     </div>
 
     <!-- شاشة عرض السائقين للزبون -->
@@ -116,7 +116,7 @@
                 </tbody>
             </table>
         </div>
-        <button class="btn-back" onclick="history.back()">⬅️ تعديل الطلب (رجوع)</button>
+        <button class="btn-back" onclick="navigateTo('customerBookingScreen')">⬅️ تعديل الطلب (رجوع)</button>
     </div>
 
     <!-- شاشة التقييم -->
@@ -144,7 +144,7 @@
         </div>
 
         <button class="btn-orange" onclick="submitRating()">إرسال التقييم</button>
-        <button class="btn-back" onclick="history.back()">إلغاء (رجوع)</button>
+        <button class="btn-back" onclick="navigateTo('availableDriversScreen')">إلغاء (رجوع)</button>
     </div>
 
     <!-- شاشة تسجيل السائق -->
@@ -169,7 +169,7 @@
         <img id="imagePreview" alt="معاينة الصورة" onclick="openImageModal(this.src)">
 
         <button class="btn-orange" onclick="submitDriverData()">تأكيد الدخول</button>
-        <button class="btn-back" onclick="history.back()">رجوع</button>
+        <button class="btn-back" onclick="navigateTo('roleScreen')">رجوع</button>
     </div>
 
     <!-- لوحة تحكم السائق -->
@@ -200,14 +200,14 @@
             </table>
         </div>
 
-        <button class="btn-back" onclick="history.back()" style="margin-top:10px;">⬅️ خروج / حذف الحساب مؤقتاً</button>
+        <!-- زر تسجيل الخروج الحقيقي -->
+        <button class="btn-back" onclick="logoutDriver()" style="margin-top:10px; color: #dc3545; border-color: #dc3545;">🚪 تسجيل خروج نهائي</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // إعدادات Firebase مأخوذة من yom.html
         const firebaseConfig = {
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
             authDomain: "azemaa-proo.firebaseapp.com",
@@ -221,14 +221,14 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // المتغيرات العامة
         window.onlineDrivers = [];
-        window.myDriverId = null;
         window.uploadedImageBase64 = "";
         window.currentDriverToRate = "";
         window.executionStatus = null;
 
-        // الاتصال اللحظي بقاعدة البيانات للسائقين
+        // تحميل الـ ID الخاص بالسائق من ذاكرة الهاتف إن وجد
+        window.myDriverId = localStorage.getItem('myDriverId') || null;
+
         const driversRef = ref(db, 'drivers_app/active_drivers');
         
         onValue(driversRef, (snapshot) => {
@@ -241,7 +241,6 @@
                 window.onlineDrivers.push(childSnapshot.val());
             });
 
-            // تحديث الشاشات تلقائياً إذا كانت مفتوحة
             if (!document.getElementById('dashboardScreen').classList.contains('hidden')) {
                 renderDashboardDrivers();
             }
@@ -251,7 +250,16 @@
         });
 
         window.onload = function() {
-            history.replaceState({ screen: 'roleScreen' }, '', '#home');
+            // الدخول التلقائي لو السائق مسجل من قبل
+            if (window.myDriverId) {
+                const savedName = localStorage.getItem('myDriverName') || "كابتن";
+                document.getElementById('welcomeMessage').innerText = "مرحباً يا " + savedName;
+                history.replaceState({ screen: 'dashboardScreen' }, '', '#dashboardScreen');
+                document.getElementById('roleScreen').classList.add('hidden');
+                document.getElementById('dashboardScreen').classList.remove('hidden');
+            } else {
+                history.replaceState({ screen: 'roleScreen' }, '', '#home');
+            }
         };
 
         window.navigateTo = function(showId) {
@@ -261,28 +269,40 @@
         }
 
         window.addEventListener('popstate', function(event) {
-            document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
             let targetScreen = event.state && event.state.screen ? event.state.screen : 'roleScreen';
 
-            // مسح السائق من السيرفر عند الخروج من لوحة القيادة (تسجيل خروج)
-            if (targetScreen !== 'dashboardScreen' && window.myDriverId !== null) {
-                remove(ref(db, 'drivers_app/active_drivers/' + window.myDriverId));
-                window.myDriverId = null;
+            // منع السائق من العودة لشاشة البداية بالغلط أثناء تسجيل الدخول
+            if (targetScreen === 'roleScreen' && window.myDriverId) {
+                targetScreen = 'dashboardScreen';
+                history.pushState({ screen: 'dashboardScreen' }, '', '#dashboardScreen');
+            }
+
+            document.querySelectorAll('.app-container').forEach(el => el.classList.add('hidden'));
+            document.getElementById(targetScreen).classList.remove('hidden');
+        });
+
+        // دالة تسجيل الخروج الجديدة
+        window.logoutDriver = function() {
+            if(confirm("هل أنت متأكد أنك تريد تسجيل الخروج؟ (سيتم مسحك من قائمة السائقين المتاحين)")) {
+                if (window.myDriverId) {
+                    remove(ref(db, 'drivers_app/active_drivers/' + window.myDriverId));
+                }
                 
+                // مسح البيانات من ذاكرة الهاتف
+                window.myDriverId = null;
+                localStorage.removeItem('myDriverId');
+                localStorage.removeItem('myDriverName');
+                
+                // إعادة ضبط الشاشة
                 document.getElementById('driverName').value = "";
                 document.getElementById('driverPhone').value = "";
                 document.getElementById('vehicleType').value = "";
                 document.getElementById('imagePreview').style.display = "none";
                 document.getElementById('imagePreview').src = "";
-                document.getElementById('vehiclePhoto').value = "";
-                document.getElementById('btnAvailable').classList.add('active');
-                document.getElementById('btnBusy').classList.remove('active');
-                document.getElementById('statusMessage').innerText = "✓ أنت الآن متاح للعمل وبانتظار الطلبات";
-                document.getElementById('statusMessage').className = "msg-available";
+                
+                navigateTo('roleScreen');
             }
-            
-            document.getElementById(targetScreen).classList.remove('hidden');
-        });
+        }
 
         window.openImageModal = function(imgSrc) {
             const modal = document.getElementById('imageModal');
@@ -426,9 +446,12 @@
                 photo: vehiclePhoto 
             };
             
-            // رفع البيانات لقاعدة البيانات
             set(ref(db, 'drivers_app/active_drivers/' + window.myDriverId), newDriverData)
             .then(() => {
+                // حفظ الهوية في ذاكرة الهاتف
+                localStorage.setItem('myDriverId', window.myDriverId);
+                localStorage.setItem('myDriverName', name);
+
                 document.getElementById('welcomeMessage').innerText = "مرحباً يا " + name;
                 navigateTo('dashboardScreen'); 
             }).catch(err => {
@@ -457,7 +480,6 @@
                 msgBox.className = "msg-busy";
             }
             
-            // تحديث الحالة في قاعدة البيانات لحظياً
             update(ref(db, 'drivers_app/active_drivers/' + window.myDriverId), {
                 status: statusColor
             });
@@ -467,7 +489,6 @@
             const tableBody = document.getElementById('dashboardDriversTableBody');
             tableBody.innerHTML = ""; 
             
-            // ترتيب بحيث يظهر حسابي في الأعلى إن وجد
             let sortedDrivers = [...window.onlineDrivers];
             sortedDrivers.sort((a, b) => (a.id === window.myDriverId ? -1 : 1));
 
