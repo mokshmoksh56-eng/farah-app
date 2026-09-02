@@ -87,22 +87,34 @@
         </form>
     </div>
 
-    <!-- 3. شاشة السائق بعد التسجيل الفوري -->
-    <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-green-500 transform transition-all duration-300 text-center">
-        <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">✓</div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">تم رفع بياناتك للسحابة!</h2>
-        <p class="text-gray-500 font-semibold mb-6">أنت الآن متصل ويستطيع الزبائن رؤيتك والاتصال بك.</p>
+    <!-- 3. شاشة السائق بعد التسجيل الفوري (مبتكرة) -->
+    <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-gray-800 transform transition-all duration-300 text-center">
         
-        <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200 mb-6">
-            <div class="animate-pulse flex space-x-3 space-x-reverse items-center justify-center">
-                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span class="text-gray-700 font-bold">حسابك نشط أونلاين...</span>
+        <!-- أيقونة الحالة الديناميكية -->
+        <div id="statusIcon" class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 transition-all duration-300">✓</div>
+        
+        <h2 id="statusTitle" class="text-2xl font-bold text-gray-800 mb-2">أنت الآن متصل!</h2>
+        <p id="statusDesc" class="text-gray-500 font-semibold mb-6">يستطيع الزبائن رؤيتك والاتصال بك الآن.</p>
+        
+        <!-- شريط النبض الديناميكي -->
+        <div id="pulseContainer" class="p-4 bg-green-50 rounded-2xl border border-green-200 mb-6 transition-all duration-300">
+            <div id="pulseIndicator" class="flex space-x-3 space-x-reverse items-center justify-center">
+                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="text-green-700 font-bold">جاري البحث عن زبائن...</span>
             </div>
         </div>
 
-        <button onclick="goOffline()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg">
-            إيقاف العمل (الرجوع للرئيسية)
-        </button>
+        <div class="space-y-3">
+            <!-- زر الإيقاف المؤقت (مبتكر) -->
+            <button id="btnPause" onclick="togglePause()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl shadow-sm transition duration-200 text-lg flex justify-center items-center gap-2">
+                ☕ إيقاف للراحة (مؤقت)
+            </button>
+
+            <!-- زر الخروج النهائي -->
+            <button onclick="confirmGoOffline()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 text-lg flex justify-center items-center gap-2">
+                🚪 خروج نهائي من التطبيق
+            </button>
+        </div>
     </div>
 
     <!-- 4. واجهة الزبون (الطلب) -->
@@ -165,6 +177,7 @@
             const screenW = window.innerWidth;
             if ((touchstartX < 50 && touchendX > touchstartX + 60) || (screenW - touchstartX < 50 && touchendX < touchstartX - 60)) {
                 if (!document.getElementById('driverView').classList.contains('hidden')) showView('homeView');
+                else if (!document.getElementById('driverActiveView').classList.contains('hidden')) confirmGoOffline();
                 else if (!document.getElementById('customerView').classList.contains('hidden')) showView('homeView');
                 else if (!document.getElementById('driversListView').classList.contains('hidden')) showView('customerView');
             }
@@ -174,7 +187,8 @@
     <!-- سكريبت الاتصال بقاعدة بيانات Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, set, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        // تم إضافة update لتعديل حالة السائق دون حذف البيانات
+        import { getDatabase, ref, onValue, set, get, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -194,7 +208,6 @@
         
         let currentDriverRef = null;
 
-        // استرجاع بيانات السائق المحفوظة لتعبئة النموذج تلقائياً
         const savedInfoStr = localStorage.getItem('wslny_driver_info');
         if (savedInfoStr) {
             try {
@@ -217,27 +230,29 @@
             }
         });
         
-        // نظام الدخول التلقائي الذكي
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('auth-loader').style.display = 'none';
                 
-                // فحص إذا كان السائق يعمل ولم يقم بإنهاء الجلسة
                 const isActive = localStorage.getItem('wslny_is_active');
                 if (isActive === 'true' && savedInfoStr) {
                     const savedInfo = JSON.parse(savedInfoStr);
                     const driverKey = "driver_" + savedInfo.phone;
                     currentDriverRef = ref(db, 'wslny_app/active_drivers/' + driverKey);
                     
-                    // إعادة رفع البيانات للسحابة للتأكيد على تواجده
+                    // استرجاع الحالة السابقة (إذا كان متصل أو في استراحة)
+                    const lastStatus = localStorage.getItem('wslny_driver_status') || 'active';
+                    
                     set(currentDriverRef, {
                         name: savedInfo.name,
                         phone: savedInfo.phone,
                         vType: savedInfo.vType,
                         vCond: savedInfo.vCond,
+                        status: lastStatus, // تسجيل الحالة
                         timestamp: Date.now()
                     });
                     
+                    updateDriverUI(lastStatus);
                     showView('driverActiveView');
                 } else {
                     showView('homeView');
@@ -245,21 +260,48 @@
             }
         });
 
-        // زر التسجيل (يمنع التكرار نهائياً)
+        // دالة تحديث الواجهة التفاعلية للسائق (الابتكار)
+        window.updateDriverUI = function(status) {
+            const icon = document.getElementById('statusIcon');
+            const title = document.getElementById('statusTitle');
+            const desc = document.getElementById('statusDesc');
+            const pulseContainer = document.getElementById('pulseContainer');
+            const pulseIndicator = document.getElementById('pulseIndicator');
+            const btnPause = document.getElementById('btnPause');
+
+            if (status === 'active') {
+                icon.className = "w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 transition-all duration-300";
+                icon.innerHTML = "✓";
+                title.innerText = "أنت الآن متصل!";
+                desc.innerText = "يستطيع الزبائن رؤيتك والاتصال بك الآن.";
+                pulseContainer.className = "p-4 bg-green-50 rounded-2xl border border-green-200 mb-6 transition-all duration-300";
+                pulseIndicator.innerHTML = `<div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div><span class="text-green-700 font-bold">جاري البحث عن زبائن...</span>`;
+                btnPause.innerHTML = "☕ إيقاف للراحة (مؤقت)";
+                btnPause.className = "w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl shadow-sm transition duration-200 text-lg flex justify-center items-center gap-2";
+            } else {
+                icon.className = "w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 transition-all duration-300";
+                icon.innerHTML = "☕";
+                title.innerText = "أنت في استراحة";
+                desc.innerText = "أنت الآن مخفي تماماً ولن تظهر لأي زبون.";
+                pulseContainer.className = "p-4 bg-yellow-50 rounded-2xl border border-yellow-200 mb-6 transition-all duration-300";
+                pulseIndicator.innerHTML = `<div class="w-3 h-3 bg-yellow-500 rounded-full"></div><span class="text-yellow-700 font-bold">حسابك متوقف مؤقتاً...</span>`;
+                btnPause.innerHTML = "▶️ استئناف العمل فوراً";
+                btnPause.className = "w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow-sm transition duration-200 text-lg flex justify-center items-center gap-2";
+            }
+        };
+
+        // زر التسجيل والدخول
         window.activateDriver = function(e) {
             e.preventDefault();
-            
             const name = document.getElementById('driverName').value;
             const phone = document.getElementById('driverPhone').value;
             const vType = document.getElementById('driverVType').value;
             const vCond = document.getElementById('driverVCond').value;
 
-            // حفظ بيانات السائق في ذاكرة الهاتف لتسهيل الدخول القادم
             localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond }));
             localStorage.setItem('wslny_is_active', 'true');
+            localStorage.setItem('wslny_driver_status', 'active');
 
-            // 💡 الابتكار هنا: استخدام رقم الهاتف كمفتاح في قاعدة البيانات
-            // هذا يعني أنه لو ضغط تسجيل ألف مرة، سيكتب فوق نفس الكارت ولن يكرر نفسه!
             const driverKey = "driver_" + phone;
             currentDriverRef = ref(db, 'wslny_app/active_drivers/' + driverKey);
 
@@ -268,22 +310,43 @@
                 phone: phone,
                 vType: vType,
                 vCond: vCond,
+                status: 'active',
                 timestamp: Date.now()
             }).then(() => {
+                updateDriverUI('active');
                 showView('driverActiveView');
-            }).catch(err => {
-                alert("خطأ في الاتصال: " + err.message);
-            });
+            }).catch(err => alert("خطأ في الاتصال: " + err.message));
+        };
+
+        // زر التبديل بين (متصل / استراحة)
+        window.togglePause = function() {
+            const currentStatus = localStorage.getItem('wslny_driver_status');
+            const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+            
+            if(currentDriverRef) {
+                // استخدام update لتعديل سطر الحالة فقط دون مسح باقي البيانات
+                update(currentDriverRef, { status: newStatus });
+            }
+            
+            localStorage.setItem('wslny_driver_status', newStatus);
+            updateDriverUI(newStatus);
+        };
+
+        window.confirmGoOffline = function() {
+            if (confirm("هل أنت متأكد من الخروج نهائياً من التطبيق؟ ستحتاج لتسجيل الدخول مرة أخرى للعمل.")) {
+                goOffline();
+            }
         };
 
         window.goOffline = function() {
             if(currentDriverRef) {
-                remove(currentDriverRef);
+                remove(currentDriverRef); // حذف السائق من السحابة تماماً
             }
             localStorage.setItem('wslny_is_active', 'false');
             showView('homeView');
         };
 
+        // بحث الزبون - تم التعديل لجلب السائقين (النشطين فقط)
         window.fetchDriversFromCloud = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSearch');
@@ -302,7 +365,8 @@
                 if(data) {
                     Object.keys(data).forEach(key => {
                         const driver = data[key];
-                        if(driver.vType === requiredType) {
+                        // 💡 الابتكار: لا نعرض السائق إذا كان في فترة استراحة (status !== active)
+                        if(driver.vType === requiredType && driver.status === 'active') {
                             foundAny = true;
                             
                             let cleanPhone = driver.phone.replace(/^0+/, ''); 
@@ -333,7 +397,7 @@
                 if(!foundAny) {
                     container.innerHTML = `
                     <div class="text-center p-6 bg-red-50 rounded-2xl border border-red-200 text-red-600 font-bold">
-                        عفواً، لا يوجد سائقين (${requiredType}) متصلين بالسحابة في الوقت الحالي. حاول مرة أخرى لاحقاً.
+                        عفواً، لا يوجد سائقين (${requiredType}) متاحين في الوقت الحالي. قد يكونون في فترة راحة، حاول مجدداً.
                     </div>`;
                 }
 
@@ -342,7 +406,6 @@
             }, { onlyOnce: true });
         };
         
-        // إزالة السائق فوراً عند إغلاق التبويب ليظهر للزبائن كـ "غير متصل"
         window.addEventListener('beforeunload', () => {
             if(currentDriverRef) remove(currentDriverRef);
         });
