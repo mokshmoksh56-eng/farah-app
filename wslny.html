@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق نقل - صفحة الزبون</title>
-    
+    <title>تطبيق نقل</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -31,14 +30,6 @@
             margin-top: 0;
         }
 
-        #sync-status {
-            font-size: 12px;
-            text-align: center;
-            margin-bottom: 10px;
-            color: #b45309;
-            font-weight: bold;
-        }
-
         .subtitle {
             color: #28a745;
             font-size: 14px;
@@ -51,7 +42,6 @@
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 15px;
-            text-align: right;
         }
 
         .driver-info-header {
@@ -62,6 +52,7 @@
         }
 
         .driver-details {
+            text-align: right;
             flex-grow: 1;
             margin-right: 15px;
         }
@@ -134,8 +125,13 @@
             gap: 5px;
         }
 
-        .btn-call { background-color: #007bff; }
-        .btn-whatsapp { background-color: #25d366; }
+        .btn-call {
+            background-color: #007bff;
+        }
+
+        .btn-whatsapp {
+            background-color: #25d366;
+        }
 
         .btn-rate {
             width: 100%;
@@ -167,101 +163,39 @@
 
     <div class="card-container">
         <h2 class="header-title">السواقين المتاحين</h2>
-        
-        <!-- حالة الاتصال السحابي -->
-        <div id="sync-status">⏳ جاري فحص الاتصال بالخادم السحابي...</div>
-        
-        <!-- المكان اللي هيتغير فيه عدد السواقين -->
-        <p class="subtitle" id="available-count-text">جاري البحث عن سواقين...</p>
+        <p class="subtitle">وجدنا 1 سواقين متاحين لطلبك</p>
 
-        <!-- المكان اللي هنرص فيه كروت السواقين -->
-        <div id="drivers-list-container">
-            <!-- سيتم إضافة السواقين هنا برمجياً -->
+        <div class="driver-box">
+            <div class="driver-info-header">
+                <div class="status-dot"></div>
+                
+                <div class="driver-details">
+                    <div class="driver-name-rating">
+                        محمود سيد <span class="rating">4.8 ⭐</span>
+                    </div>
+                    <p class="car-type">ربع نقل</p>
+                    
+                    <!-- رقم الموبايل ظاهر للزبون هنا -->
+                    <p class="driver-phone">📞 01012345678</p>
+                </div>
+
+                <!-- استبدل الرابط بصورة السيارة الحقيقية -->
+                <img src="https://via.placeholder.com/60x40" alt="صورة السيارة" class="driver-image">
+            </div>
+
+            <div class="buttons-row">
+                <!-- زرار الواتس (قم بتغيير الرقم للرقم الفعلي) -->
+                <a href="https://wa.me/+201012345678" class="btn btn-whatsapp">💬 واتس</a>
+                
+                <!-- زرار الاتصال (قم بتغيير الرقم للرقم الفعلي) -->
+                <a href="tel:01012345678" class="btn btn-call">📞 اتصال</a>
+            </div>
+
+            <button class="btn-rate">⭐ هل تمت الرحلة؟ (قيّم الكابتن)</button>
         </div>
 
         <button class="btn-back">⬅️ تعديل الطلب (رجوع)</button>
     </div>
 
-    <!-- كود الجافاسكريبت المربوط بقاعدة بياناتك -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-            authDomain: "azemaa-proo.firebaseapp.com",
-            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-            projectId: "azemaa-proo",
-            storageBucket: "azemaa-proo.firebasestorage.app",
-            messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        // مسار السواقين في قاعدة البيانات
-        const driversRef = ref(db, 'Drivers');
-
-        onValue(driversRef, (snapshot) => {
-            // تحديث رسالة الاتصال عند النجاح
-            const syncStatus = document.getElementById('sync-status');
-            syncStatus.innerText = "🟢 متصل بالسحابة بشكل آمن";
-            syncStatus.style.color = "#059669"; 
-
-            let container = document.getElementById('drivers-list-container');
-            container.innerHTML = ''; 
-            let availableDriversCount = 0;
-
-            snapshot.forEach((childSnapshot) => {
-                let driver = childSnapshot.val();
-                
-                // الفلترة: هل السواق متاح؟
-                if (driver.status === "متاح") {
-                    availableDriversCount++;
-                    
-                    let driverCard = `
-                        <div class="driver-box">
-                            <div class="driver-info-header">
-                                <div class="status-dot"></div>
-                                
-                                <div class="driver-details">
-                                    <div class="driver-name-rating">
-                                        ${driver.name} <span class="rating">${driver.rating || '4.8'} ⭐</span>
-                                    </div>
-                                    <p class="car-type">${driver.carType || 'ربع نقل'}</p>
-                                    <p class="driver-phone">📞 ${driver.phone}</p>
-                                </div>
-
-                                <img src="${driver.imageURL || 'https://via.placeholder.com/60x40'}" alt="صورة السيارة" class="driver-image">
-                            </div>
-
-                            <div class="buttons-row">
-                                <a href="https://wa.me/+2${driver.phone}" class="btn btn-whatsapp">💬 واتس</a>
-                                <a href="tel:${driver.phone}" class="btn btn-call">📞 اتصال</a>
-                            </div>
-
-                            <button class="btn-rate">⭐ هل تمت الرحلة؟ (قيّم الكابتن)</button>
-                        </div>
-                    `;
-                    container.innerHTML += driverCard;
-                }
-            });
-
-            let countText = document.getElementById('available-count-text');
-            if (availableDriversCount > 0) {
-                countText.innerText = `وجدنا ${availableDriversCount} سواقين متاحين لطلبك`;
-                countText.style.color = "#28a745"; 
-            } else {
-                countText.innerText = `عفواً، لا يوجد سواقين متاحين حالياً`;
-                countText.style.color = "#dc3545"; 
-            }
-        }, (error) => {
-            console.error(error);
-            const syncStatus = document.getElementById('sync-status');
-            syncStatus.innerText = "🔴 خطأ اتصال بالسيرفر";
-            syncStatus.style.color = "#dc2626"; 
-        });
-    </script>
 </body>
 </html>
