@@ -146,6 +146,10 @@
         </div>
 
         <div class="space-y-3">
+            <button onclick="fetchColleaguesFromCloud()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-sm transition duration-200 text-lg flex justify-center items-center gap-2">
+                👥 قائمة الزملاء (للمشاهدة فقط)
+            </button>
+
             <button id="btnPause" onclick="togglePause()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl shadow-sm transition duration-200 text-lg flex justify-center items-center gap-2">
                 ☕ إيقاف للراحة (مؤقت)
             </button>
@@ -160,6 +164,20 @@
         </div>
     </div>
 
+    <!-- (جديد) شاشة رؤية الزملاء (للمشاهدة فقط بدون تواصل) -->
+    <div id="driverColleaguesView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-blue-500 transform transition-all duration-300">
+        <div class="mb-6 text-center">
+            <h2 class="text-xl font-bold text-gray-800">حالة الزملاء السائقين</h2>
+            <p class="text-gray-500 text-xs mt-1">يمكنك معرفة من متصل أو أوفلاين (للمشاهدة فقط)</p>
+        </div>
+        
+        <div class="space-y-4 mb-6" id="colleaguesListContainer"></div>
+
+        <button onclick="window.history.back()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
+            الرجوع للوحة القيادة
+        </button>
+    </div>
+
     <!-- 6. واجهة الزبون (الطلب) -->
     <div id="customerView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 md:p-8 border-t-4 border-orange-500 transform transition-all duration-300">
         <div class="mb-6 text-center">
@@ -167,8 +185,6 @@
         </div>
 
         <form onsubmit="fetchDriversFromCloud(event)" class="space-y-4">
-            
-            <!-- إضافة خانات (منين؟ وإلى فين؟) -->
             <div class="flex gap-2">
                 <input type="text" id="pickupLocation" required placeholder="منين؟ (مكان الاستلام)" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
                 <input type="text" id="dropoffLocation" required placeholder="إلى فين؟ (الوصول)" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
@@ -217,7 +233,7 @@
             let viewId = window.location.hash.replace('#', '');
             if (!viewId) viewId = 'homeView';
 
-            const allViews = ['homeView', 'driverChoiceView', 'driverLoginView', 'driverRegisterView', 'driverActiveView', 'customerView', 'driversListView'];
+            const allViews = ['homeView', 'driverChoiceView', 'driverLoginView', 'driverRegisterView', 'driverActiveView', 'driverColleaguesView', 'customerView', 'driversListView'];
             allViews.forEach(v => {
                 const el = document.getElementById(v);
                 if(el) el.classList.add('hidden');
@@ -427,12 +443,92 @@
             window.location.hash = 'homeView'; 
         };
 
+        // عرض الزملاء السائقين وحالتهم (للمشاهدة فقط)
+        window.fetchColleaguesFromCloud = function() {
+            const myInfoStr = localStorage.getItem('wslny_driver_info');
+            if(!myInfoStr) return;
+            const myInfo = JSON.parse(myInfoStr);
+            const myPhone = myInfo.phone;
+
+            showView('driverColleaguesView');
+            const container = document.getElementById('colleaguesListContainer');
+            container.innerHTML = `<div class="text-center text-gray-500 font-bold">⏳ جاري جلب قائمة الزملاء...</div>`;
+
+            const regRef = ref(db, 'wslny_app/registered_drivers');
+            const activeRef = ref(db, 'wslny_app/active_drivers');
+
+            // جلب المسجلين والنشطين معاً لمعرفة حالة كل فرد
+            Promise.all([get(regRef), get(activeRef)]).then((snapshots) => {
+                const regData = snapshots[0].val() || {};
+                const activeData = snapshots[1].val() || {};
+                
+                container.innerHTML = ""; 
+                let foundAny = false;
+
+                Object.keys(regData).forEach(key => {
+                    const driver = regData[key];
+                    
+                    // لا يعرض السائق نفسه
+                    if (driver.phone !== myPhone) {
+                        foundAny = true;
+                        
+                        // تحديد حالة الزميل الافتراضية
+                        let statusText = "🔴 غير متصل";
+                        let statusColor = "text-red-500";
+                        let bgIcon = "bg-gray-100";
+                        let borderClass = "border-gray-200";
+
+                        // البحث عن الزميل في قائمة المتصلين حالياً
+                        const activeDriver = activeData["driver_" + driver.phone];
+                        if (activeDriver) {
+                            if (activeDriver.status === 'active') {
+                                statusText = "🟢 متصل الآن";
+                                statusColor = "text-green-600";
+                                bgIcon = "bg-green-100";
+                                borderClass = "border-green-300";
+                            } else if (activeDriver.status === 'paused') {
+                                statusText = "🟡 في استراحة";
+                                statusColor = "text-yellow-600";
+                                bgIcon = "bg-yellow-100";
+                                borderClass = "border-yellow-300";
+                            }
+                        }
+
+                        // إضافة الكارت (للعرض فقط بدون أزرار تواصل)
+                        container.innerHTML += `
+                        <div class="bg-white border ${borderClass} p-4 rounded-2xl shadow-sm flex flex-col gap-3">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 ${bgIcon} rounded-full flex items-center justify-center text-2xl">👨‍✈️</div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-gray-800 text-lg">${driver.name}</h4>
+                                    <div class="text-sm mt-1">
+                                        <span class="text-gray-800 font-bold">${driver.vType}</span> • 
+                                        <span class="text-gray-500 font-semibold">${driver.vCond}</span>
+                                    </div>
+                                    <div class="text-xs font-bold mt-2 ${statusColor}">${statusText}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    }
+                });
+
+                if(!foundAny) {
+                    container.innerHTML = `
+                    <div class="text-center p-6 bg-blue-50 rounded-2xl border border-blue-200 text-blue-600 font-bold">
+                        لا يوجد زملاء آخرين مسجلين في التطبيق حتى الآن.
+                    </div>`;
+                }
+            }).catch(err => {
+                container.innerHTML = `<div class="text-center text-red-500 font-bold">حدث خطأ في جلب البيانات.</div>`;
+            });
+        };
+
+        // بحث الزبون
         window.fetchDriversFromCloud = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSearch');
             btn.innerText = "⏳ جاري البحث في السحابة...";
             
-            // جلب البيانات من الفورم
             const requiredType = document.getElementById('custVType').value;
             const pickup = document.getElementById('pickupLocation').value;
             const dropoff = document.getElementById('dropoffLocation').value;
@@ -452,8 +548,6 @@
                         if(driver.vType === requiredType && driver.status === 'active') {
                             foundAny = true;
                             let cleanPhone = driver.phone.replace(/^0+/, ''); 
-                            
-                            // الرسالة الذكية للواتساب مع أماكن التحميل
                             let messageText = `مرحباً، محتاج عربية (${driver.vType}) من تطبيق وصلني.\n📍 من: ${pickup}\n🏁 إلى: ${dropoff}`;
                             let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent(messageText)}`;
                             
