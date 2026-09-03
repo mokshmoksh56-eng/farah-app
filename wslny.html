@@ -167,6 +167,13 @@
         </div>
 
         <form onsubmit="fetchDriversFromCloud(event)" class="space-y-4">
+            
+            <!-- إضافة خانات (منين؟ وإلى فين؟) -->
+            <div class="flex gap-2">
+                <input type="text" id="pickupLocation" required placeholder="منين؟ (مكان الاستلام)" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                <input type="text" id="dropoffLocation" required placeholder="إلى فين؟ (الوصول)" class="w-1/2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            </div>
+
             <select id="custVType" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none mb-4">
                 <option value="" disabled selected>ما هو نوع النقل المطلوب؟</option>
                 <option value="تروسيكل">تروسيكل (أغراض خفيفة)</option>
@@ -290,7 +297,6 @@
             }
         });
 
-        // 1. تسجيل سائق جديد (مع التحقق من عدم التكرار)
         window.registerDriver = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnRegister');
@@ -304,14 +310,11 @@
             const driverKey = "driver_" + phone;
             const permanentRef = ref(db, 'wslny_app/registered_drivers/' + driverKey);
             
-            // فحص هل الرقم مسجل مسبقاً في السحابة
             get(permanentRef).then((snapshot) => {
                 if (snapshot.exists()) {
-                    // إذا كان مسجلاً، نوقف التسجيل ونعطيه رسالة
                     alert("هذا الرقم مسجل مسبقاً في التطبيق! يرجى العودة لصفحة 'تسجيل الدخول' بدلاً من ذلك.");
                     btn.innerText = "حفظ البيانات وبدء العمل";
                 } else {
-                    // إذا لم يكن مسجلاً، نقوم بحفظ البيانات
                     set(permanentRef, {
                         name: name, phone: phone, vType: vType, vCond: vCond, joinDate: Date.now()
                     }).then(() => {
@@ -328,7 +331,6 @@
             });
         };
 
-        // 2. تسجيل دخول سائق
         window.loginDriver = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnLogin');
@@ -430,7 +432,11 @@
             const btn = document.getElementById('btnSearch');
             btn.innerText = "⏳ جاري البحث في السحابة...";
             
+            // جلب البيانات من الفورم
             const requiredType = document.getElementById('custVType').value;
+            const pickup = document.getElementById('pickupLocation').value;
+            const dropoff = document.getElementById('dropoffLocation').value;
+            
             const driversNode = ref(db, 'wslny_app/active_drivers');
 
             onValue(driversNode, (snapshot) => {
@@ -446,7 +452,10 @@
                         if(driver.vType === requiredType && driver.status === 'active') {
                             foundAny = true;
                             let cleanPhone = driver.phone.replace(/^0+/, ''); 
-                            let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent("مرحباً، محتاج أنقل أغراض من تطبيق وصلني")}`;
+                            
+                            // الرسالة الذكية للواتساب مع أماكن التحميل
+                            let messageText = `مرحباً، محتاج عربية (${driver.vType}) من تطبيق وصلني.\n📍 من: ${pickup}\n🏁 إلى: ${dropoff}`;
+                            let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent(messageText)}`;
                             
                             container.innerHTML += `
                             <div class="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex flex-col gap-4">
