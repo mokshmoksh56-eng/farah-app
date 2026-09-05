@@ -9,13 +9,15 @@
     <style>
         body { font-family: 'Cairo', sans-serif; background-color: #f3f4f6; overflow-x: hidden; touch-action: manipulation; }
         .glass-panel { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
-        optgroup { font-weight: 900; color: #ea580c; background-color: #fff7ed; padding: 8px; font-size: 15px; }
-        option { font-weight: 700; color: #1f2937; background-color: #ffffff; padding: 8px; font-size: 15px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6;
             z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-size: 18px; color: #f97316; font-weight: 800;
+            font-size: 18px; color: #f97316; font-weight: 900;
         }
     </style>
 </head>
@@ -111,7 +113,7 @@
 
             <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
                 <label class="block text-base font-extrabold text-gray-900 mb-3">بيانات المركبة</label>
-                <select id="regDriverVType" onchange="updateAreas('regDriverCenter', 'regDriverArea', 'regDriverVType')" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-base font-bold text-gray-800">
+                <select id="regDriverVType" onchange="updateSearchableList('regDriverGov', 'regDriverAreaContainer', 'regDriverSearchInput', 'regDriverVType', true)" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-base font-bold text-gray-800">
                     <option value="" disabled selected>نوع المركبة...</option>
                     <option value="توكتوك">توكتوك</option>
                     <option value="تروسيكل">تروسيكل</option>
@@ -128,9 +130,10 @@
             </div>
 
             <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <label class="block text-base font-extrabold text-gray-900 mb-3">مكان العمل الأساسي</label>
-                <select id="regDriverGov" onchange="updateLocations('regDriverGov', 'regDriverCenter', 'regDriverArea')" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-base font-bold text-gray-800 transition-all">
-                    <option value="" disabled selected>اختر المحافظة...</option>
+                <label class="block text-base font-extrabold text-gray-900 mb-3">نطاق العمل الأساسي</label>
+                
+                <select id="regDriverGov" onchange="updateSearchableList('regDriverGov', 'regDriverAreaContainer', 'regDriverSearchInput', 'regDriverVType', true)" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-base font-bold text-gray-800 transition-all">
+                    <option value="" disabled selected>اختر المحافظة أولاً...</option>
                     <option value="القاهرة">القاهرة</option>
                     <option value="الجيزة">الجيزة</option>
                     <option value="الإسكندرية">الإسكندرية</option>
@@ -159,10 +162,12 @@
                     <option value="الوادي الجديد">الوادي الجديد</option>
                     <option value="مطروح">مطروح</option>
                 </select>
+
+                <!-- تمت إضافة onfocus="this.select()" لتظليل النص عند الضغط للبحث السريع -->
+                <input type="text" id="regDriverSearchInput" placeholder="🔍 ابحث عن المركز أو القرية..." class="hidden w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-sm font-bold text-gray-800 transition-all" oninput="filterLocations('regDriverSearchInput', 'regDriverAreaContainer')" onfocus="this.select()">
                 
-                <select id="regDriverCenter" onchange="updateAreas('regDriverCenter', 'regDriverArea', 'regDriverVType')" class="hidden w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-base font-bold text-gray-800 transition-all"></select>
-                
-                <div id="regDriverArea" class="hidden w-full px-4 py-4 bg-white border border-gray-300 rounded-xl transition-all"></div>
+                <div id="regDriverAreaContainer" class="hidden w-full max-h-56 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-2 space-y-1.5 shadow-inner">
+                </div>
             </div>
 
             <div class="pt-4 space-y-4">
@@ -225,7 +230,7 @@
             
             <div class="bg-orange-50 p-4 rounded-2xl border border-orange-200 shadow-sm">
                 <label class="block text-base font-black text-orange-900 mb-3">ما هو نوع النقل المطلوب؟</label>
-                <select id="custVType" onchange="updateAreas('custCenter', 'custArea', 'custVType')" required class="w-full px-4 py-3 bg-white border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-base font-bold text-gray-800 transition-all">
+                <select id="custVType" onchange="updateSearchableList('custGov', 'custAreaContainer', 'custSearchInput', 'custVType', false)" required class="w-full px-4 py-3 bg-white border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-base font-bold text-gray-800 transition-all">
                     <option value="" disabled selected>اختر المركبة أولاً...</option>
                     <option value="توكتوك">توكتوك</option>
                     <option value="تروسيكل">تروسيكل</option>
@@ -235,10 +240,12 @@
                 </select>
             </div>
 
+            <!-- محرك البحث الداخلي لمناطق الاستلام -->
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
                 <label class="block text-base font-black text-gray-900 mb-3">مكان الاستلام (أين أنت؟)</label>
-                <select id="custGov" onchange="updateLocations('custGov', 'custCenter', 'custArea')" required class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none mb-3 text-base font-bold text-gray-800 transition-all">
-                    <option value="" disabled selected>اختر المحافظة...</option>
+                
+                <select id="custGov" onchange="updateSearchableList('custGov', 'custAreaContainer', 'custSearchInput', 'custVType', false)" required class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none mb-3 text-base font-bold text-gray-800 transition-all">
+                    <option value="" disabled selected>اختر المحافظة أولاً...</option>
                     <option value="القاهرة">القاهرة</option>
                     <option value="الجيزة">الجيزة</option>
                     <option value="الإسكندرية">الإسكندرية</option>
@@ -267,10 +274,11 @@
                     <option value="الوادي الجديد">الوادي الجديد</option>
                     <option value="مطروح">مطروح</option>
                 </select>
+
+                <input type="text" id="custSearchInput" placeholder="🔍 ابحث عن المركز أو القرية..." class="hidden w-full px-4 py-3 bg-orange-50 border border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none mb-3 text-sm font-bold text-orange-900 transition-all" oninput="filterLocations('custSearchInput', 'custAreaContainer')" onfocus="this.select()">
                 
-                <select id="custCenter" onchange="updateAreas('custCenter', 'custArea', 'custVType')" class="hidden w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none mb-3 text-base font-bold text-gray-800 transition-all"></select>
-                
-                <select id="custArea" class="hidden w-full px-4 py-3 bg-orange-50 border border-orange-300 text-orange-900 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-base transition-all"></select>
+                <div id="custAreaContainer" class="hidden w-full max-h-56 overflow-y-auto bg-gray-50 border border-orange-200 rounded-xl p-2 space-y-1.5 shadow-inner">
+                </div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
@@ -291,7 +299,7 @@
         <div id="searchResultsContainer" class="mt-8 hidden transition-all duration-300"></div>
     </div>
 
-    <!-- سكريبت التنقل والبيانات الذكية -->
+    <!-- سكريبت التنقل والبيانات الذكية (تم تحديث محرك البحث وتحديث الخانة) -->
     <script>
         window.showView = function(viewId) {
             window.location.hash = viewId;
@@ -308,11 +316,8 @@
             });
             
             const targetView = document.getElementById(viewId);
-            if (targetView) {
-                targetView.classList.remove('hidden');
-            } else {
-                document.getElementById('homeView').classList.remove('hidden');
-            }
+            if (targetView) targetView.classList.remove('hidden');
+            else document.getElementById('homeView').classList.remove('hidden');
         });
 
         window.addEventListener('load', () => {
@@ -351,21 +356,18 @@
                         } else if (hash === '#customerView') {
                             const btn = document.getElementById('btnSearch');
                             const res = document.getElementById('searchResultsContainer');
-                            if(btn && res && !res.classList.contains('hidden')) {
-                                btn.click();
-                            }
+                            if(btn && res && !res.classList.contains('hidden')) btn.click();
                         }
                         setTimeout(() => { ptrIndicator.style.height = '0px'; }, 500);
                     }, 500);
-                } else {
-                    ptrIndicator.style.height = '0px'; 
-                }
+                } else ptrIndicator.style.height = '0px'; 
             }
             pullStartY = 0; pullCurrentY = 0;
         });
 
+        // قاعدة البيانات
         const citiesData = {
-            "الدقهلية": ["المنصورة", "طلخا", "ميت غمر", "دكرنس", "بلقاس", "السنبلاوين", "أجا", "شربين", "منية النصر", "المنزلة", "المطرية", "نبروه", "جمصة", "محلة دمنة", "بني عبيد", "تمي الأمديد", "ميت سلسيل"],
+            "الدقهلية": ["المنصورة", "طلخا", "ميت غمر", "أجا", "السنبلاوين", "دكرنس", "بلقاس", "شربين", "منية النصر", "نبروه", "المنزلة", "المطرية", "جمصة", "محلة دمنة", "بني عبيد", "تمي الأمديد", "ميت سلسيل"],
             "القاهرة": ["مدينة نصر", "مصر الجديدة", "التجمع", "المعادي", "المقطم", "شبرا", "وسط البلد", "حلوان", "الرحاب", "مدينتي", "الشروق", "بدر"],
             "الجيزة": ["الهرم", "فيصل", "الدقي", "المهندسين", "6 أكتوبر", "الشيخ زايد", "العمرانية", "البدرشين", "الحوامدية", "العياط", "الصف"],
             "الإسكندرية": ["المنتزه", "المندرة", "سيدي بشر", "ميامي", "سموحة", "سيدي جابر", "محرم بك", "العجمي", "العامرية", "برج العرب"],
@@ -395,68 +397,107 @@
         };
 
         const popularAreasByCenter = {
-            "المنصورة": ["سندوب", "عزبة الشال", "جديلة", "المجزر", "ميت حدر", "الدراسات", "عزبة الصفيح", "كفر البدماص", "قولنجيل", "توريل القديمة", "شارع ١٠", "مدينة السلام", "مستشفى الصدر", "الجلاء", "مصر للطيران", "تجنيد المنصورة", "ميدان الشيخ حسانين"],
+            "المنصورة": ["توريل القديمة", "شارع ١٠", "مدينة السلام", "مستشفى الصدر", "الجلاء", "مصر للطيران", "تجنيد المنصورة", "ميدان الشيخ حسانين", "سندوب", "عزبة الشال", "جديلة", "المجزر", "ميت حدر", "الدراسات", "عزبة الصفيح", "كفر البدماص", "قولنجيل", "أويش الحجر", "البدالة", "البرامون", "البقلية", "البنديرة", "الحواوشة", "الخليج", "الخيارية", "الدنابيق", "الريدانية", "الزمار", "المالحة", "النزهة", "النسيمية", "بحقيرة", "بدواي", "بدين", "برق العز", "بلجاي", "تلبانة", "جديدة الهالة", "جميزة بلجاي", "ديبو عوام", "سلامون القماش", "سلكا", "سلنت", "شاوة", "شبرابدين", "شها", "طرانيس البحر", "طناح", "كرم الجديدة", "كفر الأمشوطي", "كفر البرامون", "كفر الشنهاب", "كفر بدواي الجديد", "كفر بدواي القديم", "كفر تلبانة", "كفر طناح", "كفر ميت فاتك", "كوم الدربي", "كوم بني مراس", "منية بدواي", "منية سندوب", "ميت الأكراد", "ميت الصارم", "ميت بدر خميس", "ميت جراح", "ميت خميس", "ميت خيرون", "ميت عزون", "ميت علي", "ميت عوام", "ميت لوزة", "ميت محمود", "ميت مزاح", "نقيطة"],
+            "طلخا": ["ميت عنتر", "بطرة", "بساط", "ميت الكرما", "جوجر", "دميرة", "ديسط", "درين", "كفر الطويلة", "ميت نيتال", "كفر الخوازم", "ميت زنقر", "منشأة البدوي"],
+            "أجا": ["نوسا البحر", "نوسا الغيط", "شيوة", "الدير", "ميت العامل", "برج النور الحمص", "منية سمنود", "صهرجت الصغرى", "ميت أبو الحسين", "شنفاس", "ميت فضالة", "كفر المندرة", "سنجيد", "الديرس", "منشأة الأخوة"],
+            "السنبلاوين": ["برقين", "طماي الزهايرة", "شبرا قبالة", "ديو الوسطى", "ميت غراب", "كفر غنام", "طوخ الأقلام", "كفر الروك", "ميت أبو الحارث", "البلامون", "المقاطعة", "طرانيس العرب", "الحجايزة", "بشمس"],
+            "ميت غمر": ["تفهنا الأشراف", "دنديط", "ميت يعيش", "صهرجت الكبرى", "أتميدة", "كوم النور", "بشلا", "سنتماي", "كفر الوزير", "البوها", "كفر النعيم", "هلا", "دقادوس", "ميت ناجي", "ميت أبو خالد", "كفر ميت العز"],
+            "دكرنس": ["ديمشلت", "ميت طريف", "دموه", "ميت النحال", "نجير", "ميت ضافر", "أشمون الرمان", "الربيعة", "ميت مجاهد", "ميت شرف", "القباب الصغرى", "القباب الكبرى"],
+            "بلقاس": ["المعصرة", "الستاموني", "بسنديلة", "الشوامي", "الجزاير", "دملاش", "الزهراء", "قلابشو", "كفر الغرابر", "ابو عرصة"],
+            "شربين": ["كفر الترعة القديم", "كفر الترعة الجديد", "الأحمدية", "الحصص", "كفر الحاج شربيني", "دنجواي", "محلة إنجاق", "كفر الوكالة", "أبو جلال", "رأس الخليج"],
+            "منية النصر": ["البجلات", "الدراكسة", "برمبال القديمة", "برمبال الجديدة", "ميت الخولي مؤمن", "كفر علام", "النزل", "ميت تمامة", "الرياض", "الكردي"],
+            "نبروه": ["تيرة", "بهوت", "كفر الجنينة", "كفر الحصة", "نشا", "الطيبة", "درين", "كفر الدبوسي", "كفر الأبحر", "طبانو"],
             "شبرا الخيمة": ["بهتيم", "مسطرد", "باسوس", "قلما"],
             "الزقازيق": ["النحال", "كفر الزقازيق", "حسن صالح", "الزراعة", "الحريري"],
             "طنطا": ["سيجر", "قحافة", "العجيزي", "سبرباي", "محلة مرحوم"],
             "المنتزه": ["العوايد", "أبو سليمان", "خورشيد", "الظاهرية"]
         };
 
-        window.updateLocations = function(govId, centerId, areaId) {
-            const gov = document.getElementById(govId).value;
-            const centerSelect = document.getElementById(centerId);
-            const areaSelect = document.getElementById(areaId);
+        // دالة تحديث النص في خانة البحث بناءً على الاختيار
+        window.updateSearchBoxText = function(containerId, searchInputId, isMulti) {
+            const container = document.getElementById(containerId);
+            const searchInput = document.getElementById(searchInputId);
+            if (!container || !searchInput) return;
 
-            if(areaSelect) {
-                if (areaSelect.tagName === 'DIV') areaSelect.innerHTML = '';
-                else areaSelect.innerHTML = '<option value="" disabled selected>اختر الحي / المنطقة الشعبية...</option>';
-                areaSelect.classList.add('hidden');
-                areaSelect.required = false;
-            }
-
-            if (gov && citiesData[gov]) {
-                let html = '<option value="" disabled selected>اختر المنطقة/المركز...</option>';
-                citiesData[gov].forEach(center => { html += `<option value="${center}">${center}</option>`; });
-                centerSelect.innerHTML = html;
-                centerSelect.classList.remove('hidden');
-                centerSelect.required = true;
+            if (isMulti) {
+                const count = container.querySelectorAll('input[type="checkbox"]:checked').length;
+                if (count > 0) {
+                    searchInput.value = `تم اختيار (${count}) مناطق`;
+                } else {
+                    searchInput.value = '';
+                }
             } else {
-                centerSelect.innerHTML = '<option value="" disabled selected>اختر المنطقة/المركز...</option>';
-                centerSelect.classList.add('hidden');
-                centerSelect.required = false;
+                const checked = container.querySelector('input[type="radio"]:checked');
+                if (checked) {
+                    let displayVal = checked.value.includes(' - ') ? checked.value.split(' - ')[1] : checked.value;
+                    searchInput.value = displayVal;
+                } else {
+                    searchInput.value = '';
+                }
             }
         };
 
-        window.updateAreas = function(centerId, areaId, vTypeId) {
-            const center = document.getElementById(centerId).value;
+        // المحرك الذكي
+        window.updateSearchableList = function(govId, containerId, searchInputId, vTypeId, isDriver) {
+            const gov = document.getElementById(govId).value;
             const vType = document.getElementById(vTypeId).value;
-            const areaSelect = document.getElementById(areaId);
+            const container = document.getElementById(containerId);
+            const searchInput = document.getElementById(searchInputId);
 
-            if (!areaSelect) return;
-            const isDriver = areaSelect.tagName === 'DIV';
-
-            if (vType === 'توكتوك' && center && popularAreasByCenter[center]) {
-                if (isDriver) {
-                    let html = '<label class="block text-sm font-extrabold text-gray-700 mb-3">اختر الأحياء التي تعمل بها (يمكنك اختيار أكثر من حي):</label><div class="flex flex-wrap gap-2">';
-                    popularAreasByCenter[center].forEach(area => { 
-                        // تصميم مربعات اختيار كبيرة ومناسبة للموبايل
-                        html += `<label class="flex items-center gap-2 bg-white px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-bold text-gray-800 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition"><input type="checkbox" value="${area}" class="w-5 h-5 text-gray-800 rounded border-gray-300 focus:ring-gray-500"> ${area}</label>`; 
-                    });
-                    html += '</div>';
-                    areaSelect.innerHTML = html;
-                    areaSelect.classList.remove('hidden');
-                } else {
-                    let html = '<option value="" disabled selected>اختر الحي / المنطقة الشعبية...</option>';
-                    popularAreasByCenter[center].forEach(area => { html += `<option value="${area}">${area}</option>`; });
-                    areaSelect.innerHTML = html;
-                    areaSelect.classList.remove('hidden');
-                    areaSelect.required = true;
-                }
-            } else {
-                if (isDriver) areaSelect.innerHTML = '';
-                else { areaSelect.innerHTML = '<option value="" disabled selected>اختر الحي / المنطقة الشعبية...</option>'; areaSelect.required = false; }
-                areaSelect.classList.add('hidden');
+            if (!gov) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                searchInput.classList.add('hidden');
+                return;
             }
+
+            let items = [];
+            if (citiesData[gov]) {
+                citiesData[gov].forEach(center => {
+                    items.push({ text: `📍 ${center} (المركز/المدينة)`, value: center });
+                    if (vType === 'توكتوك' && popularAreasByCenter[center]) {
+                        popularAreasByCenter[center].forEach(area => {
+                            items.push({ text: `🏘️ ${area}`, value: `${center} - ${area}` });
+                        });
+                    }
+                });
+            }
+
+            let html = '';
+            const isMulti = (isDriver && vType === 'توكتوك');
+            const inputType = isMulti ? 'checkbox' : 'radio';
+            const inputName = containerId + '_group';
+            const accentColor = isDriver ? 'gray' : 'orange';
+
+            if (items.length > 0) {
+                items.forEach(item => {
+                    html += `
+                    <label class="location-item flex items-center gap-3 p-3 bg-white border border-${accentColor}-200 rounded-xl cursor-pointer hover:bg-${accentColor}-50 transition w-full shadow-sm">
+                        <input type="${inputType}" name="${inputName}" value="${item.value}" onchange="updateSearchBoxText('${containerId}', '${searchInputId}', ${isMulti})" class="w-6 h-6 text-${accentColor}-600 focus:ring-${accentColor}-500 rounded${isMulti ? '' : '-full'} border-gray-300">
+                        <span class="text-base font-bold text-gray-800">${item.text}</span>
+                    </label>
+                    `;
+                });
+                container.innerHTML = html;
+                container.classList.remove('hidden');
+                searchInput.classList.remove('hidden');
+                searchInput.value = ''; 
+            } else {
+                container.innerHTML = '<div class="text-sm text-gray-500 p-2 font-bold text-center">لا توجد بيانات متاحة</div>';
+                container.classList.remove('hidden');
+                searchInput.classList.add('hidden');
+            }
+        };
+
+        // تصفية العناصر
+        window.filterLocations = function(searchInputId, containerId) {
+            const query = document.getElementById(searchInputId).value.toLowerCase();
+            const labels = document.getElementById(containerId).querySelectorAll('.location-item');
+            labels.forEach(label => {
+                const text = label.textContent.toLowerCase();
+                if (text.includes(query)) label.style.display = 'flex';
+                else label.style.display = 'none';
+            });
         };
     </script>
 
@@ -499,26 +540,17 @@
             }
         });
 
-        // دالة موحدة لتركيب المكان للسائق وللزبون تدعم الاختيار المتعدد
-        function buildLocationString(govId, centerId, areaId) {
+        function buildLocationString(govId, containerId) {
             const gov = document.getElementById(govId).value;
-            const centerEl = document.getElementById(centerId);
-            const areaEl = document.getElementById(areaId);
+            const container = document.getElementById(containerId);
             
             let loc = gov || 'غير محدد';
-            if (gov && centerEl && !centerEl.classList.contains('hidden') && centerEl.value) {
-                loc = `${gov} - ${centerEl.value}`;
-                
-                if (areaEl && !areaEl.classList.contains('hidden')) {
-                    if (areaEl.tagName === 'DIV') { // السائق اختار مربعات متعددة
-                        const checkedBoxes = areaEl.querySelectorAll('input[type="checkbox"]:checked');
-                        if (checkedBoxes.length > 0) {
-                            const areas = Array.from(checkedBoxes).map(cb => cb.value);
-                            loc += ` - ${areas.join('، ')}`;
-                        }
-                    } else if (areaEl.value) { // الزبون اختار قيمة واحدة
-                        loc += ` - ${areaEl.value}`;
-                    }
+            if (gov && !container.classList.contains('hidden')) {
+                const checkedBoxes = container.querySelectorAll('input:checked');
+                if (checkedBoxes.length > 0) {
+                    const vals = Array.from(checkedBoxes).map(cb => cb.value); 
+                    const formattedVals = vals.map(v => `${gov} - ${v}`);
+                    loc = formattedVals.join(' ، '); 
                 }
             }
             return loc;
@@ -527,13 +559,20 @@
         window.registerDriver = function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnRegister');
+            
+            const container = document.getElementById('regDriverAreaContainer');
+            if (!container.classList.contains('hidden') && container.querySelectorAll('input:checked').length === 0) {
+                alert("يرجى البحث واختيار مكان العمل من القائمة.");
+                return;
+            }
+
             btn.innerText = "⏳ جاري الحفظ...";
 
             const name = document.getElementById('regDriverName').value;
             const phone = document.getElementById('regDriverPhone').value;
             const vType = document.getElementById('regDriverVType').value;
             const vCond = document.getElementById('regDriverVCond').value;
-            const fullLocation = buildLocationString('regDriverGov', 'regDriverCenter', 'regDriverArea');
+            const fullLocation = buildLocationString('regDriverGov', 'regDriverAreaContainer');
 
             const permanentRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
             
@@ -541,8 +580,8 @@
                 let joinD = snapshot.exists() ? (snapshot.val().joinDate || Date.now()) : Date.now();
                 set(permanentRef, { name, phone, vType, vCond, location: fullLocation, joinDate: joinD }).then(() => {
                     window.activateDriverSession(name, phone, vType, vCond, fullLocation);
-                    btn.innerText = "حفظ وبدء العمل";
-                }).catch(err => { alert("خطأ: " + err.message); btn.innerText = "حفظ وبدء العمل"; });
+                    btn.innerText = "حفظ البيانات وبدء العمل";
+                }).catch(err => { alert("خطأ: " + err.message); btn.innerText = "حفظ البيانات وبدء العمل"; });
             });
         };
 
@@ -664,12 +703,12 @@
                         let locText = '';
                         if (driver.location && driver.location !== 'غير محدد') {
                             let locParts = driver.location.split(' - ');
-                            let shortLoc = locParts.length > 2 ? locParts[1] + ' (' + locParts[2] + ')' : locParts[1];
+                            let shortLoc = locParts.length > 2 ? locParts[2] : locParts[1];
                             if (shortLoc && shortLoc.length > 22) shortLoc = shortLoc.substring(0, 22) + '...';
                             locText = `<div class="text-xs text-gray-500 font-semibold mt-1">📍 ${shortLoc}</div>`;
                         }
 
-                        tableHTML += `<tr class="${isMe ? 'bg-blue-50/50' : 'hover:bg-gray-50 transition'}">
+                        tableHTML += `<tr class="${isMe ? 'bg-gray-100/50' : 'hover:bg-gray-50 transition'}">
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 font-extrabold text-gray-900 text-sm md:text-base">${driver.name} ${isMe ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-bold">أنت</span>` : ""}</div>
                                 <div class="text-xs text-gray-700 bg-gray-100 inline-block px-2 py-1 rounded-md border border-gray-200 mt-1 font-bold">🚚 ${driver.vType}</div>
@@ -698,6 +737,14 @@
 
         window.fetchDriversFromCloud = function(e) {
             e.preventDefault();
+            
+            const container = document.getElementById('custAreaContainer');
+            const checkedRadio = container.querySelector('input[type="radio"]:checked');
+            if (!container.classList.contains('hidden') && !checkedRadio) {
+                alert("يرجى البحث واختيار مكان الاستلام من القائمة.");
+                return;
+            }
+
             const btn = document.getElementById('btnSearch');
             btn.innerText = "⏳ جاري البحث الذكي...";
             const resultContainer = document.getElementById('searchResultsContainer');
@@ -705,14 +752,13 @@
             try {
                 const reqType = document.getElementById('custVType').value;
                 const dropoff = document.getElementById('custDropoff').value;
-                
-                const exactPickupLoc = buildLocationString('custGov', 'custCenter', 'custArea');
                 const gov = document.getElementById('custGov').value;
-                const center = document.getElementById('custCenter').value;
-                const areaSelect = document.getElementById('custArea');
-                const area = (!areaSelect.classList.contains('hidden') && areaSelect.value) ? areaSelect.value : null;
-
-                const baseRegion = center ? `${gov} - ${center}` : gov;
+                
+                const radioValue = checkedRadio ? checkedRadio.value : ''; 
+                const exactPickupLoc = radioValue ? `${gov} - ${radioValue}` : gov;
+                
+                const centerName = radioValue.includes(' - ') ? radioValue.split(' - ')[0] : radioValue;
+                const baseRegion = centerName ? `${gov} - ${centerName}` : gov;
 
                 onValue(ref(db, 'wslny_app/active_drivers'), (snapshot) => {
                     let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">نتيجة البحث:</h3><div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 border-b border-gray-200 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">السائق والمكان</th><th class="px-4 py-3 font-extrabold text-center">تواصل</th></tr></thead><tbody class="divide-y divide-gray-100">`;
@@ -727,13 +773,8 @@
                                 if (l === 'غير محدد') {
                                     unknown.push(d);
                                 } else {
-                                    if (area) {
-                                        if (l.includes(baseRegion) && l.includes(area)) exact.push(d);
-                                        else if (l.includes(baseRegion)) near.push(d);
-                                    } else {
-                                        if (l === baseRegion || l.startsWith(baseRegion + " -")) exact.push(d);
-                                        else if (l.includes(gov)) near.push(d);
-                                    }
+                                    if (l.includes(exactPickupLoc)) exact.push(d);
+                                    else if (l.includes(baseRegion)) near.push(d);
                                 }
                             }
                         });
@@ -741,21 +782,21 @@
 
                     const renderRow = (d, type) => {
                         let cleanPhone = d.phone ? d.phone.toString().replace(/^0+/, '') : ''; 
-                        let messageText = `مرحباً، محتاج (${d.vType}) من تطبيق وصلني.\n📍 من: ${exactPickupLoc}\n🏁 إلى: ${dropoff}`;
+                        let messageText = `مرحباً، محتاج (${d.vType}) من تطبيق وصلني.\n📍 من: ${exactPickupLoc.split(' - ').pop()}\n🏁 إلى: ${dropoff}`;
                         let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent(messageText)}`;
                         let callLink = `tel:${d.phone}`;
                         
                         let bClass = type === 'exact' ? 'bg-green-100 text-green-800 border-green-300' : (type === 'near' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-gray-100 text-gray-800 border-gray-300');
                         let bText = type === 'exact' ? `📍 في نفس منطقتك` : (type === 'near' ? `📍 في منطقة قريبة` : `📍 غير محدد`);
                         
-                        let locName = d.location.includes(' - ') ? d.location.split(' - ').slice(1).join(' - ') : d.location;
-                        if(locName.length > 25) locName = locName.substring(0, 25) + '...';
+                        let locName = d.location.includes(' - ') ? d.location.split(' - ').slice(1).join(' ، ') : d.location;
+                        if(locName.length > 30) locName = locName.substring(0, 30) + '...';
 
                         return `<tr class="hover:bg-orange-50 transition">
                             <td class="px-4 py-4">
                                 <div class="font-extrabold text-gray-900 text-sm md:text-base">${d.name}</div>
                                 <div class="text-xs text-orange-700 font-bold mt-1 bg-orange-50 inline-block px-2 py-0.5 rounded-md border border-orange-200">🚚 ${d.vType}</div>
-                                <div class="text-xs text-gray-600 font-semibold mt-1.5">${locName}</div>
+                                <div class="text-[11px] text-gray-600 font-semibold mt-1.5 leading-tight">${locName}</div>
                                 <div class="text-xs ${bClass} mt-1.5 inline-block px-2 py-1 rounded-md border font-extrabold shadow-sm">${bText}</div>
                             </td>
                             <td class="px-4 py-4 text-center align-middle">
