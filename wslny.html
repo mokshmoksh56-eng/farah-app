@@ -31,10 +31,10 @@
         document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(blob)}">`);
     </script>
 
-    <!-- مؤشر السحب للأسفل -->
+    <!-- مؤشر السحب للأسفل للتحديث -->
     <div id="ptrIndicator" class="fixed top-0 left-0 w-full h-0 bg-white flex justify-center items-center overflow-hidden transition-all duration-200 z-[99999] shadow-sm border-b border-gray-200">
         <div class="flex items-center gap-3 text-gray-700 font-extrabold text-base">
-            <div class="w-6 h-6 border-4 border-gray-600 border-t-transparent rounded-full animate-spin"></div> جاري التحديث...
+            <div class="w-5 h-5 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div> جاري التحديث...
         </div>
     </div>
 
@@ -124,7 +124,7 @@
             <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <label class="block text-base font-extrabold text-gray-900">نطاق العمل</label>
-                    <button type="button" onclick="getLocation('regDriverGov')" class="text-[11px] bg-white border border-gray-400 text-gray-700 px-2 py-1.5 rounded-lg shadow-sm font-bold flex items-center gap-1 active:scale-95">📍 موقعي</button>
+                    <button type="button" onclick="getLocation('regDriverGov', null, 'driver')" class="text-[11px] bg-white border border-gray-400 text-gray-700 px-2 py-1.5 rounded-lg shadow-sm font-bold flex items-center gap-1 active:scale-95">📍 موقعي</button>
                 </div>
                 <select id="regDriverGov" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl font-bold">
                     <option value="" disabled selected>اختر المحافظة...</option>
@@ -141,7 +141,20 @@
 
     <!-- 5. شاشة السائق المدمجة (لوحة القيادة المتقدمة) -->
     <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-5 sm:p-6 border-t-4 border-gray-800 transform transition-all duration-300 mt-2">
-        <div class="mb-6 text-center relative bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        
+        <!-- إشعار الطلبات الواردة من الزبون (مخفي افتراضياً) -->
+        <div id="driverNotificationBanner" class="hidden bg-blue-100 border-2 border-blue-400 p-4 rounded-2xl mb-4 shadow-lg animate-pulse">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl" id="notificationIcon">🔔</span>
+                <div class="flex-1">
+                    <h4 class="font-black text-blue-900 text-sm">انتباه! زبون يتواصل معك الآن</h4>
+                    <p class="text-[11px] font-bold text-blue-800 mt-1 leading-relaxed" id="notificationText">جاري جلب التفاصيل...</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('driverNotificationBanner').classList.add('hidden')" class="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded-xl text-xs active:scale-95 transition">إخفاء التنبيه</button>
+        </div>
+
+        <div class="mb-4 text-center relative bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-3 border-2 border-gray-300 shadow-sm">👨‍✈️</div>
             <h2 id="activeDriverName" class="text-2xl font-black text-gray-900">كابتن ...</h2>
             <div id="driverRatingDisplay" class="text-yellow-500 font-bold text-sm my-1 flex justify-center items-center gap-1">⭐ 5.0 (0 رحلة)</div>
@@ -149,12 +162,14 @@
             <div id="activeDriverVType" class="mt-3 inline-block px-4 py-1.5 bg-gray-800 text-white font-bold text-sm rounded-lg shadow-sm"></div>
         </div>
 
-        <div id="driverStatusBanner" class="flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer" onclick="cycleStatus()">
-            <div class="flex items-center gap-3">
-                <div id="statusDot" class="w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-white"></div>
-                <span id="statusText" class="font-black text-green-700 text-base">متصل وجاهز للعمل</span>
-            </div>
-            <span class="text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-lg font-extrabold text-gray-600">تغيير 🔄</span>
+        <!-- قائمة الحالات المنسدلة (Dropdown) -->
+        <div class="mb-6 bg-white p-3 rounded-2xl shadow-sm border border-gray-200">
+            <label class="block text-[11px] font-black text-gray-500 mb-2">حالة العمل الحالية:</label>
+            <select id="driverStatusSelect" onchange="changeStatusDropdown(this.value)" class="w-full px-4 py-3 border-2 border-green-400 bg-green-50 rounded-xl font-black text-green-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+                <option value="active">🟢 متصل وجاهز للعمل</option>
+                <option value="busy">🔴 في مشوار الآن (مشغول)</option>
+                <option value="paused">☕ غير متصل (في استراحة)</option>
+            </select>
         </div>
 
         <div class="mb-6">
@@ -195,44 +210,53 @@
             <div class="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 shadow-sm flex items-center gap-3">
                 <div class="bg-white p-2 rounded-xl shadow-sm text-lg">🤝</div>
                 <p class="text-[11px] font-bold text-indigo-900 leading-relaxed flex-1">
-                    <span class="font-black text-indigo-700 text-xs">دورنا نوصلك بأقرب كابتن!</span><br>
+                    <span class="font-black text-indigo-700 text-xs">دورنا نوصلك بأقرب كابتن ليك!</span><br>
                     السعر وتفاصيل النقل بتكون بالاتفاق المباشر والودي بينك وبين الكابتن.
                 </p>
             </div>
 
-            <!-- مسار الرحلة (جنباً إلى جنب) -->
+            <!-- مسار الرحلة -->
             <div class="space-y-3">
                 <h3 class="block text-base font-black text-gray-900 border-b border-gray-200 pb-2">📍 مسار الرحلة</h3>
                 
                 <div class="grid grid-cols-2 gap-2">
-                    <!-- 1. كرت الاستلام (برتقالي) -->
+                    <!-- 1. كرت الاستلام (برتقالي) يدوي مع GPS -->
                     <div class="p-3 bg-orange-50 rounded-2xl border-2 border-orange-200 shadow-sm relative">
-                        <div class="flex flex-col gap-2 mb-3">
-                            <label class="block text-[11px] font-black text-orange-900">📦 منين؟ (الاستلام)</label>
-                            <button type="button" onclick="getLocation('custGov')" class="text-[10px] bg-white border border-orange-300 text-orange-600 px-2 py-1 rounded-lg shadow-sm font-bold flex items-center justify-center gap-1 active:scale-95 w-full">📍 تحديد موقعي</button>
+                        <label class="block text-[11px] font-black text-orange-900 mb-2">📦 منين؟ (الاستلام)</label>
+                        
+                        <button type="button" onclick="getLocation('custGov', 'custPickupAddress', 'customer')" class="w-full mb-2 bg-white border border-orange-300 text-orange-600 hover:bg-orange-100 py-1.5 rounded-xl shadow-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 text-[10px] transition">
+                            <span class="text-xs">📍</span> تحديد موقعي تلقائياً
+                        </button>
+
+                        <div class="flex items-center gap-2 mb-2 opacity-70">
+                            <div class="h-px bg-orange-300 flex-1"></div>
+                            <span class="text-[8px] text-orange-800 font-extrabold">أو اكتب مكان آخر</span>
+                            <div class="h-px bg-orange-300 flex-1"></div>
                         </div>
-                        <select id="custGov" required class="w-full px-2 py-2 bg-white border border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-[11px] font-bold text-gray-800">
+
+                        <select id="custGov" required class="w-full px-2 py-2 bg-white border border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-[11px] font-bold text-gray-800 mb-2">
                             <option value="" disabled selected>المحافظة...</option>
                             <option value="القاهرة">القاهرة</option><option value="الجيزة">الجيزة</option><option value="الإسكندرية">الإسكندرية</option><option value="الدقهلية">الدقهلية</option><option value="الشرقية">الشرقية</option><option value="الغربية">الغربية</option><option value="المنوفية">المنوفية</option><option value="القليوبية">القليوبية</option><option value="البحيرة">البحيرة</option><option value="كفر الشيخ">كفر الشيخ</option><option value="دمياط">دمياط</option><option value="الإسماعيلية">الإسماعيلية</option><option value="بورسعيد">بورسعيد</option><option value="السويس">السويس</option><option value="مطروح">مطروح</option><option value="شمال سيناء">شمال سيناء</option><option value="جنوب سيناء">جنوب سيناء</option><option value="البحر الأحمر">البحر الأحمر</option><option value="الفيوم">الفيوم</option><option value="بني سويف">بني سويف</option><option value="المنيا">المنيا</option><option value="أسيوط">أسيوط</option><option value="سوهاج">سوهاج</option><option value="قنا">قنا</option><option value="الأقصر">الأقصر</option><option value="أسوان">أسوان</option><option value="الوادي الجديد">الوادي الجديد</option>
                         </select>
+                        <input type="text" id="custPickupAddress" oninput="window.custLat=null; window.custLon=null;" placeholder="✍️ مكان أو عنوان الاستلام..." required class="w-full px-2 py-2 bg-white border border-orange-300 rounded-xl outline-none text-[11px] font-bold text-orange-900 focus:ring-2 focus:ring-orange-500">
                     </div>
 
-                    <!-- 2. كرت الوصول (أزرق) إدخال يدوي للمنطقة -->
+                    <!-- 2. كرت الوصول (أزرق) إدخال يدوي -->
                     <div class="p-3 bg-blue-50 rounded-2xl border-2 border-blue-200 shadow-sm relative">
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="block text-[11px] font-black text-blue-900">🏁 لفين؟ (الوصول)</label>
                         </div>
                         <select id="custDropoffGov" required class="w-full px-2 py-2 bg-white border border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-[11px] font-bold text-gray-800 mb-2">
                             <option value="" disabled selected>المحافظة...</option>
                             <option value="القاهرة">القاهرة</option><option value="الجيزة">الجيزة</option><option value="الإسكندرية">الإسكندرية</option><option value="الدقهلية">الدقهلية</option><option value="الشرقية">الشرقية</option><option value="الغربية">الغربية</option><option value="المنوفية">المنوفية</option><option value="القليوبية">القليوبية</option><option value="البحيرة">البحيرة</option><option value="كفر الشيخ">كفر الشيخ</option><option value="دمياط">دمياط</option><option value="الإسماعيلية">الإسماعيلية</option><option value="بورسعيد">بورسعيد</option><option value="السويس">السويس</option><option value="مطروح">مطروح</option><option value="شمال سيناء">شمال سيناء</option><option value="جنوب سيناء">جنوب سيناء</option><option value="البحر الأحمر">البحر الأحمر</option><option value="الفيوم">الفيوم</option><option value="بني سويف">بني سويف</option><option value="المنيا">المنيا</option><option value="أسيوط">أسيوط</option><option value="سوهاج">سوهاج</option><option value="قنا">قنا</option><option value="الأقصر">الأقصر</option><option value="أسوان">أسوان</option><option value="الوادي الجديد">الوادي الجديد</option>
                         </select>
-                        <input type="text" id="custDropoffAddress" placeholder="✍️ اكتب المنطقة أو العنوان..." required class="w-full px-2 py-2 bg-white border border-blue-300 rounded-xl outline-none text-[11px] font-bold text-blue-900 focus:ring-2 focus:ring-blue-500">
+                        <input type="text" id="custDropoffAddress" placeholder="✍️ مكان أو عنوان الوصول..." required class="w-full px-2 py-2 bg-white border border-blue-300 rounded-xl outline-none text-[11px] font-bold text-blue-900 focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
             </div>
 
             <div class="pt-2 space-y-3">
-                <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-xl shadow-lg active:scale-95 flex justify-center items-center gap-2">🔍 بحث ذكي عن أقرب مركبة</button>
+                <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-xl shadow-lg active:scale-95 flex justify-center items-center gap-2">🔍 بحث ذكي وترتيب بالأقرب</button>
                 <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 text-gray-800 font-extrabold py-4 rounded-xl active:scale-95">الرجوع</button>
             </div>
         </form>
@@ -257,11 +281,32 @@
         </div>
     </div>
 
+    <!-- كود الجافاسكربت الخاص بالسحب للأسفل والتنقل -->
     <script>
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installAppBtn').classList.remove('hidden'); });
         document.getElementById('installAppBtn').addEventListener('click', async () => {
             if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') document.getElementById('installAppBtn').classList.add('hidden'); deferredPrompt = null; }
+        });
+
+        // السحب للتحديث
+        let touchStartY = 0;
+        const ptrIndicator = document.getElementById('ptrIndicator');
+        let isRefreshing = false;
+
+        document.addEventListener('touchstart', e => { if (window.scrollY === 0) touchStartY = e.touches[0].clientY; }, { passive: true });
+        document.addEventListener('touchmove', e => {
+            if (window.scrollY === 0 && touchStartY > 0 && !isRefreshing) {
+                let pullDistance = e.touches[0].clientY - touchStartY;
+                if (pullDistance > 0 && pullDistance < 120) { ptrIndicator.style.height = pullDistance + 'px'; }
+            }
+        }, { passive: true });
+        document.addEventListener('touchend', e => {
+            if (!isRefreshing && ptrIndicator.style.height && parseInt(ptrIndicator.style.height) > 60) {
+                isRefreshing = true; ptrIndicator.style.height = '60px';
+                setTimeout(() => window.location.reload(), 400); // تحديث مع البقاء في نفس الصفحة
+            } else { ptrIndicator.style.height = '0px'; }
+            touchStartY = 0;
         });
 
         window.showView = function(viewId) { window.location.hash = viewId; }
@@ -277,15 +322,23 @@
 
         const governoratesList = ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "المنوفية", "القليوبية", "البحيرة", "كفر الشيخ", "دمياط", "الإسماعيلية", "بورسعيد", "السويس", "مطروح", "شمال سيناء", "جنوب سيناء", "البحر الأحمر", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "الوادي الجديد"];
 
-        window.getLocation = function(targetSelectId) {
+        // المتغيرات لحفظ المواقع للاستخدام في المسافات
+        window.driverLat = null; window.driverLon = null;
+        window.custLat = null; window.custLon = null;
+
+        window.getLocation = function(targetSelectId, targetInputId = null, role = null) {
             if (navigator.geolocation) {
                 const btn = event.currentTarget;
-                const originalText = btn.innerText;
-                btn.innerText = "⏳ جاري...";
+                const originalText = btn.innerHTML;
+                btn.innerHTML = "⏳ جاري التحديد...";
                 navigator.geolocation.getCurrentPosition(position => {
-                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&accept-language=ar`)
+                    const lat = position.coords.latitude; const lon = position.coords.longitude;
+                    if(role === 'driver') { window.driverLat = lat; window.driverLon = lon; }
+                    if(role === 'customer') { window.custLat = lat; window.custLon = lon; }
+
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ar`)
                     .then(res => res.json()).then(data => {
-                        btn.innerText = originalText;
+                        btn.innerHTML = originalText;
                         let state = data.address.state || data.address.city;
                         if(state) {
                             let mappedGov = governoratesList.find(g => state.includes(g) || g.includes(state.replace('محافظة ','')));
@@ -293,12 +346,18 @@
                                 const targetSelect = document.getElementById(targetSelectId);
                                 targetSelect.value = mappedGov; 
                                 targetSelect.dispatchEvent(new Event('change')); 
-                                alert("تم التقاط المحافظة بنجاح."); 
+
+                                if(targetInputId) {
+                                    let specificAddress = [data.address.suburb, data.address.neighbourhood, data.address.road, data.address.town, data.address.village].filter(Boolean).join('، ');
+                                    if(specificAddress) document.getElementById(targetInputId).value = specificAddress;
+                                }
+
+                                alert("📍 تم التقاط الموقع بنجاح."); 
                             } 
                             else alert("عفواً، لم نتمكن من تحديد محافظتك.");
                         }
-                    }).catch(() => { btn.innerText = originalText; alert("خطأ في الاتصال."); });
-                }, () => { btn.innerText = originalText; alert("يرجى تفعيل الـ GPS."); }, {timeout: 10000});
+                    }).catch(() => { btn.innerHTML = originalText; alert("خطأ في الاتصال بخادم الخرائط."); });
+                }, () => { btn.innerHTML = originalText; alert("يرجى تفعيل الـ GPS في جهازك."); }, {timeout: 10000});
             } else { alert("متصفحك لا يدعم تحديد الموقع."); }
         };
 
@@ -393,6 +452,53 @@
             });
         };
 
+        // دالة تغيير الحالة من الـ Dropdown
+        window.changeStatusDropdown = function(nextStatus) {
+            if(currentDriverActiveRef) update(currentDriverActiveRef, { status: nextStatus });
+            localStorage.setItem('wslny_driver_status', nextStatus);
+            window.updateDriverUI(nextStatus);
+        };
+
+        window.updateDriverUI = function(status) {
+            const select = document.getElementById('driverStatusSelect');
+            if(select) {
+                select.value = status;
+                if (status === 'active') { select.className = "w-full px-4 py-3 border-2 border-green-400 bg-green-50 rounded-xl font-black text-green-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors"; } 
+                else if (status === 'busy') { select.className = "w-full px-4 py-3 border-2 border-red-400 bg-red-50 rounded-xl font-black text-red-800 outline-none focus:ring-2 focus:ring-red-500 transition-colors"; } 
+                else { select.className = "w-full px-4 py-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl font-black text-yellow-800 outline-none focus:ring-2 focus:ring-yellow-500 transition-colors"; }
+            }
+        };
+
+        window.listenToNotifications = function() {
+            const myInfoStr = localStorage.getItem('wslny_driver_info'); if(!myInfoStr) return;
+            const myPhone = JSON.parse(myInfoStr).phone;
+            const notifRef = ref(db, 'wslny_app/notifications/driver_' + myPhone);
+            
+            onValue(notifRef, (snap) => {
+                if(snap.exists()) {
+                    const data = snap.val();
+                    // تظهر فقط لو الإشعار في آخر 60 ثانية (عشان لو عمل ريفريش متظهرش الإشعارات القديمة)
+                    if(Date.now() - data.timestamp < 60000) {
+                        const banner = document.getElementById('driverNotificationBanner');
+                        const icon = document.getElementById('notificationIcon');
+                        const text = document.getElementById('notificationText');
+                        
+                        icon.innerText = data.type === 'call' ? '📞' : '💬';
+                        let msgType = data.type === 'call' ? 'يتصل بك هاتفياً' : 'يفتح محادثة واتساب معك';
+                        
+                        let p = data.pickup.split(' - ').slice(-1)[0];
+                        let d = data.dropoff.split(' - ').slice(-1)[0];
+
+                        text.innerHTML = `زبون <b>${msgType}</b> الآن لطلب رحلة.<br>📍 <b>من:</b> ${p}<br>🏁 <b>إلى:</b> ${d}`;
+                        
+                        banner.classList.remove('hidden');
+                        if(navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]); 
+                        setTimeout(() => banner.classList.add('hidden'), 25000);
+                    }
+                }
+            });
+        };
+
         window.activateDriverSession = function(name, phone, vType, vCond, location, isAutoLogin = false) {
             localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond, location }));
             localStorage.setItem('wslny_is_active', 'true');
@@ -412,26 +518,22 @@
             const lastStatus = localStorage.getItem('wslny_driver_status') || 'active';
             currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/driver_' + phone);
 
+            // حفظ بيانات السائق، مع محاولة الحصول على الـ GPS في الخلفية للترتيب
             set(currentDriverActiveRef, { name, phone, vType, vCond, location, status: lastStatus, timestamp: Date.now() }).then(() => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        update(currentDriverActiveRef, { lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    }, () => {}, {timeout: 10000});
+                }
+                
                 window.updateDriverUI(lastStatus);
-                if (!isAutoLogin || !window.location.hash || window.location.hash.includes('View')) showView('driverActiveView');
+                if (!isAutoLogin || window.location.hash === '' || window.location.hash === '#homeView') {
+                    showView('driverActiveView');
+                }
+                
                 window.listenToColleagues();
+                window.listenToNotifications(); // تشغيل مستمع الإشعارات
             });
-        };
-
-        window.cycleStatus = function() {
-            let current = localStorage.getItem('wslny_driver_status') || 'active';
-            let nextStatus = current === 'active' ? 'busy' : (current === 'busy' ? 'paused' : 'active');
-            if(currentDriverActiveRef) update(currentDriverActiveRef, { status: nextStatus });
-            localStorage.setItem('wslny_driver_status', nextStatus);
-            window.updateDriverUI(nextStatus);
-        };
-
-        window.updateDriverUI = function(status) {
-            const banner = document.getElementById('driverStatusBanner'); const dot = document.getElementById('statusDot'); const text = document.getElementById('statusText');
-            if (status === 'active') { banner.className = "flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer"; dot.className = "w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-white"; text.innerText = "متصل وجاهز للعمل"; text.className = "font-black text-green-700 text-base"; } 
-            else if (status === 'busy') { banner.className = "flex justify-between items-center bg-red-50 border border-red-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer"; dot.className = "w-4 h-4 bg-red-500 rounded-full animate-pulse border-2 border-white"; text.innerText = "في مشوار الآن 🔴"; text.className = "font-black text-red-700 text-base"; } 
-            else { banner.className = "flex justify-between items-center bg-yellow-50 border border-yellow-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer"; dot.className = "w-4 h-4 bg-yellow-500 rounded-full border-2 border-white"; text.innerText = "في استراحة (مخفي) ☕"; text.className = "font-black text-yellow-700 text-base"; }
         };
 
         window.confirmGoOffline = function() { if (confirm("خروج نهائي من التطبيق؟")) { if(currentDriverActiveRef) remove(currentDriverActiveRef); localStorage.setItem('wslny_is_active', 'false'); window.location.hash = 'homeView'; } };
@@ -467,81 +569,123 @@
 
         window.trackClick = function(driverPhone, driverName, type, targetUrl, pickupLoc, dropoffLoc) {
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + driverPhone);
+            const notifRef = ref(db, 'wslny_app/notifications/driver_' + driverPhone);
+
             get(driverRef).then((snap) => {
                 if(snap.exists()) {
                     let updates = type === 'call' ? { calls_received: (snap.val().calls_received || 0) + 1 } : { wa_received: (snap.val().wa_received || 0) + 1 };
                     update(driverRef, updates);
                 }
             });
+
+            // إرسال الإشعار للسائق
+            set(notifRef, { type: type, pickup: pickupLoc, dropoff: dropoffLoc, timestamp: Date.now() });
+
             set(push(ref(db, 'wslny_app/security_logs')), { driver_phone: driverPhone, driver_name: driverName, type: type, pickup: pickupLoc, dropoff: dropoffLoc, timestamp: Date.now() }).then(() => { window.location.href = targetUrl; }).catch(() => { window.location.href = targetUrl; });
         };
 
-        window.fetchDriversFromCloud = function(e) {
+        // دالة حساب المسافة الجغرافية بالكيلومتر
+        const getDistance = (lat1, lon1, lat2, lon2) => {
+            if(!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+            const p = 0.017453292519943295; const c = Math.cos;
+            const a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+            return 12742 * Math.asin(Math.sqrt(a)); 
+        };
+
+        window.fetchDriversFromCloud = async function(e) {
             e.preventDefault();
             const reqType = document.getElementById('custVType').value;
             if (!reqType) return alert("يرجى تحديد شكل النقل المطلوب.");
             
             const gov = document.getElementById('custGov').value;
+            const manualPickup = document.getElementById('custPickupAddress').value.trim();
             if (!gov) return alert("اختر محافظة الاستلام.");
+            if (!manualPickup) return alert("يرجى كتابة عنوان أو مكان الاستلام.");
 
             const dropoffGov = document.getElementById('custDropoffGov').value;
             const manualDropoff = document.getElementById('custDropoffAddress').value.trim();
             if(!dropoffGov) return alert("اختر محافظة الوصول.");
             if(!manualDropoff) return alert("يرجى كتابة مكان الوصول.");
 
-            const btn = document.getElementById('btnSearch'); btn.innerText = "⏳ جاري البحث الذكي...";
+            const btn = document.getElementById('btnSearch'); btn.innerText = "⏳ جاري البحث الجغرافي...";
             
+            let cLat = window.custLat; let cLon = window.custLon;
+            
+            // في حالة ان الزبون كتب المكان بايده ومستخدمش الـ GPS، نحاول نخمن الاحداثيات بالخلفية
+            if (!cLat || !cLon) {
+                try {
+                    let geoQuery = encodeURIComponent(manualPickup + ', ' + gov + ', مصر');
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${geoQuery}&limit=1`);
+                    const geoData = await geoRes.json();
+                    if(geoData && geoData.length > 0) { cLat = parseFloat(geoData[0].lat); cLon = parseFloat(geoData[0].lon); }
+                } catch(err) { console.log('Geocoding fallback failed'); }
+            }
+
             try {
+                const pickupLoc = `${gov} - ${manualPickup}`;
                 const dropoffLoc = `${dropoffGov} - ${manualDropoff}`;
 
                 get(ref(db, 'wslny_app/registered_drivers')).then(regSnap => {
                     let registeredData = regSnap.val() || {};
                     onValue(ref(db, 'wslny_app/active_drivers'), (snapshot) => {
-                        let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">نتيجة البحث:</h3><div class="bg-white rounded-2xl shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الكابتن</th><th class="px-4 py-3 font-extrabold text-center">تواصل / تقييم</th></tr></thead><tbody class="divide-y divide-gray-100">`;
+                        let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">الترتيب من الأقرب للأبعد 📍:</h3><div class="bg-white rounded-2xl shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الكابتن (والمسافة)</th><th class="px-4 py-3 font-extrabold text-center">تواصل / تقييم</th></tr></thead><tbody class="divide-y divide-gray-100">`;
                         let tableRows = '';
-                        let exactDrivers = [];
+                        let availableDrivers = [];
 
                         if(snapshot.val()) {
                             Object.values(snapshot.val()).forEach(d => {
                                 if(d.vType === reqType && d.status === 'active' && d.location === gov) {
                                     let fullDData = registeredData["driver_" + d.phone] || {};
                                     d.ratingAvg = fullDData.ratingSum ? (fullDData.ratingSum / fullDData.ratingCount).toFixed(1) : 5.0;
-                                    exactDrivers.push(d);
+                                    d.distance = getDistance(cLat, cLon, d.lat, d.lng);
+                                    availableDrivers.push(d);
                                 }
                             });
                         }
 
-                        exactDrivers.forEach(d => {
-                            let messageText = `مرحباً كابتن، طلب (${d.vType}) من نَقْلَة.\n📍 من: ${gov}\n🏁 إلى: ${dropoffLoc}\n🤝 (برجاء الاتفاق على السعر وتفاصيل النقل)`;
+                        // الترتيب بناءً على المسافة الجغرافية
+                        availableDrivers.sort((a, b) => a.distance - b.distance);
+
+                        availableDrivers.forEach(d => {
+                            let messageText = `مرحباً كابتن، طلب (${d.vType}) من نَقْلَة.\n📍 من: ${pickupLoc}\n🏁 إلى: ${dropoffLoc}\n🤝 (برجاء الاتفاق على السعر وتفاصيل النقل)`;
                             let waLink = `https://wa.me/20${d.phone.toString().replace(/^0+/, '')}?text=${encodeURIComponent(messageText)}`;
                             let badge = d.ratingAvg >= 4.5 ? `<span class="bg-yellow-100 text-yellow-700 text-[10px] px-1 rounded font-bold ml-1 border border-yellow-300">مميز 🏆</span>` : '';
+
+                            // عرض المسافة
+                            let distBadge = '';
+                            if (d.distance !== Infinity && d.distance !== null && !isNaN(d.distance)) {
+                                let km = d.distance.toFixed(1);
+                                distBadge = `<div class="text-[10px] bg-green-100 text-green-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 يبعد عنك ${km} كم</div>`;
+                            } else {
+                                distBadge = `<div class="text-[10px] bg-gray-100 text-gray-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 متصل في محافظتك</div>`;
+                            }
 
                             tableRows += `<tr class="hover:bg-orange-50">
                                 <td class="px-4 py-3">
                                     <div class="font-extrabold text-gray-900 text-sm">${d.name} ${badge}</div>
                                     <div class="text-[10px] text-yellow-500 font-bold mt-0.5">⭐ ${d.ratingAvg}</div>
-                                    <div class="text-[10px] bg-green-100 text-green-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 في نفس محافظتك</div>
+                                    ${distBadge}
                                 </td>
                                 <td class="px-4 py-3 align-middle text-center">
                                     <div class="flex justify-center gap-2 mb-1.5">
-                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'call', 'tel:${d.phone}', '${gov}', '${dropoffLoc}')" class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">📞</button>
-                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${gov}', '${dropoffLoc}')" class="w-8 h-8 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">💬</button>
+                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'call', 'tel:${d.phone}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">📞</button>
+                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">💬</button>
                                     </div>
                                     <button type="button" onclick="openRatingModal('${d.phone}', '${d.name}')" class="text-[10px] text-gray-400 hover:text-orange-500 underline font-bold">قيّم الكابتن ⭐</button>
                                 </td>
                             </tr>`;
                         });
 
-                        if (!tableRows) document.getElementById('searchResultsContainer').innerHTML = `<div class="text-center p-4 bg-red-50 rounded-xl border border-red-200 text-red-600 font-black text-sm">عفواً، جميع سائقين (${reqType}) إما في مشوار أو لا يوجد أحد متاح في المحافظة.</div>`;
+                        if (!tableRows) document.getElementById('searchResultsContainer').innerHTML = `<div class="text-center p-4 bg-red-50 rounded-xl border border-red-200 text-red-600 font-black text-sm">عفواً، جميع سائقين (${reqType}) في محافظة (${gov}) إما في مشوار أو لا يوجد أحد متاح الآن.</div>`;
                         else document.getElementById('searchResultsContainer').innerHTML = htmlOutput + tableRows + `</tbody></table></div>`;
 
                         document.getElementById('searchResultsContainer').classList.remove('hidden');
-                        btn.innerHTML = "🔍 بحث ذكي عن أقرب مركبة";
+                        btn.innerHTML = "🔍 بحث ذكي وترتيب بالأقرب";
                         setTimeout(() => document.getElementById('searchResultsContainer').scrollIntoView({ behavior: 'smooth' }), 100);
                     }, { onlyOnce: true });
                 });
                 
-            } catch (err) { alert("خطأ: " + err.message); btn.innerHTML = "🔍 بحث ذكي عن أقرب مركبة"; }
+            } catch (err) { alert("خطأ: " + err.message); btn.innerHTML = "🔍 بحث ذكي وترتيب بالأقرب"; }
         };
     </script>
 </body>
