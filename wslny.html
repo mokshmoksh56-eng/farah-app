@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>تطبيق نَقْلَة | Naqla</title>
+    <!-- إعدادات PWA الأساسية -->
+    <meta name="theme-color" content="#f97316">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -13,21 +17,24 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        #auth-loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6;
-            z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-size: 18px; color: #f97316; font-weight: 900;
-        }
+        #auth-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 18px; color: #f97316; font-weight: 900; }
+        .star-rating { direction: rtl; display: inline-flex; font-size: 24px; cursor: pointer; color: #d1d5db; }
+        .star-rating span:hover, .star-rating span:hover ~ span, .star-rating span.active { color: #fbbf24; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 text-gray-900 bg-gray-200 relative leading-relaxed">
 
-    <!-- مؤشر السحب للأسفل للتحديث -->
+    <!-- توليد ملف PWA Manifest ديناميكياً -->
+    <script>
+        const manifestData = { "name": "نقلة | Naqla", "short_name": "نقلة", "start_url": ".", "display": "standalone", "background_color": "#f3f4f6", "theme_color": "#f97316", "icons": [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjk3MzE2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjZmZmIj7wn5qbPC90ZXh0Pjwvc3ZnPg==", "sizes": "192x192", "type": "image/svg+xml"}] };
+        const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+        document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(blob)}">`);
+    </script>
+
+    <!-- مؤشر السحب للأسفل -->
     <div id="ptrIndicator" class="fixed top-0 left-0 w-full h-0 bg-white flex justify-center items-center overflow-hidden transition-all duration-200 z-[99999] shadow-sm border-b border-gray-200">
         <div class="flex items-center gap-3 text-gray-700 font-extrabold text-base">
-            <div class="w-6 h-6 border-4 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
-            جاري التحديث...
+            <div class="w-6 h-6 border-4 border-gray-600 border-t-transparent rounded-full animate-spin"></div> جاري التحديث...
         </div>
     </div>
 
@@ -41,203 +48,107 @@
                 <div class="relative bg-orange-500 text-white w-20 h-20 rounded-2xl shadow-xl flex items-center justify-center transform -rotate-6 transition-transform hover:rotate-0">
                     <span class="text-4xl">🚚</span>
                 </div>
-                <div class="absolute -bottom-2 -right-2 bg-gray-800 text-white w-8 h-8 rounded-full shadow-md flex items-center justify-center border-2 border-white">
-                    <span class="text-sm">📍</span>
-                </div>
             </div>
-            
             <h1 class="text-5xl font-black text-gray-900 tracking-tight mt-2">نَقْلَة</h1>
             <p class="text-orange-600 font-extrabold tracking-widest text-sm mt-1 uppercase">N A Q L A</p>
-            
-            <div class="mt-3 bg-gray-100 px-4 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                <p class="text-gray-600 font-bold text-sm">أسرع توصيلة.. أأمن نقلة ✨</p>
-            </div>
-            <div id="sync-status" class="mt-4 text-xs font-extrabold text-green-700 bg-green-100 inline-block px-3 py-1 rounded-full border border-green-300 shadow-sm">
-                🟢 متصل بالسيرفر
-            </div>
+            <div class="mt-3 bg-gray-100 px-4 py-1.5 rounded-full border border-gray-200 shadow-sm"><p class="text-gray-600 font-bold text-sm">أسرع توصيلة.. أأمن نقلة ✨</p></div>
         </div>
 
         <div class="space-y-4">
             <button onclick="showView('customerView')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-5 rounded-2xl shadow-lg transition duration-300 text-xl flex items-center justify-center gap-3 active:scale-95">
                 <span class="text-orange-100 text-3xl">📦</span> أنا زبون (أطلب عربية)
             </button>
-
             <button onclick="showView('driverChoiceView')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-extrabold py-5 rounded-2xl shadow-lg transition duration-300 text-xl flex items-center justify-center gap-3 active:scale-95">
-                <span class="text-gray-300 text-3xl">🚚</span> أنا سواق (دخول / تسجيل)
+                <span class="text-gray-300 text-3xl">🚚</span> أنا سواق (دخول/تسجيل)
+            </button>
+            <button id="installAppBtn" class="hidden w-full bg-white border border-orange-300 text-orange-600 font-extrabold py-3 rounded-xl shadow-sm transition duration-300 text-base flex items-center justify-center gap-2 active:scale-95 mt-4">
+                📱 تثبيت التطبيق على الشاشة الرئيسية
             </button>
         </div>
     </div>
 
     <!-- 2. واجهة اختيار السائق -->
     <div id="driverChoiceView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-md p-6 sm:p-8 text-center border-t-4 border-gray-800 transform transition-all duration-300 mt-2">
-        <div class="mb-8">
-            <h2 class="text-3xl font-black text-gray-900 mb-2">بوابة السائقين</h2>
-            <p class="text-gray-600 font-bold text-base">اختر طريقة الدخول المناسبة لك</p>
-        </div>
-
+        <div class="mb-8"><h2 class="text-3xl font-black text-gray-900 mb-2">بوابة السائقين</h2><p class="text-gray-600 font-bold text-base">اختر طريقة الدخول المناسبة لك</p></div>
         <div class="space-y-4">
-            <button onclick="showView('driverLoginView')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-extrabold py-4 rounded-xl shadow-md transition duration-200 text-lg active:scale-95">
-                🔐 لدي حساب (دخول)
-            </button>
-            <button onclick="showView('driverRegisterView')" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-extrabold py-4 rounded-xl shadow-md transition duration-200 text-lg active:scale-95">
-                📝 مستخدم جديد (تسجيل)
-            </button>
-            <button onclick="window.history.back()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-extrabold py-4 rounded-xl transition duration-200 text-lg mt-2 active:scale-95">
-                الرجوع للرئيسية
-            </button>
+            <button onclick="showView('driverLoginView')" class="w-full bg-gray-800 text-white font-extrabold py-4 rounded-xl shadow-md active:scale-95">🔐 لدي حساب (دخول)</button>
+            <button onclick="showView('driverRegisterView')" class="w-full bg-gray-600 text-white font-extrabold py-4 rounded-xl shadow-md active:scale-95">📝 مستخدم جديد (تسجيل)</button>
+            <button onclick="window.history.back()" class="w-full bg-gray-200 text-gray-800 font-extrabold py-4 rounded-xl active:scale-95 mt-2">الرجوع للرئيسية</button>
         </div>
     </div>
 
     <!-- 3. واجهة تسجيل دخول السائق -->
     <div id="driverLoginView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 sm:p-8 border-t-4 border-gray-800 transform transition-all duration-300 mt-2">
-        <div class="mb-8 text-center">
-            <h2 class="text-3xl font-black text-gray-900">تسجيل الدخول</h2>
-        </div>
-
+        <div class="mb-8 text-center"><h2 class="text-3xl font-black text-gray-900">تسجيل الدخول</h2></div>
         <form onsubmit="loginDriver(event)" class="space-y-6">
             <div>
                 <label class="block text-base font-extrabold text-gray-800 mb-2">رقم الهاتف المسجل</label>
-                <input type="tel" id="loginPhoneInput" required placeholder="01xxxxxxxx" class="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-gray-400 focus:border-gray-500 outline-none text-center text-2xl font-black tracking-widest transition-all" dir="ltr">
+                <input type="tel" id="loginPhoneInput" required placeholder="01xxxxxxxx" class="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-gray-400 outline-none text-center text-2xl font-black tracking-widest" dir="ltr">
             </div>
-
             <div class="pt-2 space-y-4">
-                <button type="submit" id="btnLogin" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-extrabold py-4 rounded-xl shadow-md transition duration-200 text-xl active:scale-95">
-                    دخول وبدء العمل
-                </button>
-                <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-extrabold py-4 rounded-xl transition duration-200 text-lg active:scale-95">
-                    الرجوع
-                </button>
+                <button type="submit" id="btnLogin" class="w-full bg-gray-800 text-white font-extrabold py-4 rounded-xl shadow-md active:scale-95">دخول وبدء العمل</button>
+                <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 text-gray-800 font-extrabold py-4 rounded-xl active:scale-95">الرجوع</button>
             </div>
         </form>
     </div>
 
     <!-- 4. واجهة تسجيل سائق جديد -->
     <div id="driverRegisterView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 sm:p-8 border-t-4 border-gray-800 transform transition-all duration-300 mt-2">
-        <div class="mb-6 text-center">
-            <h2 class="text-3xl font-black text-gray-900">تسجيل سائق جديد</h2>
-        </div>
-
+        <div class="mb-6 text-center"><h2 class="text-3xl font-black text-gray-900">تسجيل سائق جديد</h2></div>
         <form onsubmit="registerDriver(event)" class="space-y-5">
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
                 <label class="block text-base font-extrabold text-gray-900 mb-3">بياناتك الشخصية</label>
                 <div class="space-y-3">
-                    <input type="text" id="regDriverName" required placeholder="الاسم ثلاثي" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none text-base font-bold text-gray-800 placeholder-gray-400">
-                    <input type="tel" id="regDriverPhone" required placeholder="رقم الهاتف: 01xxxxxxxx" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none text-left text-lg font-bold text-gray-800 placeholder-gray-400 tracking-wider" dir="ltr">
+                    <input type="text" id="regDriverName" required placeholder="الاسم ثلاثي" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none font-bold">
+                    <input type="tel" id="regDriverPhone" required placeholder="رقم الهاتف: 01xxxxxxxx" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none text-left text-lg font-bold" dir="ltr">
                 </div>
             </div>
 
-            <!-- شكل المركبة كروت مرئية (للسائق) -->
+            <!-- شكل المركبة -->
             <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
                 <label class="block text-base font-extrabold text-gray-900 mb-3">شكل ونوع المركبة</label>
-                
-                <input type="hidden" id="regDriverVType" onchange="updateSearchableList('regDriverGov', 'regDriverAreaContainer', 'regDriverSearchInput', 'regDriverVType', true)">
-                
+                <input type="hidden" id="regDriverVType">
                 <div class="grid grid-cols-3 gap-2 mb-3" id="driverVTypeGrid">
-                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'توكتوك', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🛺</span>
-                        <span class="text-xs font-black text-gray-700">توكتوك</span>
-                    </div>
-                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'تروسيكل', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🏍️</span>
-                        <span class="text-xs font-black text-gray-700">تروسيكل</span>
-                    </div>
-                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'سيارة ربع نقل', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🛻</span>
-                        <span class="text-xs font-black text-gray-700">ربع نقل</span>
-                    </div>
-                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'نصف نقل كبيرة', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50 col-span-1">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🚛</span>
-                        <span class="text-xs font-black text-gray-700">نصف نقل</span>
-                    </div>
-                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'عربية عفش ونش', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50 col-span-2">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🏗️</span>
-                        <span class="text-xs font-black text-gray-700">عفش وونش</span>
-                    </div>
+                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'توكتوك', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-gray-50"><span class="text-3xl mb-1 drop-shadow-sm">🛺</span><span class="text-xs font-black">توكتوك</span></div>
+                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'تروسيكل', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-gray-50"><span class="text-3xl mb-1 drop-shadow-sm">🏍️</span><span class="text-xs font-black">تروسيكل</span></div>
+                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'سيارة ربع نقل', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-gray-50"><span class="text-3xl mb-1 drop-shadow-sm">🛻</span><span class="text-xs font-black">ربع نقل</span></div>
+                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'نصف نقل كبيرة', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-gray-50 col-span-1"><span class="text-3xl mb-1 drop-shadow-sm">🚛</span><span class="text-xs font-black">نصف نقل</span></div>
+                    <div onclick="selectVTypeCard('driverVTypeGrid', 'regDriverVType', 'عربية عفش ونش', true)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-gray-50 col-span-2"><span class="text-3xl mb-1 drop-shadow-sm">🏗️</span><span class="text-xs font-black">عفش وونش</span></div>
                 </div>
-
-                <select id="regDriverVCond" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none text-base font-bold text-gray-800 mt-2">
-                    <option value="" disabled selected>حدد حالة مركبتك...</option>
-                    <option value="حديثة">حديثة</option>
-                    <option value="تفي بالغرض">تفي بالغرض</option>
-                    <option value="قديمة نوعا ما">قديمة نوعاً ما</option>
+                <select id="regDriverVCond" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 font-bold">
+                    <option value="" disabled selected>حدد حالة مركبتك...</option><option value="حديثة">حديثة</option><option value="تفي بالغرض">تفي بالغرض</option><option value="قديمة نوعا ما">قديمة نوعاً ما</option>
                 </select>
-            </div>
-
-            <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <label class="block text-base font-extrabold text-gray-900 mb-3">نطاق العمل الأساسي</label>
-                
-                <select id="regDriverGov" onchange="updateSearchableList('regDriverGov', 'regDriverAreaContainer', 'regDriverSearchInput', 'regDriverVType', true)" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-base font-bold text-gray-800 transition-all">
-                    <option value="" disabled selected>اختر المحافظة أولاً...</option>
-                    <option value="القاهرة">القاهرة</option>
-                    <option value="الجيزة">الجيزة</option>
-                    <option value="الإسكندرية">الإسكندرية</option>
-                    <option value="الدقهلية">الدقهلية</option>
-                    <option value="الشرقية">الشرقية</option>
-                    <option value="الغربية">الغربية</option>
-                    <option value="القليوبية">القليوبية</option>
-                    <option value="المنوفية">المنوفية</option>
-                    <option value="البحيرة">البحيرة</option>
-                    <option value="كفر الشيخ">كفر الشيخ</option>
-                    <option value="دمياط">دمياط</option>
-                    <option value="بورسعيد">بورسعيد</option>
-                    <option value="الإسماعيلية">الإسماعيلية</option>
-                    <option value="السويس">السويس</option>
-                    <option value="شمال سيناء">شمال سيناء</option>
-                    <option value="جنوب سيناء">جنوب سيناء</option>
-                    <option value="بني سويف">بني سويف</option>
-                    <option value="الفيوم">الفيوم</option>
-                    <option value="المنيا">المنيا</option>
-                    <option value="أسيوط">أسيوط</option>
-                    <option value="سوهاج">سوهاج</option>
-                    <option value="قنا">قنا</option>
-                    <option value="الأقصر">الأقصر</option>
-                    <option value="أسوان">أسوان</option>
-                    <option value="البحر الأحمر">البحر الأحمر</option>
-                    <option value="الوادي الجديد">الوادي الجديد</option>
-                    <option value="مطروح">مطروح</option>
-                </select>
-
-                <input type="text" id="regDriverSearchInput" placeholder="🔍 ابحث عن المركز أو القرية..." class="hidden w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-sm font-bold text-gray-800 transition-all" oninput="filterLocations('regDriverSearchInput', 'regDriverAreaContainer')" onfocus="this.select(); document.getElementById('regDriverAreaContainer').classList.remove('hidden');">
-                
-                <div id="regDriverAreaContainer" class="hidden w-full max-h-56 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-2 space-y-1.5 shadow-inner">
-                </div>
             </div>
 
             <div class="pt-4 space-y-4">
-                <button type="submit" id="btnRegister" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-extrabold py-4 rounded-xl shadow-md transition duration-200 text-xl active:scale-95">
-                    حفظ البيانات وبدء العمل
-                </button>
-                <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-extrabold py-4 rounded-xl transition duration-200 text-lg active:scale-95">
-                    الرجوع
-                </button>
+                <button type="submit" id="btnRegister" class="w-full bg-gray-800 text-white font-extrabold py-4 rounded-xl shadow-md active:scale-95">حفظ وبدء العمل</button>
+                <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 text-gray-800 font-extrabold py-4 rounded-xl active:scale-95">الرجوع</button>
             </div>
         </form>
     </div>
 
-    <!-- 5. شاشة السائق المدمجة (لوحة القيادة) -->
+    <!-- 5. شاشة السائق المدمجة -->
     <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-5 sm:p-6 border-t-4 border-gray-800 transform transition-all duration-300 mt-2">
-        
         <div class="mb-6 text-center relative bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-3 border-2 border-gray-300 shadow-sm">👨‍✈️</div>
             <h2 id="activeDriverName" class="text-2xl font-black text-gray-900">كابتن ...</h2>
-            <p id="activeDriverPhone" class="text-base font-extrabold text-gray-600 tracking-wider mt-1" dir="ltr">01...</p>
+            <div id="driverRatingDisplay" class="text-yellow-500 font-bold text-sm my-1 flex justify-center items-center gap-1">⭐ 5.0 (0 رحلة)</div>
+            <p id="activeDriverPhone" class="text-sm font-extrabold text-gray-600 tracking-wider" dir="ltr">01...</p>
             <div id="activeDriverVType" class="mt-3 inline-block px-4 py-1.5 bg-gray-800 text-white font-bold text-sm rounded-lg shadow-sm"></div>
         </div>
 
-        <div id="driverStatusBanner" class="flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-2xl mb-6 transition-all shadow-sm">
+        <div id="driverStatusBanner" class="flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer" onclick="cycleStatus()">
             <div class="flex items-center gap-3">
-                <div id="statusDot" class="w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-white shadow-sm"></div>
-                <span id="statusText" class="font-black text-green-700 text-base">متصل وجاهز للعمل</span>
+                <div id="statusDot" class="w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-white"></div>
+                <span id="statusText" class="font-black text-green-700 text-base">متصل وجاهز للعمل (GPS نشط)</span>
             </div>
-            <button id="btnToggleStatus" onclick="togglePause()" class="text-sm bg-white border border-gray-200 px-4 py-2 rounded-xl font-extrabold text-gray-800 shadow-sm active:scale-95 transition">
-                إيقاف مؤقت ☕
-            </button>
+            <span class="text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-lg font-extrabold text-gray-600">تغيير 🔄</span>
         </div>
 
         <div class="mb-6">
             <div class="flex justify-between items-center mb-3 px-1">
                 <h3 class="text-base font-black text-gray-900">حالة الزملاء (مباشر)</h3>
-                <span class="text-xs font-bold text-gray-500 bg-gray-200 px-3 py-1 rounded-lg">اسحب للأسفل للتحديث 👇</span>
+                <span class="text-xs font-bold text-gray-500 bg-gray-200 px-3 py-1 rounded-lg">اسحب للتحديث 👇</span>
             </div>
             <div id="colleaguesTableContainer" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden max-h-60 overflow-y-auto">
                 <div class="p-6 text-center text-gray-500 text-sm font-bold animate-pulse">⏳ جاري جلب الزملاء...</div>
@@ -245,789 +156,410 @@
         </div>
 
         <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-            <button onclick="window.history.back()" class="bg-gray-200 text-gray-800 font-extrabold text-sm px-5 py-2.5 rounded-xl active:scale-95 transition">الرجوع</button>
-            <button onclick="confirmGoOffline()" class="bg-red-100 text-red-700 font-extrabold text-sm px-5 py-2.5 rounded-xl border border-red-200 active:scale-95 transition">
-                خروج نهائي 🚪
-            </button>
+            <button onclick="window.history.back()" class="bg-gray-200 text-gray-800 font-extrabold text-sm px-5 py-2.5 rounded-xl active:scale-95">الرجوع</button>
+            <button onclick="confirmGoOffline()" class="bg-red-100 text-red-700 font-extrabold text-sm px-5 py-2.5 rounded-xl border border-red-200 active:scale-95">خروج نهائي 🚪</button>
         </div>
     </div>
 
-    <!-- 6. واجهة الزبون (الطلب) (برتقالي) -->
+    <!-- 6. واجهة الزبون (الطلب) المتقدمة بالـ GPS الحقيقي -->
     <div id="customerView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 sm:p-8 border-t-4 border-orange-500 transform transition-all duration-300 mt-2">
-        <div class="mb-8 text-center">
-            <h2 class="text-3xl font-black text-gray-900">تفاصيل النقل</h2>
-            <p class="text-gray-600 font-bold text-base mt-2">سنجد لك أقرب مركبة لمنطقتك</p>
-        </div>
+        <div class="mb-6 text-center"><h2 class="text-3xl font-black text-gray-900">تفاصيل النقل</h2><p class="text-xs text-gray-500 font-bold mt-1">البحث بالمسافة الفعلية عبر الأقمار الصناعية 🛰️</p></div>
 
-        <form onsubmit="fetchDriversFromCloud(event)" class="space-y-5">
+        <form onsubmit="fetchDriversByGPS(event)" class="space-y-5">
             
-            <!-- شكل المركبة كروت مرئية (للزبون) -->
             <div class="bg-orange-50 p-4 rounded-2xl border border-orange-200 shadow-sm">
                 <label class="block text-base font-black text-orange-900 mb-3">ما هو شكل النقل المطلوب؟</label>
-                
-                <input type="hidden" id="custVType" onchange="updateSearchableList('custGov', 'custAreaContainer', 'custSearchInput', 'custVType', false); updateSearchableList('custDropoffGov', 'custDropoffAreaContainer', 'custDropoffSearchInput', 'custVType', false);">
-                
+                <input type="hidden" id="custVType">
                 <div class="grid grid-cols-3 gap-2" id="custVTypeGrid">
-                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'توكتوك', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-orange-50">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🛺</span>
-                        <span class="text-xs font-black text-gray-700">توكتوك</span>
-                    </div>
-                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'تروسيكل', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-orange-50">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🏍️</span>
-                        <span class="text-xs font-black text-gray-700">تروسيكل</span>
-                    </div>
-                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'سيارة ربع نقل', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-orange-50">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🛻</span>
-                        <span class="text-xs font-black text-gray-700">ربع نقل</span>
-                    </div>
-                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'نصف نقل كبيرة', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-orange-50 col-span-1">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🚛</span>
-                        <span class="text-xs font-black text-gray-700">نصف نقل</span>
-                    </div>
-                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'عربية عفش ونش', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all hover:bg-orange-50 col-span-2">
-                        <span class="text-3xl mb-1 drop-shadow-sm">🏗️</span>
-                        <span class="text-xs font-black text-gray-700">عفش وونش</span>
-                    </div>
+                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'توكتوك', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-orange-50"><span class="text-3xl mb-1">🛺</span><span class="text-xs font-black">توكتوك</span></div>
+                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'تروسيكل', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-orange-50"><span class="text-3xl mb-1">🏍️</span><span class="text-xs font-black">تروسيكل</span></div>
+                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'سيارة ربع نقل', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-orange-50"><span class="text-3xl mb-1">🛻</span><span class="text-xs font-black">ربع نقل</span></div>
+                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'نصف نقل كبيرة', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-orange-50 col-span-1"><span class="text-3xl mb-1">🚛</span><span class="text-xs font-black">نصف نقل</span></div>
+                    <div onclick="selectVTypeCard('custVTypeGrid', 'custVType', 'عربية عفش ونش', false)" class="v-card cursor-pointer border-2 border-gray-200 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-orange-50 col-span-2"><span class="text-3xl mb-1">🏗️</span><span class="text-xs font-black">عفش وونش</span></div>
                 </div>
             </div>
 
-            <!-- مسار الرحلة الذكي (الاستلام والوصول معاً) -->
+            <!-- التسعير -->
+            <div class="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <label class="block text-sm font-extrabold text-gray-800 w-1/2">السعر المقترح (اختياري)</label>
+                <input type="number" id="custPrice" placeholder="مثال: 50" class="w-1/2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-center font-bold text-gray-800">
+                <span class="text-sm font-bold text-gray-500 mr-2">ج.م</span>
+            </div>
+
+            <!-- مسار الرحلة بالـ GPS والتحديد الفوري -->
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-4">
-                <h3 class="block text-base font-black text-gray-900 border-b border-gray-100 pb-3">📍 مسار الرحلة</h3>
+                <h3 class="block text-base font-black text-gray-900 border-b border-gray-200 pb-2">📍 مسار الرحلة</h3>
                 
-                <!-- مكان الاستلام -->
-                <div class="p-3 bg-orange-50/50 rounded-xl border border-orange-100">
-                    <label class="block text-sm font-extrabold text-orange-800 mb-2">منين؟ (الاستلام)</label>
-                    <select id="custGov" onchange="updateSearchableList('custGov', 'custAreaContainer', 'custSearchInput', 'custVType', false)" required class="w-full px-3 py-3 bg-white border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm font-bold text-gray-800 transition-all">
-                        <option value="" disabled selected>اختر المحافظة أولاً...</option>
-                        <option value="القاهرة">القاهرة</option>
-                        <option value="الجيزة">الجيزة</option>
-                        <option value="الإسكندرية">الإسكندرية</option>
-                        <option value="الدقهلية">الدقهلية</option>
-                        <option value="الشرقية">الشرقية</option>
-                        <option value="الغربية">الغربية</option>
-                        <option value="القليوبية">القليوبية</option>
-                        <option value="المنوفية">المنوفية</option>
-                        <option value="البحيرة">البحيرة</option>
-                        <option value="كفر الشيخ">كفر الشيخ</option>
-                        <option value="دمياط">دمياط</option>
-                        <option value="بورسعيد">بورسعيد</option>
-                        <option value="الإسماعيلية">الإسماعيلية</option>
-                        <option value="السويس">السويس</option>
-                        <option value="شمال سيناء">شمال سيناء</option>
-                        <option value="جنوب سيناء">جنوب سيناء</option>
-                        <option value="بني سويف">بني سويف</option>
-                        <option value="الفيوم">الفيوم</option>
-                        <option value="المنيا">المنيا</option>
-                        <option value="أسيوط">أسيوط</option>
-                        <option value="سوهاج">سوهاج</option>
-                        <option value="قنا">قنا</option>
-                        <option value="الأقصر">الأقصر</option>
-                        <option value="أسوان">أسوان</option>
-                        <option value="البحر الأحمر">البحر الأحمر</option>
-                        <option value="الوادي الجديد">الوادي الجديد</option>
-                        <option value="مطروح">مطروح</option>
-                    </select>
-
-                    <input type="text" id="custSearchInput" placeholder="🔍 ابحث عن المركز أو القرية..." class="hidden mt-2 w-full px-3 py-3 bg-white border border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm font-bold text-orange-900 transition-all" oninput="filterLocations('custSearchInput', 'custAreaContainer')" onfocus="this.select(); document.getElementById('custAreaContainer').classList.remove('hidden');">
-                    <div id="custAreaContainer" class="hidden mt-2 w-full max-h-40 overflow-y-auto bg-white border border-orange-200 rounded-xl p-2 space-y-1.5 shadow-inner"></div>
+                <!-- 1. الاستلام عبر الـ GPS التلقائي -->
+                <div class="p-4 bg-orange-50 rounded-2xl border-2 border-orange-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-black text-orange-900">📦 موقع الاستلام (موقعي الحالي)</label>
+                        <button type="button" onclick="getRealGPS()" id="gpsBtn" class="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-xl font-extrabold shadow-sm active:scale-95">🛰️ تحديث موقعي GPS</button>
+                    </div>
+                    <input type="text" id="custPickupText" required readonly placeholder="اضغط زر (تحديث موقعي GPS) لضبط إحداثياتك..." class="w-full px-3 py-3 bg-white border border-orange-300 rounded-xl text-sm font-bold text-gray-800 text-center">
+                    <input type="hidden" id="custLat"><input type="hidden" id="custLng">
                 </div>
 
-                <!-- مكان الوصول -->
-                <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                    <label class="block text-sm font-extrabold text-blue-800 mb-2">لفين؟ (الوصول)</label>
-                    <select id="custDropoffGov" onchange="updateSearchableList('custDropoffGov', 'custDropoffAreaContainer', 'custDropoffSearchInput', 'custVType', false)" required class="w-full px-3 py-3 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold text-gray-800 transition-all">
-                        <option value="" disabled selected>اختر المحافظة أولاً...</option>
-                        <option value="القاهرة">القاهرة</option>
-                        <option value="الجيزة">الجيزة</option>
-                        <option value="الإسكندرية">الإسكندرية</option>
-                        <option value="الدقهلية">الدقهلية</option>
-                        <option value="الشرقية">الشرقية</option>
-                        <option value="الغربية">الغربية</option>
-                        <option value="القليوبية">القليوبية</option>
-                        <option value="المنوفية">المنوفية</option>
-                        <option value="البحيرة">البحيرة</option>
-                        <option value="كفر الشيخ">كفر الشيخ</option>
-                        <option value="دمياط">دمياط</option>
-                        <option value="بورسعيد">بورسعيد</option>
-                        <option value="الإسماعيلية">الإسماعيلية</option>
-                        <option value="السويس">السويس</option>
-                        <option value="شمال سيناء">شمال سيناء</option>
-                        <option value="جنوب سيناء">جنوب سيناء</option>
-                        <option value="بني سويف">بني سويف</option>
-                        <option value="الفيوم">الفيوم</option>
-                        <option value="المنيا">المنيا</option>
-                        <option value="أسيوط">أسيوط</option>
-                        <option value="سوهاج">سوهاج</option>
-                        <option value="قنا">قنا</option>
-                        <option value="الأقصر">الأقصر</option>
-                        <option value="أسوان">أسوان</option>
-                        <option value="البحر الأحمر">البحر الأحمر</option>
-                        <option value="الوادي الجديد">الوادي الجديد</option>
-                        <option value="مطروح">مطروح</option>
-                    </select>
-
-                    <input type="text" id="custDropoffSearchInput" placeholder="🔍 ابحث عن المركز أو القرية..." class="hidden mt-2 w-full px-3 py-3 bg-white border border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold text-blue-900 transition-all" oninput="filterLocations('custDropoffSearchInput', 'custDropoffAreaContainer')" onfocus="this.select(); document.getElementById('custDropoffAreaContainer').classList.remove('hidden');">
-                    <div id="custDropoffAreaContainer" class="hidden mt-2 w-full max-h-40 overflow-y-auto bg-white border border-blue-200 rounded-xl p-2 space-y-1.5 shadow-inner"></div>
+                <!-- 2. الوصول -->
+                <div class="p-4 bg-blue-50 rounded-2xl border-2 border-blue-200 shadow-sm">
+                    <label class="block text-sm font-black text-blue-900 mb-2">🏁 أين مكان الوصول (الوجهة)؟</label>
+                    <input type="text" id="custDropoff" required placeholder="اكتب اسم الشارع أو المنطقة أو القرية المتجه إليها..." class="w-full px-3 py-3 bg-white border border-blue-300 rounded-xl outline-none text-sm font-bold text-blue-900">
                 </div>
             </div>
 
-            <div class="pt-4 space-y-4">
-                <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-xl shadow-lg transition duration-200 text-xl active:scale-95 flex justify-center items-center gap-2">
-                    🔍 بحث ذكي عن أقرب مركبة
-                </button>
-                <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-extrabold py-4 rounded-xl transition duration-200 text-lg active:scale-95">
-                    الرجوع للرئيسية
-                </button>
+            <div class="pt-2 space-y-3">
+                <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-xl shadow-lg active:scale-95 flex justify-center items-center gap-2">🔍 بحث ذكي عن أقرب مركبة بالمسافة</button>
+                <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 text-gray-800 font-extrabold py-4 rounded-xl active:scale-95">الرجوع</button>
             </div>
         </form>
 
         <div id="searchResultsContainer" class="mt-8 hidden transition-all duration-300"></div>
     </div>
 
-    <!-- سكريبت التنقل والبيانات الذكية -->
+    <!-- نافذة التقييم المنبثقة -->
+    <div id="ratingModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[99999] flex justify-center items-center backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center">
+            <h3 class="text-xl font-black text-gray-900 mb-2">تقييم الكابتن</h3>
+            <p id="ratingDriverName" class="text-orange-600 font-bold text-sm mb-4"></p>
+            <input type="hidden" id="ratingDriverPhone">
+            <div class="star-rating mb-6" id="starContainer">
+                <span onclick="setRating(5)">★</span><span onclick="setRating(4)">★</span><span onclick="setRating(3)">★</span><span onclick="setRating(2)">★</span><span onclick="setRating(1)">★</span>
+            </div>
+            <input type="hidden" id="selectedRating" value="5">
+            <div class="flex gap-2">
+                <button onclick="submitRating()" class="w-1/2 bg-orange-500 text-white font-extrabold py-3 rounded-xl">إرسال</button>
+                <button onclick="document.getElementById('ratingModal').classList.add('hidden')" class="w-1/2 bg-gray-200 text-gray-800 font-extrabold py-3 rounded-xl">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- سكريبت الواجهات والتطبيق العام -->
     <script>
-        window.showView = function(viewId) {
-            window.location.hash = viewId;
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installAppBtn').classList.remove('hidden'); });
+        document.getElementById('installAppBtn').addEventListener('click', async () => {
+            if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') document.getElementById('installAppBtn').classList.add('hidden'); deferredPrompt = null; }
+        });
+
+        window.showView = function(viewId) { 
+            window.location.hash = viewId; 
+            if(viewId === 'customerView') {
+                setTimeout(() => { window.getRealGPS(); }, 300); // التقاط موقع الزبون تلقائياً عند فتح شاشة الطلب
+            }
         }
 
         window.addEventListener('hashchange', function() {
-            let viewId = window.location.hash.replace('#', '');
-            if (!viewId) viewId = 'homeView';
-
-            const allViews = ['homeView', 'driverChoiceView', 'driverLoginView', 'driverRegisterView', 'driverActiveView', 'customerView'];
-            allViews.forEach(v => {
-                const el = document.getElementById(v);
-                if(el) el.classList.add('hidden');
+            let viewId = window.location.hash.replace('#', '') || 'homeView';
+            ['homeView', 'driverChoiceView', 'driverLoginView', 'driverRegisterView', 'driverActiveView', 'customerView'].forEach(v => {
+                const el = document.getElementById(v); if(el) el.classList.add('hidden');
             });
-            
             const targetView = document.getElementById(viewId);
-            if (targetView) targetView.classList.remove('hidden');
-            else document.getElementById('homeView').classList.remove('hidden');
+            if (targetView) targetView.classList.remove('hidden'); else document.getElementById('homeView').classList.remove('hidden');
         });
-
-        window.addEventListener('load', () => {
-            if (!window.location.hash) window.location.hash = 'homeView';
-            else window.dispatchEvent(new Event('hashchange'));
-        });
-
-        // Pull to refresh + Swipe
-        let touchstartX = 0; let touchendX = 0;
-        document.addEventListener('touchstart', e => { touchstartX = e.changedTouches[0].screenX; }, {passive: true});
-        document.addEventListener('touchend', e => { 
-            touchendX = e.changedTouches[0].screenX; 
-            if ((touchstartX < 50 && touchendX > touchstartX + 60) || (window.innerWidth - touchstartX < 50 && touchendX < touchstartX - 60)) {
-                if (window.location.hash !== '#homeView' && window.location.hash !== '') window.history.back(); 
-            }
-        }, {passive: true});
-
-        let pullStartY = 0; let pullCurrentY = 0;
-        const ptrIndicator = document.getElementById('ptrIndicator');
-        document.addEventListener('touchstart', e => { if (window.scrollY === 0) pullStartY = e.touches[0].clientY; }, { passive: true });
-        document.addEventListener('touchmove', e => {
-            if (pullStartY > 0 && window.scrollY <= 0) {
-                pullCurrentY = e.touches[0].clientY;
-                let pullDist = pullCurrentY - pullStartY;
-                if (pullDist > 0 && pullDist < 120) ptrIndicator.style.height = pullDist + 'px';
-            }
-        }, { passive: true });
-        document.addEventListener('touchend', e => {
-            if (pullStartY > 0) {
-                if (pullCurrentY - pullStartY > 70 && window.scrollY <= 0) {
-                    ptrIndicator.style.height = '60px'; 
-                    setTimeout(() => {
-                        const hash = window.location.hash;
-                        if (hash === '#driverActiveView') {
-                            if(typeof window.listenToColleagues === 'function') window.listenToColleagues();
-                        } else if (hash === '#customerView') {
-                            const btn = document.getElementById('btnSearch');
-                            const res = document.getElementById('searchResultsContainer');
-                            if(btn && res && !res.classList.contains('hidden')) btn.click();
-                        }
-                        setTimeout(() => { ptrIndicator.style.height = '0px'; }, 500);
-                    }, 500);
-                } else ptrIndicator.style.height = '0px'; 
-            }
-            pullStartY = 0; pullCurrentY = 0;
-        });
+        window.addEventListener('load', () => { if (!window.location.hash) window.location.hash = 'homeView'; else window.dispatchEvent(new Event('hashchange')); });
 
         window.selectVTypeCard = function(gridId, inputId, value, isDriver) {
-            const input = document.getElementById(inputId);
-            input.value = value;
-            
-            const grid = document.getElementById(gridId);
-            const cards = grid.querySelectorAll('.v-card');
-            
-            cards.forEach(card => {
-                card.classList.remove('border-orange-500', 'bg-orange-50', 'ring-orange-200', 'border-gray-700', 'bg-gray-100', 'ring-gray-300', 'ring-2', 'scale-95', 'shadow-inner');
-                card.classList.add('border-gray-200', 'bg-white');
-            });
-            
-            const activeCard = event.currentTarget;
-            activeCard.classList.remove('border-gray-200', 'bg-white');
-            
-            if (isDriver) {
-                activeCard.classList.add('border-gray-700', 'bg-gray-100', 'ring-2', 'ring-gray-300', 'scale-95', 'shadow-inner');
-            } else {
-                activeCard.classList.add('border-orange-500', 'bg-orange-50', 'ring-2', 'ring-orange-200', 'scale-95', 'shadow-inner');
-            }
-            
+            const input = document.getElementById(inputId); input.value = value;
+            document.getElementById(gridId).querySelectorAll('.v-card').forEach(c => { c.classList.remove('border-orange-500', 'bg-orange-50', 'border-gray-700', 'bg-gray-100', 'ring-2', 'scale-95'); c.classList.add('border-gray-200', 'bg-white'); });
+            const ac = event.currentTarget; ac.classList.remove('border-gray-200', 'bg-white');
+            if (isDriver) ac.classList.add('border-gray-700', 'bg-gray-100', 'ring-2', 'scale-95'); else ac.classList.add('border-orange-500', 'bg-orange-50', 'ring-2', 'scale-95');
             input.dispatchEvent(new Event('change'));
         }
 
-        const citiesData = {
-            "القاهرة": [
-                "الأزبكية", "أرض اللواء (حلوان)", "الأميرية", "الإنشاء والمنيرة", "البساتين", "التبين", "التجمع الخامس", "الجزيرة", "الجمالية", "الحسين", "الحسينية", "الحلمية", "الخرنفش", "الخلفاوي", "الخليفة", "الدرب الأحمر", "الرحاب", "الروضة", "الزاوية الحمراء", "الزمالك", "الزيتون", "الساحل", "السكاكيني", "السكرية", "السيدة زينب", "الشرابية", "الشروق", "الظاهر", "العاصمة الإدارية", "العباسية", "الفجالة", "الفسطاط", "القاهرة الإسلامية", "القاهرة القبطية", "القرافة", "القطامية", "المرج", "المطرية", "المعادي", "المعصرة", "المغربلين", "المقطم", "المنيل", "الموسكي", "النزهة", "النزهة الجديدة", "الوايلي", "باب الشعرية", "باب اللوق", "باب الوزير", "بدر", "بولاق", "جاردن سيتي", "جسر السويس", "حارة اليهود", "حدائق القبة", "حلمية الزيتون", "حلوان", "خان الخليلي", "دار السلام", "روض الفرج", "زهراء المعادي", "زينهم", "سراي القبة", "شبرا", "شيراتون المطار", "طرة", "عابدين", "عزبة النخل", "عين شمس", "فم الخليج", "قصر النيل", "كوتسيكا", "مدينة السلام", "مدينة نصر", "مدينتي", "مصر الجديدة", "مصر القديمة", "مقابر اليهود (البساتين)", "منشأة ناصر", "ميدان أحمد حلمي", "ميدان روكسي", "وجه البركة", "وسط البلد"
-            ],
-            "الدقهلية": ["المنصورة", "طلخا", "ميت غمر", "أجا", "السنبلاوين", "دكرنس", "بلقاس", "شربين", "منية النصر", "نبروه", "المنزلة", "المطرية", "جمصة", "محلة دمنة", "بني عبيد", "تمي الأمديد", "ميت سلسيل"],
-            "الجيزة": ["الهرم", "فيصل", "الدقي", "المهندسين", "6 أكتوبر", "الشيخ زايد", "العمرانية", "البدرشين", "الحوامدية", "العياط", "الصف"],
-            "الإسكندرية": ["المنتزه", "المندرة", "سيدي بشر", "ميامي", "سموحة", "سيدي جابر", "محرم بك", "العجمي", "العامرية", "برج العرب"],
-            "الغربية": ["طنطا", "المحلة الكبرى", "كفر الزيات", "زفتى", "السنطة", "قطور", "بسيون", "سمنود"],
-            "الشرقية": ["الزقازيق", "العاشر من رمضان", "بلبيس", "منيا القمح", "فاقوس", "أبو كبير", "الحسينية", "أبو حماد", "ديرب نجم"],
-            "المنوفية": ["شبين الكوم", "منوف", "أشمون", "السادات", "قويسنا", "الباجور", "تلا", "بركة السبع", "الشهداء"],
-            "القليوبية": ["بنها", "شبرا الخيمة", "قليوب", "القناطر الخيرية", "الخانكة", "طوخ", "العبور", "قها", "شبين القناطر"],
-            "البحيرة": ["دمنهور", "كفر الدوار", "رشيد", "إيتاي البارود", "أبو حمص", "الدلنجات", "كوم حمادة", "شبراخيت", "وادي النطرون"],
-            "كفر الشيخ": ["كفر الشيخ", "دسوق", "فوه", "مطوبس", "بلطيم", "الحامول", "بيلا", "الرياض", "سيدي سالم", "قلين"],
-            "دمياط": ["دمياط", "رأس البر", "دمياط الجديدة", "فارسكور", "الزرقا", "كفر سعد"],
-            "بورسعيد": ["حي الشرق", "حي العرب", "حي المناخ", "حي الضواحي", "حي الزهور", "بورفؤاد"],
-            "الإسماعيلية": ["الإسماعيلية", "التل الكبير", "فايد", "القنطرة شرق", "القنطرة غرب", "أبو صوير", "القصاصين"],
-            "السويس": ["السويس", "الأربعين", "عتاقة", "الجناين", "فيصل"],
-            "شمال سيناء": ["العريش", "الشيخ زويد", "رفح", "بئر العبد", "الحسنة", "نخل"],
-            "جنوب سيناء": ["شرم الشيخ", "الطور", "دهب", "نويبع", "رأس سدر", "أبو رديس", "أبو زنيمة"],
-            "بني سويف": ["بني سويف", "الواسطى", "ناصر", "إهناسيا", "ببا", "سمسطا", "الفشن"],
-            "الفيوم": ["الفيوم", "سنورس", "إطسا", "طامية", "أبشواي", "يوسف الصديق"],
-            "المنيا": ["المنيا", "مغاغة", "بني مزار", "مطاي", "سمالوط", "أبو قرقاص", "ملوي", "دير مواس", "العدوة"],
-            "أسيوط": ["أسيوط", "ديروط", "القوصية", "أبنوب", "منفلوط", "أبو تيج", "الغنايم", "ساحل سليم", "البداري", "صدفا", "الفتح"],
-            "سوهاج": ["سوهاج", "أخميم", "البلينا", "المراغة", "المنشأة", "دار السلام", "جرجا", "جهينة", "طهطا", "طما", "ساقلتة"],
-            "قنا": ["قنا", "نجع حمادي", "دشنا", "الوقف", "قوص", "نقادة", "فرشوط", "أبو تشت", "قفط"],
-            "الأقصر": ["الأقصر", "إسنا", "أرمنت", "الطود", "البياضية", "القرنة", "الزينية"],
-            "أسوان": ["أسوان", "إدفو", "كوم أمبو", "دراو", "نصر النوبة", "أبو سمبل"],
-            "البحر الأحمر": ["الغردقة", "رأس غارب", "سفاجا", "القصير", "مرسى علم", "الشلاتين", "حلايب"],
-            "الوادي الجديد": ["الخارجة", "الداخلة", "الفرافرة", "باريس", "بلاط"],
-            "مطروح": ["مرسى مطروح", "الحمام", "العلمين", "الضبعة", "سيدي عبد الرحمن", "السلوم", "سيوة"]
-        };
-
-        const popularAreasByCenter = {
-            "المنصورة": ["توريل القديمة", "شارع ١٠", "مدينة السلام", "مستشفى الصدر", "الجلاء", "مصر للطيران", "تجنيد المنصورة", "ميدان الشيخ حسانين", "سندوب", "عزبة الشال", "جديلة", "المجزر", "ميت حدر", "الدراسات", "عزبة الصفيح", "كفر البدماص", "قولنجيل", "أويش الحجر", "البدالة", "البرامون", "البقلية", "البنديرة", "الحواوشة", "الخليج", "الخيارية", "الدنابيق", "الريدانية", "الزمار", "المالحة", "النزهة", "النسيمية", "بحقيرة", "بدواي", "بدين", "برق العز", "بلجاي", "تلبانة", "جديدة الهالة", "جميزة بلجاي", "ديبو عوام", "سلامون القماش", "سلكا", "سلنت", "شاوة", "شبرابدين", "شها", "طرانيس البحر", "طناح", "كرم الجديدة", "كفر الأمشوطي", "كفر البرامون", "كفر الشنهاب", "كفر بدواي الجديد", "كفر بدواي القديم", "كفر تلبانة", "كفر طناح", "كفر ميت فاتك", "كوم الدربي", "كوم بني مراس", "منية بدواي", "منية سندوب", "ميت الأكراد", "ميت الصارم", "ميت بدر خميس", "ميت جراح", "ميت خميس", "ميت خيرون", "ميت عزون", "ميت علي", "ميت عوام", "ميت لوزة", "ميت محمود", "ميت مزاح", "نقيطة"],
-            "طلخا": ["ميت عنتر", "بطرة", "بساط", "ميت الكرما", "جوجر", "دميرة", "ديسط", "درين", "كفر الطويلة", "ميت نيتال", "كفر الخوازم", "ميت زنقر", "منشأة البدوي"],
-            "أجا": ["نوسا البحر", "نوسا الغيط", "شيوة", "الدير", "ميت العامل", "برج النور الحمص", "منية سمنود", "صهرجت الصغرى", "ميت أبو الحسين", "شنفاس", "ميت فضالة", "كفر المندرة", "سنجيد", "الديرس", "منشأة الأخوة"],
-            "السنبلاوين": ["برقين", "طماي الزهايرة", "شبرا قبالة", "ديو الوسطى", "ميت غراب", "كفر غنام", "طوخ الأقلام", "كفر الروك", "ميت أبو الحارث", "البلامون", "المقاطعة", "طرانيس العرب", "الحجايزة", "بشمس"],
-            "ميت غمر": ["تفهنا الأشراف", "دنديط", "ميت يعيش", "صهرجت الكبرى", "أتميدة", "كوم النور", "بشلا", "سنتماي", "كفر الوزير", "البوها", "كفر النعيم", "هلا", "دقادوس", "ميت ناجي", "ميت أبو خالد", "كفر ميت العز"],
-            "دكرنس": ["ديمشلت", "ميت طريف", "دموه", "ميت النحال", "نجير", "ميت ضافر", "أشمون الرمان", "الربيعة", "ميت مجاهد", "ميت شرف", "القباب الصغرى", "القباب الكبرى"],
-            "بلقاس": ["المعصرة", "الستاموني", "بسنديلة", "الشوامي", "الجزاير", "دملاش", "الزهراء", "قلابشو", "كفر الغرابر", "ابو عرصة"],
-            "شربين": ["كفر الترعة القديم", "كفر الترعة الجديد", "الأحمدية", "الحصص", "كفر الحاج شربيني", "دنجواي", "محلة إنجاق", "كفر الوكالة", "أبو جلال", "رأس الخليج"],
-            "منية النصر": ["البجلات", "الدراكسة", "برمبال القديمة", "برمبال الجديدة", "ميت الخولي مؤمن", "كفر علام", "النزل", "ميت تمامة", "الرياض", "الكردي"],
-            "نبروه": ["تيرة", "بهوت", "كفر الجنينة", "كفر الحصة", "نشا", "الطيبة", "درين", "كفر الدبوسي", "كفر الأبحر", "طبانو"],
-            "شبرا الخيمة": ["بهتيم", "مسطرد", "باسوس", "قلما"],
-            "الزقازيق": ["النحال", "كفر الزقازيق", "حسن صالح", "الزراعة", "الحريري"],
-            "طنطا": ["سيجر", "قحافة", "العجيزي", "سبرباي", "محلة مرحوم"],
-            "المنتزه": ["العوايد", "أبو سليمان", "خورشيد", "الظاهرية"]
-        };
-
-        window.updateSearchBoxText = function(containerId, searchInputId, isMulti) {
-            const container = document.getElementById(containerId);
-            const searchInput = document.getElementById(searchInputId);
-            if (!container || !searchInput) return;
-
-            if (isMulti) {
-                const count = container.querySelectorAll('input[type="checkbox"]:checked').length;
-                if (count > 0) searchInput.value = `تم اختيار (${count}) مناطق`;
-                else searchInput.value = '';
-            } else {
-                const checked = container.querySelector('input[type="radio"]:checked');
-                if (checked) {
-                    let displayVal = checked.value.includes(' - ') ? checked.value.split(' - ')[1] : checked.value;
-                    searchInput.value = displayVal;
-                    // إخفاء القائمة بمجرد اختيار الزبون
-                    container.classList.add('hidden');
-                } else searchInput.value = '';
-            }
-        };
-
-        window.updateSearchableList = function(govId, containerId, searchInputId, vTypeId, isDriver) {
-            const gov = document.getElementById(govId).value;
-            const vType = document.getElementById(vTypeId).value;
-            const container = document.getElementById(containerId);
-            const searchInput = document.getElementById(searchInputId);
-
-            if (!gov) {
-                container.innerHTML = '';
-                container.classList.add('hidden');
-                searchInput.classList.add('hidden');
-                return;
-            }
-
-            let items = [];
-            if (citiesData[gov]) {
-                citiesData[gov].forEach(center => {
-                    items.push({ text: `📍 ${center}`, value: center });
+        // دالة التقاط الـ GPS الحقيقي للزبون أو السائق
+        window.getRealGPS = function(callback) {
+            if (navigator.geolocation) {
+                const btn = document.getElementById('gpsBtn');
+                if(btn) btn.innerText = "⏳ جاري تحديد موقعك بالـ GPS...";
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude; const lng = position.coords.longitude;
+                    document.getElementById('custLat').value = lat; document.getElementById('custLng').value = lng;
                     
-                    if (popularAreasByCenter[center]) {
-                        popularAreasByCenter[center].forEach(area => {
-                            items.push({ text: `🏘️ ${area}`, value: `${center} - ${area}` });
-                        });
-                    }
-                });
-            }
-
-            let html = '';
-            
-            const isMulti = isDriver;
-            
-            const inputType = isMulti ? 'checkbox' : 'radio';
-            const inputName = containerId + '_group';
-            const accentColor = isDriver ? 'gray' : 'orange';
-
-            if (items.length > 0) {
-                items.forEach(item => {
-                    html += `
-                    <label class="location-item flex items-center gap-3 p-3 bg-white border border-${accentColor}-200 rounded-xl cursor-pointer hover:bg-${accentColor}-50 transition w-full shadow-sm">
-                        <input type="${inputType}" name="${inputName}" value="${item.value}" onchange="updateSearchBoxText('${containerId}', '${searchInputId}', ${isMulti})" class="w-6 h-6 text-${accentColor}-600 focus:ring-${accentColor}-500 rounded${isMulti ? '' : '-full'} border-gray-300">
-                        <span class="text-base font-bold text-gray-800">${item.text}</span>
-                    </label>
-                    `;
-                });
-                container.innerHTML = html;
-                container.classList.remove('hidden');
-                searchInput.classList.remove('hidden');
-                searchInput.value = ''; 
-            } else {
-                container.innerHTML = '<div class="text-sm text-gray-500 p-2 font-bold text-center">لا توجد بيانات متاحة</div>';
-                container.classList.remove('hidden');
-                searchInput.classList.add('hidden');
-            }
+                    // جلب اسم المنطقة بالعربي من الإحداثيات
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`)
+                    .then(res => res.json()).then(data => {
+                        if(btn) btn.innerText = "🛰️ تحديث موقعي GPS";
+                        let placeName = data.address.village || data.address.town || data.address.city_district || data.address.city || "موقعي الحالي";
+                        let fullText = `${placeName} (إحداثيات حية)`;
+                        document.getElementById('custPickupText').value = fullText;
+                        if(callback) callback(lat, lng, fullText);
+                    }).catch(() => {
+                        if(btn) btn.innerText = "🛰️ تحديث موقعي GPS";
+                        let fullText = `خط عرض: ${lat.toFixed(4)}, خط طول: ${lng.toFixed(4)}`;
+                        document.getElementById('custPickupText').value = fullText;
+                        if(callback) callback(lat, lng, fullText);
+                    });
+                }, () => { 
+                    if(btn) btn.innerText = "🛰️ تحديث موقعي GPS"; 
+                    alert("يرجى تفعيل خدمات الموقع (GPS) من إعدادات الهاتف والسماح للمتصفح بالوصول إليها."); 
+                }, {enableHighAccuracy: true, timeout: 15000});
+            } else { alert("متصفحك لا يدعم خاصية الـ GPS."); }
         };
 
-        window.filterLocations = function(searchInputId, containerId) {
-            const query = document.getElementById(searchInputId).value.toLowerCase();
-            const labels = document.getElementById(containerId).querySelectorAll('.location-item');
-            labels.forEach(label => {
-                const text = label.textContent.toLowerCase();
-                if (text.includes(query)) label.style.display = 'flex';
-                else label.style.display = 'none';
-            });
+        // حساب المسافة بالكيلومتر بين نقطتين (Haversine Formula)
+        window.calculateDistance = function(lat1, lon1, lat2, lon2) {
+            const R = 6371; // نصف قطر الأرض بالكيلومتر
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // المسافة بالكيلومتر
         };
     </script>
 
-    <!-- سكريبت Firebase -->
+    <!-- سكريبت Firebase وإدارة السائقين والمسافات -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, set, get, update, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
-            authDomain: "azemaa-proo.firebaseapp.com",
-            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com",
-            projectId: "azemaa-proo",
-            storageBucket: "azemaa-proo.firebasestorage.app",
-            messagingSenderId: "787350492977",
-            appId: "1:787350492977:web:84061dcf31622fcb07c210"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const auth = getAuth(app);
+        const firebaseConfig = { apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", authDomain: "azemaa-proo.firebaseapp.com", databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", projectId: "azemaa-proo", storageBucket: "azemaa-proo.firebasestorage.app", messagingSenderId: "787350492977", appId: "1:787350492977:web:84061dcf31622fcb07c210" };
+        const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);
         
         let currentDriverActiveRef = null; 
 
-        signInAnonymously(auth).catch((error) => {
-            const loader = document.getElementById('auth-loader');
-            if (loader) loader.innerHTML = `⚠️ خطأ: <br> ${error.message}`;
-        });
+        signInAnonymously(auth).catch((error) => document.getElementById('auth-loader').innerHTML = `⚠️ خطأ: <br> ${error.message}`);
         
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('auth-loader').style.display = 'none';
-                const isActive = localStorage.getItem('wslny_is_active');
-                const savedInfoStr = localStorage.getItem('wslny_driver_info');
-                if (isActive === 'true' && savedInfoStr) {
-                    const savedInfo = JSON.parse(savedInfoStr);
-                    window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد', true);
+                if (localStorage.getItem('wslny_is_active') === 'true') {
+                    const savedInfo = JSON.parse(localStorage.getItem('wslny_driver_info'));
+                    if(savedInfo) window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, true);
                 }
             }
         });
 
-        function buildLocationString(govId, containerId) {
-            const gov = document.getElementById(govId).value;
-            const container = document.getElementById(containerId);
-            
-            let loc = gov || 'غير محدد';
-            if (gov && !container.classList.contains('hidden')) {
-                const checkedBoxes = container.querySelectorAll('input:checked');
-                if (checkedBoxes.length > 0) {
-                    const vals = Array.from(checkedBoxes).map(cb => cb.value); 
-                    const formattedVals = vals.map(v => `${gov} - ${v}`);
-                    loc = formattedVals.join(' ، '); 
+        window.submitRating = function() {
+            const phone = document.getElementById('ratingDriverPhone').value;
+            const stars = parseInt(document.getElementById('selectedRating').value);
+            const refPath = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
+            get(refPath).then(snap => {
+                if(snap.exists()) {
+                    let d = snap.val();
+                    update(refPath, { ratingSum: (d.ratingSum || 0) + stars, ratingCount: (d.ratingCount || 0) + 1 }).then(() => {
+                        alert("تم إرسال التقييم بنجاح!"); document.getElementById('ratingModal').classList.add('hidden');
+                    });
                 }
-            }
-            return loc;
-        }
+            });
+        };
 
         window.registerDriver = function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnRegister');
-            
+            e.preventDefault(); const btn = document.getElementById('btnRegister');
             const vType = document.getElementById('regDriverVType').value;
-            if (!vType) {
-                alert("يرجى اختيار شكل المركبة أولاً بالضغط على صورتها.");
-                return;
-            }
-
-            const container = document.getElementById('regDriverAreaContainer');
-            if (!container.classList.contains('hidden') && container.querySelectorAll('input:checked').length === 0) {
-                alert("يرجى البحث واختيار مكان العمل من القائمة.");
-                return;
-            }
-
-            btn.innerText = "⏳ جاري الحفظ...";
-
-            const name = document.getElementById('regDriverName').value;
-            const phone = document.getElementById('regDriverPhone').value;
-            const vCond = document.getElementById('regDriverVCond').value;
-            const fullLocation = buildLocationString('regDriverGov', 'regDriverAreaContainer');
-
-            const permanentRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
+            if (!vType) return alert("يرجى اختيار شكل المركبة بالضغط على صورتها.");
             
-            get(permanentRef).then((snapshot) => {
-                let joinD = snapshot.exists() ? (snapshot.val().joinDate || Date.now()) : Date.now();
-                set(permanentRef, { name, phone, vType, vCond, location: fullLocation, joinDate: joinD }).then(() => {
-                    window.activateDriverSession(name, phone, vType, vCond, fullLocation);
-                    btn.innerText = "حفظ البيانات وبدء العمل";
-                }).catch(err => { alert("خطأ: " + err.message); btn.innerText = "حفظ البيانات وبدء العمل"; });
-            });
+            btn.innerText = "⏳ جاري التقاط موقع GPS وحفظ البيانات...";
+            
+            // التقاط موقع السائق الحالي بالـ GPS عند التسجيل
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude; const lng = position.coords.longitude;
+                const phone = document.getElementById('regDriverPhone').value;
+                const name = document.getElementById('regDriverName').value;
+                const vCond = document.getElementById('regDriverVCond').value;
+
+                const permanentRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
+                get(permanentRef).then((snapshot) => {
+                    let joinD = snapshot.exists() ? (snapshot.val().joinDate || Date.now()) : Date.now();
+                    set(permanentRef, { name, phone, vType, vCond, lat, lng, joinDate: joinD, ratingSum: snapshot.exists() ? snapshot.val().ratingSum : 5, ratingCount: snapshot.exists() ? snapshot.val().ratingCount : 1 }).then(() => {
+                        window.activateDriverSession(name, phone, vType, vCond);
+                        btn.innerText = "حفظ وبدء العمل";
+                    });
+                });
+            }, () => {
+                alert("تعذر التقاط موقع الـ GPS. يرجى تفعيل الموقع ومحاولة التسجيل مجدداً.");
+                btn.innerText = "حفظ وبدء العمل";
+            }, {enableHighAccuracy: true});
         };
 
         window.loginDriver = function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnLogin');
+            e.preventDefault(); const btn = document.getElementById('btnLogin');
             const phone = document.getElementById('loginPhoneInput').value;
-            if(!phone) return;
-            btn.innerText = "⏳ جاري البحث...";
-
+            btn.innerText = "⏳ جاري الدخول...";
             get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    if(data.account_status === 'blocked') {
-                        alert("⛔ تم إيقاف حسابك من قبل الإدارة.");
-                        btn.innerText = "دخول وبدء العمل"; return;
-                    }
-                    if(data.sub_expiry && data.sub_expiry < Date.now()) {
-                        alert("⚠️ اشتراكك قد انتهى. يرجى تجديد الاشتراك لتتمكن من العمل.");
-                        btn.innerText = "دخول وبدء العمل"; return;
-                    }
-
-                    window.activateDriverSession(data.name, data.phone, data.vType, data.vCond, data.location || 'غير محدد');
+                    if(data.account_status === 'blocked') return alert("⛔ تم إيقاف حسابك.");
+                    window.activateDriverSession(data.name, data.phone, data.vType, data.vCond);
                     btn.innerText = "دخول وبدء العمل";
-                } else {
-                    alert("الرقم غير مسجل! سجل كمستخدم جديد.");
-                    btn.innerText = "دخول وبدء العمل";
-                }
+                } else { alert("الرقم غير مسجل!"); btn.innerText = "دخول وبدء العمل"; }
             });
         };
 
-        window.activateDriverSession = function(name, phone, vType, vCond, location, isAutoLogin = false) {
-            localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond, location }));
-            localStorage.setItem('wslny_is_active', 'true');
-            
-            document.getElementById('activeDriverName').innerText = "كابتن " + name;
-            let displayPhone = phone;
-            if(location && location !== 'غير محدد') {
-                let locParts = location.split(' - ');
-                let shortLoc = locParts.length > 2 ? locParts[2] : locParts[1]; 
-                if (shortLoc && shortLoc.length > 25) shortLoc = shortLoc.substring(0, 25) + '...';
-                displayPhone += ` • 📍 ${shortLoc}`;
-            }
-            document.getElementById('activeDriverPhone').innerText = displayPhone;
-            document.getElementById('activeDriverVType').innerText = "🚚 " + vType;
-
-            const lastStatus = localStorage.getItem('wslny_driver_status') || 'active';
-            currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/driver_' + phone);
-
-            set(currentDriverActiveRef, { name, phone, vType, vCond, location, status: lastStatus, timestamp: Date.now() }).then(() => {
-                window.updateDriverUI(lastStatus);
+        window.activateDriverSession = function(name, phone, vType, vCond, isAutoLogin = false) {
+            // تحديث موقع السائق بالـ GPS لحظة بدء الجلسة
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude; const lng = position.coords.longitude;
+                localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond }));
+                localStorage.setItem('wslny_is_active', 'true');
                 
-                const hash = window.location.hash;
-                if (!isAutoLogin || hash === '' || hash === '#homeView' || hash === '#driverChoiceView' || hash === '#driverLoginView') {
-                    showView('driverActiveView');
-                }
-                window.listenToColleagues();
-            });
+                document.getElementById('activeDriverName').innerText = "كابتن " + name;
+                document.getElementById('activeDriverPhone').innerText = phone + " • 🛰️ GPS نشط";
+                document.getElementById('activeDriverVType').innerText = "🚚 " + vType;
+
+                get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then(snap => {
+                    if(snap.exists()) {
+                        let d = snap.val();
+                        let avg = ((d.ratingSum || 5)/(d.ratingCount || 1)).toFixed(1);
+                        document.getElementById('driverRatingDisplay').innerText = `⭐ ${avg} (${d.ratingCount || 1} رحلات)`;
+                    }
+                });
+
+                const lastStatus = localStorage.getItem('wslny_driver_status') || 'active';
+                currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/driver_' + phone);
+
+                set(currentDriverActiveRef, { name, phone, vType, vCond, lat, lng, status: lastStatus, timestamp: Date.now() }).then(() => {
+                    window.updateDriverUI(lastStatus);
+                    if (!isAutoLogin || !window.location.hash || window.location.hash.includes('View')) showView('driverActiveView');
+                    window.listenToColleagues();
+                });
+            }, () => {
+                alert("تنبيه: لم نتمكن من تحديث إحداثيات GPS الخاصة بك بدقة.");
+            }, {enableHighAccuracy: true});
+        };
+
+        window.cycleStatus = function() {
+            let current = localStorage.getItem('wslny_driver_status') || 'active';
+            let nextStatus = current === 'active' ? 'busy' : (current === 'busy' ? 'paused' : 'active');
+            if(currentDriverActiveRef) update(currentDriverActiveRef, { status: nextStatus });
+            localStorage.setItem('wslny_driver_status', nextStatus);
+            window.updateDriverUI(nextStatus);
         };
 
         window.updateDriverUI = function(status) {
-            const banner = document.getElementById('driverStatusBanner');
-            const dot = document.getElementById('statusDot');
-            const text = document.getElementById('statusText');
-            const btnPause = document.getElementById('btnToggleStatus');
-
-            if (status === 'active') {
-                banner.className = "flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-2xl mb-6 shadow-sm";
-                dot.className = "w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-white";
-                text.innerText = "متصل وجاهز للعمل"; text.className = "font-black text-green-700 text-base";
-                btnPause.innerHTML = "إيقاف مؤقت ☕"; btnPause.className = "text-sm bg-white border border-gray-200 px-4 py-2 rounded-xl font-extrabold text-gray-800 shadow-sm active:scale-95 transition";
-            } else {
-                banner.className = "flex justify-between items-center bg-yellow-50 border border-yellow-200 p-4 rounded-2xl mb-6 shadow-sm";
-                dot.className = "w-4 h-4 bg-yellow-500 rounded-full border-2 border-white";
-                text.innerText = "في استراحة (مخفي)"; text.className = "font-black text-yellow-700 text-base";
-                btnPause.innerHTML = "عودة للعمل ▶️"; btnPause.className = "text-sm bg-gray-800 border border-gray-900 px-4 py-2 rounded-xl font-extrabold text-white shadow-sm active:scale-95 transition";
-            }
+            const banner = document.getElementById('driverStatusBanner'); const dot = document.getElementById('statusDot'); const text = document.getElementById('statusText');
+            if (status === 'active') { banner.className = "flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer"; dot.className = "w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-white"; text.innerText = "متصل وجاهز للعمل (GPS نشط)"; text.className = "font-black text-green-700 text-base"; } 
+            else if (status === 'busy') { banner.className = "flex justify-between items-center bg-red-50 border border-red-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer"; dot.className = "w-4 h-4 bg-red-500 rounded-full animate-pulse border-2 border-white"; text.innerText = "في مشوار الآن 🔴"; text.className = "font-black text-red-700 text-base"; } 
+            else { banner.className = "flex justify-between items-center bg-yellow-50 border border-yellow-200 p-4 rounded-2xl mb-6 shadow-sm cursor-pointer"; dot.className = "w-4 h-4 bg-yellow-500 rounded-full border-2 border-white"; text.innerText = "في استراحة (مخفي) ☕"; text.className = "font-black text-yellow-700 text-base"; }
         };
 
-        window.togglePause = function() {
-            const newStatus = (localStorage.getItem('wslny_driver_status') || 'active') === 'active' ? 'paused' : 'active';
-            if(currentDriverActiveRef) update(currentDriverActiveRef, { status: newStatus });
-            localStorage.setItem('wslny_driver_status', newStatus);
-            window.updateDriverUI(newStatus);
-        };
-
-        window.confirmGoOffline = function() { if (confirm("خروج نهائي من التطبيق؟")) goOffline(); };
-        window.goOffline = function() {
-            if(currentDriverActiveRef) remove(currentDriverActiveRef); 
-            localStorage.setItem('wslny_is_active', 'false'); window.location.hash = 'homeView'; 
-        };
+        window.confirmGoOffline = function() { if (confirm("خروج نهائي من التطبيق؟")) { if(currentDriverActiveRef) remove(currentDriverActiveRef); localStorage.setItem('wslny_is_active', 'false'); window.location.hash = 'homeView'; } };
 
         window.listenToColleagues = function() {
-            const myInfoStr = localStorage.getItem('wslny_driver_info');
-            if(!myInfoStr) return;
+            const myInfoStr = localStorage.getItem('wslny_driver_info'); if(!myInfoStr) return;
             const myPhone = JSON.parse(myInfoStr).phone.toString().replace(/^0+/, '').trim();
-
             get(ref(db, 'wslny_app/registered_drivers')).then((snapshot) => {
-                const rawRegData = snapshot.val() || {};
-                const uniqueRegData = {};
-                Object.keys(rawRegData).forEach(key => { if(rawRegData[key] && rawRegData[key].phone) uniqueRegData[rawRegData[key].phone.toString().replace(/^0+/, '').trim()] = rawRegData[key]; });
-                
+                const uniqueRegData = {}; Object.values(snapshot.val() || {}).forEach(d => { if(d.phone) uniqueRegData[d.phone.toString().replace(/^0+/, '').trim()] = d; });
                 onValue(ref(db, 'wslny_app/active_drivers'), (activeSnap) => {
                     const activeData = activeSnap.val() || {};
-                    const container = document.getElementById('colleaguesTableContainer');
                     let tableHTML = `<table class="w-full text-right bg-white"><thead class="bg-gray-100 border-b border-gray-200 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الزميل</th><th class="px-4 py-3 font-extrabold text-center">الحالة</th></tr></thead><tbody class="divide-y divide-gray-100">`;
                     let found = false;
-
                     Object.values(uniqueRegData).forEach(driver => {
-                        const activeD = activeData["driver_" + driver.phone];
-                        if (!activeD) return;
-                        found = true; 
-                        
+                        found = true; const activeD = activeData["driver_" + driver.phone];
                         let isMe = (driver.phone.toString().replace(/^0+/, '').trim() === myPhone);
-                        let dotColor = activeD.status === 'active' ? "bg-green-500 animate-pulse" : "bg-yellow-400";
-                        let sText = activeD.status === 'active' ? "متصل" : "استراحة";
-                        let sColor = activeD.status === 'active' ? "text-green-700" : "text-yellow-700";
-                        
-                        let locText = '';
-                        if (driver.location && driver.location !== 'غير محدد') {
-                            let locParts = driver.location.split(' - ');
-                            let shortLoc = locParts.length > 2 ? locParts[2] : locParts[1];
-                            if (shortLoc && shortLoc.length > 22) shortLoc = shortLoc.substring(0, 22) + '...';
-                            locText = `<div class="text-xs text-gray-500 font-semibold mt-1">📍 ${shortLoc}</div>`;
+                        let dotColor = "bg-gray-300", sText = "غير متصل", sColor = "text-gray-500";
+                        if (activeD) {
+                            if (activeD.status === 'active') { dotColor = "bg-green-500 animate-pulse"; sText = "متاح"; sColor = "text-green-700"; }
+                            else if (activeD.status === 'busy') { dotColor = "bg-red-500 animate-pulse"; sText = "مشغول"; sColor = "text-red-700"; }
+                            else { dotColor = "bg-yellow-400"; sText = "استراحة"; sColor = "text-yellow-700"; }
                         }
-
-                        tableHTML += `<tr class="${isMe ? 'bg-gray-100/50' : 'hover:bg-gray-50 transition'}">
-                            <td class="px-4 py-3">
-                                <div class="flex items-center gap-2 font-extrabold text-gray-900 text-sm md:text-base">${driver.name} ${isMe ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-bold">أنت</span>` : ""}</div>
-                                <div class="text-xs text-gray-700 bg-gray-100 inline-block px-2 py-1 rounded-md border border-gray-200 mt-1 font-bold">🚚 ${driver.vType}</div>
-                                ${locText}
-                            </td>
-                            <td class="px-4 py-3 text-center align-middle"><div class="flex items-center justify-center gap-1.5"><div class="w-2 h-2 rounded-full ${dotColor}"></div><span class="text-xs font-extrabold ${sColor}">${sText}</span></div></td>
+                        tableHTML += `<tr class="${isMe ? 'bg-blue-50/50' : 'hover:bg-gray-50'} ${!activeD ? 'opacity-60 grayscale-[50%]' : ''}">
+                            <td class="px-4 py-3"><div class="font-extrabold text-gray-900 text-sm">${driver.name} ${isMe ? `<span class="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">أنت</span>` : ""}</div><div class="text-[10px] text-gray-500 mt-1">🚚 ${driver.vType} | 🛰️ GPS متصل</div></td>
+                            <td class="px-4 py-3 text-center align-middle"><div class="flex items-center justify-center gap-1"><div class="w-2 h-2 rounded-full ${dotColor}"></div><span class="text-[10px] font-extrabold ${sColor}">${sText}</span></div></td>
                         </tr>`;
                     });
-
-                    container.innerHTML = found ? tableHTML + `</tbody></table>` : `<div class="p-6 text-center text-sm text-gray-500 font-bold">لا يوجد متصلين الآن.</div>`;
+                    document.getElementById('colleaguesTableContainer').innerHTML = found ? tableHTML + `</tbody></table>` : `<div class="p-4 text-center text-sm text-gray-500">لا يوجد زملاء.</div>`;
                 });
             });
         };
 
         window.trackClick = function(driverPhone, driverName, type, targetUrl, pickupLoc, dropoffLoc) {
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + driverPhone);
-            
             get(driverRef).then((snap) => {
                 if(snap.exists()) {
-                    let updates = {};
-                    if(type === 'call') updates = { calls_received: (snap.val().calls_received || 0) + 1 };
-                    else if (type === 'wa') updates = { wa_received: (snap.val().wa_received || 0) + 1 };
+                    let updates = type === 'call' ? { calls_received: (snap.val().calls_received || 0) + 1 } : { wa_received: (snap.val().wa_received || 0) + 1 };
                     update(driverRef, updates);
                 }
             });
-
-            const securityLogRef = push(ref(db, 'wslny_app/security_logs'));
-            set(securityLogRef, {
-                driver_phone: driverPhone,
-                driver_name: driverName,
-                type: type,
-                pickup: pickupLoc,
-                dropoff: dropoffLoc,
-                timestamp: Date.now()
-            }).then(() => {
-                window.location.href = targetUrl;
-            }).catch(() => {
-                window.location.href = targetUrl;
-            });
+            set(push(ref(db, 'wslny_app/security_logs')), { driver_phone: driverPhone, driver_name: driverName, type: type, pickup: pickupLoc, dropoff: dropoffLoc, timestamp: Date.now() }).then(() => { window.location.href = targetUrl; }).catch(() => { window.location.href = targetUrl; });
         };
 
-        window.fetchDriversFromCloud = function(e) {
+        // بحث السائقين بالمسافة الحقيقية عبر الـ GPS
+        window.fetchDriversByGPS = function(e) {
             e.preventDefault();
-            
             const reqType = document.getElementById('custVType').value;
-            if (!reqType) {
-                alert("يرجى تحديد شكل النقل المطلوب أولاً بالضغط على أيقونته.");
-                return;
+            if (!reqType) return alert("يرجى تحديد شكل النقل المطلوب.");
+
+            const custLat = parseFloat(document.getElementById('custLat').value);
+            const custLng = parseFloat(document.getElementById('custLng').value);
+            const pickupText = document.getElementById('custPickupText').value;
+
+            if (!custLat || !custLng) {
+                return alert("يرجى الضغط على زر (تحديد موقعي GPS) أولاً لضبط إحداثياتك بدقة.");
             }
 
-            const custAreaContainer = document.getElementById('custAreaContainer');
-            const checkedPickup = custAreaContainer.querySelector('input[type="radio"]:checked');
-            if (!custAreaContainer.classList.contains('hidden') && !checkedPickup) {
-                alert("يرجى البحث واختيار مكان الاستلام من القائمة.");
-                return;
-            }
+            const dropoff = document.getElementById('custDropoff').value;
+            const price = document.getElementById('custPrice').value;
 
-            const dropoffAreaContainer = document.getElementById('custDropoffAreaContainer');
-            const checkedDropoff = dropoffAreaContainer.querySelector('input[type="radio"]:checked');
-            if (!dropoffAreaContainer.classList.contains('hidden') && !checkedDropoff) {
-                alert("يرجى البحث واختيار مكان الوصول من القائمة.");
-                return;
-            }
-
-            // إخفاء القوائم المنسدلة عند الضغط على زر البحث
-            if (custAreaContainer) custAreaContainer.classList.add('hidden');
-            if (dropoffAreaContainer) dropoffAreaContainer.classList.add('hidden');
-
-            const btn = document.getElementById('btnSearch');
-            btn.innerText = "⏳ جاري البحث الذكي...";
+            const btn = document.getElementById('btnSearch'); btn.innerText = "⏳ جاري حساب المسافات بالـ GPS...";
             const resultContainer = document.getElementById('searchResultsContainer');
             
             try {
-                const gov = document.getElementById('custGov').value;
-                const dropoffGov = document.getElementById('custDropoffGov').value;
-                
-                const pickupRadioValue = checkedPickup ? checkedPickup.value : ''; 
-                const exactPickupLoc = pickupRadioValue ? `${gov} - ${pickupRadioValue}` : gov;
-                const centerName = pickupRadioValue.includes(' - ') ? pickupRadioValue.split(' - ')[0] : pickupRadioValue;
-                const baseRegion = centerName ? `${gov} - ${centerName}` : gov;
+                get(ref(db, 'wslny_app/registered_drivers')).then(regSnap => {
+                    let registeredData = regSnap.val() || {};
+                    
+                    onValue(ref(db, 'wslny_app/active_drivers'), (snapshot) => {
+                        let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">أقرب السائقين لموقعك (بالـ GPS):</h3><div class="bg-white rounded-2xl shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الكابتن والمسافة</th><th class="px-4 py-3 font-extrabold text-center">تواصل / تقييم</th></tr></thead><tbody class="divide-y divide-gray-100">`;
+                        let driversList = []; 
 
-                const dropoffRadioValue = checkedDropoff ? checkedDropoff.value : '';
-                const dropoffLoc = dropoffRadioValue ? `${dropoffGov} - ${dropoffRadioValue}` : dropoffGov;
-
-                onValue(ref(db, 'wslny_app/active_drivers'), (snapshot) => {
-                    let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">نتيجة البحث:</h3><div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 border-b border-gray-200 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">السائق والمكان</th><th class="px-4 py-3 font-extrabold text-center">تواصل</th></tr></thead><tbody class="divide-y divide-gray-100">`;
-                    let tableRows = '';
-                    let exact = [], nearCenter = [], nearGov = [], unknown = []; 
-
-                    if(snapshot.val()) {
-                        Object.values(snapshot.val()).forEach(d => {
-                            if(d.vType === reqType && d.status === 'active') {
-                                let matchType = 'none';
-                                let matchedLoc = '';
-
-                                if (!d.location || d.location === 'غير محدد') {
-                                    matchType = 'unknown';
-                                } else {
-                                    const dAreas = d.location.split(' ، ');
-
-                                    for (let dArea of dAreas) {
-                                        if (dArea === exactPickupLoc || 
-                                           (exactPickupLoc !== baseRegion && dArea === baseRegion) || 
-                                           (exactPickupLoc === baseRegion && dArea.startsWith(baseRegion + " -"))) {
-                                            matchType = 'exact';
-                                            matchedLoc = dArea;
-                                            break;
-                                        }
-                                    }
-
-                                    if (matchType === 'none') {
-                                        for (let dArea of dAreas) {
-                                            if (dArea.startsWith(baseRegion)) {
-                                                matchType = 'nearCenter';
-                                                matchedLoc = dArea;
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    if (matchType === 'none') {
-                                        for (let dArea of dAreas) {
-                                            if (dArea.startsWith(gov)) {
-                                                matchType = 'nearGov';
-                                                matchedLoc = dArea;
-                                                break;
-                                            }
-                                        }
-                                    }
+                        if(snapshot.val()) {
+                            Object.values(snapshot.val()).forEach(d => {
+                                // جلب فقط السائقين المتاحين (active) ولنفس نوع المركبة ولديهم إحداثيات
+                                if(d.vType === reqType && d.status === 'active' && d.lat && d.lng) {
+                                    let fullDData = registeredData["driver_" + d.phone] || {};
+                                    d.ratingAvg = fullDData.ratingSum ? (fullDData.ratingSum / fullDData.ratingCount).toFixed(1) : 5.0;
+                                    
+                                    // حساب المسافة بالكيلومتر
+                                    let distKm = window.calculateDistance(custLat, custLng, d.lat, d.lng);
+                                    d.distance = distKm;
+                                    driversList.push(d);
                                 }
-
-                                if (matchType === 'exact') exact.push({...d, matchedLoc});
-                                else if (matchType === 'nearCenter') nearCenter.push({...d, matchedLoc});
-                                else if (matchType === 'nearGov') nearGov.push({...d, matchedLoc});
-                                else if (matchType === 'unknown') unknown.push(d);
-                            }
-                        });
-                    }
-
-                    const renderRow = (d, type) => {
-                        let cleanPhone = d.phone ? d.phone.toString().replace(/^0+/, '') : ''; 
-                        
-                        let customerPickupClean = exactPickupLoc.includes(' - ') ? exactPickupLoc.split(' - ').slice(1).join(' ، ') : exactPickupLoc;
-                        let customerDropoffClean = dropoffLoc.includes(' - ') ? dropoffLoc.split(' - ').slice(1).join(' ، ') : dropoffLoc;
-                        
-                        let messageText = `مرحباً، محتاج (${d.vType}) من تطبيق نَقْلَة.\n📍 من: ${customerPickupClean}\n🏁 إلى: ${customerDropoffClean}`;
-                        let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent(messageText)}`;
-                        let callLink = `tel:${d.phone}`;
-                        
-                        let bClass = '', bText = '';
-                        if (type === 'exact') {
-                            bClass = 'bg-green-100 text-green-800 border-green-300';
-                            bText = `📍 متطابق تماماً`;
-                        } else if (type === 'nearCenter') {
-                            bClass = 'bg-blue-100 text-blue-800 border-blue-300';
-                            bText = `📍 بالقرب منك (${d.matchedLoc.split(' - ').pop()})`;
-                        } else if (type === 'nearGov') {
-                            bClass = 'bg-yellow-100 text-yellow-800 border-yellow-300';
-                            bText = `📍 مركز مجاور (${d.matchedLoc.split(' - ').pop()})`;
-                        } else {
-                            bClass = 'bg-gray-100 text-gray-800 border-gray-300';
-                            bText = `📍 غير محدد`;
+                            });
                         }
-                        
-                        let locName = d.matchedLoc ? (d.matchedLoc.includes(' - ') ? d.matchedLoc.split(' - ').slice(1).join(' ، ') : d.matchedLoc) : 'غير محدد';
-                        if(locName.length > 30) locName = locName.substring(0, 30) + '...';
 
-                        return `<tr class="hover:bg-orange-50 transition">
-                            <td class="px-4 py-4">
-                                <div class="font-extrabold text-gray-900 text-sm md:text-base">${d.name}</div>
-                                <div class="text-xs text-orange-700 font-bold mt-1 bg-orange-50 inline-block px-2 py-0.5 rounded-md border border-orange-200">🚚 ${d.vType}</div>
-                                <div class="text-[11px] text-gray-600 font-semibold mt-1.5 leading-tight">${locName}</div>
-                                <div class="text-[11px] ${bClass} mt-1.5 inline-block px-2 py-1 rounded-md border font-extrabold shadow-sm">${bText}</div>
-                            </td>
-                            <td class="px-4 py-4 text-center align-middle">
-                                <div class="flex items-center justify-center gap-3">
-                                    <button onclick="trackClick('${d.phone}', '${d.name}', 'call', '${callLink}', '${exactPickupLoc}', '${dropoffLoc}')" class="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md text-lg active:scale-95 transition">📞</button>
-                                    <button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${exactPickupLoc}', '${dropoffLoc}')" class="w-10 h-10 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md text-lg active:scale-95 transition">💬</button>
-                                </div>
-                            </td>
-                        </tr>`;
-                    };
+                        // ترتيب السائقين تنازلياً أو تصاعدياً حسب الأقرب مسافة
+                        driversList.sort((a, b) => a.distance - b.distance);
 
-                    exact.forEach(d => tableRows += renderRow(d, 'exact'));
-                    if (nearCenter.length > 0) {
-                        if (exact.length > 0) tableRows += `<tr><td colspan="2" class="px-4 py-3 text-center text-xs text-blue-600 font-black bg-blue-50">--- مركبات بالقرب منك (نفس المركز) ---</td></tr>`;
-                        nearCenter.forEach(d => tableRows += renderRow(d, 'nearCenter'));
-                    }
-                    if (nearGov.length > 0) {
-                        if (exact.length > 0 || nearCenter.length > 0) tableRows += `<tr><td colspan="2" class="px-4 py-3 text-center text-xs text-yellow-600 font-black bg-yellow-50">--- مركبات في مراكز مجاورة ---</td></tr>`;
-                        nearGov.forEach(d => tableRows += renderRow(d, 'nearGov'));
-                    }
-                    if (unknown.length > 0 && exact.length === 0 && nearCenter.length === 0 && nearGov.length === 0) {
-                        tableRows += `<tr><td colspan="2" class="px-4 py-3 text-center text-xs text-gray-500 font-black bg-gray-100">--- مركبات أخرى متاحة ---</td></tr>`;
-                        unknown.forEach(d => tableRows += renderRow(d, 'unknown'));
-                    }
+                        let tableRows = '';
+                        driversList.forEach(d => {
+                            let cleanPhone = d.phone.toString().replace(/^0+/, '');
+                            let priceText = price ? `\n💰 السعر المقترح: ${price} جنيه` : '';
+                            let messageText = `مرحباً كابتن، طلب (${d.vType}) من نَقْلَة.\n📍 موقعي الحالي: ${pickupText}\n🏁 إلى: ${dropoff}${priceText}`;
+                            let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+                            let callLink = `tel:${d.phone}`;
+                            
+                            let distFormatted = d.distance < 1 ? `${Math.round(d.distance * 1000)} متر` : `${d.distance.toFixed(1)} كم`;
+                            let badge = d.ratingAvg >= 4.5 ? `<span class="bg-yellow-100 text-yellow-700 text-[10px] px-1 rounded font-bold ml-1 border border-yellow-300">مميز 🏆</span>` : '';
 
-                    if (!tableRows) resultContainer.innerHTML = `<div class="text-center p-6 bg-red-50 rounded-2xl border border-red-200 text-red-600 font-black text-base shadow-sm">عفواً، لا توجد مركبة (${reqType}) متاحة في منطقتك حالياً.</div>`;
-                    else resultContainer.innerHTML = htmlOutput + tableRows + `</tbody></table></div>`;
+                            tableRows += `<tr class="hover:bg-orange-50">
+                                <td class="px-4 py-3">
+                                    <div class="font-extrabold text-gray-900 text-sm">${d.name} ${badge}</div>
+                                    <div class="text-[10px] text-yellow-500 font-bold mt-0.5">⭐ ${d.ratingAvg}</div>
+                                    <div class="text-[11px] bg-green-100 text-green-800 mt-1.5 inline-block px-2 py-0.5 rounded shadow-sm font-black">📍 يبعد عنك حوالي ${distFormatted}</div>
+                                </td>
+                                <td class="px-4 py-3 align-middle text-center">
+                                    <div class="flex justify-center gap-2 mb-1.5">
+                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'call', '${callLink}', '${pickupText}', '${dropoff}')" class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">📞</button>
+                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${pickupText}', '${dropoff}')" class="w-8 h-8 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">💬</button>
+                                    </div>
+                                    <button type="button" onclick="openRatingModal('${d.phone}', '${d.name}')" class="text-[10px] text-gray-400 hover:text-orange-500 underline font-bold">قيّم الكابتن ⭐</button>
+                                </td>
+                            </tr>`;
+                        });
 
-                    resultContainer.classList.remove('hidden');
-                    btn.innerHTML = "🔍 بحث ذكي عن أقرب مركبة";
-                    setTimeout(() => resultContainer.scrollIntoView({ behavior: 'smooth', block: 'end' }), 100);
-                }, { onlyOnce: true });
+                        if (!tableRows) {
+                            resultContainer.innerHTML = `<div class="text-center p-4 bg-red-50 rounded-xl border border-red-200 text-red-600 font-black text-sm">عفواً، لا توجد مركبة (${reqType}) متاحة وقريبة منك حالياً عبر الـ GPS.</div>`;
+                        } else {
+                            resultContainer.innerHTML = htmlOutput + tableRows + `</tbody></table></div>`;
+                        }
+
+                        resultContainer.classList.remove('hidden');
+                        btn.innerHTML = "🔍 بحث ذكي عن أقرب مركبة بالمسافة";
+                        setTimeout(() => resultContainer.scrollIntoView({ behavior: 'smooth' }), 100);
+                    }, { onlyOnce: true });
+                });
                 
-            } catch (err) { alert("خطأ: " + err.message); btn.innerHTML = "🔍 بحث ذكي عن أقرب مركبة"; }
+            } catch (err) { alert("خطأ: " + err.message); btn.innerHTML = "🔍 بحث ذكي عن أقرب مركبة بالمسافة"; }
         };
     </script>
 </body>
