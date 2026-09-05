@@ -163,11 +163,9 @@
                     <option value="مطروح">مطروح</option>
                 </select>
 
-                <!-- تمت إضافة onfocus="this.select()" لتظليل النص عند الضغط للبحث السريع -->
                 <input type="text" id="regDriverSearchInput" placeholder="🔍 ابحث عن المركز أو القرية..." class="hidden w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 outline-none mb-3 text-sm font-bold text-gray-800 transition-all" oninput="filterLocations('regDriverSearchInput', 'regDriverAreaContainer')" onfocus="this.select()">
                 
-                <div id="regDriverAreaContainer" class="hidden w-full max-h-56 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-2 space-y-1.5 shadow-inner">
-                </div>
+                <div id="regDriverAreaContainer" class="hidden w-full max-h-56 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-2 space-y-1.5 shadow-inner"></div>
             </div>
 
             <div class="pt-4 space-y-4">
@@ -277,8 +275,7 @@
 
                 <input type="text" id="custSearchInput" placeholder="🔍 ابحث عن المركز أو القرية..." class="hidden w-full px-4 py-3 bg-orange-50 border border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none mb-3 text-sm font-bold text-orange-900 transition-all" oninput="filterLocations('custSearchInput', 'custAreaContainer')" onfocus="this.select()">
                 
-                <div id="custAreaContainer" class="hidden w-full max-h-56 overflow-y-auto bg-gray-50 border border-orange-200 rounded-xl p-2 space-y-1.5 shadow-inner">
-                </div>
+                <div id="custAreaContainer" class="hidden w-full max-h-56 overflow-y-auto bg-gray-50 border border-orange-200 rounded-xl p-2 space-y-1.5 shadow-inner"></div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
@@ -299,7 +296,6 @@
         <div id="searchResultsContainer" class="mt-8 hidden transition-all duration-300"></div>
     </div>
 
-    <!-- سكريبت التنقل والبيانات الذكية (تم تحديث محرك البحث وتحديث الخانة) -->
     <script>
         window.showView = function(viewId) {
             window.location.hash = viewId;
@@ -365,7 +361,6 @@
             pullStartY = 0; pullCurrentY = 0;
         });
 
-        // قاعدة البيانات
         const citiesData = {
             "الدقهلية": ["المنصورة", "طلخا", "ميت غمر", "أجا", "السنبلاوين", "دكرنس", "بلقاس", "شربين", "منية النصر", "نبروه", "المنزلة", "المطرية", "جمصة", "محلة دمنة", "بني عبيد", "تمي الأمديد", "ميت سلسيل"],
             "القاهرة": ["مدينة نصر", "مصر الجديدة", "التجمع", "المعادي", "المقطم", "شبرا", "وسط البلد", "حلوان", "الرحاب", "مدينتي", "الشروق", "بدر"],
@@ -413,7 +408,6 @@
             "المنتزه": ["العوايد", "أبو سليمان", "خورشيد", "الظاهرية"]
         };
 
-        // دالة تحديث النص في خانة البحث بناءً على الاختيار
         window.updateSearchBoxText = function(containerId, searchInputId, isMulti) {
             const container = document.getElementById(containerId);
             const searchInput = document.getElementById(searchInputId);
@@ -421,23 +415,17 @@
 
             if (isMulti) {
                 const count = container.querySelectorAll('input[type="checkbox"]:checked').length;
-                if (count > 0) {
-                    searchInput.value = `تم اختيار (${count}) مناطق`;
-                } else {
-                    searchInput.value = '';
-                }
+                if (count > 0) searchInput.value = `تم اختيار (${count}) مناطق`;
+                else searchInput.value = '';
             } else {
                 const checked = container.querySelector('input[type="radio"]:checked');
                 if (checked) {
                     let displayVal = checked.value.includes(' - ') ? checked.value.split(' - ')[1] : checked.value;
                     searchInput.value = displayVal;
-                } else {
-                    searchInput.value = '';
-                }
+                } else searchInput.value = '';
             }
         };
 
-        // المحرك الذكي
         window.updateSearchableList = function(govId, containerId, searchInputId, vTypeId, isDriver) {
             const gov = document.getElementById(govId).value;
             const vType = document.getElementById(vTypeId).value;
@@ -489,7 +477,6 @@
             }
         };
 
-        // تصفية العناصر
         window.filterLocations = function(searchInputId, containerId) {
             const query = document.getElementById(searchInputId).value.toLowerCase();
             const labels = document.getElementById(containerId).querySelectorAll('.location-item');
@@ -504,7 +491,7 @@
     <!-- سكريبت Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, set, get, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, set, get, update, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -723,15 +710,30 @@
             });
         };
 
-        window.trackClick = function(driverPhone, type, targetUrl) {
+        window.trackClick = function(driverPhone, driverName, type, targetUrl, pickupLoc, dropoffLoc) {
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + driverPhone);
+            
             get(driverRef).then((snap) => {
                 if(snap.exists()) {
                     let updates = {};
                     if(type === 'call') updates = { calls_received: (snap.val().calls_received || 0) + 1 };
                     else if (type === 'wa') updates = { wa_received: (snap.val().wa_received || 0) + 1 };
-                    update(driverRef, updates).then(() => { window.location.href = targetUrl; });
-                } else { window.location.href = targetUrl; }
+                    update(driverRef, updates);
+                }
+            });
+
+            const securityLogRef = push(ref(db, 'wslny_app/security_logs'));
+            set(securityLogRef, {
+                driver_phone: driverPhone,
+                driver_name: driverName,
+                type: type,
+                pickup: pickupLoc,
+                dropoff: dropoffLoc,
+                timestamp: Date.now()
+            }).then(() => {
+                window.location.href = targetUrl;
+            }).catch(() => {
+                window.location.href = targetUrl;
             });
         };
 
@@ -763,33 +765,81 @@
                 onValue(ref(db, 'wslny_app/active_drivers'), (snapshot) => {
                     let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">نتيجة البحث:</h3><div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 border-b border-gray-200 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">السائق والمكان</th><th class="px-4 py-3 font-extrabold text-center">تواصل</th></tr></thead><tbody class="divide-y divide-gray-100">`;
                     let tableRows = '';
-                    let exact = [], near = [], unknown = []; 
+                    let exact = [], nearCenter = [], nearGov = [], unknown = []; 
 
                     if(snapshot.val()) {
                         Object.values(snapshot.val()).forEach(d => {
                             if(d.vType === reqType && d.status === 'active') {
-                                let l = d.location || 'غير محدد';
-                                
-                                if (l === 'غير محدد') {
-                                    unknown.push(d);
+                                let matchType = 'none';
+                                let matchedLoc = '';
+
+                                if (!d.location || d.location === 'غير محدد') {
+                                    matchType = 'unknown';
                                 } else {
-                                    if (l.includes(exactPickupLoc)) exact.push(d);
-                                    else if (l.includes(baseRegion)) near.push(d);
+                                    const dAreas = d.location.split(' ، ');
+
+                                    for (let dArea of dAreas) {
+                                        if (dArea === exactPickupLoc || 
+                                           (exactPickupLoc !== baseRegion && dArea === baseRegion) || 
+                                           (exactPickupLoc === baseRegion && dArea.startsWith(baseRegion + " -"))) {
+                                            matchType = 'exact';
+                                            matchedLoc = dArea;
+                                            break;
+                                        }
+                                    }
+
+                                    if (matchType === 'none') {
+                                        for (let dArea of dAreas) {
+                                            if (dArea.startsWith(baseRegion)) {
+                                                matchType = 'nearCenter';
+                                                matchedLoc = dArea;
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    if (matchType === 'none') {
+                                        for (let dArea of dAreas) {
+                                            if (dArea.startsWith(gov)) {
+                                                matchType = 'nearGov';
+                                                matchedLoc = dArea;
+                                                break;
+                                            }
+                                        }
+                                    }
                                 }
+
+                                if (matchType === 'exact') exact.push({...d, matchedLoc});
+                                else if (matchType === 'nearCenter') nearCenter.push({...d, matchedLoc});
+                                else if (matchType === 'nearGov') nearGov.push({...d, matchedLoc});
+                                else if (matchType === 'unknown') unknown.push(d);
                             }
                         });
                     }
 
                     const renderRow = (d, type) => {
                         let cleanPhone = d.phone ? d.phone.toString().replace(/^0+/, '') : ''; 
-                        let messageText = `مرحباً، محتاج (${d.vType}) من تطبيق وصلني.\n📍 من: ${exactPickupLoc.split(' - ').pop()}\n🏁 إلى: ${dropoff}`;
+                        let customerLocName = exactPickupLoc.includes(' - ') ? exactPickupLoc.split(' - ').slice(1).join(' ، ') : exactPickupLoc;
+                        let messageText = `مرحباً، محتاج (${d.vType}) من تطبيق وصلني.\n📍 من: ${customerLocName}\n🏁 إلى: ${dropoff}`;
                         let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent(messageText)}`;
                         let callLink = `tel:${d.phone}`;
                         
-                        let bClass = type === 'exact' ? 'bg-green-100 text-green-800 border-green-300' : (type === 'near' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-gray-100 text-gray-800 border-gray-300');
-                        let bText = type === 'exact' ? `📍 في نفس منطقتك` : (type === 'near' ? `📍 في منطقة قريبة` : `📍 غير محدد`);
+                        let bClass = '', bText = '';
+                        if (type === 'exact') {
+                            bClass = 'bg-green-100 text-green-800 border-green-300';
+                            bText = `📍 متطابق تماماً`;
+                        } else if (type === 'nearCenter') {
+                            bClass = 'bg-blue-100 text-blue-800 border-blue-300';
+                            bText = `📍 بالقرب منك (${d.matchedLoc.split(' - ').pop()})`;
+                        } else if (type === 'nearGov') {
+                            bClass = 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                            bText = `📍 مركز مجاور (${d.matchedLoc.split(' - ').pop()})`;
+                        } else {
+                            bClass = 'bg-gray-100 text-gray-800 border-gray-300';
+                            bText = `📍 غير محدد`;
+                        }
                         
-                        let locName = d.location.includes(' - ') ? d.location.split(' - ').slice(1).join(' ، ') : d.location;
+                        let locName = d.matchedLoc ? (d.matchedLoc.includes(' - ') ? d.matchedLoc.split(' - ').slice(1).join(' ، ') : d.matchedLoc) : 'غير محدد';
                         if(locName.length > 30) locName = locName.substring(0, 30) + '...';
 
                         return `<tr class="hover:bg-orange-50 transition">
@@ -797,23 +847,27 @@
                                 <div class="font-extrabold text-gray-900 text-sm md:text-base">${d.name}</div>
                                 <div class="text-xs text-orange-700 font-bold mt-1 bg-orange-50 inline-block px-2 py-0.5 rounded-md border border-orange-200">🚚 ${d.vType}</div>
                                 <div class="text-[11px] text-gray-600 font-semibold mt-1.5 leading-tight">${locName}</div>
-                                <div class="text-xs ${bClass} mt-1.5 inline-block px-2 py-1 rounded-md border font-extrabold shadow-sm">${bText}</div>
+                                <div class="text-[11px] ${bClass} mt-1.5 inline-block px-2 py-1 rounded-md border font-extrabold shadow-sm">${bText}</div>
                             </td>
                             <td class="px-4 py-4 text-center align-middle">
                                 <div class="flex items-center justify-center gap-3">
-                                    <button onclick="trackClick('${d.phone}', 'call', '${callLink}')" class="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md text-lg active:scale-95 transition">📞</button>
-                                    <button onclick="trackClick('${d.phone}', 'wa', '${waLink}')" class="w-10 h-10 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md text-lg active:scale-95 transition">💬</button>
+                                    <button onclick="trackClick('${d.phone}', '${d.name}', 'call', '${callLink}', '${exactPickupLoc}', '${dropoff}')" class="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md text-lg active:scale-95 transition">📞</button>
+                                    <button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${exactPickupLoc}', '${dropoff}')" class="w-10 h-10 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md text-lg active:scale-95 transition">💬</button>
                                 </div>
                             </td>
                         </tr>`;
                     };
 
                     exact.forEach(d => tableRows += renderRow(d, 'exact'));
-                    if (near.length > 0) {
-                        if (exact.length > 0) tableRows += `<tr><td colspan="2" class="px-4 py-3 text-center text-xs text-orange-600 font-black bg-orange-50">--- مركبات في مناطق قريبة ---</td></tr>`;
-                        near.forEach(d => tableRows += renderRow(d, 'near'));
+                    if (nearCenter.length > 0) {
+                        if (exact.length > 0) tableRows += `<tr><td colspan="2" class="px-4 py-3 text-center text-xs text-blue-600 font-black bg-blue-50">--- مركبات بالقرب منك (نفس المركز) ---</td></tr>`;
+                        nearCenter.forEach(d => tableRows += renderRow(d, 'nearCenter'));
                     }
-                    if (unknown.length > 0 && exact.length === 0 && near.length === 0) {
+                    if (nearGov.length > 0) {
+                        if (exact.length > 0 || nearCenter.length > 0) tableRows += `<tr><td colspan="2" class="px-4 py-3 text-center text-xs text-yellow-600 font-black bg-yellow-50">--- مركبات في مراكز مجاورة ---</td></tr>`;
+                        nearGov.forEach(d => tableRows += renderRow(d, 'nearGov'));
+                    }
+                    if (unknown.length > 0 && exact.length === 0 && nearCenter.length === 0 && nearGov.length === 0) {
                         tableRows += `<tr><td colspan="2" class="px-4 py-3 text-center text-xs text-gray-500 font-black bg-gray-100">--- مركبات أخرى متاحة ---</td></tr>`;
                         unknown.forEach(d => tableRows += renderRow(d, 'unknown'));
                     }
