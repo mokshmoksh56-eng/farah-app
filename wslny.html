@@ -198,10 +198,11 @@
     <!-- 5. شاشة السائق المدمجة (لوحة القيادة المبسطة) -->
     <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-5 border-t-4 border-gray-800 transform transition-all duration-300 mt-6">
         
-        <div class="mb-5 text-center">
+        <div class="mb-5 text-center relative">
             <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-2 border-2 border-gray-300 shadow-sm">👨‍✈️</div>
             <h2 id="activeDriverName" class="text-xl font-extrabold text-gray-800">كابتن ...</h2>
             <p id="activeDriverPhone" class="text-sm font-bold text-gray-500 tracking-wider mt-1" dir="ltr">01...</p>
+            <div id="activeDriverVType" class="mt-2 inline-block px-3 py-1 bg-orange-50 text-orange-700 font-bold text-[11px] rounded-full border border-orange-200 shadow-sm"></div>
         </div>
 
         <div id="driverStatusBanner" class="flex justify-between items-center bg-green-50 border border-green-200 p-3 rounded-xl mb-5 transition-all">
@@ -244,9 +245,8 @@
 
         <form onsubmit="fetchDriversFromCloud(event)" class="space-y-4">
             
-            <!-- البحث الذكي بالموقع -->
             <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <label class="block text-sm font-bold text-gray-700 mb-2">مكان الاستلام (عشان نبعتلك أقرب عربية)</label>
+                <label class="block text-sm font-bold text-gray-700 mb-2">مكان الاستلام (عشان نبعتلك أقرب مركبة)</label>
                 <select id="custPickupGov" onchange="toggleCustCenters()" required class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none mb-2 transition-all">
                     <option value="" disabled selected>اختر المحافظة أو المدينة...</option>
                     <option value="الدقهلية (المنصورة ومراكزها)">الدقهلية (المنصورة ومراكزها)</option>
@@ -282,7 +282,7 @@
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">مكان الوصول</label>
-                <input type="text" id="custDropoff" required placeholder="إلى فين؟ (اكتب اسم المكان)" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                <input type="text" id="custDropoff" required placeholder="إلى فين؟ (اكتب اسم المكان)" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
             </div>
 
             <select id="custVType" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none mb-4">
@@ -296,7 +296,7 @@
 
             <div class="pt-2 space-y-3">
                 <button type="submit" id="btnSearch" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200 text-lg mt-4">
-                    بحث ذكي عن أقرب سائق
+                    بحث ذكي عن أقرب مركبة
                 </button>
 
                 <button type="button" onclick="window.history.back()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl transition duration-200 text-lg">
@@ -351,7 +351,6 @@
             }
         });
 
-        // 1. إيماءة السحب الجانبي (للرجوع)
         let touchstartX = 0; let touchendX = 0;
         document.addEventListener('touchstart', e => { touchstartX = e.changedTouches[0].screenX; }, {passive: true});
         document.addEventListener('touchend', e => { touchendX = e.changedTouches[0].screenX; handleHorizontalSwipe(); }, {passive: true});
@@ -364,7 +363,6 @@
             }
         }
 
-        // 2. إيماءة السحب للأسفل (Pull to Refresh)
         let pullStartY = 0;
         let pullCurrentY = 0;
         const ptrIndicator = document.getElementById('ptrIndicator');
@@ -402,7 +400,6 @@
             pullCurrentY = 0;
         });
 
-        // تشغيل مراكز السائق
         window.toggleCenters = function() {
             const gov = document.getElementById('regDriverGov').value;
             const centerSelect = document.getElementById('regDriverCenter');
@@ -416,7 +413,6 @@
             }
         };
 
-        // تشغيل مراكز الزبون
         window.toggleCustCenters = function() {
             const gov = document.getElementById('custPickupGov').value;
             const centerSelect = document.getElementById('custPickupCenter');
@@ -605,6 +601,7 @@
                 displayPhone += ` • 📍 ${location}`;
             }
             document.getElementById('activeDriverPhone').innerText = displayPhone;
+            document.getElementById('activeDriverVType').innerText = "🚚 " + vType;
 
             const lastStatus = localStorage.getItem('wslny_driver_status') || 'active';
             const driverKey = "driver_" + phone;
@@ -667,7 +664,7 @@
             window.location.hash = 'homeView'; 
         };
 
-        // جدول الزملاء 
+        // جدول الزملاء (تمنع التكرار نهائياً)
         function listenToColleagues() {
             const myInfoStr = localStorage.getItem('wslny_driver_info');
             if(!myInfoStr) return;
@@ -679,6 +676,7 @@
             get(regRef).then((snapshot) => {
                 const rawRegData = snapshot.val() || {};
                 
+                // فلترة ذكية لمنع التكرار في جدول الزملاء
                 const uniqueRegData = {};
                 Object.keys(rawRegData).forEach(key => {
                     const d = rawRegData[key];
@@ -706,6 +704,8 @@
 
                     Object.values(uniqueRegData).forEach(driver => {
                         const activeDriver = activeData["driver_" + driver.phone];
+                        
+                        // تجاهل السائق إذا لم يكن متصلاً
                         if (!activeDriver) return;
 
                         foundAny = true; 
@@ -728,12 +728,15 @@
                         let isMe = (driverCleanPhone === myPhone);
                         let rowClass = isMe ? "bg-blue-50/50" : "hover:bg-gray-50 transition";
                         let meBadge = isMe ? `<span class="mr-1 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-bold">أنت</span>` : "";
-                        let locationText = driver.location && driver.location !== 'غير محدد' ? `<div class="text-[10px] text-gray-400 font-normal mt-0.5">📍 ${driver.location}</div>` : '';
+                        let locationText = driver.location && driver.location !== 'غير محدد' ? `<span class="text-[10px] text-gray-400 font-normal"> • 📍 ${driver.location}</span>` : '';
+                        
+                        let vTypeBadge = `<div class="text-[10px] text-orange-600 bg-orange-50 inline-block px-1.5 py-0.5 rounded border border-orange-100 mt-1">🚚 ${driver.vType}</div>`;
 
                         tableHTML += `
                         <tr class="${rowClass}">
                             <td class="px-4 py-2 text-[13px] font-bold text-gray-800">
-                                ${driver.name} ${meBadge}
+                                <div class="flex items-center gap-1">${driver.name} ${meBadge}</div>
+                                ${vTypeBadge}
                                 ${locationText}
                             </td>
                             <td class="px-4 py-2 text-center align-middle">
@@ -765,12 +768,16 @@
             const requiredType = document.getElementById('custVType').value;
             const dropoff = document.getElementById('dropoffLocation').value;
             
-            // تحديد موقع العميل المطلوب
             const gov = document.getElementById('custPickupGov').value;
             const center = document.getElementById('custPickupCenter').value;
             let exactPickupLoc = gov;
-            if (gov === 'الدقهلية (المنصورة ومراكزها)' && center) {
-                exactPickupLoc = 'المنصورة (' + center + ')';
+            let searchRegion = gov.split(' ')[0]; 
+
+            if (gov === 'الدقهلية (المنصورة ومراكزها)') {
+                searchRegion = 'المنصورة'; 
+                if (center) {
+                    exactPickupLoc = 'المنصورة (' + center + ')';
+                }
             }
             
             const driversNode = ref(db, 'wslny_app/active_drivers');
@@ -782,37 +789,54 @@
                 
                 let exactMatches = [];
                 let nearMatches = [];
+                let unknownLocationMatches = []; 
 
                 if(data) {
                     Object.keys(data).forEach(key => {
                         const driver = data[key];
                         if(driver.vType === requiredType && driver.status === 'active') {
                             
-                            // فلترة ذكية: التحقق من التطابق التام أولاً
-                            if (driver.location === exactPickupLoc) {
+                            let dLoc = driver.location || 'غير محدد';
+                            
+                            if (dLoc === exactPickupLoc) {
                                 exactMatches.push(driver);
                             } 
-                            // لو المحافظة واحدة لكن المركز مختلف (بحث عن سائقين قريبين)
-                            else if (driver.location && driver.location.includes(gov.split(' ')[0])) {
+                            else if (dLoc.includes(searchRegion)) {
                                 nearMatches.push(driver);
+                            }
+                            else if (dLoc === 'غير محدد') {
+                                unknownLocationMatches.push(driver);
                             }
                         }
                     });
                 }
 
-                // دالة مساعدة لطباعة الكارت
-                const renderDriverCard = (driver, isNear = false) => {
-                    let cleanPhone = driver.phone.replace(/^0+/, ''); 
+                const renderDriverCard = (driver, matchType) => {
+                    let cleanPhone = driver.phone ? driver.phone.toString().replace(/^0+/, '') : ''; 
                     let messageText = `مرحباً، محتاج (${driver.vType}) من تطبيق وصلني.\n📍 من: ${exactPickupLoc}\n🏁 إلى: ${dropoff}`;
                     let waLink = `https://wa.me/20${cleanPhone}?text=${encodeURIComponent(messageText)}`;
                     
-                    let badgeClass = isNear ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-green-100 text-green-700 border-green-200';
-                    let badgeText = isNear ? `📍 في مركز قريب (${driver.location})` : `📍 متواجد في نفس منطقتك`;
-                    let borderClass = isNear ? 'border-yellow-300' : 'border-green-300';
-                    let iconBg = isNear ? 'bg-yellow-50' : 'bg-green-50';
+                    let badgeClass, badgeText, borderClass, iconBg;
+                    
+                    if (matchType === 'exact') {
+                        badgeClass = 'bg-green-100 text-green-700 border-green-200';
+                        badgeText = `📍 متواجد في نفس منطقتك`;
+                        borderClass = 'border-green-300';
+                        iconBg = 'bg-green-50';
+                    } else if (matchType === 'near') {
+                        badgeClass = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+                        badgeText = `📍 في مركز قريب (${driver.location})`;
+                        borderClass = 'border-yellow-300';
+                        iconBg = 'bg-yellow-50';
+                    } else {
+                        badgeClass = 'bg-gray-100 text-gray-700 border-gray-200';
+                        badgeText = `📍 الموقع غير محدد بدقة`;
+                        borderClass = 'border-gray-300';
+                        iconBg = 'bg-gray-50';
+                    }
 
                     return `
-                    <div class="bg-white border-2 ${borderClass} p-4 rounded-2xl shadow-sm flex flex-col gap-4">
+                    <div class="bg-white border-2 ${borderClass} p-4 rounded-2xl shadow-sm flex flex-col gap-4 mb-4">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 ${iconBg} rounded-full flex items-center justify-center text-2xl">👨‍✈️</div>
                             <div class="flex-1">
@@ -831,31 +855,30 @@
                     </div>`;
                 };
 
-                // طباعة السائقين المتطابقين تماماً
                 if (exactMatches.length > 0) {
-                    exactMatches.forEach(d => {
-                        container.innerHTML += renderDriverCard(d, false);
-                    });
+                    exactMatches.forEach(d => { container.innerHTML += renderDriverCard(d, 'exact'); });
                 }
                 
-                // طباعة السائقين القريبين (إذا لم نجد أو أردنا إضافة المزيد)
                 if (nearMatches.length > 0) {
                     if (exactMatches.length > 0) {
-                        container.innerHTML += `<div class="text-center text-xs text-gray-400 font-bold my-4 w-full">--- سائقين في مراكز قريبة ---</div>`;
+                        container.innerHTML += `<div class="text-center text-xs text-gray-400 font-bold my-4 w-full">--- مركبات في مراكز قريبة ---</div>`;
                     }
-                    nearMatches.forEach(d => {
-                        container.innerHTML += renderDriverCard(d, true);
-                    });
+                    nearMatches.forEach(d => { container.innerHTML += renderDriverCard(d, 'near'); });
                 }
 
-                if(exactMatches.length === 0 && nearMatches.length === 0) {
+                if (unknownLocationMatches.length > 0 && exactMatches.length === 0 && nearMatches.length === 0) {
+                    container.innerHTML += `<div class="text-center text-xs text-gray-400 font-bold my-4 w-full">--- مركبات بدون موقع محدد ---</div>`;
+                    unknownLocationMatches.forEach(d => { container.innerHTML += renderDriverCard(d, 'unknown'); });
+                }
+
+                if(exactMatches.length === 0 && nearMatches.length === 0 && unknownLocationMatches.length === 0) {
                     container.innerHTML = `
                     <div class="text-center p-6 bg-red-50 rounded-2xl border border-red-200 text-red-600 font-bold">
-                        عفواً، لا يوجد سائقين (${requiredType}) متاحين في منطقتك (${exactPickupLoc}) أو المناطق المجاورة لها في الوقت الحالي.
+                        عفواً، لا يوجد (${requiredType}) متاح في منطقتك أو المناطق المجاورة حالياً.
                     </div>`;
                 }
 
-                btn.innerText = "بحث ذكي عن أقرب سائق";
+                btn.innerText = "بحث ذكي عن أقرب مركبة";
                 showView('driversListView');
             }, { onlyOnce: true });
         };
