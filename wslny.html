@@ -190,7 +190,7 @@
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
                 <div class="flex justify-between items-center border-b border-gray-100 pb-2">
                     <h3 class="text-sm font-black text-gray-900">📍 مسار الرحلة</h3>
-                    <button type="button" onclick="getRealGPS()" id="gpsBtn" class="text-[11px] bg-orange-500 text-white px-2 py-1 rounded-lg font-extrabold shadow-sm active:scale-95">🛰️ تحديث موقعي GPS</button>
+                    <button type="button" onclick="getRealGPS()" id="gpsBtn" class="text-[11px] bg-orange-500 text-white px-2 py-1 rounded-lg font-extrabold shadow-sm active:scale-95 transition-all duration-200">🛰️ تحديث موقعي GPS</button>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-2">
@@ -266,31 +266,69 @@
             input.dispatchEvent(new Event('change'));
         }
 
+        window.resetGpsButton = function(btn) {
+            if(btn) {
+                btn.innerText = "🛰️ تحديث موقعي GPS";
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        };
+
         window.getRealGPS = function(callback) {
             if (navigator.geolocation) {
                 const btn = document.getElementById('gpsBtn');
-                if(btn) btn.innerText = "⏳ جاري...";
-                navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude; const lng = position.coords.longitude;
-                    document.getElementById('custLat').value = lat; document.getElementById('custLng').value = lng;
-                    
-                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`)
-                    .then(res => res.json()).then(data => {
-                        if(btn) btn.innerText = "🛰️ تحديث موقعي GPS";
-                        let placeName = data.address.village || data.address.town || data.address.city_district || data.address.city || "موقعي الحالي";
-                        document.getElementById('custPickupText').value = placeName;
-                        if(callback) callback(lat, lng, placeName);
-                    }).catch(() => {
-                        if(btn) btn.innerText = "🛰️ تحديث موقعي GPS";
-                        let fullText = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
-                        document.getElementById('custPickupText').value = fullText;
-                        if(callback) callback(lat, lng, fullText);
-                    });
-                }, () => { 
-                    if(btn) btn.innerText = "🛰️ تحديث موقعي GPS"; 
-                    alert("يرجى تفعيل الـ GPS والسماح للمتصفح بالموقع."); 
-                }, {enableHighAccuracy: true, timeout: 15000});
-            } else { alert("متصفحك لا يدعم تحديد الموقع."); }
+                
+                if (btn && btn.disabled) return;
+                
+                if(btn) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-75', 'cursor-not-allowed');
+                }
+
+                let seconds = 5; 
+                
+                const timer = setInterval(() => {
+                    if(btn) btn.innerText = `⏳ تحديد دقة الموقع (${seconds})...`;
+                    seconds--;
+
+                    if (seconds < 0) {
+                        clearInterval(timer);
+                        if(btn) btn.innerText = "🛰️ جاري جلب الإحداثيات...";
+
+                        navigator.geolocation.getCurrentPosition(position => {
+                            const lat = position.coords.latitude; 
+                            const lng = position.coords.longitude;
+                            
+                            document.getElementById('custLat').value = lat; 
+                            document.getElementById('custLng').value = lng;
+                            
+                            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`)
+                            .then(res => res.json()).then(data => {
+                                window.resetGpsButton(btn);
+                                let placeName = data.address.village || data.address.town || data.address.city_district || data.address.city || "موقعي الحالي";
+                                document.getElementById('custPickupText').value = placeName;
+                                if(callback) callback(lat, lng, placeName);
+                            }).catch(() => {
+                                window.resetGpsButton(btn);
+                                let fullText = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+                                document.getElementById('custPickupText').value = fullText;
+                                if(callback) callback(lat, lng, fullText);
+                            });
+
+                        }, (error) => { 
+                            window.resetGpsButton(btn);
+                            alert("يرجى تفعيل الـ GPS والسماح للمتصفح بالموقع، أو التواجد في مكان مفتوح."); 
+                        }, {
+                            enableHighAccuracy: true,
+                            timeout: 20000,
+                            maximumAge: 0
+                        });
+                    }
+                }, 1000);
+                
+            } else { 
+                alert("متصفحك لا يدعم تحديد الموقع."); 
+            }
         };
 
         window.calculateDistance = function(lat1, lon1, lat2, lon2) {
