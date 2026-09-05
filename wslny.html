@@ -330,34 +330,54 @@
                 const btn = event.currentTarget;
                 const originalText = btn.innerHTML;
                 btn.innerHTML = "⏳ جاري التحديد...";
-                navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude; const lon = position.coords.longitude;
-                    if(role === 'driver') { window.driverLat = lat; window.driverLon = lon; }
-                    if(role === 'customer') { window.custLat = lat; window.custLon = lon; }
+                
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        const lat = position.coords.latitude; 
+                        const lon = position.coords.longitude;
+                        if(role === 'driver') { window.driverLat = lat; window.driverLon = lon; }
+                        if(role === 'customer') { window.custLat = lat; window.custLon = lon; }
 
-                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ar`)
-                    .then(res => res.json()).then(data => {
-                        btn.innerHTML = originalText;
-                        let state = data.address.state || data.address.city;
-                        if(state) {
-                            let mappedGov = governoratesList.find(g => state.includes(g) || g.includes(state.replace('محافظة ','')));
-                            if(mappedGov) { 
-                                const targetSelect = document.getElementById(targetSelectId);
-                                targetSelect.value = mappedGov; 
-                                targetSelect.dispatchEvent(new Event('change')); 
+                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ar`)
+                        .then(res => res.json())
+                        .then(data => {
+                            btn.innerHTML = originalText;
+                            let state = data.address.state || data.address.city;
+                            if(state) {
+                                let mappedGov = governoratesList.find(g => state.includes(g) || g.includes(state.replace('محافظة ','')));
+                                if(mappedGov) { 
+                                    const targetSelect = document.getElementById(targetSelectId);
+                                    targetSelect.value = mappedGov; 
+                                    targetSelect.dispatchEvent(new Event('change')); 
 
-                                if(targetInputId) {
-                                    let specificAddress = [data.address.suburb, data.address.neighbourhood, data.address.road, data.address.town, data.address.village].filter(Boolean).join('، ');
-                                    if(specificAddress) document.getElementById(targetInputId).value = specificAddress;
-                                }
-
-                                alert("📍 تم التقاط الموقع بنجاح."); 
-                            } 
-                            else alert("عفواً، لم نتمكن من تحديد محافظتك.");
+                                    if(targetInputId) {
+                                        let specificAddress = [data.address.suburb, data.address.neighbourhood, data.address.road, data.address.town, data.address.village].filter(Boolean).join('، ');
+                                        if(specificAddress) document.getElementById(targetInputId).value = specificAddress;
+                                    }
+                                    alert("📍 تم التقاط الموقع بنجاح."); 
+                                } 
+                                else alert("عفواً، لم نتمكن من تحديد محافظتك.");
+                            }
+                        }).catch(() => { 
+                            btn.innerHTML = originalText; 
+                            alert("خطأ في الاتصال بخادم الخرائط."); 
+                        });
+                    }, 
+                    (error) => { 
+                        btn.innerHTML = originalText; 
+                        if (error.code === 1) {
+                            alert("المتصفح يمنع الوصول للموقع! يرجى إعطاء صلاحية الموقع (Location) للمتصفح من الإعدادات.");
+                        } else if (error.code === 3) {
+                            alert("انتهى وقت البحث عن الموقع. تأكد أنك في مكان شبكته جيدة وحاول مرة أخرى.");
+                        } else {
+                            alert("يرجى التأكد من تشغيل زر الـ GPS في هاتفك.");
                         }
-                    }).catch(() => { btn.innerHTML = originalText; alert("خطأ في الاتصال بخادم الخرائط."); });
-                }, () => { btn.innerHTML = originalText; alert("يرجى تفعيل الـ GPS في جهازك."); }, {timeout: 10000});
-            } else { alert("متصفحك لا يدعم تحديد الموقع."); }
+                    }, 
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            } else { 
+                alert("متصفحك لا يدعم تحديد الموقع."); 
+            }
         };
 
         window.openRatingModal = function(phone, name) {
