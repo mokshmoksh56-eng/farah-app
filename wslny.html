@@ -304,7 +304,7 @@
         document.addEventListener('touchend', e => {
             if (!isRefreshing && ptrIndicator.style.height && parseInt(ptrIndicator.style.height) > 60) {
                 isRefreshing = true; ptrIndicator.style.height = '60px';
-                setTimeout(() => window.location.reload(), 400); // تحديث مع البقاء في نفس الصفحة
+                setTimeout(() => window.location.reload(), 400); 
             } else { ptrIndicator.style.height = '0px'; }
             touchStartY = 0;
         });
@@ -322,7 +322,6 @@
 
         const governoratesList = ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "المنوفية", "القليوبية", "البحيرة", "كفر الشيخ", "دمياط", "الإسماعيلية", "بورسعيد", "السويس", "مطروح", "شمال سيناء", "جنوب سيناء", "البحر الأحمر", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "الوادي الجديد"];
 
-        // المتغيرات لحفظ المواقع للاستخدام في المسافات
         window.driverLat = null; window.driverLon = null;
         window.custLat = null; window.custLon = null;
 
@@ -452,7 +451,6 @@
             });
         };
 
-        // دالة تغيير الحالة من الـ Dropdown
         window.changeStatusDropdown = function(nextStatus) {
             if(currentDriverActiveRef) update(currentDriverActiveRef, { status: nextStatus });
             localStorage.setItem('wslny_driver_status', nextStatus);
@@ -477,7 +475,6 @@
             onValue(notifRef, (snap) => {
                 if(snap.exists()) {
                     const data = snap.val();
-                    // تظهر فقط لو الإشعار في آخر 60 ثانية (عشان لو عمل ريفريش متظهرش الإشعارات القديمة)
                     if(Date.now() - data.timestamp < 60000) {
                         const banner = document.getElementById('driverNotificationBanner');
                         const icon = document.getElementById('notificationIcon');
@@ -518,7 +515,6 @@
             const lastStatus = localStorage.getItem('wslny_driver_status') || 'active';
             currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/driver_' + phone);
 
-            // حفظ بيانات السائق، مع محاولة الحصول على الـ GPS في الخلفية للترتيب
             set(currentDriverActiveRef, { name, phone, vType, vCond, location, status: lastStatus, timestamp: Date.now() }).then(() => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(pos => {
@@ -532,7 +528,7 @@
                 }
                 
                 window.listenToColleagues();
-                window.listenToNotifications(); // تشغيل مستمع الإشعارات
+                window.listenToNotifications();
             });
         };
 
@@ -578,13 +574,11 @@
                 }
             });
 
-            // إرسال الإشعار للسائق
             set(notifRef, { type: type, pickup: pickupLoc, dropoff: dropoffLoc, timestamp: Date.now() });
 
             set(push(ref(db, 'wslny_app/security_logs')), { driver_phone: driverPhone, driver_name: driverName, type: type, pickup: pickupLoc, dropoff: dropoffLoc, timestamp: Date.now() }).then(() => { window.location.href = targetUrl; }).catch(() => { window.location.href = targetUrl; });
         };
 
-        // دالة حساب المسافة الجغرافية بالكيلومتر
         const getDistance = (lat1, lon1, lat2, lon2) => {
             if(!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
             const p = 0.017453292519943295; const c = Math.cos;
@@ -592,6 +586,7 @@
             return 12742 * Math.asin(Math.sqrt(a)); 
         };
 
+        // دالة البحث المباشر السريعة باستخدام get بدلاً من onValue
         window.fetchDriversFromCloud = async function(e) {
             e.preventDefault();
             const reqType = document.getElementById('custVType').value;
@@ -607,11 +602,12 @@
             if(!dropoffGov) return alert("اختر محافظة الوصول.");
             if(!manualDropoff) return alert("يرجى كتابة مكان الوصول.");
 
-            const btn = document.getElementById('btnSearch'); btn.innerText = "⏳ جاري البحث الجغرافي...";
+            const btn = document.getElementById('btnSearch'); 
+            btn.innerText = "⏳ جاري البحث الجغرافي...";
             
-            let cLat = window.custLat; let cLon = window.custLon;
+            let cLat = window.custLat; 
+            let cLon = window.custLon;
             
-            // في حالة ان الزبون كتب المكان بايده ومستخدمش الـ GPS، نحاول نخمن الاحداثيات بالخلفية
             if (!cLat || !cLon) {
                 try {
                     let geoQuery = encodeURIComponent(manualPickup + ', ' + gov + ', مصر');
@@ -625,67 +621,70 @@
                 const pickupLoc = `${gov} - ${manualPickup}`;
                 const dropoffLoc = `${dropoffGov} - ${manualDropoff}`;
 
-                get(ref(db, 'wslny_app/registered_drivers')).then(regSnap => {
-                    let registeredData = regSnap.val() || {};
-                    onValue(ref(db, 'wslny_app/active_drivers'), (snapshot) => {
-                        let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">الترتيب من الأقرب للأبعد 📍:</h3><div class="bg-white rounded-2xl shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الكابتن (والمسافة)</th><th class="px-4 py-3 font-extrabold text-center">تواصل / تقييم</th></tr></thead><tbody class="divide-y divide-gray-100">`;
-                        let tableRows = '';
-                        let availableDrivers = [];
+                const regSnap = await get(ref(db, 'wslny_app/registered_drivers'));
+                const activeSnap = await get(ref(db, 'wslny_app/active_drivers'));
 
-                        if(snapshot.val()) {
-                            Object.values(snapshot.val()).forEach(d => {
-                                if(d.vType === reqType && d.status === 'active' && d.location === gov) {
-                                    let fullDData = registeredData["driver_" + d.phone] || {};
-                                    d.ratingAvg = fullDData.ratingSum ? (fullDData.ratingSum / fullDData.ratingCount).toFixed(1) : 5.0;
-                                    d.distance = getDistance(cLat, cLon, d.lat, d.lng);
-                                    availableDrivers.push(d);
-                                }
-                            });
-                        }
+                let registeredData = regSnap.val() || {};
+                let activeData = activeSnap.val() || {};
 
-                        // الترتيب بناءً على المسافة الجغرافية
-                        availableDrivers.sort((a, b) => a.distance - b.distance);
+                let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">الترتيب من الأقرب للأبعد 📍:</h3><div class="bg-white rounded-2xl shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الكابتن (والمسافة)</th><th class="px-4 py-3 font-extrabold text-center">تواصل / تقييم</th></tr></thead><tbody class="divide-y divide-gray-100">`;
+                let tableRows = '';
+                let availableDrivers = [];
 
-                        availableDrivers.forEach(d => {
-                            let messageText = `مرحباً كابتن، طلب (${d.vType}) من نَقْلَة.\n📍 من: ${pickupLoc}\n🏁 إلى: ${dropoffLoc}\n🤝 (برجاء الاتفاق على السعر وتفاصيل النقل)`;
-                            let waLink = `https://wa.me/20${d.phone.toString().replace(/^0+/, '')}?text=${encodeURIComponent(messageText)}`;
-                            let badge = d.ratingAvg >= 4.5 ? `<span class="bg-yellow-100 text-yellow-700 text-[10px] px-1 rounded font-bold ml-1 border border-yellow-300">مميز 🏆</span>` : '';
-
-                            // عرض المسافة
-                            let distBadge = '';
-                            if (d.distance !== Infinity && d.distance !== null && !isNaN(d.distance)) {
-                                let km = d.distance.toFixed(1);
-                                distBadge = `<div class="text-[10px] bg-green-100 text-green-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 يبعد عنك ${km} كم</div>`;
-                            } else {
-                                distBadge = `<div class="text-[10px] bg-gray-100 text-gray-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 متصل في محافظتك</div>`;
-                            }
-
-                            tableRows += `<tr class="hover:bg-orange-50">
-                                <td class="px-4 py-3">
-                                    <div class="font-extrabold text-gray-900 text-sm">${d.name} ${badge}</div>
-                                    <div class="text-[10px] text-yellow-500 font-bold mt-0.5">⭐ ${d.ratingAvg}</div>
-                                    ${distBadge}
-                                </td>
-                                <td class="px-4 py-3 align-middle text-center">
-                                    <div class="flex justify-center gap-2 mb-1.5">
-                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'call', 'tel:${d.phone}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">📞</button>
-                                        <button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">💬</button>
-                                    </div>
-                                    <button type="button" onclick="openRatingModal('${d.phone}', '${d.name}')" class="text-[10px] text-gray-400 hover:text-orange-500 underline font-bold">قيّم الكابتن ⭐</button>
-                                </td>
-                            </tr>`;
-                        });
-
-                        if (!tableRows) document.getElementById('searchResultsContainer').innerHTML = `<div class="text-center p-4 bg-red-50 rounded-xl border border-red-200 text-red-600 font-black text-sm">عفواً، جميع سائقين (${reqType}) في محافظة (${gov}) إما في مشوار أو لا يوجد أحد متاح الآن.</div>`;
-                        else document.getElementById('searchResultsContainer').innerHTML = htmlOutput + tableRows + `</tbody></table></div>`;
-
-                        document.getElementById('searchResultsContainer').classList.remove('hidden');
-                        btn.innerHTML = "🔍 بحث ذكي وترتيب بالأقرب";
-                        setTimeout(() => document.getElementById('searchResultsContainer').scrollIntoView({ behavior: 'smooth' }), 100);
-                    }, { onlyOnce: true });
+                Object.values(activeData).forEach(d => {
+                    if(d.vType === reqType && d.status === 'active' && d.location === gov) {
+                        let fullDData = registeredData["driver_" + d.phone] || {};
+                        d.ratingAvg = fullDData.ratingSum ? (fullDData.ratingSum / fullDData.ratingCount).toFixed(1) : 5.0;
+                        d.distance = getDistance(cLat, cLon, d.lat, d.lng);
+                        availableDrivers.push(d);
+                    }
                 });
+
+                availableDrivers.sort((a, b) => a.distance - b.distance);
+
+                availableDrivers.forEach(d => {
+                    let messageText = `مرحباً كابتن، طلب (${d.vType}) من نَقْلَة.\n📍 من: ${pickupLoc}\n🏁 إلى: ${dropoffLoc}\n🤝 (برجاء الاتفاق على السعر وتفاصيل النقل)`;
+                    let waLink = `https://wa.me/20${d.phone.toString().replace(/^0+/, '')}?text=${encodeURIComponent(messageText)}`;
+                    let badge = d.ratingAvg >= 4.5 ? `<span class="bg-yellow-100 text-yellow-700 text-[10px] px-1 rounded font-bold ml-1 border border-yellow-300">مميز 🏆</span>` : '';
+
+                    let distBadge = '';
+                    if (d.distance !== Infinity && d.distance !== null && !isNaN(d.distance)) {
+                        let km = d.distance.toFixed(1);
+                        distBadge = `<div class="text-[10px] bg-green-100 text-green-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 يبعد عنك ${km} كم</div>`;
+                    } else {
+                        distBadge = `<div class="text-[10px] bg-gray-100 text-gray-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 متصل في محافظتك</div>`;
+                    }
+
+                    tableRows += `<tr class="hover:bg-orange-50">
+                        <td class="px-4 py-3">
+                            <div class="font-extrabold text-gray-900 text-sm">${d.name} ${badge}</div>
+                            <div class="text-[10px] text-yellow-500 font-bold mt-0.5">⭐ ${d.ratingAvg}</div>
+                            ${distBadge}
+                        </td>
+                        <td class="px-4 py-3 align-middle text-center">
+                            <div class="flex justify-center gap-2 mb-1.5">
+                                <button onclick="trackClick('${d.phone}', '${d.name}', 'call', 'tel:${d.phone}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">📞</button>
+                                <button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md active:scale-95 text-xs">💬</button>
+                            </div>
+                            <button type="button" onclick="openRatingModal('${d.phone}', '${d.name}')" class="text-[10px] text-gray-400 hover:text-orange-500 underline font-bold">قيّم الكابتن ⭐</button>
+                        </td>
+                    </tr>`;
+                });
+
+                if (!tableRows) {
+                    document.getElementById('searchResultsContainer').innerHTML = `<div class="text-center p-4 bg-red-50 rounded-xl border border-red-200 text-red-600 font-black text-sm">عفواً، جميع سائقين (${reqType}) في محافظة (${gov}) إما في مشوار، غير متصلين، أو لا يوجد أحد متاح الآن.</div>`;
+                } else {
+                    document.getElementById('searchResultsContainer').innerHTML = htmlOutput + tableRows + `</tbody></table></div>`;
+                }
+
+                document.getElementById('searchResultsContainer').classList.remove('hidden');
+                btn.innerHTML = "🔍 بحث ذكي وترتيب بالأقرب";
+                setTimeout(() => document.getElementById('searchResultsContainer').scrollIntoView({ behavior: 'smooth' }), 100);
                 
-            } catch (err) { alert("خطأ: " + err.message); btn.innerHTML = "🔍 بحث ذكي وترتيب بالأقرب"; }
+            } catch (err) { 
+                alert("خطأ في الاتصال بالتايملاين: " + err.message); 
+                btn.innerHTML = "🔍 بحث ذكي وترتيب بالأقرب"; 
+            }
         };
     </script>
 </body>
