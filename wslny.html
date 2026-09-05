@@ -10,6 +10,8 @@
         body { font-family: 'Cairo', sans-serif; background-color: #f3f4f6; overflow-x: hidden; }
         .glass-panel { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
         .gradient-text { background: linear-gradient(90deg, #f97316, #ea580c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        optgroup { font-weight: 800; color: #ea580c; background-color: #fff7ed; padding: 5px; }
+        option { font-weight: 600; color: #1f2937; background-color: #ffffff; padding: 5px; }
         
         #auth-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6;
@@ -180,8 +182,6 @@
                 </select>
                 
                 <select id="regDriverCenter" onchange="updateAreas('regDriverCenter', 'regDriverArea', 'regDriverVType')" class="hidden w-full px-4 py-3 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none mb-2 transition-all"></select>
-                
-                <!-- المستوى الثالث (الأحياء الشعبية للتوكتوك) -->
                 <select id="regDriverArea" class="hidden w-full px-4 py-3 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:outline-none transition-all"></select>
             </div>
 
@@ -289,8 +289,6 @@
                 </select>
                 
                 <select id="custCenter" onchange="updateAreas('custCenter', 'custArea', 'custVType')" class="hidden w-full px-4 py-3 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none mb-2 transition-all"></select>
-                
-                <!-- المستوى الثالث (الأحياء الشعبية للتوكتوك) -->
                 <select id="custArea" class="hidden w-full px-4 py-3 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:outline-none transition-all"></select>
             </div>
 
@@ -314,7 +312,7 @@
 
     <!-- سكريبت التنقل والبيانات الذكية -->
     <script>
-        function showView(viewId) {
+        window.showView = function(viewId) {
             window.location.hash = viewId;
         }
 
@@ -341,7 +339,6 @@
             else window.dispatchEvent(new Event('hashchange'));
         });
 
-        // Pull to refresh + Swipe
         let touchstartX = 0; let touchendX = 0;
         document.addEventListener('touchstart', e => { touchstartX = e.changedTouches[0].screenX; }, {passive: true});
         document.addEventListener('touchend', e => { 
@@ -365,13 +362,29 @@
             if (pullStartY > 0) {
                 if (pullCurrentY - pullStartY > 70 && window.scrollY <= 0) {
                     ptrIndicator.style.height = '60px'; 
-                    setTimeout(() => window.location.reload(), 500);
-                } else ptrIndicator.style.height = '0px'; 
+                    // تحديث ناعم للبيانات (Soft Refresh) بدلاً من reload()
+                    setTimeout(() => {
+                        const hash = window.location.hash;
+                        if (hash === '#adminView') {
+                            if(typeof window.fetchAdminDrivers === 'function') window.fetchAdminDrivers();
+                        } else if (hash === '#driverActiveView') {
+                            if(typeof window.listenToColleagues === 'function') window.listenToColleagues();
+                        } else if (hash === '#customerView') {
+                            const btn = document.getElementById('btnSearch');
+                            const res = document.getElementById('searchResultsContainer');
+                            if(btn && res && !res.classList.contains('hidden')) {
+                                btn.click();
+                            }
+                        }
+                        setTimeout(() => { ptrIndicator.style.height = '0px'; }, 500);
+                    }, 500);
+                } else {
+                    ptrIndicator.style.height = '0px'; 
+                }
             }
             pullStartY = 0; pullCurrentY = 0;
         });
 
-        // قاعدة بيانات المراكز العادية
         const citiesData = {
             "الدقهلية": ["المنصورة", "طلخا", "ميت غمر", "دكرنس", "بلقاس", "السنبلاوين", "أجا", "شربين", "منية النصر", "المنزلة", "المطرية", "نبروه", "جمصة", "محلة دمنة", "بني عبيد", "تمي الأمديد", "ميت سلسيل"],
             "القاهرة": ["مدينة نصر", "مصر الجديدة", "التجمع", "المعادي", "المقطم", "شبرا", "وسط البلد", "حلوان", "الرحاب", "مدينتي", "الشروق", "بدر"],
@@ -402,7 +415,6 @@
             "مطروح": ["مرسى مطروح", "الحمام", "العلمين", "الضبعة", "سيدي عبد الرحمن", "السلوم", "سيوة"]
         };
 
-        // قاعدة بيانات الأحياء الشعبية المخصصة للتوكتوك (مربوطة بالمركز مباشرة)
         const popularAreasByCenter = {
             "المنصورة": ["سندوب", "عزبة الشال", "جديلة", "المجزر", "ميت حدر", "الدراسات", "عزبة الصفيح", "كفر البدماص", "قولنجيل", "توريل القديمة", "شارع ١٠", "مدينة السلام", "مستشفى الصدر", "الجلاء", "مصر للطيران", "تجنيد المنصورة", "ميدان الشيخ حسانين"],
             "شبرا الخيمة": ["بهتيم", "مسطرد", "باسوس", "قلما"],
@@ -411,13 +423,11 @@
             "المنتزه": ["العوايد", "أبو سليمان", "خورشيد", "الظاهرية"]
         };
 
-        // دالة تحديث قائمة المراكز (المستوى الثاني) وإخفاء الحي
         window.updateLocations = function(govId, centerId, areaId) {
             const gov = document.getElementById(govId).value;
             const centerSelect = document.getElementById(centerId);
             const areaSelect = document.getElementById(areaId);
 
-            // إخفاء الحي وتفريغه عند تغيير المحافظة
             if(areaSelect) {
                 areaSelect.innerHTML = '<option value="" disabled selected>اختر الحي / المنطقة الشعبية...</option>';
                 areaSelect.classList.add('hidden');
@@ -437,7 +447,6 @@
             }
         };
 
-        // دالة تحديث قائمة الأحياء (المستوى الثالث) وتظهر للتوكتوك فقط
         window.updateAreas = function(centerId, areaId, vTypeId) {
             const center = document.getElementById(centerId).value;
             const vType = document.getElementById(vTypeId).value;
@@ -445,7 +454,6 @@
 
             if (!areaSelect) return;
 
-            // إذا كانت المركبة توكتوك والمركز له أحياء شعبية مسجلة
             if (vType === 'توكتوك' && center && popularAreasByCenter[center]) {
                 let html = '<option value="" disabled selected>اختر الحي / المنطقة الشعبية...</option>';
                 popularAreasByCenter[center].forEach(area => { html += `<option value="${area}">${area}</option>`; });
@@ -495,7 +503,7 @@
                 const savedInfoStr = localStorage.getItem('wslny_driver_info');
                 if (isActive === 'true' && savedInfoStr) {
                     const savedInfo = JSON.parse(savedInfoStr);
-                    activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد');
+                    window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد', true);
                 }
             }
         });
@@ -534,7 +542,6 @@
             });
         };
 
-        // دالة موحدة لتركيب المكان بناءً على الـ 3 مستويات
         function buildLocationString(govId, centerId, areaId) {
             const gov = document.getElementById(govId).value;
             const centerEl = document.getElementById(centerId);
@@ -566,7 +573,7 @@
             get(permanentRef).then((snapshot) => {
                 let joinD = snapshot.exists() ? (snapshot.val().joinDate || Date.now()) : Date.now();
                 set(permanentRef, { name, phone, vType, vCond, location: fullLocation, joinDate: joinD }).then(() => {
-                    activateDriverSession(name, phone, vType, vCond, fullLocation);
+                    window.activateDriverSession(name, phone, vType, vCond, fullLocation);
                     btn.innerText = "حفظ وبدء العمل";
                 }).catch(err => { alert("خطأ: " + err.message); btn.innerText = "حفظ وبدء العمل"; });
             });
@@ -582,7 +589,7 @@
             get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    activateDriverSession(data.name, data.phone, data.vType, data.vCond, data.location || 'غير محدد');
+                    window.activateDriverSession(data.name, data.phone, data.vType, data.vCond, data.location || 'غير محدد');
                     btn.innerText = "دخول";
                 } else {
                     alert("الرقم غير مسجل! سجل كمستخدم جديد.");
@@ -591,7 +598,7 @@
             });
         };
 
-        function activateDriverSession(name, phone, vType, vCond, location) {
+        window.activateDriverSession = function(name, phone, vType, vCond, location, isAutoLogin = false) {
             localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond, location }));
             localStorage.setItem('wslny_is_active', 'true');
             
@@ -609,11 +616,16 @@
             currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/driver_' + phone);
 
             set(currentDriverActiveRef, { name, phone, vType, vCond, location, status: lastStatus, timestamp: Date.now() }).then(() => {
-                updateDriverUI(lastStatus);
-                showView('driverActiveView');
-                listenToColleagues();
+                window.updateDriverUI(lastStatus);
+                
+                const hash = window.location.hash;
+                // توجيه السائق لشاشته فقط لو كان لسه بيسجل دخول، لكن لو كان في صفحة الزبون مثلا وعمل ريفريش، يفضل فيها
+                if (!isAutoLogin || hash === '' || hash === '#homeView' || hash === '#driverChoiceView' || hash === '#driverLoginView') {
+                    showView('driverActiveView');
+                }
+                window.listenToColleagues();
             });
-        }
+        };
 
         window.updateDriverUI = function(status) {
             const banner = document.getElementById('driverStatusBanner');
@@ -638,7 +650,7 @@
             const newStatus = (localStorage.getItem('wslny_driver_status') || 'active') === 'active' ? 'paused' : 'active';
             if(currentDriverActiveRef) update(currentDriverActiveRef, { status: newStatus });
             localStorage.setItem('wslny_driver_status', newStatus);
-            updateDriverUI(newStatus);
+            window.updateDriverUI(newStatus);
         };
 
         window.confirmGoOffline = function() { if (confirm("خروج نهائي؟")) goOffline(); };
@@ -647,7 +659,7 @@
             localStorage.setItem('wslny_is_active', 'false'); window.location.hash = 'homeView'; 
         };
 
-        function listenToColleagues() {
+        window.listenToColleagues = function() {
             const myInfoStr = localStorage.getItem('wslny_driver_info');
             if(!myInfoStr) return;
             const myPhone = JSON.parse(myInfoStr).phone.toString().replace(/^0+/, '').trim();
@@ -692,7 +704,7 @@
                     container.innerHTML = found ? tableHTML + `</tbody></table>` : `<div class="p-4 text-center text-xs text-gray-500 font-bold">لا يوجد متصلين الآن.</div>`;
                 });
             });
-        }
+        };
 
         window.fetchDriversFromCloud = function(e) {
             e.preventDefault();
@@ -707,8 +719,6 @@
                 const exactPickupLoc = buildLocationString('custGov', 'custCenter', 'custArea');
                 const gov = document.getElementById('custGov').value;
                 const center = document.getElementById('custCenter').value;
-                
-                // البحث في نفس المركز (حتى لو اختلف الحي) يعتبر "منطقة قريبة"
                 const searchRegion = center ? `${gov} - ${center}` : gov;
 
                 onValue(ref(db, 'wslny_app/active_drivers'), (snapshot) => {
