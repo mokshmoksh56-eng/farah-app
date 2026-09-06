@@ -335,8 +335,9 @@
                     <td class="px-6 py-4 text-center">${subHtml}</td>
                     <td class="px-6 py-4 text-center">
                         <div class="flex justify-center gap-1.5">
-                            <button onclick="openModal('${driver.phone}', '${driver.name}')" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold">اشتراك/تعديل</button>
-                            <button onclick="toggleBlock('${driver.phone}', ${isBlocked})" class="${isBlocked?'bg-green-500':'bg-orange-500'} text-white px-3 py-1.5 rounded-lg text-[10px] font-bold">${isBlocked?'فك الحظر':'حظر'}</button>
+                            <button onclick="openModal('${driver.phone}', '${driver.name}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition">اشتراك/تعديل</button>
+                            <button onclick="toggleBlock('${driver.phone}', ${isBlocked})" class="${isBlocked?'bg-green-500 hover:bg-green-600':'bg-orange-500 hover:bg-orange-600'} text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition">${isBlocked?'فك الحظر':'حظر'}</button>
+                            <button onclick="deleteDriver('${driver.phone}', '${driver.name}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-[10px] font-bold transition">حذف</button>
                         </div>
                     </td>
                 `;
@@ -359,7 +360,7 @@
             document.getElementById('modalDriverPhone').value = phone;
             document.getElementById('modalDriverName').innerText = "السائق: " + name;
             document.getElementById('subPrice').value = '';
-            document.getElementById('durationSelect').value = "0"; // تصفير القائمة
+            document.getElementById('durationSelect').value = "0";
             
             get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then((snap) => {
                 let sDate = document.getElementById('startDate');
@@ -401,7 +402,6 @@
 
             if(!startVal || !endVal) return alert("الرجاء التأكد من إدخال تاريخ البداية والنهاية!");
 
-            // تحويل التواريخ إلى Timestamp (مع ضبط وقت النهاية لآخر اليوم)
             const startTime = new Date(startVal).getTime();
             const endDateObj = new Date(endVal);
             endDateObj.setHours(23, 59, 59, 999);
@@ -427,6 +427,29 @@
             if(confirm(`تأكيد ${blocked ? "إلغاء الحظر" : "الحظر"}؟`)) {
                 update(ref(db, 'wslny_app/registered_drivers/driver_' + phone), { account_status: blocked ? 'active' : 'blocked' });
                 if(!blocked) remove(ref(db, 'wslny_app/active_drivers/driver_' + phone));
+            }
+        };
+
+        window.deleteDriver = function(phone, name) {
+            if(confirm(`حذف السائق (${name}) نهائياً؟`)) {
+                if(prompt("الرقم السري للتأكيد:") === "4366") {
+                    set(ref(db, 'wslny_app/notifications/driver_' + phone), {
+                        type: 'deleted',
+                        timestamp: Date.now()
+                    }).then(() => {
+                        remove(ref(db, 'wslny_app/registered_drivers/driver_' + phone));
+                        remove(ref(db, 'wslny_app/active_drivers/driver_' + phone));
+                        if(driverMarkers[phone]) {
+                            adminMap.removeLayer(driverMarkers[phone]);
+                            delete driverMarkers[phone];
+                        }
+                        alert("✅ تم حذف السائق وإرسال أمر الخروج لهاتفه بنجاح.");
+                    }).catch(error => {
+                        alert("❌ حدث خطأ أثناء الحذف: " + error.message);
+                    });
+                } else {
+                    alert("❌ الرقم السري غير صحيح.");
+                }
             }
         };
 
