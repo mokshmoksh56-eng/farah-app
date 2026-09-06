@@ -342,7 +342,28 @@
             const targetView = document.getElementById(viewId);
             if (targetView) targetView.classList.remove('hidden'); else document.getElementById('homeView').classList.remove('hidden');
         });
-        window.addEventListener('load', () => { if (!window.location.hash) window.location.hash = 'homeView'; else window.dispatchEvent(new Event('hashchange')); });
+
+        // التحقق الفوري من حفظ الحساب على الهاتف عند فتح التطبيق لتجنب إعادة إدخال الرقم والباسورد
+        window.addEventListener('load', () => {
+            const savedPhone = localStorage.getItem('wslny_saved_phone');
+            const savedPin = localStorage.getItem('wslny_saved_pin');
+            if (savedPhone && savedPin) {
+                const phoneInput = document.getElementById('loginPhoneInput');
+                const pinInput = document.getElementById('loginPinInput');
+                if (phoneInput) phoneInput.value = savedPhone;
+                if (pinInput) pinInput.value = savedPin;
+            }
+
+            if (!window.location.hash) {
+                if (localStorage.getItem('wslny_is_active') === 'true') {
+                    window.location.hash = 'driverActiveView';
+                } else {
+                    window.location.hash = 'homeView';
+                }
+            } else {
+                window.dispatchEvent(new Event('hashchange'));
+            }
+        });
 
         const governoratesList = ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "المنوفية", "القليوبية", "البحيرة", "كفر الشيخ", "دمياط", "الإسماعيلية", "بورسعيد", "السويس", "مطروح", "شمال سيناء", "جنوب سيناء", "البحر الأحمر", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "الوادي الجديد"];
 
@@ -432,7 +453,7 @@
         const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);
         
         let currentDriverActiveRef = null; 
-        let watchGeoId = null; // متغير التتبع اللحظي
+        let watchGeoId = null;
 
         signInAnonymously(auth).catch((error) => console.error("Auth error:", error));
         
@@ -484,6 +505,9 @@
 
                 let joinD = Date.now();
                 set(permanentRef, { name, phone, pin, vType, vCond, location: fullLocation, joinDate: joinD, ratingSum: 5, ratingCount: 1 }).then(() => {
+                    // حفظ البيانات تلقائياً في الهاتف للرجوع التلقائي
+                    localStorage.setItem('wslny_saved_phone', phone);
+                    localStorage.setItem('wslny_saved_pin', pin);
                     window.activateDriverSession(name, phone, vType, vCond, fullLocation);
                     btn.innerText = "حفظ وبدء العمل";
                 });
@@ -508,6 +532,9 @@
                         btn.innerText = "دخول وبدء العمل";
                         return alert("❌ الرقم السري غير صحيح! يرجى التأكد والمحاولة مرة أخرى.");
                     }
+                    // حفظ البيانات تلقائياً في الهاتف للرجوع التلقائي
+                    localStorage.setItem('wslny_saved_phone', phone);
+                    localStorage.setItem('wslny_saved_pin', pin);
                     window.activateDriverSession(data.name, data.phone, data.vType, data.vCond, data.location || 'غير محدد');
                     btn.innerText = "دخول وبدء العمل";
                 } else { 
@@ -591,7 +618,7 @@
                 }
                 
                 window.updateDriverUI(lastStatus);
-                if (!isAutoLogin || window.location.hash === '' || window.location.hash === '#homeView') {
+                if (!isAutoLogin || window.location.hash === '' || window.location.hash === '#homeView' || window.location.hash === '#driverLoginView') {
                     showView('driverActiveView');
                 }
                 
@@ -605,6 +632,8 @@
                 if(currentDriverActiveRef) remove(currentDriverActiveRef); 
                 if(watchGeoId && navigator.geolocation) navigator.geolocation.clearWatch(watchGeoId);
                 localStorage.setItem('wslny_is_active', 'false'); 
+                localStorage.removeItem('wslny_saved_phone');
+                localStorage.removeItem('wslny_saved_pin');
                 window.location.hash = 'homeView'; 
             } 
         };
