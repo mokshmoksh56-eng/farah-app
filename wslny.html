@@ -192,16 +192,27 @@
                 </select>
             </div>
 
-            <!-- نطاق العمل مع الـ GPS -->
+            <!-- نطاق العمل مع الـ GPS والادخال اليدوي -->
             <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <div class="flex justify-between items-center mb-3">
-                    <label class="block text-base font-extrabold text-gray-900">نطاق العمل</label>
-                    <button type="button" onclick="getLocation('regDriverGov', null, 'driver')" class="text-[11px] bg-white border border-gray-400 text-gray-700 px-2 py-1.5 rounded-lg shadow-sm font-bold flex items-center gap-1 active:scale-95">📍 موقعي</button>
+                <label class="block text-base font-extrabold text-gray-900 mb-2">نطاق العمل (مكان تواجدك)</label>
+                
+                <button type="button" onclick="getLocation('regDriverGov', 'regDriverAddress', 'driver')" class="w-full mb-3 bg-white border border-gray-400 text-gray-700 py-2 rounded-xl shadow-sm font-bold flex items-center justify-center gap-2 active:scale-95 transition hover:bg-gray-50">
+                    <span class="text-lg">📍</span> تحديد موقعي بالـ GPS تلقائياً
+                </button>
+                
+                <div class="flex items-center gap-2 mb-3 opacity-70">
+                    <div class="h-px bg-gray-300 flex-1"></div>
+                    <span class="text-[10px] text-gray-600 font-extrabold">أو ادخل البيانات يدوياً ✍️</span>
+                    <div class="h-px bg-gray-300 flex-1"></div>
                 </div>
-                <select id="regDriverGov" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl font-bold">
-                    <option value="" disabled selected>اختر المحافظة...</option>
-                    <option value="القاهرة">القاهرة</option><option value="الجيزة">الجيزة</option><option value="الإسكندرية">الإسكندرية</option><option value="الدقهلية">الدقهلية</option><option value="الشرقية">الشرقية</option><option value="الغربية">الغربية</option><option value="المنوفية">المنوفية</option><option value="القليوبية">القليوبية</option><option value="البحيرة">البحيرة</option><option value="كفر الشيخ">كفر الشيخ</option><option value="دمياط">دمياط</option><option value="الإسماعيلية">الإسماعيلية</option><option value="بورسعيد">بورسعيد</option><option value="السويس">السويس</option><option value="مطروح">مطروح</option><option value="شمال سيناء">شمال سيناء</option><option value="جنوب سيناء">جنوب سيناء</option><option value="البحر الأحمر">البحر الأحمر</option><option value="الفيوم">الفيوم</option><option value="بني سويف">بني سويف</option><option value="المنيا">المنيا</option><option value="أسيوط">أسيوط</option><option value="سوهاج">سوهاج</option><option value="قنا">قنا</option><option value="الأقصر">الأقصر</option><option value="أسوان">أسوان</option><option value="الوادي الجديد">الوادي الجديد</option>
-                </select>
+
+                <div class="space-y-3">
+                    <select id="regDriverGov" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl font-bold focus:ring-2 focus:ring-gray-500 outline-none">
+                        <option value="" disabled selected>اختر المحافظة...</option>
+                        <option value="القاهرة">القاهرة</option><option value="الجيزة">الجيزة</option><option value="الإسكندرية">الإسكندرية</option><option value="الدقهلية">الدقهلية</option><option value="الشرقية">الشرقية</option><option value="الغربية">الغربية</option><option value="المنوفية">المنوفية</option><option value="القليوبية">القليوبية</option><option value="البحيرة">البحيرة</option><option value="كفر الشيخ">كفر الشيخ</option><option value="دمياط">دمياط</option><option value="الإسماعيلية">الإسماعيلية</option><option value="بورسعيد">بورسعيد</option><option value="السويس">السويس</option><option value="مطروح">مطروح</option><option value="شمال سيناء">شمال سيناء</option><option value="جنوب سيناء">جنوب سيناء</option><option value="البحر الأحمر">البحر الأحمر</option><option value="الفيوم">الفيوم</option><option value="بني سويف">بني سويف</option><option value="المنيا">المنيا</option><option value="أسيوط">أسيوط</option><option value="سوهاج">سوهاج</option><option value="قنا">قنا</option><option value="الأقصر">الأقصر</option><option value="أسوان">أسوان</option><option value="الوادي الجديد">الوادي الجديد</option>
+                    </select>
+                    <input type="text" id="regDriverAddress" placeholder="المدينة أو المركز (مثال: المنصورة)..." required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl font-bold focus:ring-2 focus:ring-gray-500 outline-none placeholder-gray-400">
+                </div>
             </div>
 
             <div class="pt-4 space-y-4">
@@ -573,7 +584,8 @@
             const name = document.getElementById('regDriverName').value;
             const pin = document.getElementById('regDriverPin').value; 
             const vCond = document.getElementById('regDriverVCond').value;
-            const fullLocation = document.getElementById('regDriverGov').value || 'غير محدد';
+            const gov = document.getElementById('regDriverGov').value;
+            const address = document.getElementById('regDriverAddress').value.trim();
 
             const permanentRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
             
@@ -584,10 +596,10 @@
                 }
 
                 let joinD = Date.now();
-                set(permanentRef, { name, phone, pin, vType, vCond, location: fullLocation, joinDate: joinD, ratingSum: 5, ratingCount: 1 }).then(() => {
+                set(permanentRef, { name, phone, pin, vType, vCond, location: gov, specificAddress: address, joinDate: joinD, ratingSum: 5, ratingCount: 1 }).then(() => {
                     localStorage.setItem('wslny_saved_phone', phone);
                     localStorage.setItem('wslny_saved_pin', pin);
-                    window.activateDriverSession(name, phone, vType, vCond, fullLocation);
+                    window.activateDriverSession(name, phone, vType, vCond, gov);
                     btn.innerText = "حفظ وبدء العمل";
                 });
             });
