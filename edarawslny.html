@@ -48,7 +48,8 @@
                         <div id="connectionStatus" class="text-xs font-bold text-green-600 animate-pulse">متصل بقاعدة البيانات بشكل آمن</div>
                     </div>
                 </div>
-                <button onclick="location.reload()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-xl text-sm transition">خروج</button>
+                <!-- تم تعديل زر الخروج هنا -->
+                <button onclick="adminLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-xl text-sm transition">خروج</button>
             </div>
         </header>
 
@@ -204,6 +205,26 @@
         let adminMap;
         let driverMarkers = {}; 
 
+        // دالة تشغيل لوحة التحكم وعرض محتواياتها
+        function showDashboard() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').classList.remove('hidden');
+            
+            // تشغيل الخريطة بعد ظهور اللوحة
+            initAdminMap();
+
+            loadDashboardData();
+            loadSecurityLogs();
+            loadFinancials();
+        }
+
+        // التحقق عند تحميل الصفحة (إذا كان المدير قد سجل الدخول مسبقاً)
+        window.addEventListener('load', () => {
+            if (localStorage.getItem('admin_logged_in') === 'true') {
+                showDashboard();
+            }
+        });
+
         // إعداد الخريطة الأولية (مصر كموقع افتراضي)
         function initAdminMap() {
             if(!adminMap) {
@@ -215,18 +236,20 @@
             }
         }
 
+        // التحقق من الرقم السري
         window.checkPin = function() {
             if (document.getElementById('adminPin').value === "4366") {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('dashboard').classList.remove('hidden');
-                
-                // تشغيل الخريطة بعد ظهور اللوحة
-                initAdminMap();
-
-                loadDashboardData();
-                loadSecurityLogs();
-                loadFinancials();
+                // حفظ حالة تسجيل الدخول حتى لا يطلب الرقم مرة أخرى عند التحديث
+                localStorage.setItem('admin_logged_in', 'true');
+                showDashboard();
             } else document.getElementById('loginError').classList.remove('hidden');
+        };
+
+        // تسجيل الخروج
+        window.adminLogout = function() {
+            // مسح حالة تسجيل الدخول وتحديث الصفحة
+            localStorage.removeItem('admin_logged_in');
+            location.reload();
         };
 
         // دالة التركيز على السائق في الخريطة
