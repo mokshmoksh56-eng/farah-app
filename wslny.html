@@ -343,7 +343,6 @@
             if (targetView) targetView.classList.remove('hidden'); else document.getElementById('homeView').classList.remove('hidden');
         });
 
-        // التحقق الفوري من حفظ الحساب على الهاتف عند فتح التطبيق لتجنب إعادة إدخال الرقم والباسورد
         window.addEventListener('load', () => {
             const savedPhone = localStorage.getItem('wslny_saved_phone');
             const savedPin = localStorage.getItem('wslny_saved_pin');
@@ -505,7 +504,6 @@
 
                 let joinD = Date.now();
                 set(permanentRef, { name, phone, pin, vType, vCond, location: fullLocation, joinDate: joinD, ratingSum: 5, ratingCount: 1 }).then(() => {
-                    // حفظ البيانات تلقائياً في الهاتف للرجوع التلقائي
                     localStorage.setItem('wslny_saved_phone', phone);
                     localStorage.setItem('wslny_saved_pin', pin);
                     window.activateDriverSession(name, phone, vType, vCond, fullLocation);
@@ -532,7 +530,6 @@
                         btn.innerText = "دخول وبدء العمل";
                         return alert("❌ الرقم السري غير صحيح! يرجى التأكد والمحاولة مرة أخرى.");
                     }
-                    // حفظ البيانات تلقائياً في الهاتف للرجوع التلقائي
                     localStorage.setItem('wslny_saved_phone', phone);
                     localStorage.setItem('wslny_saved_pin', pin);
                     window.activateDriverSession(data.name, data.phone, data.vType, data.vCond, data.location || 'غير محدد');
@@ -560,6 +557,7 @@
             }
         };
 
+        // دالة الاستماع للإشعارات مع تفعيل الخروج التلقائي عند الحذف من الإدارة
         window.listenToNotifications = function() {
             const myInfoStr = localStorage.getItem('wslny_driver_info'); if(!myInfoStr) return;
             const myPhone = JSON.parse(myInfoStr).phone;
@@ -569,6 +567,14 @@
                 if(snap.exists()) {
                     const data = snap.val();
                     if(Date.now() - data.timestamp < 60000) {
+                        if(data.type === 'deleted') {
+                            alert("⚠️ تنبيه: تم حذف حسابك نهائياً من قبل الإدارة.");
+                            localStorage.clear();
+                            window.location.hash = 'homeView';
+                            window.location.reload();
+                            return;
+                        }
+
                         const banner = document.getElementById('driverNotificationBanner');
                         const icon = document.getElementById('notificationIcon');
                         const text = document.getElementById('notificationText');
