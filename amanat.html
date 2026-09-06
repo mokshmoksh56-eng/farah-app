@@ -3,74 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بث الشاشة - Azemaa Pro</title>
+    <title>بث الشاشة - كود مختصر</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style>
         body { font-family: Tahoma, sans-serif; text-align: center; background: #f0f2f5; margin: 0; padding: 20px; }
         .card { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .id-box { background: #e9ecef; padding: 15px; border-radius: 8px; font-size: 18px; margin-bottom: 20px; color: #333; }
-        input { width: 90%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; text-align: center; }
+        .id-box { background: #e9ecef; padding: 15px; border-radius: 8px; font-size: 18px; margin-bottom: 20px; color: #333; position: relative; }
+        .id-number { color: #d9534f; font-size: 34px; font-weight: bold; letter-spacing: 4px; display: block; margin: 10px 0; }
+        .btn-refresh { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 5px; }
+        .btn-refresh:hover { background: #5a6268; }
+        input { width: 90%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; font-size: 20px; text-align: center; letter-spacing: 2px; }
         button { width: 95%; padding: 12px; margin: 5px 0; border-radius: 6px; border: none; font-size: 16px; color: white; cursor: pointer; font-weight: bold; }
         .btn-view { background: #007bff; }
         .btn-share { background: #28a745; }
-        video { width: 100%; max-height: 400px; background: #000; border-radius: 8px; margin-top: 15px; }
+        video { width: 100%; max-height: 400px; background: #000; border-radius: 8px; margin-top: 15px; display: none; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h3>نظام المراقبة والبث المباشر</h3>
+        <h3>نظام المراقبة برقم مختصر</h3>
         
         <div class="id-box">
-            كود هذا الهاتف:<br>
-            <strong id="my-id" style="color: #d9534f; font-size: 22px;">جاري التحميل...</strong>
+            كود هذا الهاتف:
+            <span id="my-id" class="id-number">جاري التحميل...</span>
+            <button class="btn-refresh" onclick="window.location.reload()">🔄 تحديث الكود</button>
         </div>
         
-        <input type="text" id="remote-id" placeholder="أدخل كود الهاتف الآخر هنا">
+        <input type="number" id="remote-id" placeholder="أدخل الكود (6 أرقام)" maxlength="6">
         
-        <button class="btn-share" onclick="shareScreen()">مشاركة شاشة هذا الهاتف (إرسال)</button>
-        <button class="btn-view" onclick="startViewing()">استقبال البث من الهاتف الآخر</button>
+        <button class="btn-share" onclick="shareScreen()">مشاركة شاشة هذا الهاتف</button>
+        <button class="btn-view" onclick="startViewing()">تجهيز لاستقبال البث</button>
         
         <video id="remote-video" autoplay playsinline controls></video>
     </div>
 
     <script>
-        const peer = new Peer(); // إنشاء الاتصال
+        // توليد كود عشوائي من 6 أرقام
+        const mySimpleId = Math.floor(100000 + Math.random() * 900000).toString();
+        const peer = new Peer(mySimpleId);
         
-        // بمجرد فتح الصفحة، يتم توليد كود فريد للهاتف
         peer.on('open', (id) => {
             document.getElementById('my-id').innerText = id;
         });
 
-        // كود الاستقبال (الهاتف الأول الذي يشاهد)
+        // كود الاستقبال
         peer.on('call', (call) => {
-            call.answer(); // الرد التلقائي
+            call.answer(); 
             call.on('stream', (remoteStream) => {
                 const video = document.getElementById('remote-video');
+                video.style.display = 'block'; // إظهار الشاشة عند بدء البث
                 video.srcObject = remoteStream;
                 video.play();
             });
         });
 
-        // تنبيه لتهيئة الاستقبال
         function startViewing() {
-            alert('تم تجهيز هذا الهاتف للاستقبال. اذهب للهاتف الثاني، أدخل كود هذا الهاتف، واضغط "مشاركة".');
+            alert('جاهز للاستقبال. اذهب للهاتف الثاني وأدخل الكود المكون من 6 أرقام الظاهر في الأعلى.');
         }
 
-        // كود الإرسال (الهاتف الثاني الذي يعرض شاشته)
+        // كود الإرسال
         async function shareScreen() {
             const remoteId = document.getElementById('remote-id').value;
-            if (!remoteId) return alert('يجب إدخال كود الهاتف الأول أولاً!');
+            if (remoteId.length !== 6) {
+                return alert('تأكد من إدخال الكود المكون من 6 أرقام بشكل صحيح!');
+            }
 
             try {
-                // طلب صلاحية التقاط الشاشة
                 const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                
-                // الاتصال بالهاتف الأول وإرسال فيديو الشاشة
                 const call = peer.call(remoteId, stream);
-                alert('جاري بث الشاشة الآن...');
+                alert('جاري البث الآن... الشاشة تظهر على الهاتف الآخر.');
             } catch (err) {
                 console.error(err);
-                alert('المتصفح رفض تصوير الشاشة، أو لا يدعم هذه الميزة.');
+                alert('تم إلغاء تصوير الشاشة.');
             }
         }
     </script>
