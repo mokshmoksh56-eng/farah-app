@@ -6,15 +6,22 @@
     <title>إدارة تطبيق وصلني | Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- مكتبة الخرائط التفاعلية (Leaflet) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         body { font-family: 'Cairo', sans-serif; background-color: #f1f5f9; }
         .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
         .stat-card { transition: transform 0.2s; }
         .stat-card:hover { transform: translateY(-5px); }
-        #login-screen { position: fixed; inset: 0; background: #0f172a; z-index: 50; display: flex; justify-content: center; align-items: center; }
+        #login-screen { position: fixed; inset: 0; background: #0f172a; z-index: 99999; display: flex; justify-content: center; align-items: center; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        /* لتفادي تداخل الخريطة مع القوائم المنسدلة */
+        #adminMap { z-index: 10 !important; }
     </style>
 </head>
 <body class="text-gray-800 leading-relaxed">
@@ -22,10 +29,10 @@
     <!-- شاشة الدخول -->
     <div id="login-screen">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-4xl font-black text-gray-900 mb-2">وصلني 👑</h2>
+            <h2 class="text-4xl font-black text-gray-900 mb-2">نَقْلَة 👑</h2>
             <p class="text-gray-500 font-bold text-sm mb-6">لوحة تحكم الإدارة والاشتراكات</p>
             <input type="password" id="adminPin" placeholder="أدخل الرقم السري" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none text-center text-2xl font-black tracking-widest mb-4" dir="ltr">
-            <button onclick="checkPin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl transition duration-200 text-lg">دخول</button>
+            <button onclick="checkPin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl transition duration-200 text-lg">دخول للوحة التحكم</button>
             <p id="loginError" class="text-red-500 text-sm font-bold mt-3 hidden">الرمز غير صحيح!</p>
         </div>
     </div>
@@ -37,21 +44,25 @@
                 <div class="flex items-center gap-3">
                     <span class="text-3xl">👑</span>
                     <div>
-                        <h1 class="text-xl font-black text-gray-900">إدارة تطبيق وصلني</h1>
-                        <div id="connectionStatus" class="text-xs font-bold text-green-600 animate-pulse">متصل بقاعدة البيانات</div>
+                        <h1 class="text-xl font-black text-gray-900">إدارة تطبيق نَقْلَة</h1>
+                        <div id="connectionStatus" class="text-xs font-bold text-green-600 animate-pulse">متصل بقاعدة البيانات بشكل آمن</div>
                     </div>
                 </div>
-                <button onclick="location.reload()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-xl text-sm transition">تسجيل خروج</button>
+                <button onclick="location.reload()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-xl text-sm transition">خروج</button>
             </div>
         </header>
 
         <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             
-            <!-- الإحصائيات -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+            <!-- الإحصائيات مع الأرباح -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 mb-8">
+                <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4 md:col-span-1 col-span-2">
+                    <div class="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-xl">💰</div>
+                    <div><p class="text-xs font-bold text-gray-500">إجمالي الأرباح</p><h3 id="statTotalRevenue" class="text-2xl font-black text-green-600">0 ج.م</h3></div>
+                </div>
                 <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4">
                     <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl">👥</div>
-                    <div><p class="text-xs font-bold text-gray-500">إجمالي السائقين</p><h3 id="statTotalDrivers" class="text-2xl font-black text-gray-800">0</h3></div>
+                    <div><p class="text-xs font-bold text-gray-500">السائقين</p><h3 id="statTotalDrivers" class="text-2xl font-black text-gray-800">0</h3></div>
                 </div>
                 <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4">
                     <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xl">🟢</div>
@@ -59,23 +70,46 @@
                 </div>
                 <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4">
                     <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xl">📞</div>
-                    <div><p class="text-xs font-bold text-gray-500">إجمالي الاتصالات</p><h3 id="statTotalCalls" class="text-2xl font-black text-gray-800">0</h3></div>
+                    <div><p class="text-xs font-bold text-gray-500">إجمالي المكالمات</p><h3 id="statTotalCalls" class="text-2xl font-black text-gray-800">0</h3></div>
                 </div>
                 <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4">
                     <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xl">💬</div>
-                    <div><p class="text-xs font-bold text-gray-500">محادثات الواتساب</p><h3 id="statTotalWa" class="text-2xl font-black text-gray-800">0</h3></div>
+                    <div><p class="text-xs font-bold text-gray-500">محادثات واتساب</p><h3 id="statTotalWa" class="text-2xl font-black text-gray-800">0</h3></div>
+                </div>
+            </div>
+
+            <!-- خريطة التتبع المباشر -->
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden mb-8 p-4">
+                <h2 class="text-xl font-black text-gray-900 mb-1 px-2">🗺️ خريطة المراقبة المباشرة</h2>
+                <p class="text-xs font-bold text-gray-500 mb-4 px-2">تُظهر مواقع السائقين المتصلين والمتاحين للعمل الآن بشكل لحظي.</p>
+                <!-- حاوية الخريطة -->
+                <div id="adminMap" class="w-full h-[400px] rounded-xl border border-gray-300 shadow-inner"></div>
+            </div>
+
+            <!-- إرسال إشعارات جماعية -->
+            <div class="bg-indigo-50 rounded-3xl shadow-sm border border-indigo-200 p-6 mb-8 flex flex-col md:flex-row gap-4 items-center">
+                <div class="flex-shrink-0 text-3xl">📢</div>
+                <div class="w-full flex-1">
+                    <h2 class="text-lg font-black text-indigo-900 mb-1">إرسال إشعار لجميع السائقين</h2>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <input type="text" id="broadcastMsg" placeholder="اكتب التنبيه أو الرسالة هنا..." class="flex-1 px-4 py-3 bg-white border border-indigo-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm">
+                        <button onclick="sendBroadcast()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl transition shadow-sm text-sm whitespace-nowrap">إرسال فوراً 🚀</button>
+                    </div>
                 </div>
             </div>
 
             <!-- جدول السائقين والاشتراكات -->
             <div class="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-                <div class="p-6 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="p-6 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50">
                     <h2 class="text-xl font-black text-gray-900">سجل السائقين والاشتراكات</h2>
-                    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="🔍 ابحث بالاسم أو رقم الهاتف..." class="w-full md:w-1/3 px-4 py-2 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm">
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button onclick="exportToCSV('driversTable', 'سجل_السائقين.csv')" class="bg-green-100 hover:bg-green-200 text-green-800 border border-green-300 px-4 py-2 rounded-xl text-xs font-bold flex-1 md:flex-none flex items-center justify-center gap-1 transition">📥 تصدير Excel</button>
+                        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="🔍 ابحث..." class="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm">
+                    </div>
                 </div>
                 <div class="overflow-x-auto max-h-[500px]">
                     <table class="w-full text-right whitespace-nowrap" id="driversTable">
-                        <thead class="bg-gray-50 text-gray-500 font-extrabold text-xs uppercase sticky top-0 z-10 shadow-sm">
+                        <thead class="bg-white text-gray-500 font-extrabold text-xs uppercase sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th class="px-6 py-4">السائق / المكان</th>
                                 <th class="px-6 py-4 text-center">الرقم السري 🔐</th>
@@ -92,14 +126,20 @@
                 </div>
             </div>
 
-            <!-- سجل الأمان والمحادثات (الجديد) -->
+            <!-- سجل الأمان والمحادثات -->
             <div class="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="p-6 border-b border-gray-200 bg-gray-50">
-                    <h2 class="text-xl font-black text-gray-900 flex items-center gap-2">🛡️ صندوق الأمان (سجل الطلبات والمحادثات)</h2>
-                    <p class="text-xs font-bold text-gray-500 mt-1">سجل دقيق بكل زبون قام بفتح محادثة واتساب أو اتصال مع السائق للحماية.</p>
+                <div class="p-6 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-black text-gray-900 flex items-center gap-2">🛡️ صندوق الأمان وتتبع الطلبات</h2>
+                        <p class="text-xs font-bold text-gray-500 mt-1">سجل دقيق بكل زبون يتواصل مع سائق.</p>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button onclick="exportToCSV('securityTable', 'سجل_الأمان.csv')" class="bg-green-100 hover:bg-green-200 text-green-800 border border-green-300 px-4 py-2 rounded-xl text-xs font-bold flex-1 md:flex-none transition">📥 تصدير</button>
+                        <button onclick="clearSecurityLogs()" class="bg-red-100 hover:bg-red-200 text-red-800 border border-red-300 px-4 py-2 rounded-xl text-xs font-bold flex-1 md:flex-none transition">🧹 تنظيف السجل</button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto max-h-96">
-                    <table class="w-full text-right whitespace-nowrap">
+                    <table class="w-full text-right whitespace-nowrap" id="securityTable">
                         <thead class="bg-white text-gray-500 font-extrabold text-xs uppercase sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th class="px-6 py-4">التاريخ والوقت</th>
@@ -118,13 +158,19 @@
         </main>
     </div>
 
-    <!-- مودال الاشتراك -->
+    <!-- مودال الاشتراك والماليات -->
     <div id="subModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center backdrop-blur-sm p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
-            <h3 class="text-xl font-black text-gray-900 mb-1">إدارة الاشتراك</h3>
-            <p id="modalDriverName" class="text-blue-600 font-bold text-sm mb-6"></p>
+            <h3 class="text-xl font-black text-gray-900 mb-1">تجديد الاشتراك والتسجيل المالي</h3>
+            <p id="modalDriverName" class="text-blue-600 font-bold text-sm mb-4"></p>
             <input type="hidden" id="modalDriverPhone">
-            <div class="space-y-3 mb-6">
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-600 mb-1">المبلغ المدفوع (سيُضاف لأرباحك):</label>
+                <input type="number" id="subPrice" placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-center font-black text-lg">
+            </div>
+
+            <div class="space-y-2 mb-6">
                 <button onclick="renewSub(1)" class="w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 font-extrabold py-3 rounded-xl transition">تجديد (شهر واحد)</button>
                 <button onclick="renewSub(12)" class="w-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 font-extrabold py-3 rounded-xl transition">تجديد (سنة كاملة)</button>
             </div>
@@ -135,7 +181,7 @@
     <!-- سكريبت لوحة التحكم -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update, remove, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -154,15 +200,42 @@
         
         signInAnonymously(auth);
 
+        // متغيرات الخريطة
+        let adminMap;
+        let driverMarkers = {}; 
+
+        // إعداد الخريطة الأولية (مصر كموقع افتراضي)
+        function initAdminMap() {
+            if(!adminMap) {
+                adminMap = L.map('adminMap').setView([26.8206, 30.8025], 6);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(adminMap);
+                setTimeout(() => adminMap.invalidateSize(), 500);
+            }
+        }
+
         window.checkPin = function() {
-            // تم تغيير الرقم السري إلى 4366
             if (document.getElementById('adminPin').value === "4366") {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('dashboard').classList.remove('hidden');
+                
+                // تشغيل الخريطة بعد ظهور اللوحة
+                initAdminMap();
+
                 loadDashboardData();
                 loadSecurityLogs();
+                loadFinancials();
             } else document.getElementById('loginError').classList.remove('hidden');
         };
+
+        // تحميل الأرباح
+        function loadFinancials() {
+            onValue(ref(db, 'wslny_app/financials/total_revenue'), (snapshot) => {
+                let rev = snapshot.val() || 0;
+                document.getElementById('statTotalRevenue').innerText = rev.toLocaleString() + " ج.م";
+            });
+        }
 
         function loadDashboardData() {
             onValue(ref(db, 'wslny_app/registered_drivers'), (snapshot) => {
@@ -179,18 +252,17 @@
                 const tbody = document.getElementById('securityLogsBody');
                 tbody.innerHTML = '';
                 
-                const logsArray = Object.values(logs).sort((a, b) => b.timestamp - a.timestamp); // ترتيب تنازلي (الأحدث أولاً)
+                const logsArray = Object.values(logs).sort((a, b) => b.timestamp - a.timestamp);
 
                 if(logsArray.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-gray-500">لا توجد سجلات أمان حتى الآن.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-gray-500">لا توجد سجلات.</td></tr>`;
                     return;
                 }
 
                 logsArray.forEach(log => {
                     let dateStr = new Date(log.timestamp).toLocaleString('ar-EG', { hour12: true });
                     let typeHtml = log.type === 'wa' ? 
-                        `<span class="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs border border-green-200">💬 محادثة واتساب</span>` : 
-                        `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs border border-blue-200">📞 اتصال هاتفي</span>`;
+                        `💬 واتساب` : `📞 اتصال`;
 
                     let tr = document.createElement('tr');
                     tr.className = "hover:bg-gray-50 border-b border-gray-50";
@@ -200,10 +272,9 @@
                             <p class="text-[13px] text-gray-900">${log.driver_name}</p>
                             <p class="text-[10px] text-gray-500" dir="ltr">${log.driver_phone}</p>
                         </td>
-                        <td class="px-6 py-4 text-center">${typeHtml}</td>
+                        <td class="px-6 py-4 text-center"><span class="bg-gray-100 px-2 py-1 rounded text-xs border border-gray-200">${typeHtml}</span></td>
                         <td class="px-6 py-4">
-                            <div class="text-[11px] text-orange-700 bg-orange-50 p-1.5 rounded border border-orange-100 inline-block mb-1">📍 من: ${log.pickup}</div><br>
-                            <div class="text-[11px] text-gray-700 bg-gray-100 p-1.5 rounded border border-gray-200 inline-block">🏁 إلى: ${log.dropoff}</div>
+                            <div class="text-[11px] text-gray-800">من: ${log.pickup} | إلى: ${log.dropoff}</div>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -217,21 +288,38 @@
             let totalD = 0, onlineD = 0, tCalls = 0, tWa = 0;
             const now = Date.now();
             const uniqueDrivers = {};
+            
             Object.keys(drivers).forEach(k => {
                 let d = drivers[k];
                 if (d && d.phone) uniqueDrivers[d.phone.toString().replace(/^0+/, '').trim()] = d;
             });
             const driversList = Object.values(uniqueDrivers).reverse();
 
-            if (driversList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">لا يوجد سائقين.</td></tr>`;
-                return;
-            }
-
+            // تحديث العلامات على الخريطة
+            let currentActivePhones = [];
+            
             driversList.forEach(driver => {
                 totalD++;
-                let isActiveNow = activeData["driver_" + driver.phone] && activeData["driver_" + driver.phone].status === 'active';
-                if (isActiveNow) onlineD++;
+                let activeD = activeData["driver_" + driver.phone];
+                let isActiveNow = activeD && activeD.status === 'active';
+                
+                if (isActiveNow) {
+                    onlineD++;
+                    let pPhone = driver.phone.toString();
+                    currentActivePhones.push(pPhone);
+                    
+                    // إذا كان السائق لديه إحداثيات، قم برسمه أو تحديث موقعه على الخريطة
+                    if (activeD.lat && activeD.lng && adminMap) {
+                        let popupText = `<div class="text-right font-cairo" dir="rtl"><b>${driver.name}</b><br>🚚 ${driver.vType}<br>📞 ${driver.phone}</div>`;
+                        if (driverMarkers[pPhone]) {
+                            driverMarkers[pPhone].setLatLng([activeD.lat, activeD.lng]);
+                            driverMarkers[pPhone].getPopup().setContent(popupText);
+                        } else {
+                            driverMarkers[pPhone] = L.marker([activeD.lat, activeD.lng]).bindPopup(popupText).addTo(adminMap);
+                        }
+                    }
+                }
+                
                 let callsCount = driver.calls_received || 0;
                 let waCount = driver.wa_received || 0;
                 tCalls += callsCount; tWa += waCount;
@@ -246,7 +334,6 @@
                 let locStr = driver.location || 'غير محدد';
                 if(locStr.length > 25) locStr = locStr.substring(0,25) + '...';
 
-                // تجهيز عرض الرقم السري
                 let driverPin = driver.pin ? driver.pin : "لا يوجد";
                 let pinBadgeClass = driver.pin ? "bg-red-50 text-red-600 border border-red-200 font-black tracking-[0.2em]" : "bg-gray-100 text-gray-500 border border-gray-200";
 
@@ -263,22 +350,32 @@
                             </div>
                         </div>
                     </td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="${pinBadgeClass} px-3 py-1.5 rounded-lg text-sm shadow-sm" dir="ltr">${driverPin}</span>
-                    </td>
+                    <td class="px-6 py-4 text-center"><span class="${pinBadgeClass} px-3 py-1.5 rounded-lg text-sm shadow-sm" dir="ltr">${driverPin}</span></td>
                     <td class="px-6 py-4"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-[11px] border border-gray-200">🚚 ${driver.vType}</span></td>
                     <td class="px-6 py-4 text-center"><div class="flex justify-center gap-4 text-[11px]"><div class="text-blue-600">📞 ${callsCount}</div><div class="text-green-600">💬 ${waCount}</div></div></td>
                     <td class="px-6 py-4 text-center">${subStatusHTML}</td>
                     <td class="px-6 py-4 text-center">
                         <div class="flex justify-center gap-1.5">
-                            <button onclick="openModal('${driver.phone}', '${driver.name}')" class="bg-blue-600 text-white px-2 py-1.5 rounded-lg text-[10px] shadow-sm">تجديد</button>
-                            <button onclick="toggleBlock('${driver.phone}', ${isBlocked})" class="${isBlocked ? 'bg-green-500' : 'bg-orange-500'} text-white px-2 py-1.5 rounded-lg text-[10px] shadow-sm">${isBlocked ? 'فك الحظر' : 'حظر'}</button>
-                            <button onclick="deleteDriver('${driver.phone}', '${driver.name}')" class="bg-red-50 text-red-600 border border-red-200 px-2 py-1.5 rounded-lg text-[10px]">حذف</button>
+                            <button onclick="openModal('${driver.phone}', '${driver.name}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] shadow-sm font-bold">تجديد</button>
+                            <button onclick="toggleBlock('${driver.phone}', ${isBlocked})" class="${isBlocked ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600'} text-white px-3 py-1.5 rounded-lg text-[10px] shadow-sm font-bold">${isBlocked ? 'فك الحظر' : 'حظر'}</button>
+                            <button onclick="deleteDriver('${driver.phone}', '${driver.name}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-[10px] font-bold">حذف</button>
                         </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+
+            // مسح علامات الخريطة للسائقين الذين أوقفوا الاتصال
+            for (let phoneKey in driverMarkers) {
+                if (!currentActivePhones.includes(phoneKey)) {
+                    adminMap.removeLayer(driverMarkers[phoneKey]);
+                    delete driverMarkers[phoneKey];
+                }
+            }
+
+            if (driversList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">لا يوجد سائقين.</td></tr>`;
+            }
 
             document.getElementById('statTotalDrivers').innerText = totalD;
             document.getElementById('statOnlineDrivers').innerText = onlineD;
@@ -289,21 +386,32 @@
         window.openModal = function(phone, name) {
             document.getElementById('modalDriverPhone').value = phone;
             document.getElementById('modalDriverName').innerText = "السائق: " + name;
+            document.getElementById('subPrice').value = '';
             document.getElementById('subModal').classList.remove('hidden');
         };
         window.closeModal = function() { document.getElementById('subModal').classList.add('hidden'); };
 
         window.renewSub = function(monthsToAdd) {
             const phone = document.getElementById('modalDriverPhone').value;
+            const price = parseInt(document.getElementById('subPrice').value) || 0;
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
+            const revenueRef = ref(db, 'wslny_app/financials/total_revenue');
+
             get(driverRef).then((snap) => {
                 if(snap.exists()) {
                     let currentExpiry = snap.val().sub_expiry || Date.now();
                     let baseDate = currentExpiry < Date.now() ? Date.now() : currentExpiry; 
                     let newDate = new Date(baseDate);
                     newDate.setMonth(newDate.getMonth() + monthsToAdd);
+                    
                     update(driverRef, { sub_expiry: newDate.getTime(), account_status: 'active' }).then(() => {
-                        alert("✅ تم التجديد!"); closeModal();
+                        get(revenueRef).then(revSnap => {
+                            let currentRev = revSnap.val() || 0;
+                            set(revenueRef, currentRev + price).then(() => {
+                                alert("✅ تم التجديد بنجاح وإضافة المبلغ للأرباح!"); 
+                                closeModal();
+                            });
+                        });
                     });
                 }
             });
@@ -319,10 +427,15 @@
 
         window.deleteDriver = function(phone, name) {
             if(confirm(`حذف السائق (${name}) نهائياً؟`)) {
-                // تم تغيير الرقم السري إلى 4366
-                if(prompt("الرقم السري:") === "4366") {
+                if(prompt("الرقم السري للتأكيد:") === "4366") {
                     remove(ref(db, 'wslny_app/registered_drivers/driver_' + phone));
                     remove(ref(db, 'wslny_app/active_drivers/driver_' + phone));
+                    
+                    // مسحه من الخريطة فوراً
+                    if(driverMarkers[phone]) {
+                        adminMap.removeLayer(driverMarkers[phone]);
+                        delete driverMarkers[phone];
+                    }
                 }
             }
         };
@@ -333,6 +446,51 @@
             for (let i = 0; i < trs.length; i++) {
                 let text = (trs[i].querySelector(".name-search")?.innerText || "") + " " + (trs[i].querySelector(".phone-search")?.innerText || "");
                 trs[i].style.display = text.toLowerCase().indexOf(input) > -1 ? "" : "none";
+            }
+        };
+
+        window.sendBroadcast = function() {
+            let msg = document.getElementById('broadcastMsg').value.trim();
+            if(!msg) return alert("يرجى كتابة الرسالة أولاً!");
+            
+            set(ref(db, 'wslny_app/global_notification'), {
+                message: msg,
+                timestamp: Date.now()
+            }).then(() => {
+                alert("✅ تم رفع الإشعار! سيظهر لجميع السائقين فوراً.");
+                document.getElementById('broadcastMsg').value = '';
+            });
+        };
+
+        window.exportToCSV = function(tableId, filename) {
+            let table = document.getElementById(tableId);
+            let rows = table.querySelectorAll("tr");
+            let csv = [];
+            for (let i = 0; i < rows.length; i++) {
+                let row = [], cols = rows[i].querySelectorAll("td, th");
+                let colCount = (tableId === 'driversTable') ? cols.length - 1 : cols.length;
+                for (let j = 0; j < colCount; j++) {
+                    let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").trim();
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(","));
+            }
+            let csvFile = new Blob(['\uFEFF' + csv.join("\n")], {type: "text/csv;charset=utf-8;"});
+            let downloadLink = document.createElement("a");
+            downloadLink.download = filename;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+        };
+
+        window.clearSecurityLogs = function() {
+            if(prompt("هل أنت متأكد من مسح جميع السجلات؟ أدخل الرقم السري (4366) للتأكيد:") === "4366") {
+                remove(ref(db, 'wslny_app/security_logs')).then(() => {
+                    alert("✅ تم تنظيف صندوق الأمان بنجاح!");
+                });
+            } else {
+                alert("❌ الرقم السري غير صحيح أو تم الإلغاء.");
             }
         };
     </script>
