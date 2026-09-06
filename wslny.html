@@ -17,9 +17,15 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        #auth-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 18px; color: #f97316; font-weight: 900; }
+        #auth-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .star-rating { direction: rtl; display: inline-flex; font-size: 24px; cursor: pointer; color: #d1d5db; }
         .star-rating span:hover, .star-rating span:hover ~ span, .star-rating span.active { color: #fbbf24; }
+        @keyframes customLoader {
+            0% { transform: translateX(100%); }
+            50% { transform: translateX(-50%); }
+            100% { transform: translateX(-180%); }
+        }
+        .loader-bar { animation: customLoader 1.5s infinite ease-in-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center py-6 px-4 text-gray-900 bg-gray-200 relative leading-relaxed">
@@ -38,7 +44,24 @@
         </div>
     </div>
 
-    <div id="auth-loader">⏳ جاري الاتصال بالسحابة...</div>
+    <!-- شاشة التحميل الافتتاحية بتصميم التطبيق وشريط تحميل سفلي جميل -->
+    <div id="auth-loader">
+        <div class="flex flex-col items-center justify-center">
+            <div class="relative inline-flex items-center justify-center mb-3">
+                <div class="absolute inset-0 bg-orange-200 rounded-full animate-ping opacity-75"></div>
+                <div class="relative bg-orange-500 text-white w-20 h-20 rounded-3xl shadow-xl flex items-center justify-center transform -rotate-6">
+                    <span class="text-4xl">🚚</span>
+                </div>
+            </div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight mt-1">نَقْلَة</h1>
+            <p class="text-orange-600 font-extrabold tracking-widest text-[10px] uppercase mt-0.5">N A Q L A</p>
+            
+            <!-- شريط التحميل السفلي -->
+            <div class="w-44 h-1.5 bg-gray-300 rounded-full overflow-hidden mt-8 shadow-inner relative">
+                <div class="absolute top-0 bottom-0 w-24 bg-orange-500 rounded-full loader-bar"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- الشعار الثابت في كل الصفحات -->
     <div id="globalLogo" onclick="showView('homeView')" class="text-center mb-6 cursor-pointer hover:scale-105 transition-transform duration-300">
@@ -411,7 +434,7 @@
         let currentDriverActiveRef = null; 
         let watchGeoId = null; // متغير التتبع اللحظي
 
-        signInAnonymously(auth).catch((error) => document.getElementById('auth-loader').innerHTML = `⚠️ خطأ: <br> ${error.message}`);
+        signInAnonymously(auth).catch((error) => console.error("Auth error:", error));
         
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -505,8 +528,8 @@
             if(select) {
                 select.value = status;
                 if (status === 'active') { select.className = "w-full px-4 py-3 border-2 border-green-400 bg-green-50 rounded-xl font-black text-green-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors"; } 
-                else if (status === 'busy') { select.className = "w-full px-4 py-3 border-2 border-red-400 bg-red-50 rounded-xl font-black text-red-800 outline-none focus:ring-2 focus:ring-red-500 transition-colors"; } 
-                else { select.className = "w-full px-4 py-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl font-black text-yellow-800 outline-none focus:ring-2 focus:ring-yellow-500 transition-colors"; }
+                else if (status === 'busy') { select.className = "w-full px-4 py-3 border-2 border-red-400 bg-red-50 rounded-xl font-black text-red-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors"; } 
+                else { select.className = "w-full px-4 py-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl font-black text-yellow-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors"; }
             }
         };
 
@@ -558,7 +581,6 @@
             currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/driver_' + phone);
 
             set(currentDriverActiveRef, { name, phone, vType, vCond, location, status: lastStatus, timestamp: Date.now() }).then(() => {
-                // التتبع المباشر للسائق وتحديث الإحداثيات باستمرار
                 if (navigator.geolocation) {
                     if(watchGeoId) navigator.geolocation.clearWatch(watchGeoId);
                     watchGeoId = navigator.geolocation.watchPosition(pos => {
@@ -581,7 +603,7 @@
         window.confirmGoOffline = function() { 
             if (confirm("خروج نهائي من التطبيق؟")) { 
                 if(currentDriverActiveRef) remove(currentDriverActiveRef); 
-                if(watchGeoId && navigator.geolocation) navigator.geolocation.clearWatch(watchGeoId); // إيقاف التتبع
+                if(watchGeoId && navigator.geolocation) navigator.geolocation.clearWatch(watchGeoId);
                 localStorage.setItem('wslny_is_active', 'false'); 
                 window.location.hash = 'homeView'; 
             } 
