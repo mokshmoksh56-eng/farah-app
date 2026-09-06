@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- إضافة مكتبة البحث عن الشوارع والقرى (Geocoder) -->
+    <!-- مكتبة البحث عن الشوارع والقرى (Geocoder) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
@@ -189,7 +189,8 @@
     <!-- سكريبت لوحة التحكم -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        // دمج set و push في الاستيراد
+        import { getDatabase, ref, onValue, update, remove, get, set, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -210,7 +211,7 @@
 
         let adminMap;
         let driverMarkers = {}; 
-        let addressCache = {}; // تخزين العناوين مؤقتاً لتخفيف الضغط على السيرفر
+        let addressCache = {}; // كاش لتقليل الطلبات على سيرفر الخريطة
 
         function showDashboard() {
             document.getElementById('login-screen').style.display = 'none';
@@ -227,9 +228,8 @@
             }
         });
 
-        // دوال جلب العناوين (Reverse Geocoding)
+        // تحويل الإحداثيات إلى عنوان مع الكاش
         async function fetchAddress(lat, lng) {
-            // تقريب الإحداثيات لتجنب تكرار الطلب لنفس المكان
             const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`; 
             if(addressCache[cacheKey]) return addressCache[cacheKey];
 
@@ -240,7 +240,7 @@
                 if(data && data.address) {
                     let village = data.address.village || data.address.town || data.address.city || data.address.county || "";
                     let road = data.address.road || "شارع غير مسمى";
-                    let fullAddress = `${road}، ${village}`.replace(/^، |، $/g, ''); // تنظيف النص
+                    let fullAddress = `${road}، ${village}`.replace(/^، |، $/g, ''); 
                     addressCache[cacheKey] = fullAddress;
                     return fullAddress;
                 }
@@ -252,13 +252,12 @@
 
         function initAdminMap() {
             if(!adminMap) {
-                // نقطة البداية (المنصورة)
                 adminMap = L.map('adminMap').setView([26.8206, 30.8025], 6);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(adminMap);
 
-                // إضافة مربع البحث عن الشوارع والقرى باللغة العربية
+                // مربع البحث عن العناوين في الخريطة
                 L.Control.geocoder({
                     defaultMarkGeocode: false,
                     placeholder: "🔍 ابحث عن قرية، شارع، أو مدينة..."
@@ -272,7 +271,6 @@
                     ]).addTo(adminMap);
                     adminMap.fitBounds(poly.getBounds());
                     
-                    // وضع علامة مؤقتة لمكان البحث
                     L.marker(e.geocode.center)
                         .addTo(adminMap)
                         .bindPopup(`<b>نتائج البحث:</b><br>${e.geocode.name}`)
@@ -299,10 +297,7 @@
             if (driverMarkers[phone]) {
                 document.getElementById('adminMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 setTimeout(() => {
-                    adminMap.flyTo(driverMarkers[phone].getLatLng(), 16, {
-                        animate: true,
-                        duration: 1.5
-                    });
+                    adminMap.flyTo(driverMarkers[phone].getLatLng(), 16, { animate: true, duration: 1.5 });
                     driverMarkers[phone].openPopup();
                 }, 300);
             } else {
@@ -387,7 +382,7 @@
                     currentActivePhones.push(pPhone);
                     
                     if (activeD.lat && activeD.lng && adminMap) {
-                        // إعداد البوب أب، الديف الخاص بالعنوان فارغ تماماً لحين ملئه
+                        // إعداد البوب أب، الحاوية الخاص بالعنوان فارغة تماماً ولن تعرض نص "جاري التحميل"
                         let popupHtml = `
                             <div class="text-right font-cairo" dir="rtl">
                                 <b class="text-sm text-gray-900">${driver.name}</b><br>
@@ -403,7 +398,7 @@
                         } else {
                             driverMarkers[pPhone] = L.marker([activeD.lat, activeD.lng]).bindPopup(popupHtml).addTo(adminMap);
                             
-                            // جلب العنوان فوراً عند الضغط وعرضه مباشرة
+                            // جلب العنوان فوراً عند الضغط وعرضه بشكل مباشر وصامت
                             driverMarkers[pPhone].on('click', function() {
                                 let lat = driverMarkers[pPhone].getLatLng().lat;
                                 let lng = driverMarkers[pPhone].getLatLng().lng;
@@ -540,6 +535,8 @@
                             delete driverMarkers[phone];
                         }
                         alert("✅ تم حذف السائق وإرسال أمر الخروج لهاتفه بنجاح.");
+                    }).catch(error => {
+                        alert("❌ حدث خطأ أثناء الحذف: " + error.message);
                     });
                 }
             }
@@ -554,16 +551,26 @@
             }
         };
 
+        // دالة الإشعارات المدمجة والمدعمة بكاشف الأخطاء
         window.sendBroadcast = function() {
             let msg = document.getElementById('broadcastMsg').value.trim();
             if(!msg) return alert("يرجى كتابة الرسالة أولاً!");
             
-            set(ref(db, 'wslny_app/global_notification'), {
+            const newListRef = push(ref(db, 'wslny_app/global_notifications_list'));
+            set(newListRef, {
                 message: msg,
                 timestamp: Date.now()
             }).then(() => {
-                alert("✅ تم رفع الإشعار! سيظهر لجميع السائقين فوراً.");
+                return set(ref(db, 'wslny_app/global_notification'), {
+                    message: msg,
+                    timestamp: Date.now()
+                });
+            }).then(() => {
+                alert("✅ تم إرسال الإشعار بنجاح!");
                 document.getElementById('broadcastMsg').value = '';
+            }).catch(error => {
+                alert("❌ حدث خطأ من سيرفر فايربيز: " + error.message);
+                console.error("Firebase Auth/Rule Error:", error);
             });
         };
 
@@ -593,7 +600,7 @@
             if(prompt("هل أنت متأكد من مسح جميع السجلات؟ أدخل الرقم السري (4366) للتأكيد:") === "4366") {
                 remove(ref(db, 'wslny_app/security_logs')).then(() => {
                     alert("✅ تم تنظيف صندوق الأمان بنجاح!");
-                });
+                }).catch(error => alert("❌ خطأ: " + error.message));
             } else {
                 alert("❌ الرقم السري غير صحيح أو تم الإلغاء.");
             }
