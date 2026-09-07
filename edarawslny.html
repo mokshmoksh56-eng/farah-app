@@ -57,10 +57,15 @@
             
             <!-- الإحصائيات -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 mb-8">
-                <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4 md:col-span-1 col-span-2">
-                    <div class="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-xl">💰</div>
-                    <div><p class="text-xs font-bold text-gray-500">إجمالي الأرباح</p><h3 id="statTotalRevenue" class="text-2xl font-black text-green-600">0 ج.م</h3></div>
+                <!-- بطاقة الأرباح أصبحت قابلة للضغط لعرض التقارير -->
+                <div onclick="openReportsModal()" class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between gap-4 md:col-span-1 col-span-2 cursor-pointer hover:bg-yellow-50 transition border-b-4 border-b-yellow-400">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-xl">💰</div>
+                        <div><p class="text-xs font-bold text-gray-500">إجمالي الأرباح <span class="text-[10px] text-blue-500 underline">(التقارير)</span></p><h3 id="statTotalRevenue" class="text-2xl font-black text-green-600">0 ج.م</h3></div>
+                    </div>
+                    <div class="text-gray-300 text-2xl">📊</div>
                 </div>
+
                 <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4">
                     <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl">👥</div>
                     <div><p class="text-xs font-bold text-gray-500">السائقين</p><h3 id="statTotalDrivers" class="text-2xl font-black text-gray-800">0</h3></div>
@@ -127,7 +132,39 @@
         </main>
     </div>
 
-    <!-- نافذة الاشتراك الجديدة -->
+    <!-- نافذة تقارير الأرباح الجديدة -->
+    <div id="reportsModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[99999] flex justify-center items-center backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl w-full max-w-3xl p-6 shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 border-b pb-3 border-gray-200">
+                <h3 class="text-2xl font-black text-gray-900 flex items-center gap-2">📊 تقارير الأرباح والاشتراكات</h3>
+                <button type="button" onclick="closeReportsModal()" class="text-gray-400 hover:text-red-500 text-3xl font-bold transition">&times;</button>
+            </div>
+            
+            <div class="overflow-y-auto flex-1 pr-2 bg-gray-50 rounded-xl border border-gray-200 shadow-inner">
+                <table class="w-full text-right whitespace-nowrap">
+                    <thead class="bg-white text-gray-600 font-extrabold text-xs uppercase sticky top-0 z-10 shadow-sm border-b border-gray-200">
+                        <tr>
+                            <th class="px-4 py-3">التاريخ</th>
+                            <th class="px-4 py-3">الكابتن</th>
+                            <th class="px-4 py-3 text-center">المدة</th>
+                            <th class="px-4 py-3 text-center">المبلغ</th>
+                            <th class="px-4 py-3 text-center">الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsTableBody" class="divide-y divide-gray-200 text-sm font-bold bg-white">
+                        <tr><td colspan="5" class="p-8 text-center text-gray-500 animate-pulse">جاري جلب البيانات...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-4 pt-4 flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm">
+                <span class="text-blue-900 font-extrabold text-lg">إجمالي الأرباح الفعلي:</span>
+                <span id="reportsTotalAmount" class="text-3xl font-black text-green-600">0 ج.م</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الاشتراك وتعديل البيانات -->
     <div id="subModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center backdrop-blur-sm p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
             <h3 class="text-xl font-black text-gray-900 mb-1 text-center">تجديد أو تعديل الاشتراك</h3>
@@ -499,10 +536,10 @@
             };
 
             if (durationVal === "trial") {
-                // تمديد فترة تجريبية مجانية (يقوم بإلغاء حالة الاشتراك المدفوع وتصفير تاريخ الانضمام)
+                // تمديد فترة تجريبية مجانية
                 updateData.isSubscribed = false; 
                 updateData.joinDate = Date.now(); 
-                updateData.sub_expiry = null; // يحذف تاريخ الاشتراك القديم
+                updateData.sub_expiry = null;
             } else {
                 // اشتراك مدفوع
                 updateData.isSubscribed = true;
@@ -518,12 +555,90 @@
             
             update(driverRef, updateData).then(() => {
                 if(price > 0 && durationVal !== "trial") {
+                    // تسجيل المعاملة في دفتر الأرباح الجديد
+                    const driverName = document.getElementById('modalDriverName').innerText.replace('السائق: ', '');
+                    push(ref(db, 'wslny_app/financials/payments_log'), {
+                        phone: phone,
+                        name: driverName,
+                        amount: price,
+                        duration: durationVal,
+                        timestamp: Date.now()
+                    });
+
+                    // تحديث الإجمالي العام
                     const revRef = ref(db, 'wslny_app/financials/total_revenue');
                     get(revRef).then(snap => set(revRef, (snap.val() || 0) + price));
                 }
                 alert("✅ تم حفظ التعديلات بنجاح!"); 
                 closeModal();
             });
+        };
+
+        // إدارة نافذة تقارير الأرباح
+        window.openReportsModal = function() {
+            document.getElementById('reportsModal').classList.remove('hidden');
+            const tbody = document.getElementById('reportsTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500 animate-pulse">جاري جلب البيانات...</td></tr>';
+            
+            get(ref(db, 'wslny_app/financials/payments_log')).then(snap => {
+                if(snap.exists()) {
+                    let logs = snap.val();
+                    let html = '';
+                    let actualTotal = 0;
+                    
+                    // ترتيب العمليات من الأحدث للأقدم
+                    let sortedLogs = Object.keys(logs).map(key => ({id: key, ...logs[key]})).sort((a, b) => b.timestamp - a.timestamp);
+                    
+                    sortedLogs.forEach(log => {
+                        let d = new Date(log.timestamp);
+                        let dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} - ${d.toLocaleTimeString('ar-EG')}`;
+                        let durText = log.duration == 1 ? "شهر" : (log.duration == 12 ? "سنة" : (log.duration == 0 ? "يدوي" : log.duration + " شهور"));
+                        actualTotal += parseInt(log.amount);
+                        
+                        html += `<tr class="hover:bg-gray-100 transition border-b border-gray-100">
+                            <td class="px-4 py-4 text-[11px] text-gray-500" dir="ltr">${dateStr}</td>
+                            <td class="px-4 py-4 font-black text-blue-700">${log.name}<br><span class="text-[10px] text-gray-400" dir="ltr">${log.phone}</span></td>
+                            <td class="px-4 py-4 text-center text-gray-600 bg-gray-50 rounded-lg">${durText}</td>
+                            <td class="px-4 py-4 text-center text-green-600 font-black text-lg">+ ${log.amount} ج</td>
+                            <td class="px-4 py-4 text-center">
+                                <button onclick="deletePaymentLog('${log.id}', ${log.amount})" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm active:scale-95">حذف</button>
+                            </td>
+                        </tr>`;
+                    });
+                    
+                    tbody.innerHTML = html;
+                    document.getElementById('reportsTotalAmount').innerText = actualTotal + " ج.م";
+                    
+                    // تحديث الإجمالي العام أوتوماتيكياً ليطابق السجل بالضبط (نظام المزامنة الذاتية)
+                    set(ref(db, 'wslny_app/financials/total_revenue'), actualTotal);
+                    
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-500 font-black text-sm bg-red-50 rounded-xl">لا توجد أي معاملات مالية مسجلة بعد.</td></tr>';
+                    document.getElementById('reportsTotalAmount').innerText = "0 ج.م";
+                    set(ref(db, 'wslny_app/financials/total_revenue'), 0);
+                }
+            });
+        };
+
+        window.closeReportsModal = function() {
+            document.getElementById('reportsModal').classList.add('hidden');
+        };
+
+        window.deletePaymentLog = function(logId, amount) {
+            if(prompt(`سيتم مسح المعاملة وخصم (${amount} ج) من إجمالي الأرباح.\n\nتأكيد المسح؟ أدخل الرقم السري (4366):`) === "4366") {
+                remove(ref(db, 'wslny_app/financials/payments_log/' + logId)).then(() => {
+                    const revRef = ref(db, 'wslny_app/financials/total_revenue');
+                    get(revRef).then(snap => {
+                        let newTotal = (snap.val() || 0) - amount;
+                        if(newTotal < 0) newTotal = 0;
+                        set(revRef, newTotal).then(() => {
+                            openReportsModal(); // تحديث الجدول مباشرة بعد الحذف
+                        });
+                    });
+                }).catch(err => alert("حدث خطأ أثناء الحذف: " + err.message));
+            } else {
+                alert("تم الإلغاء أو الرقم السري غير صحيح.");
+            }
         };
 
         window.toggleBlock = function(phone, blocked) {
