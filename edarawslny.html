@@ -159,7 +159,7 @@
                 <div class="mb-3 flex items-center gap-2">
                     <label class="text-xs font-black text-gray-700 whitespace-nowrap">⏳ المدة:</label>
                     <select id="durationSelect" onchange="calculateExpiry()" class="w-full px-2 py-1.5 bg-white border border-gray-300 rounded-lg outline-none font-bold text-xs cursor-pointer">
-                        <option value="0">تحديد يدوي (أو دائم)</option>
+                        <option value="0">تحديد يدوي</option>
                         <option value="1">شهر واحد</option>
                         <option value="3">3 شهور</option>
                         <option value="6">6 شهور</option>
@@ -169,7 +169,7 @@
 
                 <!-- تاريخ الانتهاء -->
                 <div>
-                    <label class="block text-xs font-black text-red-600 mb-1">🛑 تاريخ الانتهاء (اتركه فارغاً للدائم):</label>
+                    <label class="block text-xs font-black text-red-600 mb-1">🛑 تاريخ الانتهاء (مطلوب):</label>
                     <input type="date" id="endDate" class="w-full px-3 py-2 bg-white border border-red-300 rounded-lg outline-none font-bold text-sm text-center text-red-700 cursor-pointer">
                 </div>
             </div>
@@ -321,7 +321,7 @@
                     } else if (driver.sub_expiry && driver.sub_expiry < now) {
                         subHtml = `<div class="text-[11px] text-red-800 font-black bg-red-100 px-2 py-1 rounded border border-red-300 inline-block">❌ مدفوع (منتهي)</div>`;
                     } else {
-                        subHtml = `<div class="text-[11px] text-green-800 font-black bg-green-100 px-2 py-1 rounded border border-green-300 inline-block">✨ مدفوع (دائم)</div>`;
+                        subHtml = `<div class="text-[11px] text-orange-800 font-black bg-orange-100 px-2 py-1 rounded border border-orange-300 inline-block">⚠️ يرجى تحديد تاريخ انتهاء</div>`;
                     }
                 } else {
                     if (remainingDays > 0) {
@@ -404,6 +404,8 @@
                 let d = new Date(sVal);
                 d.setMonth(d.getMonth() + months);
                 eInput.value = formatDateForInput(d.getTime());
+            } else if (months === 0) {
+                eInput.value = ''; // تفريغ الحقل عند اختيار تحديد يدوي
             }
         };
 
@@ -413,6 +415,12 @@
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
             const isSub = document.getElementById('isSubscribedCheck').checked;
+
+            // منع الحفظ إذا كان الحساب مدفوعاً ولا يوجد تاريخ انتهاء
+            if (isSub && !endVal) {
+                alert("⚠️ يرجى تحديد تاريخ انتهاء الاشتراك!");
+                return; 
+            }
 
             let updateData = { 
                 account_status: 'active',
@@ -426,7 +434,7 @@
                 endDateObj.setHours(23, 59, 59, 999);
                 updateData.sub_expiry = endDateObj.getTime();
             } else {
-                updateData.sub_expiry = null; // لا يوجد تاريخ انتهاء (دائم)
+                updateData.sub_expiry = null;
             }
 
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
