@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>تطبيق نَقْلَة | Naqla</title>
-    <!-- إعدادات PWA الأساسية -->
     <meta name="theme-color" content="#f97316">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- مكتبة الخرائط المجانية Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -32,21 +30,33 @@
 </head>
 <body class="min-h-screen flex flex-col items-center py-6 px-4 text-gray-900 bg-gray-200 relative leading-relaxed">
 
-    <!-- PWA Manifest -->
     <script>
         const manifestData = { "name": "نقلة | Naqla", "short_name": "نقلة", "start_url": ".", "display": "standalone", "background_color": "#f3f3f4f6", "theme_color": "#f97316", "icons": [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjk3MzE2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjZmZmIj7wn5qbPC90ZXh0Pjwvc3ZnPg==", "sizes": "192x192", "type": "image/svg+xml"}] };
         const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
         document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(blob)}">`);
     </script>
 
-    <!-- مؤشر السحب للأسفل للتحديث -->
     <div id="ptrIndicator" class="fixed top-0 left-0 w-full h-0 bg-white flex justify-center items-center overflow-hidden transition-all duration-200 z-[99999] shadow-sm border-b border-gray-200">
         <div class="flex items-center gap-3 text-gray-700 font-extrabold text-base">
             <div class="w-5 h-5 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div> جاري التحديث...
         </div>
     </div>
 
-    <!-- شاشة التحميل الافتتاحية -->
+    <!-- نافذة الإفصاح عن الموقع (مطلوبة لسياسات جوجل) -->
+    <div id="locationDisclosureModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[999999] flex justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 text-center shadow-2xl">
+            <div class="text-5xl mb-4">📍</div>
+            <h3 class="text-2xl font-black text-gray-900 mb-2">تحديد الموقع الجغرافي</h3>
+            <p class="text-sm font-bold text-gray-600 mb-6 leading-relaxed">
+                يجمع تطبيق "نقلة" بيانات الموقع الجغرافي الخاص بك لتمكين ميزة ربطك بأقرب الطلبات وحساب مسار النقل، حتى عندما يكون التطبيق مغلقاً أو غير مستخدم.
+            </p>
+            <div class="flex gap-2">
+                <button onclick="acceptLocation()" class="w-1/2 bg-orange-500 text-white font-extrabold py-3 rounded-xl active:scale-95">موافق</button>
+                <button onclick="document.getElementById('locationDisclosureModal').classList.add('hidden')" class="w-1/2 bg-gray-200 text-gray-800 font-extrabold py-3 rounded-xl active:scale-95">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <div id="auth-loader">
         <div class="flex flex-col items-center justify-center">
             <div class="relative inline-flex items-center justify-center mb-3">
@@ -63,7 +73,6 @@
         </div>
     </div>
 
-    <!-- الشعار الثابت -->
     <div id="globalLogo" onclick="showView('homeView')" class="text-center mb-6 cursor-pointer hover:scale-105 transition-transform duration-300">
         <div class="relative inline-flex items-center justify-center mb-2">
             <div class="absolute inset-0 bg-orange-200 rounded-full animate-ping opacity-75"></div>
@@ -75,7 +84,6 @@
         <p class="text-orange-600 font-extrabold tracking-widest text-[11px] mt-0.5 uppercase">N A Q L A</p>
     </div>
 
-    <!-- 1. واجهة الاختيار الرئيسية -->
     <div id="homeView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-md p-6 sm:p-8 text-center border-t-4 border-gray-400 transform transition-all duration-300">
         <div class="mb-6 bg-gray-100 px-4 py-2 rounded-full border border-gray-200 shadow-sm mx-auto w-fit">
             <p class="text-gray-600 font-bold text-sm">أسرع توصيلة.. أأمن نقلة ✨</p>
@@ -90,13 +98,9 @@
             <button onclick="contactAdmin()" class="w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-800 font-extrabold py-4 rounded-2xl shadow-sm transition duration-300 text-lg flex items-center justify-center gap-3 active:scale-95 mt-2">
                 <span class="text-2xl">✉️</span> تواصل مع الإدارة
             </button>
-            <button id="installAppBtn" class="hidden w-full bg-white border border-orange-300 text-orange-600 font-extrabold py-3 rounded-xl shadow-sm transition duration-300 text-base flex items-center justify-center gap-2 active:scale-95 mt-4">
-                📱 تثبيت التطبيق على الشاشة الرئيسية
-            </button>
         </div>
     </div>
 
-    <!-- 2. واجهة اختيار السائق -->
     <div id="driverChoiceView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-md p-6 sm:p-8 text-center border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="mb-8"><h2 class="text-3xl font-black text-gray-900 mb-2">بوابة السائقين</h2><p class="text-gray-600 font-bold text-base">اختر طريقة الدخول المناسبة لك</p></div>
         <div class="space-y-4">
@@ -106,7 +110,6 @@
         </div>
     </div>
 
-    <!-- 3. واجهة تسجيل دخول السائق -->
     <div id="driverLoginView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 sm:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="mb-8 text-center"><h2 class="text-3xl font-black text-gray-900">تسجيل الدخول</h2></div>
         <form onsubmit="loginDriver(event)" class="space-y-6">
@@ -125,7 +128,6 @@
         </form>
     </div>
 
-    <!-- 4. واجهة تسجيل سائق جديد -->
     <div id="driverRegisterView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 sm:p-8 border-t-4 border-gray-800 transform transition-all duration-300">
         <div class="mb-6 text-center"><h2 class="text-3xl font-black text-gray-900">تسجيل سائق جديد</h2></div>
         <form onsubmit="registerDriver(event)" class="space-y-5">
@@ -138,7 +140,6 @@
                 </div>
             </div>
 
-            <!-- شكل المركبة -->
             <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
                 <label class="block text-base font-extrabold text-gray-900 mb-3">شكل ونوع المركبة</label>
                 <input type="hidden" id="regDriverVType">
@@ -169,7 +170,6 @@
                 </select>
             </div>
 
-            <!-- نطاق العمل مع الـ GPS والخريطة والادخال اليدوي -->
             <div class="bg-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
                 <label class="block text-base font-extrabold text-gray-900 mb-2">نطاق العمل (مكان تواجدك أو شغلك)</label>
                 
@@ -181,12 +181,6 @@
                         <span class="text-xl">🗺️</span> تحديد من الخريطة
                     </button>
                 </div>
-                
-                <div class="flex items-center gap-2 mb-3 opacity-70">
-                    <div class="h-px bg-gray-300 flex-1"></div>
-                    <span class="text-[10px] text-gray-600 font-extrabold">أو ادخل البيانات يدوياً ✍️</span>
-                    <div class="h-px bg-gray-300 flex-1"></div>
-                </div>
 
                 <div class="space-y-3">
                     <select id="regDriverGov" required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl font-bold focus:ring-2 focus:ring-gray-500 outline-none">
@@ -196,6 +190,8 @@
                     <input type="text" id="regDriverAddress" placeholder="المدينة، القرية، أو المركز (مثال: شربين)..." required class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl font-bold focus:ring-2 focus:ring-gray-500 outline-none placeholder-gray-400">
                 </div>
             </div>
+            
+            <p class="text-[11px] text-gray-500 text-center mt-3 font-bold">بتسجيلك، أنت توافق على <a href="https://policies.google.com/privacy" target="_blank" class="text-blue-500 underline">سياسة الخصوصية وشروط الاستخدام</a> الخاصة بنا وتوافق على مشاركة موقعك.</p>
 
             <div class="pt-4 space-y-4">
                 <button type="submit" id="btnRegister" class="w-full bg-gray-800 text-white font-extrabold py-4 rounded-xl shadow-md active:scale-95">حفظ وبدء العمل</button>
@@ -217,11 +213,8 @@
                 <button type="button" onclick="searchOnMap()" class="bg-orange-500 text-white px-4 py-2 rounded-xl font-bold shadow-md active:scale-95">بحث</button>
             </div>
             
-            <!-- حاوية الخريطة مع زر تحديد موقعي -->
             <div class="flex-1 w-full relative flex flex-col z-0 rounded-xl overflow-hidden shadow-inner border border-gray-300">
                 <div id="leafletMap" class="flex-1 w-full z-0"></div>
-                
-                <!-- زر تحديد موقعي الحالي العائم (مثل جوجل ماب) -->
                 <button type="button" onclick="goToMyLocationOnMap()" id="btnMyLoc" class="absolute bottom-4 right-4 z-[400] w-12 h-12 bg-white text-blue-600 rounded-full shadow-xl border border-gray-200 flex justify-center items-center hover:bg-gray-50 active:scale-95 transition-all">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
                 </button>
@@ -234,9 +227,8 @@
         </div>
     </div>
 
-    <!-- 5. شاشة السائق المدمجة -->
+    <!-- شاشة السائق المدمجة -->
     <div id="driverActiveView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-5 sm:p-6 border-t-4 border-gray-800 transform transition-all duration-300">
-        <!-- إشعار الطلبات الواردة داخل التطبيق -->
         <div id="driverNotificationBanner" class="hidden bg-blue-100 border-2 border-blue-400 p-4 rounded-2xl mb-4 shadow-lg animate-pulse">
             <div class="flex items-center gap-3">
                 <span class="text-3xl" id="notificationIcon">🔔</span>
@@ -254,7 +246,6 @@
             <div id="driverRatingDisplay" class="text-yellow-500 font-bold text-sm my-1 flex justify-center items-center gap-1">⭐ 5.0 (0 رحلة)</div>
             <p id="activeDriverPhone" class="text-sm font-extrabold text-gray-600 tracking-wider" dir="ltr">01...</p>
             <div id="activeDriverVType" class="mt-3 inline-block px-4 py-1.5 bg-gray-800 text-white font-bold text-sm rounded-lg shadow-sm"></div>
-            <!-- مؤشر حالة الاشتراك والأيام المتبقية -->
             <div id="driverSubBadge" class="mt-2 text-xs font-black px-3 py-1.5 rounded-lg inline-block border"></div>
         </div>
 
@@ -267,7 +258,6 @@
             </select>
         </div>
 
-        <!-- قسم تحديث الموقع والجي بي إس الجديد -->
         <div class="mb-6 bg-white p-3 rounded-2xl shadow-sm border border-gray-200">
             <label class="block text-[11px] font-black text-gray-500 mb-2">تحديث موقع العمل / الـ GPS:</label>
             <div class="space-y-2">
@@ -299,13 +289,20 @@
             </div>
         </div>
 
-        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-            <button onclick="showView('homeView')" class="bg-gray-200 text-gray-800 font-extrabold text-sm px-5 py-2.5 rounded-xl active:scale-95">الرئيسية 🏠</button>
-            <button onclick="confirmGoOffline()" class="bg-red-100 text-red-700 font-extrabold text-sm px-5 py-2.5 rounded-xl border border-red-200 active:scale-95">خروج نهائي 🚪</button>
+        <!-- أزرار التحكم السفلية المحدثة -->
+        <div class="flex flex-col gap-2 pt-4 border-t border-gray-200">
+            <!-- زر الرجوع للرئيسية -->
+            <button onclick="showView('homeView')" class="w-full bg-blue-50 text-blue-700 font-extrabold text-sm py-3 rounded-xl border border-blue-200 active:scale-95 hover:bg-blue-100 transition">الرجوع للرئيسية 🏠</button>
+            
+            <div class="flex gap-2 w-full">
+                <button onclick="confirmGoOffline()" class="w-1/2 bg-gray-200 text-gray-800 font-extrabold text-sm py-3 rounded-xl active:scale-95">تسجيل خروج 🚪</button>
+                <!-- زر الحذف النهائي بنظام الحذف الوهمي -->
+                <button onclick="deleteDriverAccount()" class="w-1/2 bg-red-100 text-red-700 font-extrabold text-sm py-3 rounded-xl border border-red-200 active:scale-95 hover:bg-red-200 transition">حذف الحساب 🗑️</button>
+            </div>
         </div>
     </div>
 
-    <!-- 6. واجهة الزبون -->
+    <!-- واجهة الزبون -->
     <div id="customerView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 sm:p-8 border-t-4 border-orange-500 transform transition-all duration-300">
         <div class="mb-6 text-center"><h2 class="text-3xl font-black text-gray-900">تفاصيل النقل</h2></div>
 
@@ -383,27 +380,19 @@
         <div id="searchResultsContainer" class="mt-8 hidden transition-all duration-300"></div>
     </div>
 
-    <!-- 7. واجهة الاشتراك (انتهاء التجربة) -->
+    <!-- واجهة الاشتراك (معدلة للتوافق مع جوجل) -->
     <div id="subscriptionView" class="hidden glass-panel shadow-2xl rounded-3xl w-full max-w-md p-6 sm:p-8 text-center border-t-4 border-red-500 transform transition-all duration-300">
         <div class="mb-6">
             <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-3 shadow-sm border-2 border-red-200">⏳</div>
-            <h2 class="text-3xl font-black text-gray-900 mb-2">انتهت الفترة التجريبية</h2>
+            <h2 class="text-3xl font-black text-gray-900 mb-2">عفواً، الحساب غير مفعل</h2>
             <p class="text-gray-600 font-bold text-sm leading-relaxed">
-                انتهت فترة الشهر المجاني الخاصة بك. للاستمرار في استقبال الطلبات، يرجى سداد قيمة الاشتراك الشهري <b>(150 جنيهاً)</b>.
+                انتهت الفترة التجريبية أو أن اشتراكك بحاجة للتجديد. للاستمرار في استقبال الطلبات عبر التطبيق، يرجى التواصل مع الإدارة.
             </p>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border-2 border-red-200 shadow-sm mb-6 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-full h-1 bg-red-500"></div>
-            <p class="text-sm font-black text-gray-600 mb-3">للتحويل عبر فودافون كاش:</p>
-            <div class="text-3xl font-black text-red-600 tracking-widest mb-3" dir="ltr">01005577009</div>
-            <div class="bg-gray-50 p-2 rounded-lg border border-gray-100">
-                <p class="text-[11px] text-gray-700 font-bold leading-relaxed">بعد التحويل، يرجى إرسال صورة التحويل عبر الواتساب لتفعيل حسابك فوراً.</p>
-            </div>
         </div>
         <div class="space-y-3">
             <button onclick="contactAdminWhatsapp()" class="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-extrabold py-4 rounded-xl shadow-md active:scale-95 flex items-center justify-center gap-2">
                 <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                تأكيد الدفع (واتساب)
+                تواصل لتجديد الاشتراك
             </button>
             <button onclick="confirmGoOffline()" class="w-full bg-gray-200 text-gray-800 font-extrabold py-3 rounded-xl active:scale-95">تسجيل الخروج</button>
         </div>
@@ -426,21 +415,14 @@
         </div>
     </div>
 
-    <!-- سكريبت التشغيل الأساسي -->
     <script>
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installAppBtn').classList.remove('hidden'); });
-        document.getElementById('installAppBtn').addEventListener('click', async () => {
-            if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') document.getElementById('installAppBtn').classList.add('hidden'); deferredPrompt = null; }
-        });
-
         let touchStartY = 0; const ptrIndicator = document.getElementById('ptrIndicator'); let isRefreshing = false;
         document.addEventListener('touchstart', e => { if (window.scrollY === 0) touchStartY = e.touches[0].clientY; }, { passive: true });
         document.addEventListener('touchmove', e => { if (window.scrollY === 0 && touchStartY > 0 && !isRefreshing) { let pullDistance = e.touches[0].clientY - touchStartY; if (pullDistance > 0 && pullDistance < 120) { ptrIndicator.style.height = pullDistance + 'px'; } } }, { passive: true });
         document.addEventListener('touchend', e => { if (!isRefreshing && ptrIndicator.style.height && parseInt(ptrIndicator.style.height) > 60) { isRefreshing = true; ptrIndicator.style.height = '60px'; setTimeout(() => window.location.reload(), 400); } else { ptrIndicator.style.height = '0px'; } touchStartY = 0; });
 
         window.contactAdmin = function() { window.location.href = "mailto:mmoksh162@gmail.com?subject=Naqla%20App%20Support"; };
-        window.contactAdminWhatsapp = function() { window.location.href = "https://wa.me/201005577009?text=" + encodeURIComponent("السلام عليكم، قمت بتحويل قيمة الاشتراك الخاص بتطبيق نقلة. أرجو تفعيل حسابي."); };
+        window.contactAdminWhatsapp = function() { window.location.href = "https://wa.me/201005577009?text=" + encodeURIComponent("السلام عليكم، أرجو تفعيل حسابي في تطبيق نقلة."); };
 
         window.showView = function(viewId) { window.location.hash = viewId; }
         window.addEventListener('hashchange', function() {
@@ -466,10 +448,27 @@
 
         const governoratesList = ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "المنوفية", "القليوبية", "البحيرة", "كفر الشيخ", "دمياط", "الإسماعيلية", "بورسعيد", "السويس", "مطروح", "شمال سيناء", "جنوب سيناء", "البحر الأحمر", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "الوادي الجديد"];
         window.driverLat = null; window.driverLon = null; window.custLat = null; window.custLon = null;
-
+        
+        let pendingLocationCall = null;
+        
         window.getLocation = function(targetSelectId, targetInputId = null, role = null) {
+            if(!localStorage.getItem('location_disclosure_accepted')) {
+                pendingLocationCall = () => executeGetLocation(targetSelectId, targetInputId, role, event.currentTarget);
+                document.getElementById('locationDisclosureModal').classList.remove('hidden');
+            } else {
+                executeGetLocation(targetSelectId, targetInputId, role, event.currentTarget);
+            }
+        };
+
+        window.acceptLocation = function() {
+            localStorage.setItem('location_disclosure_accepted', 'true');
+            document.getElementById('locationDisclosureModal').classList.add('hidden');
+            if(pendingLocationCall) pendingLocationCall();
+        };
+
+        window.executeGetLocation = function(targetSelectId, targetInputId, role, btnElement) {
             if (navigator.geolocation) {
-                const btn = event.currentTarget; const originalText = btn.innerHTML; btn.innerHTML = "⏳ جاري التحديد...";
+                const btn = btnElement; const originalText = btn.innerHTML; btn.innerHTML = "⏳ جاري التحديد...";
                 navigator.geolocation.getCurrentPosition(
                     position => {
                         const lat = position.coords.latitude; const lon = position.coords.longitude;
@@ -491,7 +490,7 @@
                     (error) => { btn.innerHTML = originalText; if (error.code === 1) { alert("المتصفح يمنع الوصول للموقع!"); } else if (error.code === 3) { alert("انتهى وقت البحث عن الموقع."); } else { alert("يرجى التأكد من تشغيل زر الـ GPS في هاتفك."); } }, 
                     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
-            } else { alert("متصفحك لا يدعم تحديد الموقع."); }
+            } else { alert("متصفحك أو جهازك لا يدعم تحديد الموقع."); }
         };
 
         window.openRatingModal = function(phone, name) { document.getElementById('ratingDriverPhone').value = phone; document.getElementById('ratingDriverName').innerText = "كابتن " + name; setRating(5); document.getElementById('ratingModal').classList.remove('hidden'); };
@@ -510,7 +509,7 @@
             document.getElementById('mapModal').classList.remove('hidden');
             if (!mapInstance) {
                 mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 7);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(mapInstance);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
                 
                 mapMarker = L.marker([30.0444, 31.2357], { draggable: true }).addTo(mapInstance);
                 
@@ -551,7 +550,7 @@
                     mapMarker.setLatLng([lat, lon]);
                     updateMapAddress(lat, lon);
                 } else {
-                    document.getElementById('mapAddressPreview').innerHTML = "❌ لم يتم العثور على المكان، حاول كتابة اسم المركز والمحافظة.";
+                    document.getElementById('mapAddressPreview').innerHTML = "❌ لم يتم العثور على المكان.";
                 }
             }).catch(() => document.getElementById('mapAddressPreview').innerHTML = "خطأ في البحث.");
         };
@@ -616,7 +615,7 @@
         };
     </script>
 
-    <!-- سكريبت Firebase وإشعارات الهاتف الخارجية -->
+    <!-- سكريبت Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, set, get, update, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -625,6 +624,7 @@
         const firebaseConfig = { apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", authDomain: "azemaa-proo.firebaseapp.com", databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", projectId: "azemaa-proo", storageBucket: "azemaa-proo.firebasestorage.app", messagingSenderId: "787350492977", appId: "1:787350492977:web:84061dcf31622fcb07c210" };
         const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);
         
+        window.firebaseDb = db;
         let currentDriverActiveRef = null; let watchGeoId = null;
         signInAnonymously(auth).catch((error) => console.error("Auth error:", error));
         
@@ -639,6 +639,7 @@
                             if(snap.exists()) {
                                 const data = snap.val();
                                 if(data.account_status === 'blocked') return window.confirmGoOffline();
+                                if(data.account_status === 'deleted') return window.confirmGoOffline(); // منعه إذا كان محذوفاً
                                 
                                 const isSubscribed = data.isSubscribed || false;
                                 const isSubValid = data.sub_expiry && data.sub_expiry > Date.now();
@@ -691,12 +692,40 @@
             const permanentRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
             
             get(permanentRef).then((snapshot) => {
-                if (snapshot.exists()) { btn.innerText = "حفظ وبدء العمل"; return alert("⛔ هذا الرقم مسجل بالفعل! يرجى الذهاب لصفحة تسجيل الدخول."); }
-                let joinD = Date.now();
-                set(permanentRef, { name, phone, pin, vType, vCond, location: gov, specificAddress: address, joinDate: joinD, sub_expiry: 0, ratingSum: 5, ratingCount: 1 }).then(() => {
-                    localStorage.setItem('wslny_saved_phone', phone); localStorage.setItem('wslny_saved_pin', pin);
-                    window.activateDriverSession(name, phone, vType, vCond, gov); btn.innerText = "حفظ وبدء العمل";
-                });
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // إذا كان الحساب محذوف مسبقاً، نستعيد تواريخه القديمة
+                    if(data.account_status === 'deleted') {
+                        let oldJoinDate = data.joinDate || Date.now();
+                        let oldSubExpiry = data.sub_expiry || 0;
+                        
+                        set(permanentRef, { 
+                            name: name, phone: phone, pin: pin, vType: vType, vCond: vCond, 
+                            location: gov, specificAddress: address, 
+                            joinDate: oldJoinDate, 
+                            sub_expiry: oldSubExpiry,
+                            ratingSum: data.ratingSum || 5, ratingCount: data.ratingCount || 1,
+                            account_status: 'active' 
+                        }).then(() => {
+                            localStorage.setItem('wslny_saved_phone', phone); localStorage.setItem('wslny_saved_pin', pin);
+                            window.activateDriverSession(name, phone, vType, vCond, gov); btn.innerText = "حفظ وبدء العمل";
+                        });
+                    } else {
+                        btn.innerText = "حفظ وبدء العمل"; 
+                        return alert("⛔ هذا الرقم مسجل بالفعل! يرجى الذهاب لصفحة تسجيل الدخول."); 
+                    }
+                } else {
+                    // حساب جديد كلياً
+                    let joinD = Date.now();
+                    set(permanentRef, { 
+                        name: name, phone: phone, pin: pin, vType: vType, vCond: vCond, 
+                        location: gov, specificAddress: address, joinDate: joinD, sub_expiry: 0, 
+                        ratingSum: 5, ratingCount: 1, account_status: 'active' 
+                    }).then(() => {
+                        localStorage.setItem('wslny_saved_phone', phone); localStorage.setItem('wslny_saved_pin', pin);
+                        window.activateDriverSession(name, phone, vType, vCond, gov); btn.innerText = "حفظ وبدء العمل";
+                    });
+                }
             });
         };
 
@@ -706,6 +735,7 @@
                 if (snapshot.exists()) {
                     const data = snapshot.val();
                     if(data.account_status === 'blocked') { btn.innerText = "دخول وبدء العمل"; return alert("⛔ تم إيقاف حسابك."); }
+                    if(data.account_status === 'deleted') { btn.innerText = "دخول وبدء العمل"; return alert("⛔ هذا الحساب محذوف. يرجى (تسجيل سائق جديد) بنفس الرقم لاستعادة حسابك القديم."); }
                     if (data.pin && data.pin !== pin) { btn.innerText = "دخول وبدء العمل"; return alert("❌ الرقم السري غير صحيح! يرجى التأكد والمحاولة مرة أخرى."); }
                     
                     const isSubscribed = data.isSubscribed || false;
@@ -811,7 +841,6 @@
                     document.getElementById('updateDriverGov').value = d.location || location;
                     document.getElementById('updateDriverAddress').value = d.specificAddress || '';
 
-                    // حساب حالة الاشتراك والأيام المتبقية بناءً على تاريخ الانتهاء من لوحة الإدارة
                     const subBadge = document.getElementById('driverSubBadge');
                     const now = Date.now();
                     const isSubscribed = d.isSubscribed || false;
@@ -827,7 +856,6 @@
                             subBadge.className = 'mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block bg-red-100 text-red-800 border border-red-300';
                         }
                     } else {
-                        // حالة الفترة التجريبية
                         const joinDate = d.joinDate || now;
                         const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
                         const elapsed = now - joinDate;
@@ -858,10 +886,30 @@
 
         window.confirmGoOffline = function() { if (confirm("خروج نهائي من التطبيق؟")) { if(currentDriverActiveRef) remove(currentDriverActiveRef); if(watchGeoId && navigator.geolocation) navigator.geolocation.clearWatch(watchGeoId); localStorage.setItem('wslny_is_active', 'false'); localStorage.removeItem('wslny_saved_phone'); localStorage.removeItem('wslny_saved_pin'); window.location.hash = 'homeView'; } };
 
+        window.deleteDriverAccount = function() {
+            if(confirm("تحذير ⚠️: هل أنت متأكد من رغبتك في حذف حسابك نهائياً؟ سيتم مسح كافة بياناتك الحالية ولن تظهر للزبائن.")) {
+                const infoStr = localStorage.getItem('wslny_driver_info');
+                if(!infoStr) return;
+                const phone = JSON.parse(infoStr).phone;
+                
+                update(ref(window.firebaseDb, 'wslny_app/registered_drivers/driver_' + phone), {
+                    account_status: 'deleted'
+                }).then(() => {
+                    remove(ref(window.firebaseDb, 'wslny_app/active_drivers/driver_' + phone)).then(() => {
+                        if(watchGeoId && navigator.geolocation) navigator.geolocation.clearWatch(watchGeoId);
+                        localStorage.clear();
+                        alert("تم حذف حسابك وجميع بياناتك بنجاح.");
+                        window.location.hash = 'homeView';
+                        window.location.reload();
+                    });
+                }).catch(() => alert("حدث خطأ أثناء محاولة حذف الحساب، تأكد من الاتصال بالإنترنت."));
+            }
+        };
+
         window.listenToColleagues = function() {
             const myInfoStr = localStorage.getItem('wslny_driver_info'); if(!myInfoStr) return; const myPhone = JSON.parse(myInfoStr).phone.toString().replace(/^0+/, '').trim();
             get(ref(db, 'wslny_app/registered_drivers')).then((snapshot) => {
-                const uniqueRegData = {}; Object.values(snapshot.val() || {}).forEach(d => { if(d.phone) uniqueRegData[d.phone.toString().replace(/^0+/, '').trim()] = d; });
+                const uniqueRegData = {}; Object.values(snapshot.val() || {}).forEach(d => { if(d.phone && d.account_status !== 'deleted') uniqueRegData[d.phone.toString().replace(/^0+/, '').trim()] = d; });
                 onValue(ref(db, 'wslny_app/active_drivers'), (activeSnap) => {
                     const activeData = activeSnap.val() || {}; let tableHTML = `<table class="w-full text-right bg-white"><thead class="bg-gray-100 border-b border-gray-200 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الزميل</th><th class="px-4 py-3 font-extrabold text-center">الحالة</th></tr></thead><tbody class="divide-y divide-gray-100">`; let found = false;
                     Object.values(uniqueRegData).forEach(driver => {
