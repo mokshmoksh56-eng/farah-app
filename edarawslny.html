@@ -139,10 +139,19 @@
                 <input type="number" id="subPrice" placeholder="0" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-blue-500 outline-none text-center font-black text-lg" dir="ltr">
             </div>
 
+            <!-- خيار التفعيل المدفوع (الأهم) -->
+            <div class="mb-4 bg-blue-50 p-3 rounded-xl border border-blue-200">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="isSubscribedCheck" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
+                    <span class="text-sm font-black text-blue-900">حساب مدفوع ومُفعل ✅</span>
+                </label>
+                <p class="text-[10px] text-blue-700 mt-1 font-bold">تفعيل هذا الخيار يلغي فترة التجربة ويسمح للسائق باستقبال الطلبات فوراً.</p>
+            </div>
+
             <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-6">
                 <!-- تاريخ البداية -->
                 <div class="mb-3">
-                    <label class="block text-xs font-black text-gray-700 mb-1">📅 تاريخ بداية الاشتراك:</label>
+                    <label class="block text-xs font-black text-gray-700 mb-1">📅 تاريخ البداية (اختياري):</label>
                     <input type="date" id="startDate" onchange="calculateExpiry()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg outline-none font-bold text-sm text-center cursor-pointer">
                 </div>
 
@@ -150,7 +159,7 @@
                 <div class="mb-3 flex items-center gap-2">
                     <label class="text-xs font-black text-gray-700 whitespace-nowrap">⏳ المدة:</label>
                     <select id="durationSelect" onchange="calculateExpiry()" class="w-full px-2 py-1.5 bg-white border border-gray-300 rounded-lg outline-none font-bold text-xs cursor-pointer">
-                        <option value="0">تحديد يدوي</option>
+                        <option value="0">تحديد يدوي (أو دائم)</option>
                         <option value="1">شهر واحد</option>
                         <option value="3">3 شهور</option>
                         <option value="6">6 شهور</option>
@@ -160,7 +169,7 @@
 
                 <!-- تاريخ الانتهاء -->
                 <div>
-                    <label class="block text-xs font-black text-red-600 mb-1">🛑 تاريخ انتهاء الاشتراك:</label>
+                    <label class="block text-xs font-black text-red-600 mb-1">🛑 تاريخ الانتهاء (اتركه فارغاً للدائم):</label>
                     <input type="date" id="endDate" class="w-full px-3 py-2 bg-white border border-red-300 rounded-lg outline-none font-bold text-sm text-center text-red-700 cursor-pointer">
                 </div>
             </div>
@@ -296,30 +305,34 @@
                 
                 tCalls += (driver.calls_received || 0); tWa += (driver.wa_received || 0);
 
-                let expiryDate = driver.sub_expiry || 0;
-                let startDate = driver.sub_start || 0;
                 let isBlocked = driver.account_status === 'blocked';
+                let isSubscribed = driver.isSubscribed || false;
+                let joinDate = driver.joinDate || Date.now(); 
+                let TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
+                let elapsed = now - joinDate;
+                let remainingDays = Math.ceil((TRIAL_MS - elapsed) / (1000 * 60 * 60 * 24));
                 
                 let subHtml = "";
-                if (expiryDate > 0) {
-                    let endD = new Date(expiryDate).toLocaleDateString('en-GB');
-                    let startD = startDate > 0 ? new Date(startDate).toLocaleDateString('en-GB') : "غير محدد";
-                    
-                    let remainHtml = "";
-                    if (expiryDate > now) {
-                        let days = Math.ceil((expiryDate - now) / 86400000);
-                        remainHtml = `<div class="text-[10px] text-blue-600 mt-1 font-black bg-blue-50 px-1 rounded inline-block border border-blue-100">متبقي ${days} يوم</div>`;
+
+                if (isSubscribed) {
+                    if (driver.sub_expiry && driver.sub_expiry > now) {
+                        let days = Math.ceil((driver.sub_expiry - now) / 86400000);
+                        subHtml = `<div class="text-[11px] text-green-800 font-black bg-green-100 px-2 py-1 rounded border border-green-300 inline-block">✨ مدفوع (${days} يوم)</div>`;
+                    } else if (driver.sub_expiry && driver.sub_expiry < now) {
+                        subHtml = `<div class="text-[11px] text-red-800 font-black bg-red-100 px-2 py-1 rounded border border-red-300 inline-block">❌ مدفوع (منتهي)</div>`;
                     } else {
-                        let days = Math.ceil((now - expiryDate) / 86400000);
-                        remainHtml = `<div class="text-[10px] text-red-600 mt-1 font-black bg-red-50 px-1 rounded inline-block border border-red-100">منتهي منذ ${days} يوم</div>`;
+                        subHtml = `<div class="text-[11px] text-green-800 font-black bg-green-100 px-2 py-1 rounded border border-green-300 inline-block">✨ مدفوع (دائم)</div>`;
                     }
-                    subHtml = `<div class="text-[10px] text-gray-500 font-bold mb-1">من: ${startD}</div>
-                               <div class="text-[11px] text-gray-800 font-black">إلى: ⏳ ${endD}</div>${remainHtml}`;
                 } else {
-                    subHtml = `<span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">غير مفعل</span>`;
+                    if (remainingDays > 0) {
+                        let color = remainingDays <= 5 ? 'text-red-700 bg-red-50 border-red-300 animate-pulse' : 'text-blue-700 bg-blue-50 border-blue-300';
+                        subHtml = `<div class="text-[11px] font-black px-2 py-1 rounded border ${color} inline-block">⏳ تجريبي (${remainingDays} يوم)</div>`;
+                    } else {
+                        subHtml = `<div class="text-[11px] text-gray-700 font-black bg-gray-100 px-2 py-1 rounded border border-gray-300 inline-block">🛑 انتهت التجربة</div>`;
+                    }
                 }
 
-                if(isBlocked) subHtml = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">⛔ حساب محظور</span>`;
+                if(isBlocked) subHtml = `<div class="bg-red-100 text-red-700 px-2 py-1 rounded text-[11px] font-bold inline-block border border-red-300 mt-1">⛔ حساب محظور</div>`;
 
                 let tr = document.createElement('tr');
                 tr.className = "hover:bg-blue-50 border-b border-gray-50";
@@ -327,7 +340,7 @@
                     <td class="px-6 py-4"><div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-lg">👨‍✈️</div>
                         <div><p class="text-sm font-black name-search">${driver.name}</p><p class="text-[11px] text-gray-500 phone-search mb-1" dir="ltr">${driver.phone}</p>
-                        <p onclick="focusDriverOnMap('${driver.phone}')" class="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded cursor-pointer">📍 عرض ع الخريطة</p></div></div>
+                        <p onclick="focusDriverOnMap('${driver.phone}')" class="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded cursor-pointer w-max">📍 عرض ع الخريطة</p></div></div>
                     </td>
                     <td class="px-6 py-4 text-center"><span class="${driver.pin?'bg-red-50 text-red-600':'bg-gray-100 text-gray-400'} px-3 py-1.5 rounded-lg text-sm font-black" dir="ltr">${driver.pin||'لا يوجد'}</span></td>
                     <td class="px-6 py-4"><span class="bg-gray-100 px-2 py-1 rounded text-[11px]">🚚 ${driver.vType}</span></td>
@@ -335,7 +348,7 @@
                     <td class="px-6 py-4 text-center">${subHtml}</td>
                     <td class="px-6 py-4 text-center">
                         <div class="flex justify-center gap-1.5">
-                            <button onclick="openModal('${driver.phone}', '${driver.name}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition">اشتراك/تعديل</button>
+                            <button onclick="openModal('${driver.phone}', '${driver.name}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition">تعديل/اشتراك</button>
                             <button onclick="toggleBlock('${driver.phone}', ${isBlocked})" class="${isBlocked?'bg-green-500 hover:bg-green-600':'bg-orange-500 hover:bg-orange-600'} text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition">${isBlocked?'فك الحظر':'حظر'}</button>
                             <button onclick="deleteDriver('${driver.phone}', '${driver.name}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-[10px] font-bold transition">حذف</button>
                         </div>
@@ -350,7 +363,6 @@
             document.getElementById('statTotalWa').innerText = tWa;
         }
 
-        // تنسيق التاريخ للـ input type=date
         function formatDateForInput(timestamp) {
             let d = new Date(timestamp);
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -365,14 +377,17 @@
             get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then((snap) => {
                 let sDate = document.getElementById('startDate');
                 let eDate = document.getElementById('endDate');
+                let isSubCheck = document.getElementById('isSubscribedCheck');
                 
-                if(snap.exists() && snap.val().sub_expiry) {
+                if(snap.exists()) {
                     let dData = snap.val();
-                    sDate.value = dData.sub_start ? formatDateForInput(dData.sub_start) : formatDateForInput(Date.now());
-                    eDate.value = formatDateForInput(dData.sub_expiry);
-                } else {
-                    sDate.value = formatDateForInput(Date.now()); // البداية اليوم
-                    eDate.value = ''; // الانتهاء فارغ
+                    isSubCheck.checked = dData.isSubscribed || false;
+                    
+                    if(dData.sub_start) sDate.value = formatDateForInput(dData.sub_start);
+                    else sDate.value = formatDateForInput(Date.now());
+                    
+                    if(dData.sub_expiry) eDate.value = formatDateForInput(dData.sub_expiry);
+                    else eDate.value = '';
                 }
                 document.getElementById('subModal').classList.remove('hidden');
             });
@@ -380,7 +395,6 @@
 
         window.closeModal = function() { document.getElementById('subModal').classList.add('hidden'); };
 
-        // حساب تاريخ الانتهاء أوتوماتيكياً
         window.calculateExpiry = function() {
             let sVal = document.getElementById('startDate').value;
             let months = parseInt(document.getElementById('durationSelect').value);
@@ -393,32 +407,36 @@
             }
         };
 
-        // حفظ البيانات في القاعدة
         window.saveSubscription = function() {
             const phone = document.getElementById('modalDriverPhone').value;
             const price = parseInt(document.getElementById('subPrice').value) || 0;
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
+            const isSub = document.getElementById('isSubscribedCheck').checked;
 
-            if(!startVal || !endVal) return alert("الرجاء التأكد من إدخال تاريخ البداية والنهاية!");
+            let updateData = { 
+                account_status: 'active',
+                isSubscribed: isSub
+            };
 
-            const startTime = new Date(startVal).getTime();
-            const endDateObj = new Date(endVal);
-            endDateObj.setHours(23, 59, 59, 999);
-            const endTime = endDateObj.getTime();
+            if (startVal) updateData.sub_start = new Date(startVal).getTime();
+            
+            if (endVal) {
+                const endDateObj = new Date(endVal);
+                endDateObj.setHours(23, 59, 59, 999);
+                updateData.sub_expiry = endDateObj.getTime();
+            } else {
+                updateData.sub_expiry = null; // لا يوجد تاريخ انتهاء (دائم)
+            }
 
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
             
-            update(driverRef, { 
-                sub_start: startTime,
-                sub_expiry: endTime, 
-                account_status: 'active' 
-            }).then(() => {
+            update(driverRef, updateData).then(() => {
                 if(price > 0) {
                     const revRef = ref(db, 'wslny_app/financials/total_revenue');
                     get(revRef).then(snap => set(revRef, (snap.val() || 0) + price));
                 }
-                alert("✅ تم حفظ بيانات الاشتراك بنجاح!"); 
+                alert("✅ تم حفظ التعديلات بنجاح!"); 
                 closeModal();
             });
         };
