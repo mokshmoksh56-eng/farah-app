@@ -118,7 +118,7 @@
                             </tr>
                         </thead>
                         <tbody id="tableBody" class="divide-y divide-gray-100 text-sm font-bold">
-                            <tr><td colspan="6" class="p-8 text-center text-gray-500 animate-pulse">جاري جلب البيانات...</td></tr>
+                            <tr><td colspan="6" class="p-8 text-center text-gray-500 animate-pulse font-black">جاري جلب البيانات...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -131,21 +131,16 @@
     <div id="subModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center backdrop-blur-sm p-4">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
             <h3 class="text-xl font-black text-gray-900 mb-1 text-center">تجديد أو تعديل الاشتراك</h3>
-            <p id="modalDriverName" class="text-blue-600 font-bold text-sm mb-4 text-center"></p>
+            <p id="modalDriverName" class="text-blue-600 font-bold text-sm mb-2 text-center"></p>
+            
+            <!-- الحالة الحالية داخل النافذة -->
+            <div class="text-center mb-4" id="modalCurrentStatusContainer"></div>
+            
             <input type="hidden" id="modalDriverPhone">
             
             <div class="mb-4">
                 <label class="block text-[11px] font-bold text-gray-500 mb-1">المبلغ المدفوع (اختياري - سيُضاف للأرباح):</label>
                 <input type="number" id="subPrice" placeholder="0" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-blue-500 outline-none text-center font-black text-lg" dir="ltr">
-            </div>
-
-            <!-- خيار التفعيل المدفوع (الأهم) -->
-            <div class="mb-4 bg-blue-50 p-3 rounded-xl border border-blue-200">
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" id="isSubscribedCheck" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
-                    <span class="text-sm font-black text-blue-900">حساب مدفوع ومُفعل ✅</span>
-                </label>
-                <p class="text-[10px] text-blue-700 mt-1 font-bold">تفعيل هذا الخيار يلغي فترة التجربة ويسمح للسائق باستقبال الطلبات فوراً.</p>
             </div>
 
             <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-6">
@@ -266,6 +261,11 @@
         function loadDashboardData() {
             onValue(ref(db, 'wslny_app/registered_drivers'), (snap) => {
                 const drivers = snap.val() || {};
+                
+                if (Object.keys(drivers).length === 0) {
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500 font-black text-lg bg-gray-50 rounded-xl">📭 لا توجد بيانات مسجلة في قاعدة البيانات حتى الآن.</td></tr>';
+                }
+
                 onValue(ref(db, 'wslny_app/active_drivers'), (activeSnap) => {
                     renderTableAndStats(drivers, activeSnap.val() || {});
                 });
@@ -274,7 +274,8 @@
 
         function renderTableAndStats(drivers, activeData) {
             const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
+            if (Object.keys(drivers).length > 0) tbody.innerHTML = '';
+            
             let totalD = 0, onlineD = 0, tCalls = 0, tWa = 0;
             const now = Date.now();
             
@@ -307,23 +308,21 @@
 
                 let isBlocked = driver.account_status === 'blocked';
                 let isSubscribed = driver.isSubscribed || false;
-                let joinDate = driver.joinDate || Date.now(); 
-                let TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
-                let elapsed = now - joinDate;
-                let remainingDays = Math.ceil((TRIAL_MS - elapsed) / (1000 * 60 * 60 * 24));
-                
                 let subHtml = "";
 
                 if (isSubscribed) {
                     if (driver.sub_expiry && driver.sub_expiry > now) {
                         let days = Math.ceil((driver.sub_expiry - now) / 86400000);
                         subHtml = `<div class="text-[11px] text-green-800 font-black bg-green-100 px-2 py-1 rounded border border-green-300 inline-block">✨ مدفوع (${days} يوم)</div>`;
-                    } else if (driver.sub_expiry && driver.sub_expiry < now) {
+                    } else if (driver.sub_expiry && driver.sub_expiry <= now) {
                         subHtml = `<div class="text-[11px] text-red-800 font-black bg-red-100 px-2 py-1 rounded border border-red-300 inline-block">❌ مدفوع (منتهي)</div>`;
                     } else {
                         subHtml = `<div class="text-[11px] text-orange-800 font-black bg-orange-100 px-2 py-1 rounded border border-orange-300 inline-block">⚠️ يرجى تحديد تاريخ انتهاء</div>`;
                     }
                 } else {
+                    let trialExpiry = driver.sub_expiry ? driver.sub_expiry : (driver.joinDate ? driver.joinDate + (30 * 86400000) : now + (30 * 86400000));
+                    let remainingDays = Math.ceil((trialExpiry - now) / 86400000);
+
                     if (remainingDays > 0) {
                         let color = remainingDays <= 5 ? 'text-red-700 bg-red-50 border-red-300 animate-pulse' : 'text-blue-700 bg-blue-50 border-blue-300';
                         subHtml = `<div class="text-[11px] font-black px-2 py-1 rounded border ${color} inline-block">⏳ تجريبي (${remainingDays} يوم)</div>`;
@@ -374,20 +373,61 @@
             document.getElementById('subPrice').value = '';
             document.getElementById('durationSelect').value = "0";
             
+            // مسح الحالة مؤقتاً لحين جلب البيانات
+            document.getElementById('modalCurrentStatusContainer').innerHTML = '<span class="text-xs font-bold text-gray-400">جاري جلب الحالة...</span>';
+            
             get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then((snap) => {
                 let sDate = document.getElementById('startDate');
                 let eDate = document.getElementById('endDate');
-                let isSubCheck = document.getElementById('isSubscribedCheck');
                 
                 if(snap.exists()) {
                     let dData = snap.val();
-                    isSubCheck.checked = dData.isSubscribed || false;
+                    let now = Date.now();
+
+                    // عرض الحالة الحالية داخل النافذة
+                    let statusHtml = "";
+                    if (dData.isSubscribed) {
+                        if (dData.sub_expiry && dData.sub_expiry > now) {
+                            let days = Math.ceil((dData.sub_expiry - now) / 86400000);
+                            statusHtml = `<div class="text-xs text-green-800 font-black bg-green-100 px-3 py-1.5 rounded-lg border border-green-300 inline-block shadow-sm">الحالة الآن: ✨ مدفوع (${days} يوم)</div>`;
+                        } else if (dData.sub_expiry && dData.sub_expiry <= now) {
+                            statusHtml = `<div class="text-xs text-red-800 font-black bg-red-100 px-3 py-1.5 rounded-lg border border-red-300 inline-block shadow-sm">الحالة الآن: ❌ مدفوع (منتهي)</div>`;
+                        } else {
+                            statusHtml = `<div class="text-xs text-orange-800 font-black bg-orange-100 px-3 py-1.5 rounded-lg border border-orange-300 inline-block shadow-sm">الحالة الآن: ⚠️ يرجى تحديد تاريخ انتهاء</div>`;
+                        }
+                    } else {
+                        let trialExpiry = dData.sub_expiry ? dData.sub_expiry : (dData.joinDate ? dData.joinDate + (30 * 86400000) : now + (30 * 86400000));
+                        let remainingDays = Math.ceil((trialExpiry - now) / 86400000);
+                        if (remainingDays > 0) {
+                            let color = remainingDays <= 5 ? 'text-red-700 bg-red-50 border-red-300 animate-pulse' : 'text-blue-700 bg-blue-50 border-blue-300';
+                            statusHtml = `<div class="text-xs font-black px-3 py-1.5 rounded-lg border ${color} inline-block shadow-sm">الحالة الآن: ⏳ تجريبي (${remainingDays} يوم)</div>`;
+                        } else {
+                            statusHtml = `<div class="text-xs text-gray-700 font-black bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-300 inline-block shadow-sm">الحالة الآن: 🛑 انتهت التجربة</div>`;
+                        }
+                    }
+                    if(dData.account_status === 'blocked') {
+                        statusHtml += ` <div class="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold inline-block border border-red-300 mt-1">⛔ محظور</div>`;
+                    }
+                    document.getElementById('modalCurrentStatusContainer').innerHTML = statusHtml;
+
+                    // إظهار تاريخ البداية
+                    if(dData.sub_start) {
+                        sDate.value = formatDateForInput(dData.sub_start);
+                    } else if (dData.joinDate) {
+                        sDate.value = formatDateForInput(dData.joinDate);
+                    } else {
+                        sDate.value = formatDateForInput(Date.now());
+                    }
                     
-                    if(dData.sub_start) sDate.value = formatDateForInput(dData.sub_start);
-                    else sDate.value = formatDateForInput(Date.now());
-                    
-                    if(dData.sub_expiry) eDate.value = formatDateForInput(dData.sub_expiry);
-                    else eDate.value = '';
+                    // إظهار تاريخ الانتهاء
+                    if(dData.sub_expiry) {
+                        eDate.value = formatDateForInput(dData.sub_expiry);
+                    } else if (!dData.isSubscribed) {
+                        let trialEnd = (dData.joinDate || Date.now()) + (30 * 86400000);
+                        eDate.value = formatDateForInput(trialEnd);
+                    } else {
+                        eDate.value = '';
+                    }
                 }
                 document.getElementById('subModal').classList.remove('hidden');
             });
@@ -405,7 +445,7 @@
                 d.setMonth(d.getMonth() + months);
                 eInput.value = formatDateForInput(d.getTime());
             } else if (months === 0) {
-                eInput.value = ''; // تفريغ الحقل عند اختيار تحديد يدوي
+                eInput.value = ''; 
             }
         };
 
@@ -414,17 +454,17 @@
             const price = parseInt(document.getElementById('subPrice').value) || 0;
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
-            const isSub = document.getElementById('isSubscribedCheck').checked;
 
-            // منع الحفظ إذا كان الحساب مدفوعاً ولا يوجد تاريخ انتهاء
-            if (isSub && !endVal) {
+            // إجبار وضع تاريخ انتهاء عند الحفظ لتفعيل الاشتراك
+            if (!endVal) {
                 alert("⚠️ يرجى تحديد تاريخ انتهاء الاشتراك!");
                 return; 
             }
 
+            // يتم تفعيل الحساب تلقائياً بمجرد إدخال تاريخ انتهاء
             let updateData = { 
                 account_status: 'active',
-                isSubscribed: isSub
+                isSubscribed: true
             };
 
             if (startVal) updateData.sub_start = new Date(startVal).getTime();
@@ -433,8 +473,6 @@
                 const endDateObj = new Date(endVal);
                 endDateObj.setHours(23, 59, 59, 999);
                 updateData.sub_expiry = endDateObj.getTime();
-            } else {
-                updateData.sub_expiry = null;
             }
 
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
@@ -444,7 +482,7 @@
                     const revRef = ref(db, 'wslny_app/financials/total_revenue');
                     get(revRef).then(snap => set(revRef, (snap.val() || 0) + price));
                 }
-                alert("✅ تم حفظ التعديلات بنجاح!"); 
+                alert("✅ تم حفظ التعديلات بنجاح وتفعيل اشتراك السائق!"); 
                 closeModal();
             });
         };
