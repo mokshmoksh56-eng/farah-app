@@ -176,8 +176,8 @@
             <input type="hidden" id="modalDriverPhone">
             
             <div class="mb-4">
-                <label class="block text-[11px] font-bold text-gray-500 mb-1">المبلغ المدفوع (الاشتراك 150 ج/شهر):</label>
-                <input type="number" id="subPrice" placeholder="150" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-blue-500 outline-none text-center font-black text-lg" dir="ltr">
+                <label class="block text-[11px] font-bold text-gray-500 mb-1">المبلغ المدفوع <span class="text-red-500 font-black">*إجباري</span> (الاشتراك 150 ج/شهر):</label>
+                <input type="number" id="subPrice" placeholder="أدخل المبلغ هنا..." class="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none text-center font-black text-lg" dir="ltr">
             </div>
 
             <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-6">
@@ -521,7 +521,8 @@
 
         window.saveSubscription = function() {
             const phone = document.getElementById('modalDriverPhone').value;
-            const price = parseInt(document.getElementById('subPrice').value) || 0;
+            const priceInputStr = document.getElementById('subPrice').value;
+            const price = parseInt(priceInputStr) || 0;
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
             const durationVal = document.getElementById('durationSelect').value;
@@ -531,15 +532,22 @@
                 return; 
             }
 
+            // --- شرط إجباري يمنع الحفظ دون إدخال المبلغ ---
+            if (durationVal !== "trial" && priceInputStr === "") {
+                alert("⛔ لا يمكن الحفظ! يرجى إدخال المبلغ المدفوع أولاً لتسجيله في التقارير والأرباح.\n\n(إذا كان التعديل لتصحيح تاريخ أو مجانياً، قم بكتابة الرقم 0 في المربع)");
+                document.getElementById('subPrice').focus();
+                return;
+            }
+
             let updateData = { 
                 account_status: 'active'
             };
 
             if (durationVal === "trial") {
-                // تمديد فترة تجريبية مجانية
+                // تمديد فترة تجريبية مجانية (يقوم بإلغاء حالة الاشتراك المدفوع وتصفير تاريخ الانضمام)
                 updateData.isSubscribed = false; 
                 updateData.joinDate = Date.now(); 
-                updateData.sub_expiry = null;
+                updateData.sub_expiry = null; // يحذف تاريخ الاشتراك القديم
             } else {
                 // اشتراك مدفوع
                 updateData.isSubscribed = true;
@@ -625,7 +633,8 @@
         };
 
         window.deletePaymentLog = function(logId, amount) {
-            if(prompt(`سيتم مسح المعاملة وخصم (${amount} ج) من إجمالي الأرباح.\n\nتأكيد المسح؟ أدخل الرقم السري (4366):`) === "4366") {
+            // تم التعديل: إخفاء الرقم السري من الرسالة
+            if(prompt(`سيتم مسح المعاملة وخصم (${amount} ج) من إجمالي الأرباح.\n\nتأكيد المسح؟ أدخل الرقم السري:`) === "4366") {
                 remove(ref(db, 'wslny_app/financials/payments_log/' + logId)).then(() => {
                     const revRef = ref(db, 'wslny_app/financials/total_revenue');
                     get(revRef).then(snap => {
