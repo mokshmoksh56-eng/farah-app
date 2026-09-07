@@ -609,15 +609,24 @@
                                 const data = snap.val();
                                 if(data.account_status === 'blocked') return window.confirmGoOffline();
                                 
-                                const TRIAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 يوماً
+                                const isSubscribed = data.isSubscribed || false;
+                                const isSubValid = data.sub_expiry && data.sub_expiry > Date.now();
+                                const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
                                 const joinDate = data.joinDate || Date.now();
                                 const isTrialExpired = (Date.now() - joinDate) > TRIAL_MS;
-                                const isSubValid = data.sub_expiry && data.sub_expiry > Date.now();
 
-                                if (isTrialExpired && !isSubValid) {
-                                    showView('subscriptionView');
+                                if (isSubscribed) {
+                                    if (!isSubValid) {
+                                        showView('subscriptionView');
+                                    } else {
+                                        window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد', true);
+                                    }
                                 } else {
-                                    window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد', true);
+                                    if (isTrialExpired) {
+                                        showView('subscriptionView');
+                                    } else {
+                                        window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد', true);
+                                    }
                                 }
                             } else {
                                 window.confirmGoOffline();
@@ -668,16 +677,26 @@
                     if(data.account_status === 'blocked') { btn.innerText = "دخول وبدء العمل"; return alert("⛔ تم إيقاف حسابك."); }
                     if (data.pin && data.pin !== pin) { btn.innerText = "دخول وبدء العمل"; return alert("❌ الرقم السري غير صحيح! يرجى التأكد والمحاولة مرة أخرى."); }
                     
+                    const isSubscribed = data.isSubscribed || false;
+                    const isSubValid = data.sub_expiry && data.sub_expiry > Date.now();
                     const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
                     const joinDate = data.joinDate || Date.now();
                     const isTrialExpired = (Date.now() - joinDate) > TRIAL_MS;
-                    const isSubValid = data.sub_expiry && data.sub_expiry > Date.now();
 
-                    if (isTrialExpired && !isSubValid) {
-                        btn.innerText = "دخول وبدء العمل";
-                        localStorage.setItem('wslny_saved_phone', phone);
-                        showView('subscriptionView');
-                        return;
+                    if (isSubscribed) {
+                        if (!isSubValid) {
+                            btn.innerText = "دخول وبدء العمل";
+                            localStorage.setItem('wslny_saved_phone', phone);
+                            showView('subscriptionView');
+                            return;
+                        }
+                    } else {
+                        if (isTrialExpired) {
+                            btn.innerText = "دخول وبدء العمل";
+                            localStorage.setItem('wslny_saved_phone', phone);
+                            showView('subscriptionView');
+                            return;
+                        }
                     }
 
                     localStorage.setItem('wslny_saved_phone', phone); localStorage.setItem('wslny_saved_pin', pin);
@@ -730,13 +749,18 @@
                     // حساب حالة الاشتراك والأيام المتبقية بناءً على تاريخ الانتهاء من لوحة الإدارة
                     const subBadge = document.getElementById('driverSubBadge');
                     const now = Date.now();
+                    const isSubscribed = d.isSubscribed || false;
 
-                    if (d.sub_expiry && d.sub_expiry > now) {
-                        // اشتراك مدفوع بالمدة المحددة من الإدارة
-                        const remainingDays = Math.ceil((d.sub_expiry - now) / (1000 * 60 * 60 * 24));
-                        let colorClass = remainingDays <= 5 ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-green-100 text-green-800 border-green-300';
-                        subBadge.innerHTML = `✅ اشتراك ساري (باقي ${remainingDays} يوم)`;
-                        subBadge.className = `mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block border ${colorClass}`;
+                    if (isSubscribed) {
+                        if (d.sub_expiry && d.sub_expiry > now) {
+                            const remainingDays = Math.ceil((d.sub_expiry - now) / (1000 * 60 * 60 * 24));
+                            let colorClass = remainingDays <= 5 ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-green-100 text-green-800 border-green-300';
+                            subBadge.innerHTML = `✅ اشتراك ساري (باقي ${remainingDays} يوم)`;
+                            subBadge.className = `mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block border ${colorClass}`;
+                        } else {
+                            subBadge.innerHTML = '⚠️ انتهى الاشتراك';
+                            subBadge.className = 'mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block bg-red-100 text-red-800 border border-red-300';
+                        }
                     } else {
                         // حالة الفترة التجريبية
                         const joinDate = d.joinDate || now;
@@ -749,7 +773,7 @@
                             subBadge.innerHTML = `⏳ باقي ${remainingDays} يوم على نهاية التجربة`;
                             subBadge.className = `mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block border ${colorClass}`;
                         } else {
-                            subBadge.innerHTML = '⚠️ انتهى الاشتراك / التجربة';
+                            subBadge.innerHTML = '⚠️ انتهت التجربة';
                             subBadge.className = 'mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block bg-red-100 text-red-800 border border-red-300';
                         }
                     }
