@@ -159,6 +159,7 @@
                         <option value="3">3 شهور</option>
                         <option value="6">6 شهور</option>
                         <option value="12">سنة كاملة</option>
+                        <option value="trial">تمديد فترة تجريبية (30 يوم)</option>
                     </select>
                 </div>
 
@@ -437,15 +438,23 @@
 
         window.calculateExpiry = function() {
             let sVal = document.getElementById('startDate').value;
-            let months = parseInt(document.getElementById('durationSelect').value);
+            let durationVal = document.getElementById('durationSelect').value;
             let eInput = document.getElementById('endDate');
 
-            if (sVal && months > 0) {
-                let d = new Date(sVal);
-                d.setMonth(d.getMonth() + months);
+            if (durationVal === "trial") {
+                let d = new Date();
+                d.setDate(d.getDate() + 30);
                 eInput.value = formatDateForInput(d.getTime());
-            } else if (months === 0) {
-                eInput.value = ''; 
+                document.getElementById('startDate').value = formatDateForInput(Date.now());
+            } else {
+                let months = parseInt(durationVal);
+                if (sVal && months > 0) {
+                    let d = new Date(sVal);
+                    d.setMonth(d.getMonth() + months);
+                    eInput.value = formatDateForInput(d.getTime());
+                } else if (months === 0) {
+                    eInput.value = ''; 
+                }
             }
         };
 
@@ -454,35 +463,41 @@
             const price = parseInt(document.getElementById('subPrice').value) || 0;
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
+            const durationVal = document.getElementById('durationSelect').value;
 
-            // إجبار وضع تاريخ انتهاء عند الحفظ لتفعيل الاشتراك
             if (!endVal) {
-                alert("⚠️ يرجى تحديد تاريخ انتهاء الاشتراك!");
+                alert("⚠️ يرجى تحديد تاريخ انتهاء!");
                 return; 
             }
 
-            // يتم تفعيل الحساب تلقائياً بمجرد إدخال تاريخ انتهاء
             let updateData = { 
-                account_status: 'active',
-                isSubscribed: true
+                account_status: 'active'
             };
 
-            if (startVal) updateData.sub_start = new Date(startVal).getTime();
-            
-            if (endVal) {
-                const endDateObj = new Date(endVal);
-                endDateObj.setHours(23, 59, 59, 999);
-                updateData.sub_expiry = endDateObj.getTime();
+            if (durationVal === "trial") {
+                // تمديد فترة تجريبية مجانية (يقوم بإلغاء حالة الاشتراك المدفوع وتصفير تاريخ الانضمام)
+                updateData.isSubscribed = false; 
+                updateData.joinDate = Date.now(); 
+                updateData.sub_expiry = null; // يحذف تاريخ الاشتراك القديم
+            } else {
+                // اشتراك مدفوع
+                updateData.isSubscribed = true;
+                if (startVal) updateData.sub_start = new Date(startVal).getTime();
+                if (endVal) {
+                    const endDateObj = new Date(endVal);
+                    endDateObj.setHours(23, 59, 59, 999);
+                    updateData.sub_expiry = endDateObj.getTime();
+                }
             }
 
             const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
             
             update(driverRef, updateData).then(() => {
-                if(price > 0) {
+                if(price > 0 && durationVal !== "trial") {
                     const revRef = ref(db, 'wslny_app/financials/total_revenue');
                     get(revRef).then(snap => set(revRef, (snap.val() || 0) + price));
                 }
-                alert("✅ تم حفظ التعديلات بنجاح وتفعيل اشتراك السائق!"); 
+                alert("✅ تم حفظ التعديلات بنجاح!"); 
                 closeModal();
             });
         };
