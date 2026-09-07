@@ -177,7 +177,7 @@
                     <button type="button" onclick="getLocation('regDriverGov', 'regDriverAddress', 'driver')" class="w-full bg-white border border-gray-400 text-gray-700 py-2 rounded-xl shadow-sm font-bold flex flex-col items-center justify-center gap-1 active:scale-95 transition hover:bg-gray-50 text-xs">
                         <span class="text-xl">📍</span> موقعي الحالي
                     </button>
-                    <button type="button" onclick="openMapModal()" class="w-full bg-orange-50 border border-orange-300 text-orange-700 py-2 rounded-xl shadow-sm font-bold flex flex-col items-center justify-center gap-1 active:scale-95 transition hover:bg-orange-100 text-xs">
+                    <button type="button" onclick="openMapModal('register')" class="w-full bg-orange-50 border border-orange-300 text-orange-700 py-2 rounded-xl shadow-sm font-bold flex flex-col items-center justify-center gap-1 active:scale-95 transition hover:bg-orange-100 text-xs">
                         <span class="text-xl">🗺️</span> تحديد من الخريطة
                     </button>
                 </div>
@@ -265,6 +265,28 @@
                 <option value="busy">🔴 في مشوار الآن (مشغول)</option>
                 <option value="paused">☕ غير متصل (في استراحة)</option>
             </select>
+        </div>
+
+        <!-- قسم تحديث الموقع والجي بي إس الجديد -->
+        <div class="mb-6 bg-white p-3 rounded-2xl shadow-sm border border-gray-200">
+            <label class="block text-[11px] font-black text-gray-500 mb-2">تحديث موقع العمل / الـ GPS:</label>
+            <div class="space-y-2">
+                <select id="updateDriverGov" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-gray-400">
+                    <option value="" disabled selected>اختر المحافظة...</option>
+                    <option value="القاهرة">القاهرة</option><option value="الجيزة">الجيزة</option><option value="الإسكندرية">الإسكندرية</option><option value="الدقهلية">الدقهلية</option><option value="الشرقية">الشرقية</option><option value="الغربية">الغربية</option><option value="المنوفية">المنوفية</option><option value="القليوبية">القليوبية</option><option value="البحيرة">البحيرة</option><option value="كفر الشيخ">كفر الشيخ</option><option value="دمياط">دمياط</option><option value="الإسماعيلية">الإسماعيلية</option><option value="بورسعيد">بورسعيد</option><option value="السويس">السويس</option><option value="مطروح">مطروح</option><option value="شمال سيناء">شمال سيناء</option><option value="جنوب سيناء">جنوب سيناء</option><option value="البحر الأحمر">البحر الأحمر</option><option value="الفيوم">الفيوم</option><option value="بني سويف">بني سويف</option><option value="المنيا">المنيا</option><option value="أسيوط">أسيوط</option><option value="سوهاج">سوهاج</option><option value="قنا">قنا</option><option value="الأقصر">الأقصر</option><option value="أسوان">أسوان</option><option value="الوادي الجديد">الوادي الجديد</option>
+                </select>
+                <input type="text" id="updateDriverAddress" placeholder="المدينة، القرية أو تفاصيل العنوان..." class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-gray-400">
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <button type="button" onclick="getLocation('updateDriverGov', 'updateDriverAddress', 'driver')" class="w-full bg-white border border-gray-400 text-gray-700 py-2 rounded-xl shadow-sm font-bold flex items-center justify-center gap-1 active:scale-95 transition hover:bg-gray-50 text-[11px]">
+                        <span class="text-base">📍</span> من الـ GPS
+                    </button>
+                    <button type="button" onclick="openMapModal('update')" class="w-full bg-orange-50 border border-orange-300 text-orange-700 py-2 rounded-xl shadow-sm font-bold flex items-center justify-center gap-1 active:scale-95 transition hover:bg-orange-100 text-[11px]">
+                        <span class="text-base">🗺️</span> من الخريطة
+                    </button>
+                </div>
+                <button type="button" onclick="saveDriverLocationUpdate(event)" class="w-full bg-gray-800 text-white font-extrabold py-2.5 rounded-xl shadow-md active:scale-95 mt-2 transition hover:bg-gray-900 text-sm">حفظ وتحديث الموقع 💾</button>
+                <p id="locationUpdateSuccess" class="text-green-700 text-[11px] font-bold text-center mt-2 hidden bg-green-50 p-2 rounded-lg border border-green-200">✅ تم تحديث موقعك بنجاح!</p>
+            </div>
         </div>
 
         <div class="mb-6">
@@ -481,8 +503,10 @@
     <script>
         let mapInstance = null; let mapMarker = null;
         let selectedMapGov = ""; let selectedMapAddress = "";
+        let mapTargetMode = 'register'; 
 
-        window.openMapModal = function() {
+        window.openMapModal = function(mode = 'register') {
+            mapTargetMode = mode;
             document.getElementById('mapModal').classList.remove('hidden');
             if (!mapInstance) {
                 mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 7);
@@ -554,10 +578,17 @@
 
         window.confirmMapSelection = function() {
             if(!selectedMapGov) return alert("الرجاء اختيار نقطة واضحة داخل محافظات مصر.");
-            const targetSelect = document.getElementById('regDriverGov');
-            targetSelect.value = selectedMapGov;
-            targetSelect.dispatchEvent(new Event('change'));
-            document.getElementById('regDriverAddress').value = selectedMapAddress;
+            if (mapTargetMode === 'register') {
+                const targetSelect = document.getElementById('regDriverGov');
+                targetSelect.value = selectedMapGov;
+                targetSelect.dispatchEvent(new Event('change'));
+                document.getElementById('regDriverAddress').value = selectedMapAddress;
+            } else {
+                const targetSelect = document.getElementById('updateDriverGov');
+                targetSelect.value = selectedMapGov;
+                targetSelect.dispatchEvent(new Event('change'));
+                document.getElementById('updateDriverAddress').value = selectedMapAddress;
+            }
             closeMapModal();
         };
 
@@ -734,6 +765,37 @@
             });
         };
 
+        window.saveDriverLocationUpdate = function(event) {
+            const gov = document.getElementById('updateDriverGov').value;
+            const addr = document.getElementById('updateDriverAddress').value.trim();
+            if(!gov) return alert('يرجى اختيار المحافظة أولاً.');
+            
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ جاري الحفظ...";
+
+            const myInfoStr = localStorage.getItem('wslny_driver_info');
+            if(!myInfoStr) { btn.innerHTML = originalText; return; }
+            let info = JSON.parse(myInfoStr);
+            info.location = gov;
+            localStorage.setItem('wslny_driver_info', JSON.stringify(info));
+            
+            const phone = info.phone;
+            update(ref(db, 'wslny_app/registered_drivers/driver_' + phone), { location: gov, specificAddress: addr }).then(() => {
+                if(currentDriverActiveRef) {
+                    update(currentDriverActiveRef, { location: gov });
+                }
+                document.getElementById('activeDriverPhone').innerHTML = `${phone} • 📍 محافظة ${gov.substring(0, 20)}`;
+                const msg = document.getElementById('locationUpdateSuccess');
+                msg.classList.remove('hidden');
+                btn.innerHTML = originalText;
+                setTimeout(() => msg.classList.add('hidden'), 4000);
+            }).catch(() => {
+                btn.innerHTML = originalText;
+                alert("حدث خطأ أثناء الحفظ. تأكد من اتصالك بالإنترنت.");
+            });
+        };
+
         window.activateDriverSession = function(name, phone, vType, vCond, location, isAutoLogin = false) {
             localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond, location })); localStorage.setItem('wslny_is_active', 'true');
             document.getElementById('activeDriverName').innerText = "كابتن " + name; 
@@ -745,6 +807,9 @@
                     let d = snap.val(); 
                     let avg = ((d.ratingSum || 5)/(d.ratingCount || 1)).toFixed(1); 
                     document.getElementById('driverRatingDisplay').innerText = `⭐ ${avg} (${d.ratingCount || 1} رحلات)`; 
+
+                    document.getElementById('updateDriverGov').value = d.location || location;
+                    document.getElementById('updateDriverAddress').value = d.specificAddress || '';
 
                     // حساب حالة الاشتراك والأيام المتبقية بناءً على تاريخ الانتهاء من لوحة الإدارة
                     const subBadge = document.getElementById('driverSubBadge');
