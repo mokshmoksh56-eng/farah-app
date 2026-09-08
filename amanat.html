@@ -3,9 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شاشات البيتكوين | التنبيهات مفعلة دائماً</title>
+    <title>شاشات البيتكوين | رادار الحيتان والسيولة</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        @keyframes pulse-once {
+            0% { transform: scale(1.02); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; filter: brightness(1.5); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pulse-once { animation: pulse-once 1s ease-out forwards; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-2 md:p-4 font-sans">
     
@@ -13,38 +25,59 @@
     <audio id="alertSoundNormal" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
     <audio id="alertSoundWhale" src="https://assets.mixkit.co/active_storage/sfx/2868/2868-preview.mp3" preload="auto"></audio>
 
-    <div class="max-w-[1800px] mx-auto space-y-6">
+    <div class="max-w-[1800px] mx-auto space-y-4">
         
         <!-- لوحة التحكم العلوية -->
-        <div class="bg-slate-900 p-6 rounded-xl border-2 border-indigo-900 shadow-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="bg-slate-900 p-4 rounded-xl border-2 border-indigo-900 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-indigo-400 flex items-center gap-2 mb-2">
-                    <span>🧠 خوارزمية SMC + فلتر سيولة الحيتان (⭐)</span>
+                <h1 class="text-xl font-bold text-indigo-400 flex items-center gap-2 mb-1">
+                    <span>🐋 خوارزمية SMC + رادار صفقات الحيتان</span>
                 </h1>
-                <p class="text-sm text-slate-400">أي إشارة بجانبها <span class="text-amber-400 font-bold">⭐</span> تعني أن الكسر مدعوم بضخ سيولة ضخمة (حجم تداول يفوق المتوسط بـ 150%). <span class="text-rose-400 font-bold">*اضغط في أي مكان بالشاشة مرة واحدة لفك حظر الصوت في متصفحك.*</span></p>
+                <p class="text-xs text-slate-400">يرصد التحليل الفني، ويرصد الصفقات المباشرة التي تتخطى <span class="text-amber-400 font-bold">$500,000</span> في ضربة واحدة.</p>
             </div>
             <div class="flex gap-3">
-                <!-- الزر أصبح مفعلاً بشكل افتراضي (أخضر) -->
-                <button id="soundToggleBtn" onclick="toggleSound()" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500 font-bold px-6 py-3 rounded-lg text-sm transition shadow-lg hover:bg-emerald-500/40 flex items-center gap-2 cursor-pointer">
+                <button id="soundToggleBtn" onclick="toggleSound()" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:bg-emerald-500/40 flex items-center gap-2 cursor-pointer">
                     <span id="soundIcon">🔔</span> <span id="soundText">التنبيهات مفعلة</span>
                 </button>
             </div>
         </div>
+
+        <!-- سجل التنبيهات الحية وصفقات الحيتان -->
+        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-xl p-4 flex flex-col h-56 relative overflow-hidden">
+            <!-- تأثير إضاءة لحركة الحيتان -->
+            <div id="whaleGlow" class="absolute inset-0 bg-transparent transition-colors duration-700 pointer-events-none"></div>
+            
+            <h2 class="text-sm font-bold text-white mb-3 flex items-center justify-between border-b border-slate-800 pb-2 relative z-10">
+                <div class="flex items-center gap-2">
+                    <span>📡 سجل الإشارات وتنفيذ الصفقات (Live Alerts & Tape)</span>
+                </div>
+                <span class="text-xs text-slate-400 font-normal flex items-center gap-2">
+                    <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+                    يراقب السيولة اللحظية
+                </span>
+            </h2>
+            
+            <div id="alertsLogContainer" class="flex-1 overflow-y-auto space-y-2 pr-2 relative z-10">
+                <div class="text-center text-slate-500 text-sm mt-10 animate-pulse">
+                    في انتظار رصد أول إشارة تحليل أو صفقة حوت...
+                </div>
+            </div>
+        </div>
         
         <!-- شبكة الرسوم البيانية -->
-        <div id="charts-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-4 mt-4">
+        <div id="charts-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-4 mt-2">
             <!-- سيتم حقن الشاشات هنا -->
         </div>
     </div>
 
     <script>
         const timeframes = [
-            { interval: "5m", title: "5 دقائق (مضاربة سريعة)" },
-            { interval: "15m", title: "15 دقيقة (نطاق يومي)" },
+            { interval: "5m", title: "5 دقائق" },
+            { interval: "15m", title: "15 دقيقة" },
             { interval: "30m", title: "30 دقيقة" },
-            { interval: "1h", title: "1 ساعة (اتجاه قصير)" },
-            { interval: "4h", title: "4 ساعات (اتجاه متوسط)" }, 
-            { interval: "1d", title: "يوم واحد (اتجاه عام)" }
+            { interval: "1h", title: "1 ساعة" },
+            { interval: "4h", title: "4 ساعات" }, 
+            { interval: "1d", title: "يوم واحد" }
         ];
 
         const intervalMsMap = {
@@ -52,31 +85,27 @@
             "1h": 60 * 60 * 1000, "4h": 4 * 60 * 60 * 1000, "1d": 24 * 60 * 60 * 1000
         };
 
+        const WHALE_ORDER_THRESHOLD = 500000; // 500 ألف دولار الحد الأدنى لرصد الحوت اللحظي
+
         const chartsState = {}; 
-        
-        // المتغير أصبح True افتراضياً
         let soundEnabled = true; 
         let audioUnlocked = false;
+        let isFirstAlert = true; 
 
-        // دالة لفك حظر الصوت في المتصفحات الحديثة عند أول ضغطة للمستخدم
+        // فك حظر الصوت
         function unlockAudio() {
             if (audioUnlocked) return;
             const nSound = document.getElementById('alertSoundNormal');
             const wSound = document.getElementById('alertSoundWhale');
-            
             nSound.play().then(() => { nSound.pause(); nSound.currentTime = 0; }).catch(()=>{});
             wSound.play().then(() => { wSound.pause(); wSound.currentTime = 0; }).catch(()=>{});
-            
             audioUnlocked = true;
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
         }
-
-        // الاستماع لأول تفاعل من المستخدم لفك حظر الصوت
         document.addEventListener('click', unlockAudio);
         document.addEventListener('touchstart', unlockAudio);
 
-        // دالة الزر (للإغلاق والتشغيل اليدوي)
         function toggleSound() {
             soundEnabled = !soundEnabled;
             const btn = document.getElementById('soundToggleBtn');
@@ -84,13 +113,11 @@
             const text = document.getElementById('soundText');
             
             if (soundEnabled) {
-                btn.className = "bg-emerald-500/20 text-emerald-400 border border-emerald-500 font-bold px-6 py-3 rounded-lg text-sm transition shadow-lg hover:bg-emerald-500/40 flex items-center gap-2 cursor-pointer";
-                icon.innerText = "🔔";
-                text.innerText = "التنبيهات مفعلة";
+                btn.className = "bg-emerald-500/20 text-emerald-400 border border-emerald-500 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:bg-emerald-500/40 flex items-center gap-2 cursor-pointer";
+                icon.innerText = "🔔"; text.innerText = "التنبيهات مفعلة";
             } else {
-                btn.className = "bg-rose-500/20 text-rose-400 border border-rose-500 font-bold px-6 py-3 rounded-lg text-sm transition shadow-lg hover:bg-rose-500/40 flex items-center gap-2 cursor-pointer";
-                icon.innerText = "🔕";
-                text.innerText = "تفعيل التنبيهات الصوتية";
+                btn.className = "bg-rose-500/20 text-rose-400 border border-rose-500 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:bg-rose-500/40 flex items-center gap-2 cursor-pointer";
+                icon.innerText = "🔕"; text.innerText = "تفعيل الصوت";
             }
         }
 
@@ -99,11 +126,70 @@
             const audio = document.getElementById(isWhale ? 'alertSoundWhale' : 'alertSoundNormal');
             audio.currentTime = 0;
             let playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => console.log("الصوت محظور مؤقتاً، اضغط في أي مكان بالشاشة لتفعيله."));
-            }
+            if (playPromise !== undefined) playPromise.catch(e => {});
         }
 
+        // ==========================================
+        // 🔴 دالة إضافة التنبيهات (تم تحديثها لدعم الصفقات المباشرة)
+        // ==========================================
+        function addAlertToLog(interval, text, isWhale, timestamp, signalType) {
+            const container = document.getElementById('alertsLogContainer');
+            
+            if (isFirstAlert) { container.innerHTML = ''; isFirstAlert = false; }
+
+            const date = new Date();
+            const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            let bgClass = '';
+            let frameBadge = '';
+            let whaleBadge = '';
+
+            // تصميم خاص لصفقات الحيتان اللحظية (تختلف عن إشارات التحليل الفني)
+            if (signalType === 'whale_buy') {
+                bgClass = 'bg-emerald-600/30 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] text-emerald-300';
+                frameBadge = `<span class="font-bold bg-emerald-900 border border-emerald-500 px-2 py-1 rounded text-white text-xs">⚡ تنفيذ لحظي</span>`;
+                whaleBadge = `<span class="bg-emerald-500 text-slate-900 px-2 py-0.5 rounded text-xs font-extrabold animate-pulse">🐋 حوت يشتري الماركت!</span>`;
+                triggerGlow('emerald');
+            } 
+            else if (signalType === 'whale_sell') {
+                bgClass = 'bg-rose-600/30 border-rose-400 shadow-[0_0_15px_rgba(225,29,72,0.3)] text-rose-300';
+                frameBadge = `<span class="font-bold bg-rose-900 border border-rose-500 px-2 py-1 rounded text-white text-xs">⚡ تنفيذ لحظي</span>`;
+                whaleBadge = `<span class="bg-rose-500 text-white px-2 py-0.5 rounded text-xs font-extrabold animate-pulse">🐋 حوت يبيع الماركت!</span>`;
+                triggerGlow('rose');
+            } 
+            // تصميم إشارات التحليل الفني (SMC)
+            else {
+                bgClass = signalType === 'bullish' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400';
+                frameBadge = `<span class="font-bold bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white text-xs">فريم ${interval}</span>`;
+                if (isWhale) whaleBadge = `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/50 px-2 py-0.5 rounded text-xs font-bold animate-pulse">⭐ سيولة مؤكدة!</span>`;
+            }
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `flex justify-between items-center p-2 rounded border ${bgClass} animate-pulse-once`;
+            
+            alertDiv.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="font-mono text-xs text-slate-400 bg-slate-950 px-2 py-1 rounded">${timeStr}</span>
+                    ${frameBadge}
+                    <span class="font-bold text-sm ml-2">${text}</span>
+                </div>
+                <div>${whaleBadge}</div>
+            `;
+            
+            container.prepend(alertDiv);
+            if (container.children.length > 20) container.removeChild(container.lastChild); // زيادة السجل إلى 20
+        }
+
+        // إضاءة خلفية للصندوق عند دخول حوت
+        function triggerGlow(color) {
+            const glow = document.getElementById('whaleGlow');
+            glow.className = color === 'emerald' ? 'absolute inset-0 bg-emerald-500/20 transition-colors duration-300 pointer-events-none' : 'absolute inset-0 bg-rose-500/20 transition-colors duration-300 pointer-events-none';
+            setTimeout(() => { glow.className = 'absolute inset-0 bg-transparent transition-colors duration-700 pointer-events-none'; }, 1000);
+        }
+
+        // ==========================================
+        // تهيئة الرسوم البيانية
+        // ==========================================
         async function initCharts() {
             const gridContainer = document.getElementById('charts-grid');
 
@@ -112,16 +198,16 @@
                 chartCard.className = "bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col shadow-lg";
                 
                 const header = document.createElement('div');
-                header.className = "bg-slate-800 border-b border-slate-700 p-3 flex justify-between items-center";
+                header.className = "bg-slate-800 border-b border-slate-700 p-2 flex justify-between items-center";
                 header.innerHTML = `
-                    <span class="text-sm font-bold text-white">${tf.title}</span> 
-                    <div class="flex items-center gap-3">
-                        <span id="timer-${tf.interval}" class="text-cyan-400 font-mono text-sm font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700 shadow-inner">⏳ --:--</span>
+                    <span class="text-sm font-bold text-white pl-2">${tf.title}</span> 
+                    <div class="flex items-center gap-2">
+                        <span id="timer-${tf.interval}" class="text-cyan-400 font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700">⏳ --:--</span>
                     </div>
                 `;
                 
                 const chartDiv = document.createElement('div');
-                chartDiv.className = "w-full h-[400px] relative"; 
+                chartDiv.className = "w-full h-[350px] relative"; 
                 
                 chartCard.appendChild(header);
                 chartCard.appendChild(chartDiv);
@@ -131,7 +217,7 @@
                     autoSize: true,
                     layout: { background: { type: 'solid', color: '#0f172a' }, textColor: '#94a3b8' },
                     grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
-                    timeScale: { timeVisible: true, borderColor: '#334155', rightOffset: 10 },
+                    timeScale: { timeVisible: true, borderColor: '#334155', rightOffset: 5 },
                     crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
                 });
 
@@ -168,9 +254,9 @@
                 const timerEl = document.getElementById(`timer-${tf.interval}`);
                 if (timerEl) {
                     if (h === 0 && m === 0 && s <= 15) {
-                        timerEl.className = "text-rose-400 font-mono text-sm font-bold bg-rose-950/30 px-2 py-1 rounded border border-rose-500/50 shadow-inner animate-pulse";
+                        timerEl.className = "text-rose-400 font-mono text-xs font-bold bg-rose-950/30 px-2 py-1 rounded border border-rose-500/50 shadow-inner animate-pulse";
                     } else {
-                        timerEl.className = "text-cyan-400 font-mono text-sm font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700 shadow-inner";
+                        timerEl.className = "text-cyan-400 font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700 shadow-inner";
                     }
                     timerEl.innerText = `⏳ ${timeString}`;
                 }
@@ -184,18 +270,13 @@
                 
                 const state = chartsState[interval];
                 state.data = data.map(d => ({
-                    time: Math.floor(d[0] / 1000), 
-                    open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]),
-                    volume: parseFloat(d[5])
+                    time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
                 }));
 
                 recalculateAndDraw(interval);
             } catch (e) { console.error(e); }
         }
 
-        // ==========================================
-        // 🧠 الخوارزمية العميقة مع فلتر السيولة
-        // ==========================================
         function recalculateAndDraw(interval) {
             const state = chartsState[interval];
             const candles = state.data;
@@ -228,21 +309,22 @@
                 for(let v = Math.max(0, i-20); v < i; v++) volSum += candles[v].volume;
                 let avgVol = volSum / 20;
                 let isWhaleVolume = current.volume > (avgVol * 1.5); 
-                let star = isWhaleVolume ? "⭐ " : "";
                 
                 let recentHigh = swingHighs.filter(h => h.index < i).pop();
                 let recentLow = swingLows.filter(l => l.index < i).pop();
                 
-                let hasSignal = false;
+                let hasSignal = false, signalText = "", signalType = null;
 
                 if (recentHigh && recentLow) {
                     if (current.high > recentHigh.value && current.close < recentHigh.value && current.close < current.open) {
-                        markers.push({ time: current.time, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `${star}🩸 فخ بيع` });
-                        hasSignal = true; 
+                        signalText = `فخ بيع (سيولة مشترين انضربت)`;
+                        markers.push({ time: current.time, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `🩸 فخ بيع` });
+                        hasSignal = true; signalType = 'bearish';
                     }
                     else if (current.low < recentLow.value && current.close > recentLow.value && current.close > current.open) {
-                        markers.push({ time: current.time, position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: `${star}🟢 فخ شراء` });
-                        hasSignal = true; 
+                        signalText = `فخ شراء (سيولة بائعين انضربت)`;
+                        markers.push({ time: current.time, position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: `🟢 فخ شراء` });
+                        hasSignal = true; signalType = 'bullish';
                     }
                 }
 
@@ -251,20 +333,22 @@
 
                 if (inSqueeze) {
                     if (current.close > current.open && current.close > prev.high && current.open < prev.close) {
-                        markers.push({ time: current.time, position: 'belowBar', color: '#3b82f6', shape: 'arrowUp', text: `${star}🚀 صعود مؤكد` });
+                        signalText = `صعود مؤكد (اختراق نطاق الخنق)`;
+                        markers.push({ time: current.time, position: 'belowBar', color: '#3b82f6', shape: 'arrowUp', text: `🚀 صعود مؤكد` });
                         inSqueeze = false;
-                        hasSignal = true; 
+                        hasSignal = true; signalType = 'bullish';
                     }
                     else if (current.close < current.open && current.close < prev.low && current.open > prev.close) {
-                        markers.push({ time: current.time, position: 'aboveBar', color: '#f97316', shape: 'arrowDown', text: `${star}💥 هبوط مؤكد` });
+                        signalText = `هبوط مؤكد (كسر نطاق الخنق)`;
+                        markers.push({ time: current.time, position: 'aboveBar', color: '#f97316', shape: 'arrowDown', text: `💥 هبوط مؤكد` });
                         inSqueeze = false;
-                        hasSignal = true; 
+                        hasSignal = true; signalType = 'bearish';
                     }
                 }
 
-                // إطلاق التنبيه الصوتي فقط في الوقت اللحظي
                 if (hasSignal && i === candles.length - 1 && state.lastAlertedCandleTime !== current.time) {
                     playAlert(isWhaleVolume);
+                    addAlertToLog(interval, signalText, isWhaleVolume, current.time, signalType);
                     state.lastAlertedCandleTime = current.time;
                 }
             }
@@ -276,14 +360,10 @@
             const lastConfirmedLow = swingLows.length > 0 ? swingLows[swingLows.length - 1].value : null;
 
             if (state.resLineObj) state.candleSeries.removePriceLine(state.resLineObj);
-            if (lastConfirmedHigh) {
-                state.resLineObj = state.candleSeries.createPriceLine({ price: lastConfirmedHigh, color: '#ef4444', lineWidth: 2, lineStyle: 2, title: 'مقاومة' });
-            }
+            if (lastConfirmedHigh) state.resLineObj = state.candleSeries.createPriceLine({ price: lastConfirmedHigh, color: '#ef4444', lineWidth: 2, lineStyle: 2, title: 'مقاومة' });
 
             if (state.supLineObj) state.candleSeries.removePriceLine(state.supLineObj);
-            if (lastConfirmedLow) {
-                state.supLineObj = state.candleSeries.createPriceLine({ price: lastConfirmedLow, color: '#10b981', lineWidth: 2, lineStyle: 2, title: 'دعم' });
-            }
+            if (lastConfirmedLow) state.supLineObj = state.candleSeries.createPriceLine({ price: lastConfirmedLow, color: '#10b981', lineWidth: 2, lineStyle: 2, title: 'دعم' });
             
             const lastCandle = candles[candles.length - 1];
             let topData = swingHighs.map(h => ({time: h.time, value: h.value}));
@@ -297,16 +377,45 @@
         }
 
         // ==========================================
-        // اتصال حي لتحديث الرسوم البيانية بالثانية
+        // 🚀 الاتصال اللحظي المجمع (الشموع + صفقات الحيتان المباشرة)
         // ==========================================
         function connectMultiplexWebSocket() {
-            const streams = timeframes.map(tf => `btcusdt@kline_${tf.interval}`).join('/');
-            const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+            // إضافة قناة aggTrade لرصد الصفقات المنفردة اللحظية
+            const streams = timeframes.map(tf => `btcusdt@kline_${tf.interval}`);
+            streams.push('btcusdt@aggTrade'); 
+            
+            const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams.join('/')}`;
             const ws = new WebSocket(wsUrl);
 
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
                 
+                // 1. معالجة الصفقات اللحظية المباشرة (رصد الحيتان)
+                if (msg.stream === 'btcusdt@aggTrade') {
+                    const trade = msg.data;
+                    const price = parseFloat(trade.p);
+                    const qty = parseFloat(trade.q);
+                    const isSell = trade.m; // true = taker sold (باع للسوق), false = taker bought (اشترى من السوق)
+                    const totalValue = price * qty;
+
+                    // إذا تخطت الصفقة الواحدة نصف مليون دولار!
+                    if (totalValue >= WHALE_ORDER_THRESHOLD) {
+                        const btcQty = qty.toFixed(1);
+                        const valueInK = (totalValue / 1000).toFixed(0) + 'K';
+                        
+                        if (!isSell) {
+                            // شراء ماركت ضخم
+                            playAlert(true); // تشغيل صوت الحوت
+                            addAlertToLog('لحظي', `شراء ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_buy');
+                        } else {
+                            // بيع ماركت ضخم
+                            playAlert(true); // تشغيل صوت الحوت
+                            addAlertToLog('لحظي', `بيع ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_sell');
+                        }
+                    }
+                }
+                
+                // 2. معالجة الشموع (التحليل الفني)
                 if (msg.stream && msg.stream.includes('kline')) {
                     const interval = msg.data.k.i;
                     const k = msg.data.k;
