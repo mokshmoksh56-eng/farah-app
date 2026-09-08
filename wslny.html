@@ -976,23 +976,26 @@
                 const uniqueRegData = {}; Object.values(snapshot.val() || {}).forEach(d => { if(d.phone && d.account_status !== 'deleted') uniqueRegData[d.phone.toString().replace(/^0+/, '').trim()] = d; });
                 onValue(ref(db, 'wslny_app/active_drivers'), (activeSnap) => {
                     const activeData = activeSnap.val() || {}; let tableHTML = `<table class="w-full text-right bg-white"><thead class="bg-gray-100 border-b border-gray-200 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الزميل</th><th class="px-4 py-3 font-extrabold text-center">الحالة</th></tr></thead><tbody class="divide-y divide-gray-100">`; let found = false;
+                    
                     Object.values(uniqueRegData).forEach(driver => {
-                        found = true; const activeD = activeData["driver_" + driver.phone]; let isMe = (driver.phone.toString().replace(/^0+/, '').trim() === myPhone);
+                        const activeD = activeData["driver_" + driver.phone]; 
+                        let isMe = (driver.phone.toString().replace(/^0+/, '').trim() === myPhone);
                         
-                        let effectiveActiveD = activeD;
+                        // التعديل الجديد: إذا كان السائق مخفياً (اختار إخفاء نفسه) وهو ليس أنا.. يتم تجاهله تماماً ولن يُرسم صفّه.
                         if (activeD && activeD.isVisible === false && !isMe) {
-                            effectiveActiveD = null;
+                            return; // تخطّي هذا اللوب
                         }
 
+                        found = true; 
                         let dotColor = "bg-gray-300", sText = "غير متصل", sColor = "text-gray-500";
-                        if (effectiveActiveD) { 
-                            if (effectiveActiveD.status === 'active') { dotColor = "bg-green-500 animate-pulse"; sText = "متاح"; sColor = "text-green-700"; } 
-                            else if (effectiveActiveD.status === 'busy') { dotColor = "bg-red-500 animate-pulse"; sText = "مشغول"; sColor = "text-red-700"; } 
+                        if (activeD) { 
+                            if (activeD.status === 'active') { dotColor = "bg-green-500 animate-pulse"; sText = "متاح"; sColor = "text-green-700"; } 
+                            else if (activeD.status === 'busy') { dotColor = "bg-red-500 animate-pulse"; sText = "مشغول"; sColor = "text-red-700"; } 
                             else { dotColor = "bg-yellow-400"; sText = "استراحة"; sColor = "text-yellow-700"; } 
                         }
                         
                         let shortLoc = driver.location || 'غير محدد'; 
-                        tableHTML += `<tr class="${isMe ? 'bg-blue-50/50' : 'hover:bg-gray-50'} ${!effectiveActiveD ? 'opacity-60 grayscale-[50%]' : ''}">
+                        tableHTML += `<tr class="${isMe ? 'bg-blue-50/50' : 'hover:bg-gray-50'} ${!activeD ? 'opacity-60 grayscale-[50%]' : ''}">
                             <td class="px-4 py-3">
                                 <div class="font-extrabold text-gray-900 text-sm">${driver.name} 
                                     ${isMe ? `<span class="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">أنت</span>` : ""} 
@@ -1005,7 +1008,8 @@
                             </td>
                         </tr>`;
                     });
-                    document.getElementById('colleaguesTableContainer').innerHTML = found ? tableHTML + `</tbody></table>` : `<div class="p-4 text-center text-sm text-gray-500">لا يوجد زملاء.</div>`;
+                    
+                    document.getElementById('colleaguesTableContainer').innerHTML = found ? tableHTML + `</tbody></table>` : `<div class="p-4 text-center text-sm text-gray-500 font-bold">لا يوجد زملاء متاحين حالياً.</div>`;
                 });
             });
         };
