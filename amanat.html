@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>شاشات البيتكوين | توصيل القمم</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- تم استخدام سيرفر jsDelivr الأسرع والأكثر استقراراً لضمان عمل المكتبة -->
-    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- تم تغيير سيرفر المكتبة إلى النسخة الأحدث والأكثر استقراراً (unpkg) -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-2 md:p-4 font-sans">
     
@@ -15,16 +15,16 @@
         <div class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-lg">
             <div>
                 <h1 class="text-2xl font-bold text-emerald-400 flex items-center gap-2">
-                    <span>📊 لوحة شموع البيتكوين - قمم متصلة</span>
+                    <span>📊 لوحة شموع البيتكوين - توصيل الأذيال العلوية</span>
                 </h1>
-                <p class="text-slate-400 text-sm mt-1">يتم رسم خط أصفر تلقائياً يربط بين الذيل العلوي لكل شمعة والشمعة التي تليها (البيانات من Binance لضمان الاستقرار).</p>
+                <p class="text-slate-400 text-sm mt-1">يتم رسم خط أصفر تلقائياً يربط بين الذيل العلوي لكل شمعة والشمعة التي تليها مباشرة.</p>
             </div>
             <div class="mt-4 md:mt-0 flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
                 <span class="relative flex h-3 w-3">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                 </span>
-                <span class="text-sm font-semibold text-slate-300">السوق يعمل (Live)</span>
+                <span class="text-sm font-semibold text-slate-300">متصل بالسوق (Binance)</span>
             </div>
         </div>
 
@@ -35,7 +35,12 @@
     </div>
 
     <script>
-        // إعداد الفريمات الزمنية الخاصة بمنصة Binance
+        // التأكد من تحميل المكتبة بنجاح
+        if (typeof LightweightCharts === 'undefined') {
+            alert("⚠️ تعذر تحميل مكتبة الرسوم البيانية. يرجى التأكد من اتصالك بالإنترنت أو عدم حظر المتصفح للمكتبات الخارجية.");
+        }
+
+        // إعداد الفريمات الزمنية الخاصة بمنصة Binance (الأكثر استقراراً للبيانات المفتوحة)
         const timeframes = [
             { interval: "5m", title: "5 دقائق" },
             { interval: "15m", title: "15 دقيقة" },
@@ -51,7 +56,6 @@
 
         const gridContainer = document.getElementById('charts-grid');
 
-        // دالة إنشاء الرسوم البيانية وجلب البيانات
         async function createChart(tf, index) {
             // 1. بناء هيكل البطاقة
             const chartCard = document.createElement('div');
@@ -68,9 +72,9 @@
             chartCard.appendChild(chartDiv);
             gridContainer.appendChild(chartCard);
 
-            // 2. إعداد الرسم البياني المتقدم
+            // 2. إعداد الرسم البياني
             const chart = LightweightCharts.createChart(chartDiv, {
-                autoSize: true, // يضمن ظهور الرسم البياني وتأقلمه مع حجم الشاشة فوراً
+                autoSize: true, // يتأقلم تلقائياً مع حجم الشاشة
                 layout: {
                     background: { type: 'solid', color: '#0f172a' },
                     textColor: '#94a3b8',
@@ -82,6 +86,7 @@
                 timeScale: {
                     timeVisible: true,
                     borderColor: '#334155',
+                    rightOffset: 5, // إزاحة بسيطة لليسار لرؤية الشمعة الحالية بوضوح
                 },
                 rightPriceScale: {
                     borderColor: '#334155',
@@ -102,60 +107,59 @@
 
             // 4. سلسلة الخط الأصفر التي ستربط القمم (الأذيال العلوية)
             const highLineSeries = chart.addLineSeries({
-                color: '#fbbf24', 
+                color: '#fbbf24', // لون الخط أصفر
                 lineWidth: 2,
                 crosshairMarkerVisible: true,
                 lastValueVisible: false,
                 priceLineVisible: false
             });
 
-            // 5. جلب بيانات السوق من Binance (لا يتم حظرها من المتصفحات)
+            // 5. جلب بيانات السوق
             try {
-                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${tf.interval}&limit=150`);
-                if (!res.ok) throw new Error("Network response was not ok");
+                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${tf.interval}&limit=200`);
+                if (!res.ok) throw new Error("تعذر جلب البيانات");
                 const data = await res.json();
 
                 const candlesData = [];
                 const highsData = [];
+                const uniqueTimes = new Set(); // لمنع تكرار الشموع الذي يسبب انهيار الرسم
 
                 data.forEach(d => {
-                    let time;
-                    // معالجة صيغة الوقت بدقة لتجنب أخطاء الرسم البياني في الفريمات الكبيرة
-                    if (["1d", "1w", "1M"].includes(tf.interval)) {
-                        const date = new Date(d[0]);
-                        const y = date.getUTCFullYear();
-                        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-                        const day = String(date.getUTCDate()).padStart(2, '0');
-                        time = `${y}-${m}-${day}`;
-                    } else {
-                        time = Math.floor(d[0] / 1000);
-                    }
+                    // تحويل التوقيت إلى ثواني (الشرط الأساسي لعمل المكتبة بدون أخطاء)
+                    const time = Math.floor(d[0] / 1000); 
+                    
+                    // تجاهل الشموع المكررة إن وجدت
+                    if (uniqueTimes.has(time)) return;
+                    uniqueTimes.add(time);
 
                     const open = parseFloat(d[1]);
                     const high = parseFloat(d[2]);
                     const low = parseFloat(d[3]);
                     const close = parseFloat(d[4]);
 
-                    // تجهيز بيانات الشمعة والخط
+                    // دمج البيانات
                     candlesData.push({ time, open, high, low, close });
+                    // رسم الخط يعتمد فقط على قيمة (high)
                     highsData.push({ time, value: high });
                 });
 
-                // تغذية الرسم البياني بالبيانات وتحديث العنوان
+                // تغذية الرسم البياني
                 candleSeries.setData(candlesData);
                 highLineSeries.setData(highsData);
                 header.innerText = `فريم: ${tf.title}`;
                 
             } catch (error) {
                 console.error(`خطأ في جلب بيانات فريم ${tf.interval}:`, error);
-                header.innerText = `فريم: ${tf.title} (تعذر الاتصال)`;
-                header.classList.add('text-red-400');
+                header.innerText = `فريم: ${tf.title} (حدث خطأ ⚠️)`;
+                header.classList.add('text-rose-400');
             }
         }
 
         // تشغيل العملية لجميع الفريمات بمجرد فتح الصفحة
-        timeframes.forEach((tf, index) => {
-            createChart(tf, index);
+        window.addEventListener('DOMContentLoaded', () => {
+            timeframes.forEach((tf, index) => {
+                createChart(tf, index);
+            });
         });
     </script>
 </body>
