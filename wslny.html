@@ -491,7 +491,6 @@
                         if(role === 'driver') { window.driverLat = lat; window.driverLon = lon; }
                         if(role === 'customer') { window.custLat = lat; window.custLon = lon; }
                         
-                        // استخدام Mapbox للتحويل الجغرافي العكسي
                         fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
                         .then(res => res.json())
                         .then(data => {
@@ -525,7 +524,10 @@
                             }
                         }).catch(() => { btn.innerHTML = originalText; alert("خطأ في الاتصال بخادم Mapbox."); });
                     }, 
-                    (error) => { btn.innerHTML = originalText; if (error.code === 1) { alert("المتصفح يمنع الوصول للموقع!"); } else if (error.code === 3) { alert("انتهى وقت البحث عن الموقع."); } else { alert("يرجى التأكد من تشغيل زر الـ GPS في هاتفك."); } }, 
+                    (error) => { 
+                        btn.innerHTML = originalText; 
+                        alert("يرجى التأكد من تفعيل الـ GPS 📍"); 
+                    }, 
                     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
             } else { alert("متصفحك أو جهازك لا يدعم تحديد الموقع."); }
@@ -552,7 +554,6 @@
             if (!mapInstance) {
                 mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 7);
                 
-                // استخدام شكل خرائط Mapbox الحديث
                 L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
                     maxZoom: 18,
                     attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
@@ -576,7 +577,9 @@
                         mapInstance.setView([lat, lng], 14);
                         mapMarker.setLatLng([lat, lng]);
                         updateMapAddress(lat, lng);
-                    });
+                    }, err => {
+                        // الصمت هنا متعمد حتى لا يزعج المستخدم أثناء فتح الخريطة فقط
+                    }, { enableHighAccuracy: true, timeout: 10000 });
                 }
             }
             setTimeout(() => { mapInstance.invalidateSize(); }, 300);
@@ -668,7 +671,637 @@
                     btn.innerHTML = originalContent; 
                 }, err => {
                     btn.innerHTML = originalContent; 
-                    alert("يرجى تشغيل الـ GPS (الموقع) في هاتفك أولاً للسماح للتطبيق بالوصول لمكانك.");
+                    alert("يرجى التأكد من تفعيل الـ GPS 📍");
+                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            } else {
+                alert("متصفحك لا يدعم تحديد الموقع.");
+            }
+        };
+    </script>
+
+    <!-- سكريبت Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, set, get, update, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", authDomain: "azemaa-proo.firebaseapp.com", databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", projectId: "azemaa-proo", storageBucket: "azemaa-proo.firebasestorage.app", messagingSenderId: "787350492977", appId: "1:787350492977:web:84061dcf31622fcb07c210" };
+        const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);
+        
+        window.firebaseDb = db;
+        let currentDriverActiveRef = null; let watchGeoId = null;
+        signInAnonymously(auth).catch((error) => console.error("Auth error:", error));
+        
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                if ("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
+                if (localStorage.getItem('wslny_is_active') === 'true') {
+                    const savedInfo = JSON.parse(localStorage.getItem('wslny_driver_info'));
+                    if(savedInfo) {
+                        get(ref(db, 'wslny_app/registered_drivers/driver_' + savedInfo.phone)).then(snap => {
+                            document.getElementById('auth-loader').style.display = 'none';
+                            if(snap.exists()) {
+                                const data = snap.val();
+                                if(data.account_status === 'blocked') return window.confirmGoOffline();
+                                if(data.account_status === 'deleted') return window.confirmGoOffline(); 
+                                
+                                const isSubscribed = data.isSubscribed || false;
+                                const isSubValid = data.sub_expiry && data.sub_expiry > Date.now();
+                                const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
+                                const joinDate = data.joinDate || Date.now();
+                                const isTrialExpired = (Date.now() - joinDate) > TRIAL_MS;
+
+                                if (isSubscribed) {
+                                    if (!isSubValid) {
+                                        showView('subscriptionView');
+                                    } else {
+                                        window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد', true);
+                                    }
+                                } else {
+                                    if (isTrialExpired) {
+                                        showView('subscriptionView');
+                                    } else {
+                                        window.activateDriverSession(savedInfo.name, savedInfo.phone, savedInfo.vType, savedInfo.vCond, savedInfo.location || 'غير محدد', true);
+                                    }
+                                }
+                            } else {
+                                window.confirmGoOffline();
+                            }
+                        }).catch(() => { document.getElementById('auth-loader').style.display = 'none'; });
+                    } else { document.getElementById('auth-loader').style.display = 'none'; }
+                } else { document.getElementById('auth-loader').style.display = 'none'; }
+            }
+        });
+
+        window.submitRating = function() {
+            const phone = document.getElementById('ratingDriverPhone').value; const stars = parseInt(document.getElementById('selectedRating').value);
+            const refPath = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
+            get(refPath).then(snap => { if(snap.exists()) { let d = snap.val(); let currentSum = d.ratingSum || 0; let currentCount = d.ratingCount || 0; update(refPath, { ratingSum: currentSum + stars, ratingCount: currentCount + 1 }).then(() => { alert("تم إرسال التقييم بنجاح!"); document.getElementById('ratingModal').classList.add('hidden'); }); } });
+        };
+
+        window.registerDriver = function(e) {
+            e.preventDefault(); 
+            const btn = document.getElementById('btnRegister');
+            const vType = document.getElementById('regDriverVType').value;
+            if (!vType) return alert("يرجى اختيار شكل المركبة.");
+            
+            btn.innerText = "⏳ جاري الحفظ...";
+            const phone = document.getElementById('regDriverPhone').value;
+            const name = document.getElementById('regDriverName').value;
+            const pin = document.getElementById('regDriverPin').value; 
+            const vCond = document.getElementById('regDriverVCond').value;
+            const gov = document.getElementById('regDriverGov').value;
+            const address = document.getElementById('regDriverAddress').value.trim();
+
+            const permanentRef = ref(db, 'wslny_app/registered_drivers/driver_' + phone);
+            
+            get(permanentRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    if(data.account_status === 'deleted') {
+                        let oldJoinDate = data.joinDate || Date.now();
+                        let oldSubExpiry = data.sub_expiry || 0;
+                        
+                        set(permanentRef, { 
+                            name: name, phone: phone, pin: pin, vType: vType, vCond: vCond, 
+                            location: gov, specificAddress: address, 
+                            joinDate: oldJoinDate, 
+                            sub_expiry: oldSubExpiry,
+                            ratingSum: data.ratingSum || 5, ratingCount: data.ratingCount || 1,
+                            account_status: 'active' 
+                        }).then(() => {
+                            localStorage.setItem('wslny_saved_phone', phone); localStorage.setItem('wslny_saved_pin', pin);
+                            window.activateDriverSession(name, phone, vType, vCond, gov); btn.innerText = "حفظ وبدء العمل";
+                        });
+                    } else {
+                        btn.innerText = "حفظ وبدء العمل"; 
+                        return alert("⛔ هذا الرقم مسجل بالفعل! يرجى الذهاب لصفحة تسجيل الدخول."); 
+                    }
+                } else {
+                    let joinD = Date.now();
+                    set(permanentRef, { 
+                        name: name, phone: phone, pin: pin, vType: vType, vCond: vCond, 
+                        location: gov, specificAddress: address, joinDate: joinD, sub_expiry: 0, 
+                        ratingSum: 5, ratingCount: 1, account_status: 'active' 
+                    }).then(() => {
+                        localStorage.setItem('wslny_saved_phone', phone); localStorage.setItem('wslny_saved_pin', pin);
+                        window.activateDriverSession(name, phone, vType, vCond, gov); btn.innerText = "حفظ وبدء العمل";
+                    });
+                }
+            });
+        };
+
+        window.loginDriver = function(e) {
+            e.preventDefault(); const btn = document.getElementById('btnLogin'); const phone = document.getElementById('loginPhoneInput').value; const pin = document.getElementById('loginPinInput').value; btn.innerText = "⏳ جاري البحث...";
+            get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    if(data.account_status === 'blocked') { btn.innerText = "دخول وبدء العمل"; return alert("⛔ تم إيقاف حسابك."); }
+                    if(data.account_status === 'deleted') { btn.innerText = "دخول وبدء العمل"; return alert("⛔ هذا الحساب محذوف. يرجى (تسجيل سائق جديد) بنفس الرقم لاستعادة حسابك القديم."); }
+                    if (data.pin && data.pin !== pin) { btn.innerText = "دخول وبدء العمل"; return alert("❌ الرقم السري غير صحيح! يرجى التأكد والمحاولة مرة أخرى."); }
+                    
+                    const isSubscribed = data.isSubscribed || false;
+                    const isSubValid = data.sub_expiry && data.sub_expiry > Date.now();
+                    const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
+                    const joinDate = data.joinDate || Date.now();
+                    const isTrialExpired = (Date.now() - joinDate) > TRIAL_MS;
+
+                    if (isSubscribed) {
+                        if (!isSubValid) {
+                            btn.innerText = "دخول وبدء العمل";
+                            localStorage.setItem('wslny_saved_phone', phone);
+                            showView('subscriptionView');
+                            return;
+                        }
+                    } else {
+                        if (isTrialExpired) {
+                            btn.innerText = "دخول وبدء العمل";
+                            localStorage.setItem('wslny_saved_phone', phone);
+                            showView('subscriptionView');
+                            return;
+                        }
+                    }
+
+                    localStorage.setItem('wslny_saved_phone', phone); localStorage.setItem('wslny_saved_pin', pin);
+                    window.activateDriverSession(data.name, data.phone, data.vType, data.vCond, data.location || 'غير محدد'); btn.innerText = "دخول وبدء العمل";
+                } else { alert("الرقم غير مسجل! قم بإنشاء حساب جديد أولاً."); btn.innerText = "دخول وبدء العمل"; }
+            });
+        };
+
+        window.changeStatusDropdown = function(nextStatus) { if(currentDriverActiveRef) update(currentDriverActiveRef, { status: nextStatus }); localStorage.setItem('wslny_driver_status', nextStatus); window.updateDriverUI(nextStatus); };
+
+        window.updateDriverUI = function(status) {
+            const select = document.getElementById('driverStatusSelect');
+            if(select) {
+                select.value = status;
+                if (status === 'active') { select.className = "w-full px-4 py-3 border-2 border-green-400 bg-green-50 rounded-xl font-black text-green-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors"; } 
+                else if (status === 'busy') { select.className = "w-full px-4 py-3 border-2 border-red-400 bg-red-50 rounded-xl font-black text-red-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors"; } 
+                else { select.className = "w-full px-4 py-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl font-black text-yellow-800 outline-none focus:ring-2 focus:ring-green-500 transition-colors"; }
+            }
+        };
+
+        window.listenToNotifications = function() {
+            const myInfoStr = localStorage.getItem('wslny_driver_info'); if(!myInfoStr) return; const myPhone = JSON.parse(myInfoStr).phone; const notifRef = ref(db, 'wslny_app/notifications/driver_' + myPhone);
+            onValue(notifRef, (snap) => {
+                if(snap.exists()) {
+                    const data = snap.val();
+                    if(Date.now() - data.timestamp < 60000) {
+                        if(data.type === 'deleted') { alert("⚠️ تنبيه: تم حذف حسابك نهائياً من قبل الإدارة."); localStorage.clear(); window.location.hash = 'homeView'; window.location.reload(); return; }
+                        let msgType = data.type === 'call' ? 'يتصل بك هاتفياً' : 'يفتح محادثة واتساب معك'; let p = data.pickup.split(' - ').slice(-1)[0]; let d = data.dropoff.split(' - ').slice(-1)[0]; let notifTitle = "🚚 طلب جديد من نَقْلَة!"; let notifBody = `زبون ${msgType}.\nمن: ${p} ⬅️ إلى: ${d}`;
+                        if ("Notification" in window && Notification.permission === "granted") { try { new Notification(notifTitle, { body: notifBody, icon: "https://cdn-icons-png.flaticon.com/512/7545/7545587.png", tag: "naqla_order" }); } catch (e) {} }
+                        const banner = document.getElementById('driverNotificationBanner'); const icon = document.getElementById('notificationIcon'); const text = document.getElementById('notificationText');
+                        icon.innerText = data.type === 'call' ? '📞' : '💬'; text.innerHTML = `زبون <b>${msgType}</b> الآن لطلب رحلة.<br>📍 <b>من:</b> ${p}<br>🏁 <b>إلى:</b> ${d}`;
+                        banner.classList.remove('hidden'); if(navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]); setTimeout(() => banner.classList.add('hidden'), 25000);
+                    }
+                }
+            });
+        };
+
+        window.saveDriverLocationUpdate = function(event) {
+            const gov = document.getElementById('updateDriverGov').value;
+            const addr = document.getElementById('updateDriverAddress').value.trim();
+            if(!gov) return alert('يرجى اختيار المحافظة أولاً.');
+            
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ جاري الحفظ...";
+
+            const myInfoStr = localStorage.getItem('wslny_driver_info');
+            if(!myInfoStr) { btn.innerHTML = originalText; return; }
+            let info = JSON.parse(myInfoStr);
+            info.location = gov;
+            localStorage.setItem('wslny_driver_info', JSON.stringify(info));
+            
+            const phone = info.phone;
+            update(ref(db, 'wslny_app/registered_drivers/driver_' + phone), { location: gov, specificAddress: addr }).then(() => {
+                if(currentDriverActiveRef) {
+                    update(currentDriverActiveRef, { location: gov });
+                }
+                document.getElementById('activeDriverPhone').innerHTML = `${phone} • 📍 محافظة ${gov.substring(0, 20)}`;
+                const msg = document.getElementById('locationUpdateSuccess');
+                msg.classList.remove('hidden');
+                btn.innerHTML = originalText;
+                setTimeout(() => msg.classList.add('hidden'), 4000);
+            }).catch(() => {
+                btn.innerHTML = originalText;
+                alert("حدث خطأ أثناء الحفظ. تأكد من اتصالك بالإنترنت.");
+            });
+        };
+
+        window.activateDriverSession = function(name, phone, vType, vCond, location, isAutoLogin = false) {
+            localStorage.setItem('wslny_driver_info', JSON.stringify({ name, phone, vType, vCond, location })); localStorage.setItem('wslny_is_active', 'true');
+            document.getElementById('activeDriverName').innerText = "كابتن " + name; 
+            document.getElementById('activeDriverPhone').innerText = phone + ` • 📍 محافظة ${location.substring(0, 20)}`; 
+            document.getElementById('activeDriverVType').innerText = "🚚 " + vType;
+            
+            get(ref(db, 'wslny_app/registered_drivers/driver_' + phone)).then(snap => { 
+                if(snap.exists()) { 
+                    let d = snap.val(); 
+                    let avg = ((d.ratingSum || 5)/(d.ratingCount || 1)).toFixed(1); 
+                    document.getElementById('driverRatingDisplay').innerText = `⭐ ${avg} (${d.ratingCount || 1} رحلات)`; 
+
+                    document.getElementById('updateDriverGov').value = d.location || location;
+                    document.getElementById('updateDriverAddress').value = d.specificAddress || '';
+
+                    const subBadge = document.getElementById('driverSubBadge');
+                    const now = Date.now();
+                    const isSubscribed = d.isSubscribed || false;
+
+                    if (isSubscribed) {
+                        if (d.sub_expiry && d.sub_expiry > now) {
+                            const remainingDays = Math.ceil((d.sub_expiry - now) / (1000 * 60 * 60 * 24));
+                            let colorClass = remainingDays <= 5 ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-green-100 text-green-800 border-green-300';
+                            subBadge.innerHTML = `✅ اشتراك ساري (باقي ${remainingDays} يوم)`;
+                            subBadge.className = `mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block border ${colorClass}`;
+                        } else {
+                            subBadge.innerHTML = '⚠️ انتهى الاشتراك';
+                            subBadge.className = 'mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block bg-red-100 text-red-800 border border-red-300';
+                        }
+                    } else {
+                        const joinDate = d.joinDate || now;
+                        const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
+                        const elapsed = now - joinDate;
+                        const remainingDays = Math.ceil((TRIAL_MS - elapsed) / (1000 * 60 * 60 * 24));
+                        
+                        if (remainingDays > 0) {
+                            let colorClass = remainingDays <= 5 ? 'bg-red-100 text-red-800 border-red-300 animate-pulse' : 'bg-blue-100 text-blue-800 border-blue-300';
+                            subBadge.innerHTML = `⏳ باقي ${remainingDays} يوم على نهاية التجربة`;
+                            subBadge.className = `mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block border ${colorClass}`;
+                        } else {
+                            subBadge.innerHTML = '⚠️ انتهت التجربة';
+                            subBadge.className = 'mt-3 text-xs font-black px-3 py-1.5 rounded-lg inline-block bg-red-100 text-red-800 border border-red-300';
+                        }
+                    }
+                } 
+            });
+            
+            const lastStatus = localStorage.getItem('wslny_driver_status') || 'active'; 
+            currentDriverActiveRef = ref(db, 'wslny_app/active_drivers/driver_' + phone);
+            set(currentDriverActiveRef, { name, phone, vType, vCond, location, status: lastStatus, timestamp: Date.now() }).then(() => {
+                let currentLat = window.driverLat || null; let currentLng = window.driverLon || null;
+                if(currentLat && currentLng) { update(currentDriverActiveRef, { lat: currentLat, lng: currentLng }); }
+                if (navigator.geolocation) { if(watchGeoId) navigator.geolocation.clearWatch(watchGeoId); watchGeoId = navigator.geolocation.watchPosition(pos => { update(currentDriverActiveRef, { lat: pos.coords.latitude, lng: pos.coords.longitude }); }, () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }); }
+                window.updateDriverUI(lastStatus); if (!isAutoLogin || window.location.hash === '' || window.location.hash === '#homeView' || window.location.hash === '#driverLoginView') { showView('driverActiveView'); }
+                window.listenToColleagues(); window.listenToNotifications();
+            });
+        };
+
+        window.confirmGoOffline = function() { if (confirm("خروج نهائي من التطبيق؟")) { if(currentDriverActiveRef) remove(currentDriverActiveRef); if(watchGeoId && navigator.geolocation) navigator.geolocation.clearWatch(watchGeoId); localStorage.setItem('wslny_is_active', 'false'); localStorage.removeItem('wslny_saved_phone'); localStorage.removeItem('wslny_saved_pin'); window.location.hash = 'homeView'; } };
+
+        window.deleteDriverAccount = function() {
+            if(confirm("تحذير ⚠️: هل أنت متأكد من رغبتك في حذف حسابك نهائياً؟ سيتم مسح كافة بياناتك الحالية ولن تظهر للزبائن.")) {
+                const infoStr = localStorage.getItem('wslny_driver_info');
+                if(!infoStr) return;
+                const phone = JSON.parse(infoStr).phone;
+                
+                update(ref(window.firebaseDb, 'wslny_app/registered_drivers/driver_' + phone), {
+                    account_status: 'deleted'
+                }).then(() => {
+                    remove(ref(window.firebaseDb, 'wslny_app/active_drivers/driver_' + phone)).then(() => {
+                        if(watchGeoId && navigator.geolocation) navigator.geolocation.clearWatch(watchGeoId);
+                        localStorage.clear();
+                        alert("تم حذف حسابك وجميع بياناتك بنجاح.");
+                        window.location.hash = 'homeView';
+                        window.location.reload();
+                    });
+                }).catch(() => alert("حدث خطأ أثناء محاولة حذف الحساب، تأكد من الاتصال بالإنترنت."));
+            }
+        };
+
+        window.listenToColleagues = function() {
+            const myInfoStr = localStorage.getItem('wslny_driver_info'); if(!myInfoStr) return; const myPhone = JSON.parse(myInfoStr).phone.toString().replace(/^0+/, '').trim();
+            get(ref(db, 'wslny_app/registered_drivers')).then((snapshot) => {
+                const uniqueRegData = {}; Object.values(snapshot.val() || {}).forEach(d => { if(d.phone && d.account_status !== 'deleted') uniqueRegData[d.phone.toString().replace(/^0+/, '').trim()] = d; });
+                onValue(ref(db, 'wslny_app/active_drivers'), (activeSnap) => {
+                    const activeData = activeSnap.val() || {}; let tableHTML = `<table class="w-full text-right bg-white"><thead class="bg-gray-100 border-b border-gray-200 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الزميل</th><th class="px-4 py-3 font-extrabold text-center">الحالة</th></tr></thead><tbody class="divide-y divide-gray-100">`; let found = false;
+                    Object.values(uniqueRegData).forEach(driver => {
+                        found = true; const activeD = activeData["driver_" + driver.phone]; let isMe = (driver.phone.toString().replace(/^0+/, '').trim() === myPhone);
+                        let dotColor = "bg-gray-300", sText = "غير متصل", sColor = "text-gray-500";
+                        if (activeD) { if (activeD.status === 'active') { dotColor = "bg-green-500 animate-pulse"; sText = "متاح"; sColor = "text-green-700"; } else if (activeD.status === 'busy') { dotColor = "bg-red-500 animate-pulse"; sText = "مشغول"; sColor = "text-red-700"; } else { dotColor = "bg-yellow-400"; sText = "استراحة"; sColor = "text-yellow-700"; } }
+                        let shortLoc = driver.location || 'غير محدد'; tableHTML += `<tr class="${isMe ? 'bg-blue-50/50' : 'hover:bg-gray-50'} ${!activeD ? 'opacity-60 grayscale-[50%]' : ''}"><td class="px-4 py-3"><div class="font-extrabold text-gray-900 text-sm">${driver.name} ${isMe ? `<span class="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">أنت</span>` : ""}</div><div class="text-[10px] text-gray-500 mt-1">🚚 ${driver.vType} | 📍 ${shortLoc.substring(0,15)}</div></td><td class="px-4 py-3 text-center align-middle"><div class="flex items-center justify-center gap-1"><div class="w-2 h-2 rounded-full ${dotColor}"></div><span class="text-[10px] font-extrabold ${sColor}">${sText}</span></div></td></tr>`;
+                    });
+                    document.getElementById('colleaguesTableContainer').innerHTML = found ? tableHTML + `</tbody></table>` : `<div class="p-4 text-center text-sm text-gray-500">لا يوجد زملاء.</div>`;
+                });
+            });
+        };
+
+        window.trackClick = function(driverPhone, driverName, type, targetUrl, pickupLoc, dropoffLoc) {
+            const driverRef = ref(db, 'wslny_app/registered_drivers/driver_' + driverPhone); const notifRef = ref(db, 'wslny_app/notifications/driver_' + driverPhone);
+            get(driverRef).then((snap) => { if(snap.exists()) { let updates = type === 'call' ? { calls_received: (snap.val().calls_received || 0) + 1 } : { wa_received: (snap.val().wa_received || 0) + 1 }; update(driverRef, updates); } });
+            set(notifRef, { type: type, pickup: pickupLoc, dropoff: dropoffLoc, timestamp: Date.now() }); set(push(ref(db, 'wslny_app/security_logs')), { driver_phone: driverPhone, driver_name: driverName, type: type, pickup: pickupLoc, dropoff: dropoffLoc, timestamp: Date.now() }).then(() => { window.location.href = targetUrl; }).catch(() => { window.location.href = targetUrl; });
+        };
+
+        const getDistance = (lat1, lon1, lat2, lon2) => { if(!lat1 || !lon1 || !lat2 || !lon2) return Infinity; const p = 0.017453292519943295; const c = Math.cos; const a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2; return 12742 * Math.asin(Math.sqrt(a)); };
+
+        window.fetchDriversFromCloud = async function(e) {
+            e.preventDefault(); const reqType = document.getElementById('custVType').value; if (!reqType) return alert("يرجى اختيار شكل النقل المطلوب.");
+            const gov = document.getElementById('custGov').value; const manualPickup = document.getElementById('custPickupAddress').value.trim(); if (!gov) return alert("اختر محافظة الاستلام."); if (!manualPickup) return alert("يرجى كتابة عنوان أو مكان الاستلام.");
+            const dropoffGov = document.getElementById('custDropoffGov').value; const manualDropoff = document.getElementById('custDropoffAddress').value.trim(); if(!dropoffGov) return alert("اختر محافظة الوصول."); if(!manualDropoff) return alert("يرجى كتابة مكان الوصول.");
+            const btn = document.getElementById('btnSearch'); btn.innerText = "⏳ جاري البحث الجغرافي..."; let cLat = window.custLat; let cLon = window.custLon;
+            
+            // استخدام Mapbox للبحث عن موقع العميل إن لم يتم تحديده بالـ GPS
+            if (!cLat || !cLon) { 
+                try { 
+                    let geoQuery = encodeURIComponent(manualPickup + ' ' + gov + ' مصر'); 
+                    const geoRes = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${geoQuery}.json?access_token=${MAPBOX_TOKEN}&language=ar&limit=1`); 
+                    const geoData = await geoRes.json(); 
+                    if(geoData && geoData.features && geoData.features.length > 0) { 
+                        cLon = parseFloat(geoData.features[0].center[0]); 
+                        cLat = parseFloat(geoData.features[0].center[1]); 
+                    } 
+                } catch(err) {} 
+            }
+            
+            try {
+                const pickupLoc = `${gov} - ${manualPickup}`; const dropoffLoc = `${dropoffGov} - ${manualDropoff}`;
+                const regSnap = await get(ref(db, 'wslny_app/registered_drivers')); const activeSnap = await get(ref(db, 'wslny_app/active_drivers'));
+                let registeredData = regSnap.val() || {}; let activeData = activeSnap.val() || {};
+                let htmlOutput = `<h3 class="text-base font-black text-gray-900 mb-3">الترتيب من الأقرب للأبعد 📍:</h3><div class="bg-white rounded-2xl shadow-sm overflow-hidden"><table class="w-full text-right"><thead class="bg-gray-100 text-xs text-gray-600 uppercase"><tr><th class="px-4 py-3 font-extrabold">الكابتن (والمسافة)</th><th class="px-4 py-3 font-extrabold text-center">تواصل / تقييم</th></tr></thead><tbody class="divide-y divide-gray-100">`;
+                let tableRows = ''; let availableDrivers = [];
+                Object.values(activeData).forEach(d => { if(d.vType === reqType && d.status === 'active' && d.location === gov) { let fullDData = registeredData["driver_" + d.phone] || {}; d.ratingAvg = fullDData.ratingSum ? (fullDData.ratingSum / fullDData.ratingCount).toFixed(1) : 5.0; d.distance = getDistance(cLat, cLon, d.lat, d.lng); availableDrivers.push(d); } });
+                availableDrivers.sort((a, b) => a.distance - b.distance);
+                availableDrivers.forEach(d => {
+                    let messageText = `مرحباً كابتن، طلب (${d.vType}) من نَقْلَة.\n📍 من: ${pickupLoc}\n🏁 إلى: ${dropoffLoc}\n🤝 (برجاء الاتفاق على السعر وتفاصيل النقل)`; let waLink = `https://wa.me/20${d.phone.toString().replace(/^0+/, '')}?text=${encodeURIComponent(messageText)}`; let badge = d.ratingAvg >= 4.5 ? `<span class="bg-yellow-100 text-yellow-700 text-[10px] px-1 rounded font-bold ml-1 border border-yellow-300">مميز 🏆</span>` : '';
+                    let distBadge = ''; if (d.distance !== Infinity && d.distance !== null && !isNaN(d.distance)) { let km = d.distance.toFixed(1); distBadge = `<div class="text-[10px] bg-green-100 text-green-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 يبعد عنك ${km} كم</div>`; } else { distBadge = `<div class="text-[10px] bg-gray-100 text-gray-800 mt-1.5 inline-block px-1.5 py-0.5 rounded shadow-sm font-bold">📍 متصل في محافظتك</div>`; }
+                    tableRows += `<tr class="hover:bg-orange-50"><td class="px-4 py-3"><div class="font-extrabold text-gray-900 text-sm">${d.name} ${badge}</div><div class="text-[10px] text-yellow-500 font-bold mt-0.5">⭐ ${d.ratingAvg}</div>${distBadge}</td><td class="px-4 py-3 align-middle text-center"><div class="flex justify-center gap-2 mb-1.5"><button onclick="trackClick('${d.phone}', '${d.name}', 'call', 'tel:${d.phone}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform hover:bg-gray-900"><svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></button><button onclick="trackClick('${d.phone}', '${d.name}', 'wa', '${waLink}', '${pickupLoc}', '${dropoffLoc}')" class="w-8 h-8 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform hover:bg-[#20ba59]"><svg class="w-[18px] h-[18px] fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                تواصل لتجديد الاشتراك
+            </button>
+            <button onclick="confirmGoOffline()" class="w-full bg-gray-200 text-gray-800 font-extrabold py-3 rounded-xl active:scale-95">تسجيل الخروج</button>
+        </div>
+    </div>
+
+    <!-- نافذة التقييم -->
+    <div id="ratingModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[99999] flex justify-center items-center backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center">
+            <h3 class="text-xl font-black text-gray-900 mb-2">تقييم الكابتن</h3>
+            <p id="ratingDriverName" class="text-orange-600 font-bold text-sm mb-4"></p>
+            <input type="hidden" id="ratingDriverPhone">
+            <div class="star-rating mb-6" id="starContainer">
+                <span onclick="setRating(5)">★</span><span onclick="setRating(4)">★</span><span onclick="setRating(3)">★</span><span onclick="setRating(2)">★</span><span onclick="setRating(1)">★</span>
+            </div>
+            <input type="hidden" id="selectedRating" value="5">
+            <div class="flex gap-2">
+                <button onclick="submitRating()" class="w-1/2 bg-orange-500 text-white font-extrabold py-3 rounded-xl">إرسال</button>
+                <button onclick="document.getElementById('ratingModal').classList.add('hidden')" class="w-1/2 bg-gray-200 text-gray-800 font-extrabold py-3 rounded-xl">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let touchStartY = 0; const ptrIndicator = document.getElementById('ptrIndicator'); let isRefreshing = false;
+        document.addEventListener('touchstart', e => { if (window.scrollY === 0) touchStartY = e.touches[0].clientY; }, { passive: true });
+        document.addEventListener('touchmove', e => { if (window.scrollY === 0 && touchStartY > 0 && !isRefreshing) { let pullDistance = e.touches[0].clientY - touchStartY; if (pullDistance > 0 && pullDistance < 120) { ptrIndicator.style.height = pullDistance + 'px'; } } }, { passive: true });
+        document.addEventListener('touchend', e => { if (!isRefreshing && ptrIndicator.style.height && parseInt(ptrIndicator.style.height) > 60) { isRefreshing = true; ptrIndicator.style.height = '60px'; setTimeout(() => window.location.reload(), 400); } else { ptrIndicator.style.height = '0px'; } touchStartY = 0; });
+
+        window.contactAdmin = function() { window.location.href = "mailto:mmoksh162@gmail.com?subject=Naqla%20App%20Support"; };
+        window.contactAdminWhatsapp = function() { window.location.href = "https://wa.me/201005577009?text=" + encodeURIComponent("السلام عليكم، أرجو تفعيل حسابي في تطبيق نقلة."); };
+
+        window.showView = function(viewId) { window.location.hash = viewId; }
+        window.addEventListener('hashchange', function() {
+            let viewId = window.location.hash.replace('#', '') || 'homeView';
+            ['homeView', 'driverChoiceView', 'driverLoginView', 'driverRegisterView', 'driverActiveView', 'customerView', 'subscriptionView'].forEach(v => { const el = document.getElementById(v); if(el) el.classList.add('hidden'); });
+            const targetView = document.getElementById(viewId);
+            if (targetView) targetView.classList.remove('hidden'); else document.getElementById('homeView').classList.remove('hidden');
+        });
+
+        window.addEventListener('load', () => {
+            const savedPhone = localStorage.getItem('wslny_saved_phone'); const savedPin = localStorage.getItem('wslny_saved_pin');
+            if (savedPhone && savedPin) { const phoneInput = document.getElementById('loginPhoneInput'); const pinInput = document.getElementById('loginPinInput'); if (phoneInput) phoneInput.value = savedPhone; if (pinInput) pinInput.value = savedPin; }
+            if (!window.location.hash) { 
+                if (localStorage.getItem('wslny_is_active') !== 'true') { window.location.hash = 'homeView'; } 
+            } else { 
+                window.dispatchEvent(new Event('hashchange')); 
+            }
+
+            // طلب أذونات الموقع تلقائياً في كل مرة يفتح فيها التطبيق
+            if (!localStorage.getItem('location_disclosure_accepted')) {
+                pendingLocationCall = function() {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true });
+                    }
+                };
+                document.getElementById('locationDisclosureModal').classList.remove('hidden');
+            } else {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true });
+                }
+            }
+        });
+
+        const governoratesList = ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "المنوفية", "القليوبية", "البحيرة", "كفر الشيخ", "دمياط", "الإسماعيلية", "بورسعيد", "السويس", "مطروح", "شمال سيناء", "جنوب سيناء", "البحر الأحمر", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "الوادي الجديد"];
+        window.driverLat = null; window.driverLon = null; window.custLat = null; window.custLon = null;
+        
+        let pendingLocationCall = null;
+        
+        window.getLocation = function(targetSelectId, targetInputId = null, role = null) {
+            if(!MAPBOX_TOKEN) {
+                alert("لم يتم إدخال كود Mapbox! يرجى وضع الكود في بداية ملف السكريبت.");
+                return;
+            }
+            if(!localStorage.getItem('location_disclosure_accepted')) {
+                pendingLocationCall = () => executeGetLocation(targetSelectId, targetInputId, role, event.currentTarget);
+                document.getElementById('locationDisclosureModal').classList.remove('hidden');
+            } else {
+                executeGetLocation(targetSelectId, targetInputId, role, event.currentTarget);
+            }
+        };
+
+        window.acceptLocation = function() {
+            localStorage.setItem('location_disclosure_accepted', 'true');
+            document.getElementById('locationDisclosureModal').classList.add('hidden');
+            if(pendingLocationCall) pendingLocationCall();
+        };
+
+        window.executeGetLocation = function(targetSelectId, targetInputId, role, btnElement) {
+            if (navigator.geolocation) {
+                const btn = btnElement; const originalText = btn.innerHTML; btn.innerHTML = "⏳ جاري التحديد...";
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        const lat = position.coords.latitude; const lon = position.coords.longitude;
+                        if(role === 'driver') { window.driverLat = lat; window.driverLon = lon; }
+                        if(role === 'customer') { window.custLat = lat; window.custLon = lon; }
+                        
+                        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
+                        .then(res => res.json())
+                        .then(data => {
+                            btn.innerHTML = originalText;
+                            if(data && data.features && data.features.length > 0) {
+                                let state = "";
+                                let specificAddress = data.features[0].place_name_ar || data.features[0].place_name;
+                                
+                                let context = data.features[0].context || [];
+                                for(let i=0; i<context.length; i++) {
+                                    if(context[i].id.startsWith('region')) {
+                                        state = context[i].text_ar || context[i].text;
+                                        break;
+                                    }
+                                }
+                                if(!state && data.features[0].place_type.includes('region')) {
+                                    state = data.features[0].text_ar || data.features[0].text;
+                                }
+
+                                if(state || specificAddress) {
+                                    let searchState = state || specificAddress;
+                                    let mappedGov = governoratesList.find(g => searchState.includes(g) || g.includes(searchState.replace('محافظة ','')));
+                                    if(mappedGov) { 
+                                        const targetSelect = document.getElementById(targetSelectId); targetSelect.value = mappedGov; targetSelect.dispatchEvent(new Event('change')); 
+                                        if(targetInputId) { document.getElementById(targetInputId).value = specificAddress.split(',')[0]; }
+                                        alert("📍 تم التقاط الموقع بنجاح."); 
+                                    } else alert("عفواً، لم نتمكن من تحديد محافظتك بدقة.");
+                                }
+                            } else {
+                                alert("لم يتم العثور على عنوان لهذا الموقع.");
+                            }
+                        }).catch(() => { btn.innerHTML = originalText; alert("خطأ في الاتصال بخادم Mapbox."); });
+                    }, 
+                    (error) => { 
+                        btn.innerHTML = originalText; 
+                        alert("يرجى التأكد من تفعيل الـ GPS 📍"); 
+                    }, 
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            } else { alert("متصفحك أو جهازك لا يدعم تحديد الموقع."); }
+        };
+
+        window.openRatingModal = function(phone, name) { document.getElementById('ratingDriverPhone').value = phone; document.getElementById('ratingDriverName').innerText = "كابتن " + name; setRating(5); document.getElementById('ratingModal').classList.remove('hidden'); };
+        window.setRating = function(stars) { document.getElementById('selectedRating').value = stars; const spans = document.getElementById('starContainer').getElementsByTagName('span'); for(let i=0; i<5; i++) { spans[i].style.color = (5-i <= stars) ? '#fbbf24' : '#d1d5db'; } };
+        window.selectVTypeCard = function(gridId, inputId, value, isDriver) { const input = document.getElementById(inputId); input.value = value; document.getElementById(gridId).querySelectorAll('.v-card').forEach(c => { c.classList.remove('border-orange-500', 'bg-orange-50', 'border-gray-700', 'bg-gray-100', 'ring-2', 'scale-95'); c.classList.add('border-gray-200', 'bg-white'); }); const ac = event.currentTarget; ac.classList.remove('border-gray-200', 'bg-white'); if (isDriver) ac.classList.add('border-gray-700', 'bg-gray-100', 'ring-2', 'scale-95'); else ac.classList.add('border-orange-500', 'bg-orange-50', 'ring-2', 'scale-95'); input.dispatchEvent(new Event('change')); }
+    </script>
+
+    <!-- سكريبت خريطة Mapbox التفاعلية -->
+    <script>
+        let mapInstance = null; let mapMarker = null;
+        let selectedMapGov = ""; let selectedMapAddress = "";
+        let mapTargetMode = 'register'; 
+
+        window.openMapModal = function(mode = 'register') {
+            if(!MAPBOX_TOKEN) {
+                alert("لم يتم إدخال كود Mapbox! يرجى وضع الكود في بداية ملف السكريبت.");
+                return;
+            }
+            mapTargetMode = mode;
+            document.getElementById('mapModal').classList.remove('hidden');
+            if (!mapInstance) {
+                mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 7);
+                
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
+                    maxZoom: 18,
+                    attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
+                }).addTo(mapInstance);
+                
+                mapMarker = L.marker([30.0444, 31.2357], { draggable: true }).addTo(mapInstance);
+                
+                mapInstance.on('click', function(e) {
+                    mapMarker.setLatLng(e.latlng);
+                    updateMapAddress(e.latlng.lat, e.latlng.lng);
+                });
+                
+                mapMarker.on('dragend', function(e) {
+                    let position = mapMarker.getLatLng();
+                    updateMapAddress(position.lat, position.lng);
+                });
+
+                if(navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        let lat = pos.coords.latitude; let lng = pos.coords.longitude;
+                        mapInstance.setView([lat, lng], 14);
+                        mapMarker.setLatLng([lat, lng]);
+                        updateMapAddress(lat, lng);
+                    }, err => {
+                        // الصمت هنا متعمد حتى لا يزعج المستخدم أثناء فتح الخريطة فقط
+                    }, { enableHighAccuracy: true, timeout: 10000 });
+                }
+            }
+            setTimeout(() => { mapInstance.invalidateSize(); }, 300);
+        };
+
+        window.closeMapModal = function() { document.getElementById('mapModal').classList.add('hidden'); };
+
+        window.searchOnMap = function() {
+            const query = document.getElementById('mapSearchInput').value.trim();
+            if(!query) return;
+            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري البحث...";
+            
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query + ' مصر')}.json?access_token=${MAPBOX_TOKEN}&language=ar&limit=1`)
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.features && data.features.length > 0) {
+                    const lon = parseFloat(data.features[0].center[0]); 
+                    const lat = parseFloat(data.features[0].center[1]);
+                    mapInstance.setView([lat, lon], 14);
+                    mapMarker.setLatLng([lat, lon]);
+                    updateMapAddress(lat, lon);
+                } else {
+                    document.getElementById('mapAddressPreview').innerHTML = "❌ لم يتم العثور على المكان.";
+                }
+            }).catch(() => document.getElementById('mapAddressPreview').innerHTML = "خطأ في البحث.");
+        };
+
+        window.updateMapAddress = function(lat, lng) {
+            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحليل العنوان...";
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.features && data.features.length > 0) {
+                    let state = "";
+                    let specificAddress = data.features[0].place_name_ar || data.features[0].place_name;
+                    
+                    let context = data.features[0].context || [];
+                    for(let i=0; i<context.length; i++) {
+                        if(context[i].id.startsWith('region')) {
+                            state = context[i].text_ar || context[i].text;
+                            break;
+                        }
+                    }
+                    if(!state && data.features[0].place_type.includes('region')) {
+                        state = data.features[0].text_ar || data.features[0].text;
+                    }
+
+                    let searchState = state || specificAddress;
+                    let mappedGov = governoratesList.find(g => searchState.includes(g) || g.includes(searchState.replace('محافظة ','')));
+                    
+                    selectedMapGov = mappedGov || "";
+                    selectedMapAddress = specificAddress.split(',')[0] || state;
+
+                    document.getElementById('mapAddressPreview').innerHTML = `<b>المحافظة:</b> ${selectedMapGov || 'غير معروف'}<br><b>التفاصيل:</b> ${selectedMapAddress}`;
+                    window.driverLat = lat; window.driverLon = lng;
+                }
+            });
+        };
+
+        window.confirmMapSelection = function() {
+            if(!selectedMapGov) return alert("الرجاء اختيار نقطة واضحة داخل محافظات مصر.");
+            if (mapTargetMode === 'register') {
+                const targetSelect = document.getElementById('regDriverGov');
+                targetSelect.value = selectedMapGov;
+                targetSelect.dispatchEvent(new Event('change'));
+                document.getElementById('regDriverAddress').value = selectedMapAddress;
+            } else {
+                const targetSelect = document.getElementById('updateDriverGov');
+                targetSelect.value = selectedMapGov;
+                targetSelect.dispatchEvent(new Event('change'));
+                document.getElementById('updateDriverAddress').value = selectedMapAddress;
+            }
+            closeMapModal();
+        };
+
+        window.goToMyLocationOnMap = function() {
+            if (navigator.geolocation) {
+                const btn = document.getElementById('btnMyLoc');
+                const originalContent = btn.innerHTML;
+                
+                btn.innerHTML = `<div class="w-5 h-5 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>`;
+                
+                navigator.geolocation.getCurrentPosition(pos => {
+                    let lat = pos.coords.latitude; 
+                    let lng = pos.coords.longitude;
+                    mapInstance.setView([lat, lng], 15);
+                    mapMarker.setLatLng([lat, lng]);
+                    updateMapAddress(lat, lng);
+                    btn.innerHTML = originalContent; 
+                }, err => {
+                    btn.innerHTML = originalContent; 
+                    alert("يرجى التأكد من تفعيل الـ GPS 📍");
                 }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
             } else {
                 alert("متصفحك لا يدعم تحديد الموقع.");
