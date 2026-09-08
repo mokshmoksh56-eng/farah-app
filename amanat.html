@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شاشات البيتكوين | استراتيجيات صناع السوق</title>
+    <title>شاشات البيتكوين | العد التنازلي و SMC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
@@ -24,8 +24,8 @@
                 <div class="bg-slate-950 p-4 rounded-lg border border-slate-800">
                     <h3 class="text-amber-400 font-bold mb-2">1. استراتيجية "صيد السيولة" (الفخ)</h3>
                     <ul class="text-sm text-slate-400 space-y-2">
-                        <li><span class="text-rose-500 font-bold">🩸 مصيدة مشترين (إشارة بيع):</span> السعر يخترق المقاومة بذيل الشمعة ليوهم القطيع بالصعود، ثم يغلق بقوة تحت المقاومة.</li>
-                        <li><span class="text-emerald-500 font-bold">🟢 مصيدة بائعين (إشارة شراء):</span> السعر يكسر الدعم بذيل الشمعة ليوهم القطيع بالهبوط، ثم يغلق بقوة فوق الدعم.</li>
+                        <li><span class="text-rose-500 font-bold">🩸 مصيدة مشترين (إشارة بيع):</span> السعر يخترق المقاومة بذيل الشمعة ليوهم القطيع بالصعود، ثم يغلق بقوة تحتها.</li>
+                        <li><span class="text-emerald-500 font-bold">🟢 مصيدة بائعين (إشارة شراء):</span> السعر يكسر الدعم بذيل الشمعة ليوهم القطيع بالهبوط، ثم يغلق بقوة فوقه.</li>
                     </ul>
                 </div>
                 <!-- استراتيجية 2 -->
@@ -33,7 +33,7 @@
                     <h3 class="text-cyan-400 font-bold mb-2">2. استراتيجية "الانفجار المؤكد"</h3>
                     <ul class="text-sm text-slate-400 space-y-2">
                         <li>يتم استشعار مناطق <span class="bg-slate-800 px-1 rounded text-amber-500">⚠️ الخنق</span> (تجميع السيولة).</li>
-                        <li>عندما تأتي شمعة ابتلاعية ضخمة تكسر الخنق، يصدر الكود إشارة <span class="bg-slate-800 px-1 rounded text-emerald-400">🚀 انفجار شرائي</span> أو <span class="bg-slate-800 px-1 rounded text-rose-400">💥 انهيار بيعي</span>.</li>
+                        <li>عندما تأتي شمعة ابتلاعية تكسر الخنق، يصدر الكود إشارة <span class="bg-slate-800 px-1 rounded text-emerald-400">🚀 صعود مؤكد</span> أو <span class="bg-slate-800 px-1 rounded text-rose-400">💥 هبوط مؤكد</span>.</li>
                     </ul>
                 </div>
             </div>
@@ -55,6 +55,16 @@
             { interval: "1d", title: "يوم واحد (اتجاه عام)" }
         ];
 
+        // خريطة تحويل الفريمات إلى ملي ثانية لحساب العد التنازلي
+        const intervalMsMap = {
+            "5m": 5 * 60 * 1000,
+            "15m": 15 * 60 * 1000,
+            "30m": 30 * 60 * 1000,
+            "1h": 60 * 60 * 1000,
+            "4h": 4 * 60 * 60 * 1000,
+            "1d": 24 * 60 * 60 * 1000
+        };
+
         const chartsState = {}; 
 
         async function initCharts() {
@@ -63,9 +73,18 @@
             for (let tf of timeframes) {
                 const chartCard = document.createElement('div');
                 chartCard.className = "bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col shadow-lg";
+                
+                // تصميم الهيدر الجديد مع شاشة العد التنازلي
                 const header = document.createElement('div');
-                header.className = "bg-slate-800 border-b border-slate-700 p-2 text-center text-sm font-bold text-white flex justify-between px-4";
-                header.innerHTML = `<span>${tf.title}</span> <span id="status-${tf.interval}" class="text-amber-400 text-xs">تحميل...</span>`;
+                header.className = "bg-slate-800 border-b border-slate-700 p-3 flex justify-between items-center";
+                header.innerHTML = `
+                    <span class="text-sm font-bold text-white">${tf.title}</span> 
+                    <div class="flex items-center gap-3">
+                        <span id="timer-${tf.interval}" class="text-cyan-400 font-mono text-sm font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700 shadow-inner">⏳ --:--</span>
+                        <span id="status-${tf.interval}" class="text-amber-400 text-xs font-bold">تحميل...</span>
+                    </div>
+                `;
+                
                 const chartDiv = document.createElement('div');
                 chartDiv.className = "w-full h-[400px] relative"; 
                 
@@ -94,6 +113,41 @@
                 await fetchHistoricalData(tf.interval);
             }
             connectMultiplexWebSocket();
+            
+            // تشغيل محرك العد التنازلي (يعمل كل ثانية)
+            setInterval(updateCountdowns, 1000);
+        }
+
+        // ==========================================
+        // ⏱️ محرك العد التنازلي لإغلاق الشموع
+        // ==========================================
+        function updateCountdowns() {
+            const now = Date.now();
+            timeframes.forEach(tf => {
+                const ms = intervalMsMap[tf.interval];
+                const nextClose = Math.ceil(now / ms) * ms;
+                let diff = nextClose - now;
+
+                // تحويل الملي ثانية إلى ساعات:دقائق:ثواني
+                let h = Math.floor(diff / (1000 * 60 * 60));
+                let m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                let s = Math.floor((diff % (1000 * 60)) / 1000);
+
+                let timeString = "";
+                if (h > 0) timeString += `${h.toString().padStart(2, '0')}:`;
+                timeString += `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+                const timerEl = document.getElementById(`timer-${tf.interval}`);
+                if (timerEl) {
+                    // إذا كان متبقي أقل من 10 ثواني، يتحول للون الأحمر ليحذرك من الإغلاق
+                    if (h === 0 && m === 0 && s <= 10) {
+                        timerEl.className = "text-rose-400 font-mono text-sm font-bold bg-rose-950/30 px-2 py-1 rounded border border-rose-500/50 shadow-inner animate-pulse";
+                    } else {
+                        timerEl.className = "text-cyan-400 font-mono text-sm font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700 shadow-inner";
+                    }
+                    timerEl.innerText = `⏳ ${timeString}`;
+                }
+            });
         }
 
         async function fetchHistoricalData(interval) {
@@ -108,7 +162,7 @@
                 }));
 
                 recalculateAndDraw(interval);
-                state.headerStatus.className = "text-emerald-400 text-xs";
+                state.headerStatus.className = "text-emerald-400 text-xs font-bold";
                 state.headerStatus.innerText = "حي 🟢";
             } catch (e) { console.error(e); }
         }
@@ -126,7 +180,6 @@
             let markers = [];
             const lookback = 3; 
 
-            // 1. تحديد الدعوم والمقاومات الحقيقية (بصمت)
             for (let i = lookback; i < candles.length - lookback; i++) {
                 let isSwingHigh = true, isSwingLow = true;
                 const cHigh = candles[i].high, cLow = candles[i].low;
@@ -139,45 +192,35 @@
                 if (isSwingLow) swingLows.push({ index: i, time: candles[i].time, value: cLow });
             }
 
-            // 2. تحليل حركة الحيتان (Fakeouts & Engulfing)
             let inSqueeze = false;
 
             for (let i = lookback; i < candles.length; i++) {
                 let current = candles[i];
                 let prev = candles[i-1];
                 
-                // البحث عن أحدث قمة وقاع يسبقان هذه الشمعة
                 let recentHigh = swingHighs.filter(h => h.index < i).pop();
                 let recentLow = swingLows.filter(l => l.index < i).pop();
 
-                // --- استراتيجية 1: مصيدة السيولة (Fakeout Trap) ---
                 if (recentHigh && recentLow) {
-                    // مصيدة المشترين (Bull Trap): الذيل يخترق المقاومة، لكن الإغلاق تحتها والشمعة حمراء
                     if (current.high > recentHigh.value && current.close < recentHigh.value && current.close < current.open) {
                         markers.push({ time: current.time, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: '🩸 فخ شراء (بيع)' });
                     }
-                    // مصيدة البائعين (Bear Trap): الذيل يكسر الدعم، لكن الإغلاق فوقه والشمعة خضراء
                     else if (current.low < recentLow.value && current.close > recentLow.value && current.close > current.open) {
                         markers.push({ time: current.time, position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: '🟢 فخ بيع (شراء)' });
                     }
                 }
 
-                // --- استراتيجية 2: الخنق والانفجار المؤكد ---
                 let oldDist = (recentHigh && recentLow) ? (recentHigh.value - recentLow.value) : null;
                 
-                // تحديد الخنق المؤقت
                 if (oldDist && (current.high - current.low) <= oldDist * 0.4) {
                     inSqueeze = true;
                 }
 
-                // الانفجار بعد الخنق (شمعة ابتلاعية تكسر النطاق)
                 if (inSqueeze) {
-                    // شمعة ابتلاعية شرائية
                     if (current.close > current.open && current.close > prev.high && current.open < prev.close) {
                         markers.push({ time: current.time, position: 'belowBar', color: '#3b82f6', shape: 'arrowUp', text: '🚀 صعود مؤكد' });
                         inSqueeze = false;
                     }
-                    // شمعة ابتلاعية بيعية
                     else if (current.close < current.open && current.close < prev.low && current.open > prev.close) {
                         markers.push({ time: current.time, position: 'aboveBar', color: '#f97316', shape: 'arrowDown', text: '💥 هبوط مؤكد' });
                         inSqueeze = false;
@@ -185,11 +228,9 @@
                 }
             }
 
-            // تحديث الشموع والعلامات
             state.candleSeries.setData(candles);
             state.candleSeries.setMarkers(markers);
 
-            // استخراج آخر دعوم ومقاومات مؤكدة لرسم الخطوط الأفقية
             const lastConfirmedHigh = swingHighs.length > 0 ? swingHighs[swingHighs.length - 1].value : null;
             const lastConfirmedLow = swingLows.length > 0 ? swingLows[swingLows.length - 1].value : null;
 
@@ -207,7 +248,6 @@
                 });
             }
             
-            // ربط خطوط القناة
             const lastCandle = candles[candles.length - 1];
             let topData = swingHighs.map(h => ({time: h.time, value: h.value}));
             let botData = swingLows.map(l => ({time: l.time, value: l.value}));
