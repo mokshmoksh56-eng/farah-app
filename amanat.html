@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شاشات البيتكوين | رادار الحيتان والسيولة</title>
+    <title>شاشات البيتكوين | تدفق الأوامر وميزان القوى</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
-        @keyframes pulse-once {
-            0% { transform: scale(1.02); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; filter: brightness(1.5); }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        @keyframes pulse-once { 0% { transform: scale(1.02); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; filter: brightness(1.5); } 100% { transform: scale(1); opacity: 1; } }
         .animate-pulse-once { animation: pulse-once 1s ease-out forwards; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; border-radius: 8px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        /* تأثيرات شريط ميزان القوى */
+        .tug-of-war { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-2 md:p-4 font-sans">
@@ -31,9 +30,9 @@
         <div class="bg-slate-900 p-4 rounded-xl border-2 border-indigo-900 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h1 class="text-xl font-bold text-indigo-400 flex items-center gap-2 mb-1">
-                    <span>🐋 خوارزمية SMC + رادار صفقات الحيتان</span>
+                    <span>⚖️ خوارزمية SMC + ميزان تدفق الأوامر (Order Flow)</span>
                 </h1>
-                <p class="text-xs text-slate-400">يرصد التحليل الفني، ويرصد الصفقات المباشرة التي تتخطى <span class="text-amber-400 font-bold">$500,000</span> في ضربة واحدة.</p>
+                <p class="text-xs text-slate-400">يرصد أعداد المشترين والبائعين وحجم السيولة الحقيقية اللحظية. <span class="text-rose-400 font-bold">*اضغط بالشاشة لتفعيل الصوت.*</span></p>
             </div>
             <div class="flex gap-3">
                 <button id="soundToggleBtn" onclick="toggleSound()" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:bg-emerald-500/40 flex items-center gap-2 cursor-pointer">
@@ -42,25 +41,57 @@
             </div>
         </div>
 
-        <!-- سجل التنبيهات الحية وصفقات الحيتان -->
-        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-xl p-4 flex flex-col h-56 relative overflow-hidden">
-            <!-- تأثير إضاءة لحركة الحيتان -->
-            <div id="whaleGlow" class="absolute inset-0 bg-transparent transition-colors duration-700 pointer-events-none"></div>
-            
-            <h2 class="text-sm font-bold text-white mb-3 flex items-center justify-between border-b border-slate-800 pb-2 relative z-10">
-                <div class="flex items-center gap-2">
-                    <span>📡 سجل الإشارات وتنفيذ الصفقات (Live Alerts & Tape)</span>
-                </div>
-                <span class="text-xs text-slate-400 font-normal flex items-center gap-2">
-                    <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
-                    يراقب السيولة اللحظية
-                </span>
+        <!-- ========================================== -->
+        <!-- ⚖️ ميزان القوى اللحظي (Tug-Of-War) جديد -->
+        <!-- ========================================== -->
+        <div class="bg-slate-900 p-5 rounded-xl border-2 border-slate-700 shadow-2xl relative overflow-hidden">
+            <h2 class="text-center font-bold text-slate-300 text-sm mb-4 flex justify-center items-center gap-2">
+                <span>⚔️ ساحة المعركة (آخر 60 ثانية)</span>
+                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span></span>
             </h2>
             
-            <div id="alertsLogContainer" class="flex-1 overflow-y-auto space-y-2 pr-2 relative z-10">
-                <div class="text-center text-slate-500 text-sm mt-10 animate-pulse">
-                    في انتظار رصد أول إشارة تحليل أو صفقة حوت...
+            <div class="flex justify-between items-end mb-2 px-2">
+                <!-- بيانات الشراء -->
+                <div class="text-right">
+                    <div class="text-emerald-400 font-bold text-lg mb-1">🟢 المهاجمون (شراء ماركت)</div>
+                    <div class="text-sm text-slate-400">الكمية: <span id="buyVolText" class="text-emerald-300 font-mono font-bold">$0</span></div>
+                    <div class="text-xs text-slate-500">عدد العمليات: <span id="buyCountText" class="font-mono text-white">0</span></div>
                 </div>
+                
+                <!-- الإشارة اللحظية -->
+                <div class="text-center flex-1 px-4">
+                    <div id="liveMarketSignal" class="bg-slate-950 border border-slate-700 rounded-lg py-2 px-4 inline-block shadow-inner">
+                        <span class="text-sm font-bold text-slate-400">جاري جمع بيانات السوق...</span>
+                    </div>
+                </div>
+                
+                <!-- بيانات البيع -->
+                <div class="text-left">
+                    <div class="text-rose-400 font-bold text-lg mb-1">🔴 المدافعون (بيع ماركت)</div>
+                    <div class="text-sm text-slate-400">الكمية: <span id="sellVolText" class="text-rose-300 font-mono font-bold">$0</span></div>
+                    <div class="text-xs text-slate-500">عدد العمليات: <span id="sellCountText" class="font-mono text-white">0</span></div>
+                </div>
+            </div>
+
+            <!-- شريط شد الحبل (Tug of War) -->
+            <div class="w-full bg-slate-950 rounded-full h-4 flex overflow-hidden border border-slate-800 shadow-inner">
+                <div id="buyBar" class="bg-emerald-500 h-full tug-of-war flex items-center justify-start px-2 overflow-hidden" style="width: 50%;">
+                    <span id="buyPercentText" class="text-[10px] font-bold text-emerald-950">50%</span>
+                </div>
+                <div id="sellBar" class="bg-rose-500 h-full tug-of-war flex items-center justify-end px-2 overflow-hidden" style="width: 50%;">
+                    <span id="sellPercentText" class="text-[10px] font-bold text-rose-950">50%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- سجل التنبيهات الحية وصفقات الحيتان -->
+        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-xl p-4 flex flex-col h-48 relative overflow-hidden">
+            <div id="whaleGlow" class="absolute inset-0 bg-transparent transition-colors duration-700 pointer-events-none"></div>
+            <h2 class="text-sm font-bold text-white mb-3 flex items-center justify-between border-b border-slate-800 pb-2 relative z-10">
+                <span>📡 سجل الإشارات وتنفيذ الصفقات (Live Alerts & Tape)</span>
+            </h2>
+            <div id="alertsLogContainer" class="flex-1 overflow-y-auto space-y-2 pr-2 relative z-10">
+                <div class="text-center text-slate-500 text-sm mt-8 animate-pulse">في انتظار رصد أول إشارة تحليل أو صفقة حوت...</div>
             </div>
         </div>
         
@@ -85,26 +116,28 @@
             "1h": 60 * 60 * 1000, "4h": 4 * 60 * 60 * 1000, "1d": 24 * 60 * 60 * 1000
         };
 
-        const WHALE_ORDER_THRESHOLD = 500000; // 500 ألف دولار الحد الأدنى لرصد الحوت اللحظي
-
+        const WHALE_ORDER_THRESHOLD = 500000; 
         const chartsState = {}; 
         let soundEnabled = true; 
         let audioUnlocked = false;
         let isFirstAlert = true; 
 
-        // فك حظر الصوت
+        // ==========================================
+        // ⚖️ متغيرات ميزان القوى (Order Flow Engine)
+        // ==========================================
+        const RECENT_TRADES_WINDOW = 60000; // 60 ثانية
+        const tradesQueue = []; // طابور لحفظ الصفقات
+        let rollingBuyVol = 0, rollingSellVol = 0;
+        let rollingBuyCount = 0, rollingSellCount = 0;
+
         function unlockAudio() {
             if (audioUnlocked) return;
-            const nSound = document.getElementById('alertSoundNormal');
-            const wSound = document.getElementById('alertSoundWhale');
-            nSound.play().then(() => { nSound.pause(); nSound.currentTime = 0; }).catch(()=>{});
-            wSound.play().then(() => { wSound.pause(); wSound.currentTime = 0; }).catch(()=>{});
+            document.getElementById('alertSoundNormal').play().then(a=>a.pause()).catch(()=>{});
+            document.getElementById('alertSoundWhale').play().then(a=>a.pause()).catch(()=>{});
             audioUnlocked = true;
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('click', unlockAudio); document.removeEventListener('touchstart', unlockAudio);
         }
-        document.addEventListener('click', unlockAudio);
-        document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('click', unlockAudio); document.addEventListener('touchstart', unlockAudio);
 
         function toggleSound() {
             soundEnabled = !soundEnabled;
@@ -129,22 +162,13 @@
             if (playPromise !== undefined) playPromise.catch(e => {});
         }
 
-        // ==========================================
-        // 🔴 دالة إضافة التنبيهات (تم تحديثها لدعم الصفقات المباشرة)
-        // ==========================================
         function addAlertToLog(interval, text, isWhale, timestamp, signalType) {
             const container = document.getElementById('alertsLogContainer');
-            
             if (isFirstAlert) { container.innerHTML = ''; isFirstAlert = false; }
 
-            const date = new Date();
-            const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
-            let bgClass = '';
-            let frameBadge = '';
-            let whaleBadge = '';
+            const timeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            let bgClass = '', frameBadge = '', whaleBadge = '';
 
-            // تصميم خاص لصفقات الحيتان اللحظية (تختلف عن إشارات التحليل الفني)
             if (signalType === 'whale_buy') {
                 bgClass = 'bg-emerald-600/30 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] text-emerald-300';
                 frameBadge = `<span class="font-bold bg-emerald-900 border border-emerald-500 px-2 py-1 rounded text-white text-xs">⚡ تنفيذ لحظي</span>`;
@@ -157,7 +181,6 @@
                 whaleBadge = `<span class="bg-rose-500 text-white px-2 py-0.5 rounded text-xs font-extrabold animate-pulse">🐋 حوت يبيع الماركت!</span>`;
                 triggerGlow('rose');
             } 
-            // تصميم إشارات التحليل الفني (SMC)
             else {
                 bgClass = signalType === 'bullish' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400';
                 frameBadge = `<span class="font-bold bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white text-xs">فريم ${interval}</span>`;
@@ -166,7 +189,6 @@
 
             const alertDiv = document.createElement('div');
             alertDiv.className = `flex justify-between items-center p-2 rounded border ${bgClass} animate-pulse-once`;
-            
             alertDiv.innerHTML = `
                 <div class="flex items-center gap-3">
                     <span class="font-mono text-xs text-slate-400 bg-slate-950 px-2 py-1 rounded">${timeStr}</span>
@@ -175,12 +197,10 @@
                 </div>
                 <div>${whaleBadge}</div>
             `;
-            
             container.prepend(alertDiv);
-            if (container.children.length > 20) container.removeChild(container.lastChild); // زيادة السجل إلى 20
+            if (container.children.length > 20) container.removeChild(container.lastChild); 
         }
 
-        // إضاءة خلفية للصندوق عند دخول حوت
         function triggerGlow(color) {
             const glow = document.getElementById('whaleGlow');
             glow.className = color === 'emerald' ? 'absolute inset-0 bg-emerald-500/20 transition-colors duration-300 pointer-events-none' : 'absolute inset-0 bg-rose-500/20 transition-colors duration-300 pointer-events-none';
@@ -188,49 +208,83 @@
         }
 
         // ==========================================
-        // تهيئة الرسوم البيانية
+        // تحديث واجهة ميزان القوى (كل ثانية)
         // ==========================================
+        function updateOrderFlowUI() {
+            // تنسيق الأرقام بالملايين أو الآلاف
+            const formatCash = (n) => {
+                if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+                if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+                return '$' + n.toFixed(0);
+            };
+
+            document.getElementById('buyVolText').innerText = formatCash(rollingBuyVol);
+            document.getElementById('buyCountText').innerText = rollingBuyCount;
+            document.getElementById('sellVolText').innerText = formatCash(rollingSellVol);
+            document.getElementById('sellCountText').innerText = rollingSellCount;
+
+            const totalVol = rollingBuyVol + rollingSellVol;
+            let buyPct = 50, sellPct = 50;
+
+            if (totalVol > 0) {
+                buyPct = (rollingBuyVol / totalVol) * 100;
+                sellPct = (rollingSellVol / totalVol) * 100;
+            }
+
+            document.getElementById('buyBar').style.width = `${buyPct}%`;
+            document.getElementById('sellBar').style.width = `${sellPct}%`;
+            document.getElementById('buyPercentText').innerText = `${buyPct.toFixed(0)}%`;
+            document.getElementById('sellPercentText').innerText = `${sellPct.toFixed(0)}%`;
+
+            const signalBox = document.getElementById('liveMarketSignal');
+            if (totalVol < 100000) { // سيولة ضعيفة جداً لتحديد اتجاه
+                signalBox.innerHTML = `<span class="text-sm font-bold text-slate-400">⚖️ سيولة ضعيفة (تذبذب)</span>`;
+                signalBox.className = "bg-slate-950 border border-slate-700 rounded-lg py-2 px-4 inline-block shadow-inner";
+            } else if (buyPct >= 65) {
+                signalBox.innerHTML = `<span class="text-sm font-bold text-emerald-400">🚀 المشترون يبتلعون السوق</span>`;
+                signalBox.className = "bg-emerald-950/40 border border-emerald-500 rounded-lg py-2 px-4 inline-block shadow-inner animate-pulse";
+            } else if (buyPct >= 55) {
+                signalBox.innerHTML = `<span class="text-sm font-bold text-emerald-300">📈 سيطرة شرائية خفيفة</span>`;
+                signalBox.className = "bg-slate-950 border border-emerald-700 rounded-lg py-2 px-4 inline-block shadow-inner";
+            } else if (sellPct >= 65) {
+                signalBox.innerHTML = `<span class="text-sm font-bold text-rose-400">💥 ضغط بيعي عنيف (تفريغ)</span>`;
+                signalBox.className = "bg-rose-950/40 border border-rose-500 rounded-lg py-2 px-4 inline-block shadow-inner animate-pulse";
+            } else if (sellPct >= 55) {
+                signalBox.innerHTML = `<span class="text-sm font-bold text-rose-300">📉 سيطرة بيعية خفيفة</span>`;
+                signalBox.className = "bg-slate-950 border border-rose-700 rounded-lg py-2 px-4 inline-block shadow-inner";
+            } else {
+                signalBox.innerHTML = `<span class="text-sm font-bold text-amber-400">⚔️ صراع متكافئ (تجميع/تصريف)</span>`;
+                signalBox.className = "bg-slate-950 border border-amber-600 rounded-lg py-2 px-4 inline-block shadow-inner";
+            }
+        }
+        setInterval(updateOrderFlowUI, 1000);
+
         async function initCharts() {
             const gridContainer = document.getElementById('charts-grid');
-
             for (let tf of timeframes) {
                 const chartCard = document.createElement('div');
                 chartCard.className = "bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col shadow-lg";
-                
                 const header = document.createElement('div');
                 header.className = "bg-slate-800 border-b border-slate-700 p-2 flex justify-between items-center";
                 header.innerHTML = `
                     <span class="text-sm font-bold text-white pl-2">${tf.title}</span> 
-                    <div class="flex items-center gap-2">
-                        <span id="timer-${tf.interval}" class="text-cyan-400 font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700">⏳ --:--</span>
-                    </div>
+                    <span id="timer-${tf.interval}" class="text-cyan-400 font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700">⏳ --:--</span>
                 `;
-                
                 const chartDiv = document.createElement('div');
-                chartDiv.className = "w-full h-[350px] relative"; 
-                
-                chartCard.appendChild(header);
-                chartCard.appendChild(chartDiv);
-                gridContainer.appendChild(chartCard);
+                chartDiv.className = "w-full h-[320px] relative"; 
+                chartCard.appendChild(header); chartCard.appendChild(chartDiv); gridContainer.appendChild(chartCard);
 
                 const chart = LightweightCharts.createChart(chartDiv, {
-                    autoSize: true,
-                    layout: { background: { type: 'solid', color: '#0f172a' }, textColor: '#94a3b8' },
+                    autoSize: true, layout: { background: { type: 'solid', color: '#0f172a' }, textColor: '#94a3b8' },
                     grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
                     timeScale: { timeVisible: true, borderColor: '#334155', rightOffset: 5 },
                     crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
                 });
-
                 const candleSeries = chart.addCandlestickSeries({ upColor: '#10b981', downColor: '#ef4444', borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444' });
                 const topTrendLine = chart.addLineSeries({ color: '#fbbf24', lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
                 const bottomTrendLine = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
 
-                chartsState[tf.interval] = {
-                    chart, candleSeries, topTrendLine, bottomTrendLine,
-                    data: [], resLineObj: null, supLineObj: null,
-                    lastAlertedCandleTime: 0 
-                };
-
+                chartsState[tf.interval] = { chart, candleSeries, topTrendLine, bottomTrendLine, data: [], resLineObj: null, supLineObj: null, lastAlertedCandleTime: 0 };
                 await fetchHistoricalData(tf.interval);
             }
             connectMultiplexWebSocket();
@@ -241,23 +295,13 @@
             const now = Date.now();
             timeframes.forEach(tf => {
                 const ms = intervalMsMap[tf.interval];
-                const nextClose = Math.ceil(now / ms) * ms;
-                let diff = nextClose - now;
-
-                let h = Math.floor(diff / (1000 * 60 * 60));
-                let m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                let s = Math.floor((diff % (1000 * 60)) / 1000);
-
+                const diff = (Math.ceil(now / ms) * ms) - now;
+                let h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
                 let timeString = h > 0 ? `${h.toString().padStart(2, '0')}:` : "";
                 timeString += `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-
                 const timerEl = document.getElementById(`timer-${tf.interval}`);
                 if (timerEl) {
-                    if (h === 0 && m === 0 && s <= 15) {
-                        timerEl.className = "text-rose-400 font-mono text-xs font-bold bg-rose-950/30 px-2 py-1 rounded border border-rose-500/50 shadow-inner animate-pulse";
-                    } else {
-                        timerEl.className = "text-cyan-400 font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700 shadow-inner";
-                    }
+                    timerEl.className = (h === 0 && m === 0 && s <= 15) ? "text-rose-400 font-mono text-xs font-bold bg-rose-950/30 px-2 py-1 rounded border border-rose-500/50 shadow-inner animate-pulse" : "text-cyan-400 font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded border border-slate-700 shadow-inner";
                     timerEl.innerText = `⏳ ${timeString}`;
                 }
             });
@@ -267,173 +311,123 @@
             try {
                 const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=200`);
                 const data = await res.json();
-                
-                const state = chartsState[interval];
-                state.data = data.map(d => ({
-                    time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
-                }));
-
+                chartsState[interval].data = data.map(d => ({ time: Math.floor(d[0]/1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5]) }));
                 recalculateAndDraw(interval);
             } catch (e) { console.error(e); }
         }
 
         function recalculateAndDraw(interval) {
-            const state = chartsState[interval];
-            const candles = state.data;
+            const state = chartsState[interval]; const candles = state.data;
             if (candles.length < 20) return;
-
-            const swingHighs = [];
-            const swingLows = [];
-            let markers = [];
-            const lookback = 3; 
+            const swingHighs = [], swingLows = []; let markers = []; const lookback = 3; 
 
             for (let i = lookback; i < candles.length - lookback; i++) {
-                let isSwingHigh = true, isSwingLow = true;
-                const cHigh = candles[i].high, cLow = candles[i].low;
-
+                let isH = true, isL = true; const cHigh = candles[i].high, cLow = candles[i].low;
                 for (let j = 1; j <= lookback; j++) {
-                    if (cHigh <= candles[i - j].high || cHigh <= candles[i + j].high) isSwingHigh = false;
-                    if (cLow >= candles[i - j].low || cLow >= candles[i + j].low) isSwingLow = false;
+                    if (cHigh <= candles[i - j].high || cHigh <= candles[i + j].high) isH = false;
+                    if (cLow >= candles[i - j].low || cLow >= candles[i + j].low) isL = false;
                 }
-                if (isSwingHigh) swingHighs.push({ index: i, time: candles[i].time, value: cHigh });
-                if (isSwingLow) swingLows.push({ index: i, time: candles[i].time, value: cLow });
+                if (isH) swingHighs.push({ index: i, time: candles[i].time, value: cHigh });
+                if (isL) swingLows.push({ index: i, time: candles[i].time, value: cLow });
             }
 
             let inSqueeze = false;
-
             for (let i = lookback; i < candles.length; i++) {
-                let current = candles[i];
-                let prev = candles[i-1];
-                
-                let volSum = 0;
-                for(let v = Math.max(0, i-20); v < i; v++) volSum += candles[v].volume;
-                let avgVol = volSum / 20;
-                let isWhaleVolume = current.volume > (avgVol * 1.5); 
-                
-                let recentHigh = swingHighs.filter(h => h.index < i).pop();
-                let recentLow = swingLows.filter(l => l.index < i).pop();
-                
-                let hasSignal = false, signalText = "", signalType = null;
+                let curr = candles[i], prev = candles[i-1];
+                let volSum = 0; for(let v = Math.max(0, i-20); v < i; v++) volSum += candles[v].volume;
+                let isWhaleVol = curr.volume > ((volSum/20) * 1.5); 
+                let rH = swingHighs.filter(h => h.index < i).pop(), rL = swingLows.filter(l => l.index < i).pop();
+                let hasSig = false, sigText = "", sigType = null;
 
-                if (recentHigh && recentLow) {
-                    if (current.high > recentHigh.value && current.close < recentHigh.value && current.close < current.open) {
-                        signalText = `فخ بيع (سيولة مشترين انضربت)`;
-                        markers.push({ time: current.time, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `🩸 فخ بيع` });
-                        hasSignal = true; signalType = 'bearish';
-                    }
-                    else if (current.low < recentLow.value && current.close > recentLow.value && current.close > current.open) {
-                        signalText = `فخ شراء (سيولة بائعين انضربت)`;
-                        markers.push({ time: current.time, position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: `🟢 فخ شراء` });
-                        hasSignal = true; signalType = 'bullish';
+                if (rH && rL) {
+                    if (curr.high > rH.value && curr.close < rH.value && curr.close < curr.open) {
+                        sigText = `فخ بيع (سيولة مشترين انضربت)`; markers.push({ time: curr.time, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `🩸 فخ بيع` }); hasSig = true; sigType = 'bearish';
+                    } else if (curr.low < rL.value && curr.close > rL.value && curr.close > curr.open) {
+                        sigText = `فخ شراء (سيولة بائعين انضربت)`; markers.push({ time: curr.time, position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: `🟢 فخ شراء` }); hasSig = true; sigType = 'bullish';
                     }
                 }
 
-                let oldDist = (recentHigh && recentLow) ? (recentHigh.value - recentLow.value) : null;
-                if (oldDist && (current.high - current.low) <= oldDist * 0.4) inSqueeze = true;
+                let oDist = (rH && rL) ? (rH.value - rL.value) : null;
+                if (oDist && (curr.high - curr.low) <= oDist * 0.4) inSqueeze = true;
 
                 if (inSqueeze) {
-                    if (current.close > current.open && current.close > prev.high && current.open < prev.close) {
-                        signalText = `صعود مؤكد (اختراق نطاق الخنق)`;
-                        markers.push({ time: current.time, position: 'belowBar', color: '#3b82f6', shape: 'arrowUp', text: `🚀 صعود مؤكد` });
-                        inSqueeze = false;
-                        hasSignal = true; signalType = 'bullish';
-                    }
-                    else if (current.close < current.open && current.close < prev.low && current.open > prev.close) {
-                        signalText = `هبوط مؤكد (كسر نطاق الخنق)`;
-                        markers.push({ time: current.time, position: 'aboveBar', color: '#f97316', shape: 'arrowDown', text: `💥 هبوط مؤكد` });
-                        inSqueeze = false;
-                        hasSignal = true; signalType = 'bearish';
+                    if (curr.close > curr.open && curr.close > prev.high && curr.open < prev.close) {
+                        sigText = `صعود مؤكد (اختراق)`; markers.push({ time: curr.time, position: 'belowBar', color: '#3b82f6', shape: 'arrowUp', text: `🚀 صعود` }); inSqueeze = false; hasSig = true; sigType = 'bullish';
+                    } else if (curr.close < curr.open && curr.close < prev.low && curr.open > prev.close) {
+                        sigText = `هبوط مؤكد (كسر)`; markers.push({ time: curr.time, position: 'aboveBar', color: '#f97316', shape: 'arrowDown', text: `💥 هبوط` }); inSqueeze = false; hasSig = true; sigType = 'bearish';
                     }
                 }
 
-                if (hasSignal && i === candles.length - 1 && state.lastAlertedCandleTime !== current.time) {
-                    playAlert(isWhaleVolume);
-                    addAlertToLog(interval, signalText, isWhaleVolume, current.time, signalType);
-                    state.lastAlertedCandleTime = current.time;
+                if (hasSig && i === candles.length - 1 && state.lastAlertedCandleTime !== curr.time) {
+                    playAlert(isWhaleVol); addAlertToLog(interval, sigText, isWhaleVol, curr.time, sigType); state.lastAlertedCandleTime = curr.time;
                 }
             }
 
-            state.candleSeries.setData(candles);
-            state.candleSeries.setMarkers(markers);
-
-            const lastConfirmedHigh = swingHighs.length > 0 ? swingHighs[swingHighs.length - 1].value : null;
-            const lastConfirmedLow = swingLows.length > 0 ? swingLows[swingLows.length - 1].value : null;
+            state.candleSeries.setData(candles); state.candleSeries.setMarkers(markers);
+            let lstH = swingHighs.length > 0 ? swingHighs[swingHighs.length-1].value : null;
+            let lstL = swingLows.length > 0 ? swingLows[swingLows.length-1].value : null;
 
             if (state.resLineObj) state.candleSeries.removePriceLine(state.resLineObj);
-            if (lastConfirmedHigh) state.resLineObj = state.candleSeries.createPriceLine({ price: lastConfirmedHigh, color: '#ef4444', lineWidth: 2, lineStyle: 2, title: 'مقاومة' });
-
+            if (lstH) state.resLineObj = state.candleSeries.createPriceLine({ price: lstH, color: '#ef4444', lineWidth: 2, lineStyle: 2, title: 'مقاومة' });
             if (state.supLineObj) state.candleSeries.removePriceLine(state.supLineObj);
-            if (lastConfirmedLow) state.supLineObj = state.candleSeries.createPriceLine({ price: lastConfirmedLow, color: '#10b981', lineWidth: 2, lineStyle: 2, title: 'دعم' });
+            if (lstL) state.supLineObj = state.candleSeries.createPriceLine({ price: lstL, color: '#10b981', lineWidth: 2, lineStyle: 2, title: 'دعم' });
             
-            const lastCandle = candles[candles.length - 1];
-            let topData = swingHighs.map(h => ({time: h.time, value: h.value}));
-            let botData = swingLows.map(l => ({time: l.time, value: l.value}));
-            
+            let topData = swingHighs.map(h => ({time: h.time, value: h.value})), botData = swingLows.map(l => ({time: l.time, value: l.value}));
+            let lastCandle = candles[candles.length - 1];
             if (topData.length > 0 && lastCandle.time >= topData[topData.length-1].time) topData.push({ time: lastCandle.time, value: lastCandle.high });
             if (botData.length > 0 && lastCandle.time >= botData[botData.length-1].time) botData.push({ time: lastCandle.time, value: lastCandle.low });
-
-            state.topTrendLine.setData(topData);
-            state.bottomTrendLine.setData(botData);
+            state.topTrendLine.setData(topData); state.bottomTrendLine.setData(botData);
         }
 
-        // ==========================================
-        // 🚀 الاتصال اللحظي المجمع (الشموع + صفقات الحيتان المباشرة)
-        // ==========================================
         function connectMultiplexWebSocket() {
-            // إضافة قناة aggTrade لرصد الصفقات المنفردة اللحظية
             const streams = timeframes.map(tf => `btcusdt@kline_${tf.interval}`);
             streams.push('btcusdt@aggTrade'); 
             
-            const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams.join('/')}`;
-            const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams.join('/')}`);
 
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
+                const now = Date.now();
                 
-                // 1. معالجة الصفقات اللحظية المباشرة (رصد الحيتان)
+                // 1. تدفق الأوامر وميزان القوى (Order Flow & Tape Reading)
                 if (msg.stream === 'btcusdt@aggTrade') {
                     const trade = msg.data;
                     const price = parseFloat(trade.p);
                     const qty = parseFloat(trade.q);
-                    const isSell = trade.m; // true = taker sold (باع للسوق), false = taker bought (اشترى من السوق)
+                    const isSell = trade.m; 
                     const totalValue = price * qty;
 
-                    // إذا تخطت الصفقة الواحدة نصف مليون دولار!
+                    // تخزين الصفقة لتحديث ميزان القوى (Tug-of-war)
+                    tradesQueue.push({ t: now, v: totalValue, isSell: isSell });
+                    if (isSell) { rollingSellVol += totalValue; rollingSellCount++; } 
+                    else { rollingBuyVol += totalValue; rollingBuyCount++; }
+
+                    // تنظيف الصفقات الأقدم من 60 ثانية
+                    const cutoff = now - RECENT_TRADES_WINDOW;
+                    while (tradesQueue.length > 0 && tradesQueue[0].t < cutoff) {
+                        const oldTrade = tradesQueue.shift();
+                        if (oldTrade.isSell) { rollingSellVol -= oldTrade.v; rollingSellCount--; } 
+                        else { rollingBuyVol -= oldTrade.v; rollingBuyCount--; }
+                    }
+
+                    // رصد صفقات الحيتان (نصف مليون فما فوق للصفقة الواحدة)
                     if (totalValue >= WHALE_ORDER_THRESHOLD) {
                         const btcQty = qty.toFixed(1);
                         const valueInK = (totalValue / 1000).toFixed(0) + 'K';
-                        
-                        if (!isSell) {
-                            // شراء ماركت ضخم
-                            playAlert(true); // تشغيل صوت الحوت
-                            addAlertToLog('لحظي', `شراء ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_buy');
-                        } else {
-                            // بيع ماركت ضخم
-                            playAlert(true); // تشغيل صوت الحوت
-                            addAlertToLog('لحظي', `بيع ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_sell');
-                        }
+                        if (!isSell) { playAlert(true); addAlertToLog('لحظي', `شراء ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_buy'); } 
+                        else { playAlert(true); addAlertToLog('لحظي', `بيع ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_sell'); }
                     }
                 }
                 
-                // 2. معالجة الشموع (التحليل الفني)
+                // 2. تحديث الشموع الفني
                 if (msg.stream && msg.stream.includes('kline')) {
-                    const interval = msg.data.k.i;
-                    const k = msg.data.k;
-                    const state = chartsState[interval];
+                    const interval = msg.data.k.i, k = msg.data.k, state = chartsState[interval];
                     if (!state) return;
-
                     const time = Math.floor(k.t / 1000);
-                    const updatedCandle = {
-                        time: time, open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v)
-                    };
-
+                    const updatedCandle = { time: time, open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v) };
                     const lastDataIndex = state.data.length - 1;
-                    if (state.data[lastDataIndex].time === time) {
-                        state.data[lastDataIndex] = updatedCandle; 
-                    } else {
-                        state.data.push(updatedCandle); 
-                        if(state.data.length > 300) state.data.shift();
-                    }
+                    if (state.data[lastDataIndex].time === time) state.data[lastDataIndex] = updatedCandle; 
+                    else { state.data.push(updatedCandle); if(state.data.length > 300) state.data.shift(); }
                     recalculateAndDraw(interval);
                 }
             };
