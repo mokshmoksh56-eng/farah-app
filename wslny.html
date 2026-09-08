@@ -14,7 +14,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f3f4f6; overflow-x: hidden; touch-action: manipulation; }
+        body { font-family: 'Cairo', sans-serif; background-color: #f3f4f6; overflow-x: hidden; touch-action: manipulation; transition: background-color 0.3s ease, color 0.3s ease; }
         .glass-panel { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
@@ -26,6 +26,40 @@
         @keyframes customLoader { 0% { transform: translateX(100%); } 50% { transform: translateX(-50%); } 100% { transform: translateX(-180%); } }
         .loader-bar { animation: customLoader 1.5s infinite ease-in-out; }
         .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; }
+
+        /* =================== الوضع الليلي (Dark Mode) =================== */
+        body.dark-mode { background-color: #111827 !important; color: #f3f4f6 !important; }
+        body.dark-mode .glass-panel { background: rgba(31, 41, 55, 0.98) !important; border-color: #4b5563 !important; }
+        body.dark-mode .bg-white, body.dark-mode .bg-gray-100, body.dark-mode .bg-gray-50, 
+        body.dark-mode .bg-orange-50, body.dark-mode .bg-blue-50, body.dark-mode .bg-indigo-50, 
+        body.dark-mode .bg-green-50, body.dark-mode .bg-red-50, body.dark-mode .bg-yellow-50 { 
+            background-color: #1f2937 !important; border-color: #374151 !important; color: #f3f4f6 !important; 
+        }
+        body.dark-mode input, body.dark-mode select { 
+            background-color: #374151 !important; color: #ffffff !important; border-color: #4b5563 !important; 
+        }
+        body.dark-mode input::placeholder { color: #9ca3af !important; }
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode label, 
+        body.dark-mode p:not(.text-green-700):not(.text-red-700):not(.text-yellow-700), body.dark-mode span:not(.bg-yellow-100) { 
+            color: #f3f4f6 !important; 
+        }
+        body.dark-mode .text-gray-900, body.dark-mode .text-gray-800, body.dark-mode .text-gray-700, 
+        body.dark-mode .text-gray-600, body.dark-mode .text-gray-500,
+        body.dark-mode .text-orange-900, body.dark-mode .text-orange-800, body.dark-mode .text-orange-700, body.dark-mode .text-orange-600,
+        body.dark-mode .text-blue-900, body.dark-mode .text-blue-800, body.dark-mode .text-blue-700,
+        body.dark-mode .text-indigo-900, body.dark-mode .text-indigo-800, body.dark-mode .text-indigo-700 {
+            color: #e5e7eb !important;
+        }
+        body.dark-mode .v-card svg path[fill="#1f2937"], body.dark-mode .v-card svg circle[fill="#1f2937"], body.dark-mode .v-card svg rect[fill="#1f2937"] {
+            fill: #9ca3af !important;
+        }
+        body.dark-mode .border-gray-200, body.dark-mode .border-gray-300, body.dark-mode .border-orange-200, 
+        body.dark-mode .border-orange-300, body.dark-mode .border-blue-200, body.dark-mode .border-blue-300, body.dark-mode .border-indigo-200 {
+            border-color: #4b5563 !important;
+        }
+        body.dark-mode #ptrIndicator { background-color: #1f2937 !important; border-color: #374151 !important; }
+        body.dark-mode .dark-btn { background-color: #374151 !important; border-color: #4b5563 !important; }
+        body.dark-mode #auth-loader { background-color: #111827 !important; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center py-6 px-4 text-gray-900 bg-gray-200 relative leading-relaxed">
@@ -41,6 +75,11 @@
         const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
         document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(blob)}">`);
     </script>
+
+    <!-- زر الإعدادات العائم -->
+    <button onclick="openSettingsModal()" class="fixed top-4 right-4 z-[999] w-12 h-12 bg-white dark-btn border-2 border-gray-200 rounded-full shadow-lg flex justify-center items-center hover:scale-105 active:scale-95 transition-all text-xl">
+        ⚙️
+    </button>
 
     <div id="ptrIndicator" class="fixed top-0 left-0 w-full h-0 bg-white flex justify-center items-center overflow-hidden transition-all duration-200 z-[99999] shadow-sm border-b border-gray-200">
         <div class="flex items-center gap-3 text-gray-700 font-extrabold text-base">
@@ -64,7 +103,7 @@
         </div>
     </div>
 
-    <div id="globalLogo" onclick="showView('homeView')" class="text-center mb-6 cursor-pointer hover:scale-105 transition-transform duration-300">
+    <div id="globalLogo" onclick="showView('homeView')" class="text-center mb-6 cursor-pointer hover:scale-105 transition-transform duration-300 mt-4">
         <div class="relative inline-flex items-center justify-center mb-2">
             <div class="absolute inset-0 bg-orange-200 rounded-full animate-ping opacity-75"></div>
             <div class="relative bg-orange-500 text-white w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform -rotate-6 transition-transform hover:rotate-0">
@@ -215,6 +254,55 @@
                 حرك الدبوس أو ابحث لتحديد المكان...
             </div>
             <button type="button" onclick="confirmMapSelection()" class="mt-4 w-full bg-gray-800 text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95">تأكيد واختيار هذا الموقع</button>
+        </div>
+    </div>
+
+    <!-- نافذة الإعدادات (الوضع الليلي وصلاحيات الموقع) -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[999999] flex justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-gray-900">الإعدادات ⚙️</h3>
+                <button type="button" onclick="closeSettingsModal()" class="text-gray-500 hover:text-red-500 text-3xl font-bold">&times;</button>
+            </div>
+            
+            <!-- الوضع الليلي والنهاري -->
+            <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-2xl flex justify-between items-center">
+                <div>
+                    <h4 class="font-bold text-gray-900 text-lg">مظهر التطبيق</h4>
+                    <p class="text-[11px] text-gray-500">اختر الوضع النهاري أو الليلي</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="darkModeToggle" class="sr-only peer" onchange="toggleDarkMode()">
+                    <div class="w-14 h-7 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-orange-500"></div>
+                    <span class="absolute right-1 text-[12px] pointer-events-none transition-opacity peer-checked:opacity-0">🌞</span>
+                    <span class="absolute left-1.5 text-[12px] pointer-events-none opacity-0 transition-opacity peer-checked:opacity-100">🌙</span>
+                </label>
+            </div>
+
+            <!-- أذونات الموقع -->
+            <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl mb-4">
+                <h4 class="font-black text-blue-900 text-lg mb-2">📍 أذونات الموقع الجغرافي</h4>
+                <p class="text-xs text-blue-800 font-bold mb-3 leading-relaxed">
+                    يجب تفعيل الـ GPS والسماح للمتصفح بالوصول لموقعك لضمان عمل التطبيق بشكل صحيح.
+                </p>
+                
+                <div class="space-y-2 text-[11px] text-gray-700 font-bold bg-white p-3 rounded-xl border border-blue-100">
+                    <p class="text-orange-600 font-black mb-1">كيفية تفعيل إذن الموقع من الهاتف:</p>
+                    <ol class="list-decimal list-inside space-y-1.5">
+                        <li>اسحب شريط الإشعارات من أعلى الشاشة وقم بتشغيل <b>(GPS / الموقع)</b>.</li>
+                        <li>اذهب إلى <b>إعدادات الهاتف</b> ⚙️ (Settings).</li>
+                        <li>اختر <b>التطبيقات</b> (Apps) وابحث عن المتصفح (مثل Chrome).</li>
+                        <li>اختر <b>الأذونات</b> (Permissions) 👈 ثم <b>الموقع</b> (Location).</li>
+                        <li>اختر <b>"السماح دائمًا"</b> أو <b>"السماح عند استخدام التطبيق"</b>.</li>
+                    </ol>
+                </div>
+                
+                <button type="button" onclick="testLocationPermission()" id="btnTestLocation" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95 transition">
+                    فحص صلاحية الموقع الآن 🔍
+                </button>
+            </div>
+            
+            <button type="button" onclick="closeSettingsModal()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95 transition mt-2">إغلاق الإعدادات</button>
         </div>
     </div>
 
@@ -419,23 +507,84 @@
             if (targetView) targetView.classList.remove('hidden'); else document.getElementById('homeView').classList.remove('hidden');
         });
 
-        window.addEventListener('load', () => {
-            // 1. طلب إذن الموقع من الهاتف فور فتح التطبيق مباشرة
+        // ================= أزرار وإعدادات الوضع الليلي وأذونات الموقع ================= //
+        window.openSettingsModal = function() { document.getElementById('settingsModal').classList.remove('hidden'); };
+        window.closeSettingsModal = function() { document.getElementById('settingsModal').classList.add('hidden'); };
+        
+        window.toggleDarkMode = function() {
+            const isDark = document.getElementById('darkModeToggle').checked;
+            if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('naqla_theme', 'dark'); } 
+            else { document.body.classList.remove('dark-mode'); localStorage.setItem('naqla_theme', 'light'); }
+        };
+
+        window.testLocationPermission = function() {
+            const btn = document.getElementById('btnTestLocation');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ جاري الفحص...";
+            
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        window.driverLat = position.coords.latitude;
-                        window.driverLon = position.coords.longitude;
-                        localStorage.setItem('location_disclosure_accepted', 'true');
+                    (pos) => {
+                        btn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-red-600', 'hover:bg-red-700');
+                        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+                        btn.innerHTML = "✅ الموقع يعمل بنجاح!";
+                        setTimeout(() => { btn.innerHTML = originalText; btn.className = "mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95 transition"; }, 3000);
                     },
-                    (error) => {
-                        console.warn("لم يتم إعطاء صلاحية الموقع: ", error.message);
+                    (err) => {
+                        btn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-green-600', 'hover:bg-green-700');
+                        btn.classList.add('bg-red-600', 'hover:bg-red-700');
+                        btn.innerHTML = "❌ الإذن مرفوض! اتبع الخطوات أعلاه.";
+                        setTimeout(() => { btn.innerHTML = originalText; btn.className = "mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95 transition"; }, 4000);
+                        alert("الرجاء الدخول لإعدادات الهاتف وإعطاء صلاحية الموقع (GPS) للمتصفح كما هو موضح بالخطوات.");
                     },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                 );
+            } else {
+                alert("هذا المتصفح لا يدعم تحديد الموقع.");
+                btn.innerHTML = originalText;
+            }
+        };
+
+        window.addEventListener('load', async () => {
+            // تهيئة الوضع الليلي من الذاكرة
+            const savedTheme = localStorage.getItem('naqla_theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const toggle = document.getElementById('darkModeToggle');
+                if(toggle) toggle.checked = true;
             }
 
-            // 2. استرجاع بيانات تسجيل الدخول السابقة
+            // تسلسل طلب الأذونات: الإشعارات أولاً ثم الموقع
+            const requestAppPermissions = async () => {
+                // 1. طلب إذن الإشعارات أولاً
+                if ("Notification" in window && Notification.permission === "default") {
+                    try {
+                        await Notification.requestPermission();
+                    } catch (e) {
+                        console.warn("تعذر طلب إذن الإشعارات: ", e);
+                    }
+                }
+                
+                // 2. طلب إذن الموقع بعد الاستجابة للإشعارات
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            window.driverLat = position.coords.latitude;
+                            window.driverLon = position.coords.longitude;
+                            localStorage.setItem('location_disclosure_accepted', 'true');
+                        },
+                        (error) => {
+                            console.warn("لم يتم إعطاء صلاحية الموقع: ", error.message);
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                }
+            };
+
+            // تشغيل تسلسل الأذونات
+            requestAppPermissions();
+
+            // استرجاع بيانات تسجيل الدخول السابقة
             const savedPhone = localStorage.getItem('wslny_saved_phone'); 
             const savedPin = localStorage.getItem('wslny_saved_pin');
             if (savedPhone && savedPin) { 
@@ -445,7 +594,7 @@
                 if (pinInput) pinInput.value = savedPin; 
             }
             
-            // 3. توجيه المستخدم للشاشة المناسبة
+            // توجيه المستخدم للشاشة المناسبة
             if (!window.location.hash) { 
                 if (localStorage.getItem('wslny_is_active') !== 'true') { window.location.hash = 'homeView'; } 
             } else { 
@@ -672,7 +821,6 @@
         
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                if ("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
                 if (localStorage.getItem('wslny_is_active') === 'true') {
                     const savedInfo = JSON.parse(localStorage.getItem('wslny_driver_info'));
                     if(savedInfo) {
