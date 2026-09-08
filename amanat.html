@@ -3,80 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بث الشاشة - كود مختصر</title>
-    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
-    <style>
-        body { font-family: Tahoma, sans-serif; text-align: center; background: #f0f2f5; margin: 0; padding: 20px; }
-        .card { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .id-box { background: #e9ecef; padding: 15px; border-radius: 8px; font-size: 18px; margin-bottom: 20px; color: #333; position: relative; }
-        .id-number { color: #d9534f; font-size: 34px; font-weight: bold; letter-spacing: 4px; display: block; margin: 10px 0; }
-        .btn-refresh { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 5px; }
-        .btn-refresh:hover { background: #5a6268; }
-        input { width: 90%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; font-size: 20px; text-align: center; letter-spacing: 2px; }
-        button { width: 95%; padding: 12px; margin: 5px 0; border-radius: 6px; border: none; font-size: 16px; color: white; cursor: pointer; font-weight: bold; }
-        .btn-view { background: #007bff; }
-        .btn-share { background: #28a745; }
-        video { width: 100%; max-height: 400px; background: #000; border-radius: 8px; margin-top: 15px; display: none; }
-    </style>
+    <title>شاشات البيتكوين | توصيل القمم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تم استخدام سيرفر jsDelivr الأسرع والأكثر استقراراً لضمان عمل المكتبة -->
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
-<body>
-    <div class="card">
-        <h3>نظام المراقبة برقم مختصر</h3>
-        
-        <div class="id-box">
-            كود هذا الهاتف:
-            <span id="my-id" class="id-number">جاري التحميل...</span>
-            <button class="btn-refresh" onclick="window.location.reload()">🔄 تحديث الكود</button>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-2 md:p-4 font-sans">
+    
+    <div class="max-w-[1800px] mx-auto space-y-6">
+        <!-- رأس الصفحة -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold text-emerald-400 flex items-center gap-2">
+                    <span>📊 لوحة شموع البيتكوين - قمم متصلة</span>
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">يتم رسم خط أصفر تلقائياً يربط بين الذيل العلوي لكل شمعة والشمعة التي تليها (البيانات من Binance لضمان الاستقرار).</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span class="text-sm font-semibold text-slate-300">السوق يعمل (Live)</span>
+            </div>
         </div>
-        
-        <input type="number" id="remote-id" placeholder="أدخل الكود (6 أرقام)" maxlength="6">
-        
-        <button class="btn-share" onclick="shareScreen()">مشاركة شاشة هذا الهاتف</button>
-        <button class="btn-view" onclick="startViewing()">تجهيز لاستقبال البث</button>
-        
-        <video id="remote-video" autoplay playsinline controls></video>
+
+        <!-- شبكة الرسوم البيانية -->
+        <div id="charts-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
+            <!-- يتم حقن الشاشات هنا -->
+        </div>
     </div>
 
     <script>
-        // توليد كود عشوائي من 6 أرقام
-        const mySimpleId = Math.floor(100000 + Math.random() * 900000).toString();
-        const peer = new Peer(mySimpleId);
-        
-        peer.on('open', (id) => {
-            document.getElementById('my-id').innerText = id;
-        });
+        // إعداد الفريمات الزمنية الخاصة بمنصة Binance
+        const timeframes = [
+            { interval: "5m", title: "5 دقائق" },
+            { interval: "15m", title: "15 دقيقة" },
+            { interval: "30m", title: "30 دقيقة" },
+            { interval: "1h", title: "1 ساعة" },
+            { interval: "2h", title: "ساعتين" },
+            { interval: "4h", title: "4 ساعات" },
+            { interval: "6h", title: "6 ساعات" },
+            { interval: "1d", title: "يوم واحد" },
+            { interval: "1w", title: "أسبوع" },
+            { interval: "1M", title: "شهر" }
+        ];
 
-        // كود الاستقبال
-        peer.on('call', (call) => {
-            call.answer(); 
-            call.on('stream', (remoteStream) => {
-                const video = document.getElementById('remote-video');
-                video.style.display = 'block'; // إظهار الشاشة عند بدء البث
-                video.srcObject = remoteStream;
-                video.play();
+        const gridContainer = document.getElementById('charts-grid');
+
+        // دالة إنشاء الرسوم البيانية وجلب البيانات
+        async function createChart(tf, index) {
+            // 1. بناء هيكل البطاقة
+            const chartCard = document.createElement('div');
+            chartCard.className = "bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col shadow-lg";
+            
+            const header = document.createElement('div');
+            header.className = "bg-slate-800 border-b border-slate-700 p-2 text-center text-sm font-bold text-amber-400";
+            header.innerText = `فريم: ${tf.title} (جاري التحميل...)`;
+            
+            const chartDiv = document.createElement('div');
+            chartDiv.className = "w-full h-[350px] relative"; 
+            
+            chartCard.appendChild(header);
+            chartCard.appendChild(chartDiv);
+            gridContainer.appendChild(chartCard);
+
+            // 2. إعداد الرسم البياني المتقدم
+            const chart = LightweightCharts.createChart(chartDiv, {
+                autoSize: true, // يضمن ظهور الرسم البياني وتأقلمه مع حجم الشاشة فوراً
+                layout: {
+                    background: { type: 'solid', color: '#0f172a' },
+                    textColor: '#94a3b8',
+                },
+                grid: {
+                    vertLines: { color: '#1e293b' },
+                    horzLines: { color: '#1e293b' },
+                },
+                timeScale: {
+                    timeVisible: true,
+                    borderColor: '#334155',
+                },
+                rightPriceScale: {
+                    borderColor: '#334155',
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                }
             });
-        });
 
-        function startViewing() {
-            alert('جاهز للاستقبال. اذهب للهاتف الثاني وأدخل الكود المكون من 6 أرقام الظاهر في الأعلى.');
-        }
+            // 3. إضافة سلسلة الشموع اليابانية
+            const candleSeries = chart.addCandlestickSeries({
+                upColor: '#10b981', 
+                downColor: '#ef4444', 
+                borderVisible: false, 
+                wickUpColor: '#10b981', 
+                wickDownColor: '#ef4444'
+            });
 
-        // كود الإرسال
-        async function shareScreen() {
-            const remoteId = document.getElementById('remote-id').value;
-            if (remoteId.length !== 6) {
-                return alert('تأكد من إدخال الكود المكون من 6 أرقام بشكل صحيح!');
-            }
+            // 4. سلسلة الخط الأصفر التي ستربط القمم (الأذيال العلوية)
+            const highLineSeries = chart.addLineSeries({
+                color: '#fbbf24', 
+                lineWidth: 2,
+                crosshairMarkerVisible: true,
+                lastValueVisible: false,
+                priceLineVisible: false
+            });
 
+            // 5. جلب بيانات السوق من Binance (لا يتم حظرها من المتصفحات)
             try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                const call = peer.call(remoteId, stream);
-                alert('جاري البث الآن... الشاشة تظهر على الهاتف الآخر.');
-            } catch (err) {
-                console.error(err);
-                alert('تم إلغاء تصوير الشاشة.');
+                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${tf.interval}&limit=150`);
+                if (!res.ok) throw new Error("Network response was not ok");
+                const data = await res.json();
+
+                const candlesData = [];
+                const highsData = [];
+
+                data.forEach(d => {
+                    let time;
+                    // معالجة صيغة الوقت بدقة لتجنب أخطاء الرسم البياني في الفريمات الكبيرة
+                    if (["1d", "1w", "1M"].includes(tf.interval)) {
+                        const date = new Date(d[0]);
+                        const y = date.getUTCFullYear();
+                        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        time = `${y}-${m}-${day}`;
+                    } else {
+                        time = Math.floor(d[0] / 1000);
+                    }
+
+                    const open = parseFloat(d[1]);
+                    const high = parseFloat(d[2]);
+                    const low = parseFloat(d[3]);
+                    const close = parseFloat(d[4]);
+
+                    // تجهيز بيانات الشمعة والخط
+                    candlesData.push({ time, open, high, low, close });
+                    highsData.push({ time, value: high });
+                });
+
+                // تغذية الرسم البياني بالبيانات وتحديث العنوان
+                candleSeries.setData(candlesData);
+                highLineSeries.setData(highsData);
+                header.innerText = `فريم: ${tf.title}`;
+                
+            } catch (error) {
+                console.error(`خطأ في جلب بيانات فريم ${tf.interval}:`, error);
+                header.innerText = `فريم: ${tf.title} (تعذر الاتصال)`;
+                header.classList.add('text-red-400');
             }
         }
+
+        // تشغيل العملية لجميع الفريمات بمجرد فتح الصفحة
+        timeframes.forEach((tf, index) => {
+            createChart(tf, index);
+        });
     </script>
 </body>
 </html>
