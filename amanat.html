@@ -14,7 +14,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* دمج الخلفية البرمجية ثلاثية الأبعاد (بدون صور لسرعة التطبيق) */
         body { 
             font-family: 'Cairo', sans-serif; 
             overflow-x: hidden; 
@@ -29,7 +28,6 @@
             background-size: cover;
         }
         
-        /* البطاقة الزجاجية */
         .glass-card { 
             background: rgba(255, 255, 255, 0.08); 
             backdrop-filter: blur(25px); 
@@ -38,20 +36,20 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
         }
         
-        /* حركات التنقل بين الشاشات */
         .fade-enter { opacity: 0; transform: translateY(15px); transition: all 0.4s ease-out; pointer-events: none; position: absolute; width: 100%; visibility: hidden; }
         .fade-enter-active { opacity: 1; transform: translateY(0); pointer-events: auto; position: relative; visibility: visible; }
         
         ::placeholder { color: rgba(255, 255, 255, 0.5) !important; }
         .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; color: black; }
+        .leaflet-popup-content { text-align: center; font-weight: bold; font-family: 'Cairo', sans-serif; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 relative">
 
-    <div class="w-full max-w-md glass-card rounded-3xl p-6 sm:p-8 overflow-hidden relative min-h-[500px]">
+    <div class="w-full max-w-md glass-card rounded-3xl p-6 sm:p-8 overflow-hidden relative min-h-[550px]">
         
         <!-- اللوجو -->
-        <div class="text-center mb-8">
+        <div class="text-center mb-6">
             <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 border border-white/30 rounded-2xl shadow-lg transform rotate-3 mb-3">
                 <span class="text-3xl transform -rotate-3 text-white shadow-sm">💸</span>
             </div>
@@ -82,12 +80,13 @@
         <!-- ============================================== -->
         <!-- 2. شاشة العميل (طلب الكاش) -->
         <!-- ============================================== -->
-        <div id="customerView" class="fade-enter">
-            <div class="flex items-center gap-3 mb-6">
+        <div id="customerView" class="fade-enter flex flex-col h-full">
+            <div class="flex items-center gap-3 mb-4">
                 <button type="button" onclick="goBack()" class="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center hover:bg-white/30 shadow-md">&rarr;</button>
                 <h2 class="text-xl font-black text-white drop-shadow-sm">طلب الكاش</h2>
             </div>
-            <form onsubmit="window.sendCashRequest(event)" class="space-y-4">
+            
+            <form id="customerFormElement" onsubmit="window.searchMerchants(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-white mb-1 drop-shadow-sm">رقم الهاتف</label>
                     <input type="tel" id="customerPhone" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white font-black tracking-widest text-left shadow-inner" dir="ltr">
@@ -103,13 +102,39 @@
                     </button>
                     <input type="text" id="custAddressDisplay" readonly placeholder="لم يتم تحديد الموقع..." class="w-full px-2 py-2 bg-black/30 border border-white/10 rounded-lg text-[11px] font-bold text-white text-center">
                 </div>
-                <button type="submit" id="btnCustomerSubmit" class="w-full bg-white text-blue-900 font-extrabold py-3.5 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.3)] active:scale-95 text-lg mt-2 transition-all">
-                    إرسال الطلب أونلاين 🚀
+                <button type="submit" id="btnCustomerSearch" class="w-full bg-white text-blue-900 font-extrabold py-3.5 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.3)] active:scale-95 text-lg mt-2 transition-all">
+                    بحث عن أقرب تجار 🔍
                 </button>
-                <div id="customerStatusMsg" class="hidden text-center p-3 rounded-xl bg-blue-900/60 border border-blue-400 mt-2 text-sm font-bold text-blue-100 animate-pulse shadow-inner">
-                    ⏳ جاري البحث عن تاجر قريب...
-                </div>
             </form>
+
+            <!-- نتائج البحث (الخريطة والجدول) تظهر بعد البحث -->
+            <div id="searchResultsContainer" class="hidden mt-4 animate-fade-in flex-1">
+                <div id="customerStatusMsg" class="text-center p-3 rounded-xl bg-blue-900/60 border border-blue-400 mb-3 text-sm font-bold text-blue-100 shadow-inner">
+                    ✅ تم العثور على تجار لديهم السيولة المطلوبة!
+                </div>
+                
+                <!-- خريطة التجار -->
+                <div class="h-32 w-full rounded-xl overflow-hidden border border-white/20 shadow-lg relative z-0 mb-3">
+                    <div id="liveMerchantsMap" class="w-full h-full"></div>
+                </div>
+
+                <!-- جدول التجار (الأقرب للأبعد) -->
+                <div class="bg-white/10 border border-white/20 rounded-xl overflow-hidden shadow-inner">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-blue-900/60 text-blue-200 text-[11px] uppercase">
+                            <tr>
+                                <th class="p-3 font-extrabold">المتجر</th>
+                                <th class="p-3 font-extrabold text-center">المسافة</th>
+                                <th class="p-3 font-extrabold text-center">إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10" id="merchantsTableBody">
+                            <!-- سيتم توليد الصفوف عبر الجافا سكريبت هنا -->
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" onclick="resetCustomerSearch()" class="mt-4 w-full bg-red-500/20 text-red-200 border border-red-500/30 py-2 rounded-lg text-sm font-bold hover:bg-red-500/40">إلغاء وبحث جديد</button>
+            </div>
         </div>
 
         <!-- ============================================== -->
@@ -123,11 +148,11 @@
             <form onsubmit="window.loginMerchant(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-white mb-2 drop-shadow-sm">رقم هاتف المتجر</label>
-                    <input type="tel" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white font-black tracking-widest text-left shadow-inner" dir="ltr">
+                    <input type="tel" id="loginPhone" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white font-black tracking-widest text-left shadow-inner" dir="ltr">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-white mb-2 drop-shadow-sm">الرقم السري (PIN)</label>
-                    <input type="password" required placeholder="****" maxlength="4" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white text-center text-2xl font-black tracking-widest shadow-inner" dir="ltr">
+                    <input type="password" id="loginPin" required placeholder="****" maxlength="4" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white text-center text-2xl font-black tracking-widest shadow-inner" dir="ltr">
                 </div>
                 <button type="submit" id="btnLoginMerchant" class="w-full bg-white text-blue-900 font-extrabold py-3.5 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.3)] active:scale-95 text-lg transition-all">
                     دخول للوحة التحكم 🏪
@@ -149,6 +174,10 @@
             </div>
             <form onsubmit="window.registerMerchant(event)" class="space-y-3">
                 <div>
+                    <label class="block text-[13px] font-bold text-white mb-1 drop-shadow-sm">اسم المتجر</label>
+                    <input type="text" id="regStoreName" required placeholder="مثال: سوبر ماركت السلام" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none font-bold text-white shadow-inner">
+                </div>
+                <div>
                     <label class="block text-[13px] font-bold text-white mb-1 drop-shadow-sm">رقم التليفون</label>
                     <input type="tel" id="regPhone" required placeholder="01xxxxxxxx" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none font-black tracking-widest text-left shadow-inner" dir="ltr">
                 </div>
@@ -158,16 +187,16 @@
                         <input type="password" id="regPin" required placeholder="****" maxlength="4" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none text-center font-black tracking-widest shadow-inner" dir="ltr">
                     </div>
                     <div>
-                        <label class="block text-[13px] font-bold text-white mb-1 drop-shadow-sm">تأكيد السري</label>
-                        <input type="password" id="regPinConfirm" required placeholder="****" maxlength="4" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none text-center font-black tracking-widest shadow-inner" dir="ltr">
+                        <label class="block text-[13px] font-bold text-white mb-1 drop-shadow-sm">السيولة المبدئية</label>
+                        <input type="number" id="regBalance" required placeholder="مثال: 5000" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none text-center font-black tracking-widest shadow-inner" dir="ltr">
                     </div>
                 </div>
-                <div class="bg-white/10 border border-white/20 p-3 rounded-xl shadow-inner">
+                <div class="bg-white/10 border border-white/20 p-3 rounded-xl shadow-inner mt-2">
                     <label class="block text-[13px] font-bold text-white mb-2 drop-shadow-sm">مكان المتجر (GPS)</label>
                     <button type="button" onclick="openMap('merchant')" class="w-full bg-blue-600/80 hover:bg-blue-500 text-white font-extrabold py-2 rounded-lg active:scale-95 text-xs flex justify-center items-center gap-2 mb-2 shadow-lg border border-blue-400">
                         <span>📍</span> تحديد موقع المتجر من الخريطة
                     </button>
-                    <input type="text" id="merchantAddressDisplay" readonly placeholder="لم يتم تحديد الموقع..." class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded-lg text-[10px] font-bold text-center text-white">
+                    <input type="text" id="merchantAddressDisplay" readonly placeholder="لم يتم التحديد..." class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded-lg text-[10px] font-bold text-center text-white">
                 </div>
                 <button type="submit" id="btnRegMerchant" class="w-full bg-white text-blue-900 font-extrabold py-3.5 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.3)] active:scale-95 text-base mt-2 transition-all">
                     تأكيد وإنشاء الحساب ✔️
@@ -184,20 +213,25 @@
                     <button type="button" onclick="goBack()" class="w-8 h-8 bg-red-500/20 text-red-200 rounded-full flex items-center justify-center hover:bg-red-500/40 text-xs shadow-md border border-red-500/30">🚪</button>
                     <h2 class="text-xl font-black text-white drop-shadow-sm">لوحة التاجر</h2>
                 </div>
-                <div class="text-center bg-black/30 px-3 py-1 rounded-lg border border-white/10 shadow-inner">
-                    <p class="text-[10px] text-blue-200">السيولة المتاحة</p>
-                    <p id="merchantBalanceDisplay" class="text-lg font-black text-green-400 drop-shadow-md">25,000 ج</p>
+                <div class="text-center bg-black/30 px-3 py-2 rounded-lg border border-white/10 shadow-inner">
+                    <p class="text-[10px] text-blue-200 mb-1">السيولة المتاحة</p>
+                    <p id="merchantBalanceDisplay" class="text-lg font-black text-green-400 drop-shadow-md">0 ج</p>
                 </div>
             </div>
             
-            <div class="bg-white/10 border border-white/20 rounded-xl p-3 mb-4 flex items-center gap-3 shadow-sm">
-                <div class="w-3 h-3 bg-green-400 rounded-full animate-ping shadow-[0_0_10px_#4ade80]"></div>
-                <p class="text-sm font-bold text-white drop-shadow-sm">أنت متصل وتستقبل الطلبات...</p>
+            <!-- تحديث السيولة -->
+            <div class="bg-white/10 border border-white/20 rounded-xl p-3 mb-4 shadow-sm">
+                <label class="text-[11px] font-bold text-blue-200">تحديث السيولة الحالية:</label>
+                <div class="flex gap-2 mt-1">
+                    <input type="number" id="updateBalanceInput" placeholder="أدخل الرصيد الجديد..." class="w-2/3 px-3 py-1.5 bg-black/30 rounded-lg text-sm text-white font-bold outline-none border border-white/10">
+                    <button onclick="window.updateMerchantBalance()" class="w-1/3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-extrabold text-xs shadow-md">تحديث 💾</button>
+                </div>
             </div>
 
-            <!-- حاوية الطلبات اللحظية -->
-            <div id="liveRequestsContainer" class="space-y-3 h-[250px] overflow-y-auto pr-1">
-                <div class="text-center py-10 text-white/50 text-sm font-bold bg-white/5 rounded-xl border border-white/10 shadow-inner">
+            <!-- حاوية الطلبات -->
+            <h3 class="text-sm font-bold text-white mb-2">الطلبات الواردة إليك:</h3>
+            <div id="liveRequestsContainer" class="space-y-3 h-[180px] overflow-y-auto pr-1">
+                <div class="text-center py-6 text-white/50 text-sm font-bold bg-white/5 rounded-xl border border-white/10 shadow-inner">
                     لا توجد طلبات عملاء جديدة حالياً.
                 </div>
             </div>
@@ -206,7 +240,7 @@
     </div>
 
     <!-- ============================================== -->
-    <!-- نافذة الخريطة التفاعلية (Mapbox/Leaflet) -->
+    <!-- نافذة الخريطة المنبثقة لاختيار الموقع -->
     <!-- ============================================== -->
     <div id="mapModal" class="hidden fixed inset-0 bg-black/80 flex justify-center items-center p-4 backdrop-blur-sm z-[99999]">
         <div class="bg-white rounded-3xl w-full max-w-lg p-4 flex flex-col h-[80vh] shadow-2xl">
@@ -214,21 +248,17 @@
                 <h3 class="text-lg font-black text-gray-900">حدد الموقع 📍</h3>
                 <button type="button" onclick="closeMapModal()" class="text-gray-500 text-3xl font-bold hover:text-red-500 transition-colors">&times;</button>
             </div>
-            
             <div class="flex gap-2 mb-2">
                 <input type="text" id="mapSearchInput" placeholder="ابحث عن مدينة أو شارع..." class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl font-bold outline-none text-sm text-black focus:ring-2 focus:ring-blue-500">
                 <button type="button" onclick="searchOnMap()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold active:scale-95 text-sm shadow-md transition-colors">بحث</button>
             </div>
-
             <div class="flex-1 w-full relative flex flex-col z-0 rounded-xl overflow-hidden border border-gray-300 shadow-inner">
                 <div id="leafletMap" class="flex-1 w-full z-0"></div>
                 <button type="button" onclick="goToMyLocationOnMap()" class="absolute bottom-4 right-4 z-[400] w-12 h-12 bg-white text-blue-600 rounded-full shadow-xl flex justify-center items-center active:scale-95 text-2xl border border-gray-200 hover:bg-blue-50 transition-colors">🎯</button>
             </div>
-            
             <div id="mapAddressPreview" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-800 text-center min-h-[40px] flex items-center justify-center">
                 حرك الدبوس لتحديد المكان بدقة...
             </div>
-            
             <button type="button" onclick="confirmMapSelection()" class="mt-2 w-full bg-blue-900 hover:bg-blue-800 text-white font-extrabold py-3 rounded-xl active:scale-95 text-sm shadow-lg transition-colors">
                 تأكيد واختيار هذا الموقع ✔️
             </button>
@@ -246,6 +276,16 @@
         let tempAddress = "", tempLat = null, tempLng = null;
         let finalCustLat = null, finalCustLng = null, finalCustAddress = "";
         let finalMerchLat = null, finalMerchLng = null, finalMerchAddress = "";
+        let liveMerchantsMapInstance = null; 
+
+        // معادلة حساب المسافة بين نقطتين (GPS)
+        const getDistance = (lat1, lon1, lat2, lon2) => {
+            if(!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+            const p = 0.017453292519943295;
+            const c = Math.cos;
+            const a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+            return 12742 * Math.asin(Math.sqrt(a));
+        };
 
         function showView(viewId) {
             const views = ['roleView', 'customerView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView'];
@@ -264,12 +304,10 @@
         function openMap(mode) {
             activeMapMode = mode;
             document.getElementById('mapModal').classList.remove('hidden');
-            
             if (!mapInstance) {
                 mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 13);
                 L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(mapInstance);
                 mapMarker = L.marker([30.0444, 31.2357], { draggable: true }).addTo(mapInstance);
-                
                 mapInstance.on('click', e => { mapMarker.setLatLng(e.latlng); updateMapAddress(e.latlng.lat, e.latlng.lng); });
                 mapMarker.on('dragend', () => { let pos = mapMarker.getLatLng(); updateMapAddress(pos.lat, pos.lng); });
                 goToMyLocationOnMap();
@@ -306,16 +344,16 @@
 
         function goToMyLocationOnMap() {
             if (navigator.geolocation) {
-                document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحديد موقعك (GPS)...";
+                document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري التحديد (GPS)...";
                 navigator.geolocation.getCurrentPosition(pos => {
                     let lat = pos.coords.latitude, lng = pos.coords.longitude;
                     mapInstance.setView([lat, lng], 16); mapMarker.setLatLng([lat, lng]); updateMapAddress(lat, lng);
-                }, () => alert("يرجى تفعيل الـ GPS في الهاتف وإعطاء صلاحية للمتصفح."), { enableHighAccuracy: true });
+                }, () => alert("يرجى تفعيل الـ GPS."), { enableHighAccuracy: true });
             }
         }
 
         function confirmMapSelection() {
-            if(!tempLat) return alert("الرجاء تحديد موقع أولاً.");
+            if(!tempLat) return alert("الرجاء التحديد أولاً.");
             if(activeMapMode === 'customer') {
                 finalCustLat = tempLat; finalCustLng = tempLng; finalCustAddress = tempAddress;
                 document.getElementById('custAddressDisplay').value = tempAddress;
@@ -325,14 +363,21 @@
             }
             closeMapModal();
         }
+
+        function resetCustomerSearch() {
+            document.getElementById('searchResultsContainer').classList.add('hidden');
+            document.getElementById('customerFormElement').classList.remove('hidden');
+            document.getElementById('customerStatusMsg').innerHTML = "✅ تم العثور على تجار لديهم السيولة المطلوبة!";
+            document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-xl bg-blue-900/60 border border-blue-400 mb-3 text-sm font-bold text-blue-100 shadow-inner";
+        }
     </script>
 
     <!-- ============================================== -->
-    <!-- أكواد Firebase (الأونلاين) -->
+    <!-- أكواد Firebase (الجدول، السيولة، والطلبات) -->
     <!-- ============================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, onValue, update, push, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = { 
@@ -348,85 +393,205 @@
         const app = initializeApp(firebaseConfig); 
         const db = getDatabase(app); 
         const auth = getAuth(app);
-        
         signInAnonymously(auth);
 
-        let merchantBalance = 25000; 
+        let currentMerchantPhone = ""; // لحفظ هاتف التاجر المسجل دخوله
 
-        // العميل
-        window.sendCashRequest = function(e) {
+        // ==============================================
+        // العميل: البحث وتوليد جدول التجار والخريطة
+        // ==============================================
+        window.searchMerchants = function(e) {
             e.preventDefault();
+            const amount = parseFloat(document.getElementById('customerAmount').value);
+            if(!finalCustLat) return alert("الرجاء تحديد مكان استلام الكاش من الخريطة.");
+
+            const btn = document.getElementById('btnCustomerSearch');
+            btn.innerHTML = "⏳ جاري البحث الجغرافي...";
+            btn.classList.add('opacity-70');
+            
+            // جلب التجار من قاعدة البيانات
+            get(ref(db, 'eqbad_merchants')).then(snap => {
+                let merchants = [];
+                if(snap.exists()) {
+                    snap.forEach(child => {
+                        let m = child.val();
+                        // الفلترة: التاجر نشط، ولديه سيولة تغطي المبلغ
+                        if(m.status === 'active' && m.balance >= amount) {
+                            m.distance = getDistance(finalCustLat, finalCustLng, m.lat, m.lng);
+                            merchants.push(m);
+                        }
+                    });
+                }
+
+                // ترتيب التجار من الأقرب للأبعد
+                merchants.sort((a,b) => a.distance - b.distance);
+
+                // إظهار النتائج
+                document.getElementById('customerFormElement').classList.add('hidden');
+                document.getElementById('searchResultsContainer').classList.remove('hidden');
+                btn.innerHTML = "بحث عن أقرب تجار 🔍";
+                btn.classList.remove('opacity-70');
+
+                // 1. توليد الخريطة
+                if(!liveMerchantsMapInstance) {
+                    liveMerchantsMapInstance = L.map('liveMerchantsMap').setView([finalCustLat, finalCustLng], 14);
+                    L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(liveMerchantsMapInstance);
+                } else {
+                    liveMerchantsMapInstance.setView([finalCustLat, finalCustLng], 14);
+                    // مسح العلامات السابقة
+                    liveMerchantsMapInstance.eachLayer((layer) => {
+                        if (layer instanceof L.Marker) { liveMerchantsMapInstance.removeLayer(layer); }
+                    });
+                }
+
+                const custIcon = L.divIcon({ html: '🏃‍♂️', className: 'text-2xl drop-shadow-lg', iconSize: [30, 30] });
+                L.marker([finalCustLat, finalCustLng], { icon: custIcon }).addTo(liveMerchantsMapInstance).bindPopup("<b>موقعك</b>").openPopup();
+
+                const merchIcon = L.divIcon({ html: '🏪', className: 'text-2xl drop-shadow-lg', iconSize: [30, 30] });
+                
+                // 2. توليد الجدول
+                let tableHTML = "";
+                if(merchants.length === 0) {
+                    tableHTML = `<tr><td colspan="3" class="p-4 text-center text-xs font-bold text-red-300">عفواً، لا يوجد تجار لديهم هذه السيولة في محيطك حالياً.</td></tr>`;
+                    document.getElementById('customerStatusMsg').innerHTML = "❌ لم يتم العثور على تجار بهذه السيولة.";
+                    document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-xl bg-red-900/60 border border-red-400 mb-3 text-sm font-bold text-red-100 shadow-inner";
+                } else {
+                    merchants.forEach(m => {
+                        // إضافة التاجر للخريطة
+                        L.marker([m.lat, m.lng], { icon: merchIcon })
+                         .addTo(liveMerchantsMapInstance)
+                         .bindPopup(`<div style="text-align:center; font-family:Cairo;"><b style="color:#1e3a8a;">${m.name}</b><br><span style="color:#16a34a; font-size:10px;">${m.distance.toFixed(1)} كم</span></div>`);
+
+                        // إضافة التاجر للجدول
+                        tableHTML += `
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="p-3">
+                                <div class="font-bold text-white text-xs">${m.name}</div>
+                            </td>
+                            <td class="p-3 text-center text-xs font-bold text-green-300">
+                                ${m.distance.toFixed(1)} كم
+                            </td>
+                            <td class="p-3 text-center">
+                                <button onclick="window.sendTargetedOrder('${m.phone}')" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-black text-[11px] px-3 py-1.5 rounded shadow-md active:scale-95 transition-transform">
+                                    طلب 🚀
+                                </button>
+                            </td>
+                        </tr>`;
+                    });
+                }
+                
+                document.getElementById('merchantsTableBody').innerHTML = tableHTML;
+                setTimeout(() => { liveMerchantsMapInstance.invalidateSize(); }, 400);
+            });
+        };
+
+        // إرسال الطلب لتاجر محدد من الجدول
+        window.sendTargetedOrder = function(merchantPhone) {
             const phone = document.getElementById('customerPhone').value;
             const amount = document.getElementById('customerAmount').value;
-            
-            if(!finalCustLat || !finalCustAddress) return alert("الرجاء تحديد مكان استلام الكاش من الخريطة بالضغط على (تحديد من الخريطة).");
-
-            const btn = document.getElementById('btnCustomerSubmit');
             const statusBox = document.getElementById('customerStatusMsg');
             
-            btn.disabled = true; 
-            btn.innerHTML = "⏳ جاري الإرسال للتجار...";
-            btn.classList.add('opacity-70');
+            statusBox.innerHTML = "⏳ جاري إرسال الطلب للتاجر المحدد...";
+            statusBox.className = "text-center p-3 rounded-xl bg-yellow-600/60 border border-yellow-400 mb-3 text-sm font-bold text-white shadow-inner animate-pulse";
             
             const newReqRef = push(ref(db, 'eqbad_orders'));
             const reqId = newReqRef.key;
             
             set(newReqRef, {
-                phone: phone,
+                target_merchant: merchantPhone,
+                customer_phone: phone,
                 amount: amount,
                 address: finalCustAddress,
-                lat: finalCustLat,
-                lng: finalCustLng,
                 status: 'pending',
                 timestamp: Date.now()
             }).then(() => {
-                btn.classList.add('hidden');
-                statusBox.classList.remove('hidden');
+                statusBox.innerHTML = "✅ تم الإرسال! في انتظار موافقة التاجر...";
+                statusBox.classList.remove('animate-pulse');
                 
+                // مراقبة القبول
                 onValue(ref(db, 'eqbad_orders/' + reqId), (snap) => {
-                    if(snap.exists()) {
-                        const reqData = snap.val();
-                        if(reqData.status === 'accepted') {
-                            statusBox.className = "text-center p-4 rounded-xl bg-green-500/30 border border-green-400 mt-4 text-sm font-bold text-white shadow-lg";
-                            statusBox.innerHTML = "✅ تاجر قريب وافق على طلبك!<br>توجه للمتجر لاستلام الكاش.";
-                        }
+                    if(snap.exists() && snap.val().status === 'accepted') {
+                        statusBox.className = "text-center p-4 rounded-xl bg-green-500/80 border border-green-400 mb-3 text-sm font-black text-white shadow-lg animate-bounce";
+                        statusBox.innerHTML = "🎉 وافق التاجر! توجه للمتجر لاستلام الكاش.";
                     }
                 });
             });
         };
 
-        // التاجر
-        window.loginMerchant = function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnLoginMerchant');
-            btn.innerHTML = "⏳ جاري الدخول...";
-            setTimeout(() => {
-                showView('merchantDashboardView');
-                window.listenToOrders(); 
-                btn.innerHTML = "دخول للوحة التحكم 🏪";
-            }, 800);
-        };
-
+        // ==============================================
+        // التاجر: التسجيل، الدخول، تحديث السيولة والطلبات
+        // ==============================================
         window.registerMerchant = function(e) {
             e.preventDefault();
+            const storeName = document.getElementById('regStoreName').value;
+            const phone = document.getElementById('regPhone').value;
             const p1 = document.getElementById('regPin').value;
             const p2 = document.getElementById('regPinConfirm').value;
-            if(p1 !== p2) return alert("الرقم السري وتأكيده غير متطابقين.");
+            const initialBalance = parseFloat(document.getElementById('regBalance').value);
+            
+            if(p1 !== p2) return alert("الرقم السري غير متطابق.");
             if(!finalMerchLat) return alert("يرجى تحديد موقع المتجر من الخريطة.");
 
             const btn = document.getElementById('btnRegMerchant');
-            btn.innerHTML = "⏳ جاري إنشاء الحساب...";
-            setTimeout(() => {
+            btn.innerHTML = "⏳ جاري الإنشاء...";
+            
+            set(ref(db, 'eqbad_merchants/merchant_' + phone), {
+                name: storeName,
+                phone: phone,
+                pin: p1,
+                balance: initialBalance,
+                lat: finalMerchLat,
+                lng: finalMerchLng,
+                status: 'active'
+            }).then(() => {
+                currentMerchantPhone = phone;
                 showView('merchantDashboardView');
                 window.listenToOrders();
                 btn.innerHTML = "تأكيد وإنشاء الحساب ✔️";
-            }, 1000);
+            });
         };
 
-        // التاجر - استماع الطلبات
-        window.listenToOrders = function() {
-            document.getElementById('merchantBalanceDisplay').innerText = merchantBalance.toLocaleString() + " ج";
+        window.loginMerchant = function(e) {
+            e.preventDefault();
+            const phone = document.getElementById('loginPhone').value;
+            const pin = document.getElementById('loginPin').value;
+            const btn = document.getElementById('btnLoginMerchant');
             
+            btn.innerHTML = "⏳ جاري التحقق...";
+            
+            get(ref(db, 'eqbad_merchants/merchant_' + phone)).then(snap => {
+                if(snap.exists() && snap.val().pin === pin) {
+                    currentMerchantPhone = phone;
+                    showView('merchantDashboardView');
+                    window.listenToOrders();
+                } else {
+                    alert("رقم الهاتف أو الرقم السري غير صحيح.");
+                }
+                btn.innerHTML = "دخول للوحة التحكم 🏪";
+            });
+        };
+
+        window.updateMerchantBalance = function() {
+            const newBal = parseFloat(document.getElementById('updateBalanceInput').value);
+            if(isNaN(newBal) || newBal < 0) return alert("أدخل رصيد صحيح.");
+            
+            update(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), {
+                balance: newBal
+            }).then(() => {
+                document.getElementById('updateBalanceInput').value = "";
+                alert("✅ تم تحديث السيولة. ستظهر الآن للعملاء بناءً على هذا الرقم.");
+            });
+        };
+
+        window.listenToOrders = function() {
+            // جلب الرصيد وعرضه باستمرار
+            onValue(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone + '/balance'), (snap) => {
+                if(snap.exists()) {
+                    document.getElementById('merchantBalanceDisplay').innerText = snap.val().toLocaleString() + " ج";
+                }
+            });
+            
+            // جلب الطلبات الموجهة لهذا التاجر
             onValue(ref(db, 'eqbad_orders'), (snapshot) => {
                 const container = document.getElementById('liveRequestsContainer');
                 let hasPending = false;
@@ -441,15 +606,13 @@
                         const req = reqObj.val;
                         const reqKey = reqObj.key;
                         
-                        if(req.status === 'pending') {
+                        // عرض الطلبات المعلقة الموجهة حصراً لرقم هذا التاجر
+                        if(req.status === 'pending' && req.target_merchant === currentMerchantPhone) {
                             hasPending = true;
-                            const timeAgo = Math.floor((Date.now() - req.timestamp) / 60000);
-                            const timeTxt = timeAgo < 1 ? "الآن" : `منذ ${timeAgo} دقيقة`;
-
                             html += `
                             <div class="bg-white/10 border border-yellow-500/40 p-4 rounded-xl relative overflow-hidden shadow-md">
-                                <div class="absolute top-0 right-0 bg-yellow-500 text-blue-900 text-[10px] font-black px-2 py-1 rounded-bl-lg shadow-sm">طلب جديد (${timeTxt})</div>
-                                <p class="text-sm font-bold text-white mt-2 drop-shadow-sm">المبلغ: <span class="text-yellow-400 text-lg mx-1 drop-shadow-md">${req.amount}</span> ج.م</p>
+                                <div class="absolute top-0 right-0 bg-yellow-500 text-blue-900 text-[10px] font-black px-2 py-1 rounded-bl-lg">مطلوب فوراً</div>
+                                <p class="text-sm font-bold text-white mt-2">المبلغ: <span class="text-yellow-400 text-lg mx-1">${req.amount}</span> ج.م</p>
                                 <p class="text-[11px] text-gray-300 mt-1 mb-3 bg-black/30 p-2 rounded-lg border border-white/5">📍 ${req.address}</p>
                                 <button onclick="acceptCustomerRequest('${reqKey}', ${req.amount})" class="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-400 hover:to-yellow-300 text-blue-900 font-extrabold py-2.5 rounded-lg active:scale-95 text-sm transition-all shadow-md">
                                     تأكيد وتسليم الكاش 💵
@@ -463,24 +626,24 @@
                     container.innerHTML = html;
                     if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
                 } else {
-                    container.innerHTML = `<div class="text-center py-10 text-white/50 text-sm font-bold bg-white/5 rounded-xl border border-white/10 shadow-inner">لا توجد طلبات عملاء جديدة حالياً.</div>`;
+                    container.innerHTML = `<div class="text-center py-10 text-white/50 text-sm font-bold bg-white/5 rounded-xl border border-white/10 shadow-inner">لا توجد طلبات موجهة إليك حالياً.</div>`;
                 }
             });
         };
 
-        // التاجر - قبول الطلب
         window.acceptCustomerRequest = function(reqKey, amount) {
-            if(amount > merchantBalance) return alert("رصيدك الحالي لا يكفي لتسليم هذا المبلغ!");
-            
-            if(confirm(`تأكيد تسليم ${amount} جنيه للعميل وخصمها من عهدتك؟`)) {
-                update(ref(db, 'eqbad_orders/' + reqKey), {
-                    status: 'accepted'
-                }).then(() => {
-                    merchantBalance -= amount;
-                    document.getElementById('merchantBalanceDisplay').innerText = merchantBalance.toLocaleString() + " ج";
-                    alert("تم تأكيد العملية بنجاح! تم إبلاغ العميل.");
-                });
-            }
+            get(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone + '/balance')).then(snap => {
+                let currentBalance = snap.val() || 0;
+                if(amount > currentBalance) return alert("عفواً، الرصيد المسجل في حسابك لا يكفي لهذا الطلب. قم بتحديث السيولة أولاً.");
+                
+                if(confirm(`تأكيد تسليم ${amount} جنيه للعميل وخصمها من عهدتك؟`)) {
+                    // 1. تحديث الطلب
+                    update(ref(db, 'eqbad_orders/' + reqKey), { status: 'accepted' });
+                    // 2. خصم الرصيد
+                    update(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), { balance: currentBalance - amount });
+                    alert("تم تأكيد العملية بنجاح! تم إبلاغ العميل بالتوجه إليك.");
+                }
+            });
         };
     </script>
 </body>
