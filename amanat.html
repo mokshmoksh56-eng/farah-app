@@ -1125,6 +1125,7 @@
                             let cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
                             let mapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${finalCustLat},${finalCustLng}&destination=${m.lat},${m.lng}`;
 
+                            // تمرير احداثيات التاجر في دالة sendTargetedOrder
                             listHTML += `
                             <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                 <td class="p-2 text-right">
@@ -1148,7 +1149,7 @@
                                     </a>
                                 </td>
                                 <td class="p-1 sm:p-2">
-                                    <button onclick="window.sendTargetedOrder('${m.phone}')" class="btn-burgundy font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg active:scale-95 shadow-sm whitespace-nowrap">
+                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng})" class="btn-burgundy font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg active:scale-95 shadow-sm whitespace-nowrap">
                                         طلب 🚀
                                     </button>
                                 </td>
@@ -1163,7 +1164,8 @@
             });
         };
 
-        window.sendTargetedOrder = function(merchantPhone) {
+        // تم إضافة إحداثيات التاجر في معاملات الدالة لإنشاء مسار الخريطة في رسالة الموافقة
+        window.sendTargetedOrder = function(merchantPhone, merchLat, merchLng) {
             const phone = document.getElementById('customerPhone').value;
             const amount = document.getElementById('customerAmount').value;
             const statusBox = document.getElementById('customerStatusMsg');
@@ -1190,16 +1192,21 @@
                             const rawPhone = ord.target_merchant || "";
                             const cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
                             const waMsg = encodeURIComponent(`السلام عليكم، بخصوص طلب استلام كاش بقيمة ${ord.amount} ج.م عبر تطبيق تحصيل النقود.`);
+                            // إنشاء رابط مسار خرائط جوجل للعميل
+                            const mapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${finalCustLat},${finalCustLng}&destination=${merchLat},${merchLng}`;
 
-                            statusBox.className = "text-center p-3.5 rounded-2xl bg-emerald-600 text-white mb-2 text-sm font-black shadow-md";
+                            statusBox.className = "text-center p-3 rounded-2xl bg-emerald-600 text-white mb-2 text-sm font-black shadow-md";
                             statusBox.innerHTML = `
-                                <div class="mb-2 text-base">🎉 وافق التاجر على طلبك! تواصل معه الآن:</div>
-                                <div class="grid grid-cols-2 gap-2 mt-2">
-                                    <a href="tel:${rawPhone}" class="bg-white text-emerald-800 py-2 px-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95">
-                                        <span>📞</span> اتصال بالتاجر
+                                <div class="mb-2 text-sm sm:text-base">🎉 وافق التاجر على طلبك! توجه إليه الآن:</div>
+                                <div class="grid grid-cols-3 gap-2 mt-2">
+                                    <a href="tel:${rawPhone}" class="bg-white text-emerald-800 py-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95">
+                                        <span>📞</span> اتصال
                                     </a>
-                                    <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 px-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95">
-                                        <span>💬</span> واتساب التاجر
+                                    <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95">
+                                        <span>💬</span> واتس
+                                    </a>
+                                    <a href="${mapsDirectionsUrl}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95">
+                                        <span>🗺️</span> مسار
                                     </a>
                                 </div>
                             `;
