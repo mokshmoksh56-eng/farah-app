@@ -360,7 +360,7 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- 6. صفحة التاجر المستقلة (واجهة نقية وبسيطة) -->
+        <!-- 6. صفحة التاجر المستقلة (القائمة المنسدلة الذكية بالألوان واللوجو) -->
         <!-- ============================================== -->
         <div id="merchantDashboardView" class="fade-enter">
             <div class="flex items-center justify-between mb-4 border-b border-rose-100 pb-3">
@@ -464,23 +464,32 @@
             </div>
 
             <!-- ============================================== -->
-            <!-- 2. تقرير العمليات السابقة (نظيف وبقائمة منسدلة فقط) -->
+            <!-- 2. تقرير العمليات السابقة (القائمة المنسدلة المخصصة مع اللوجو) -->
             <!-- ============================================== -->
             <div class="border-t-2 border-rose-200 pt-4">
                 <h3 class="text-base font-black text-[#580c21] mb-3">
                     📊 تقارير العمليات السابقة:
                 </h3>
 
-                <!-- قائمة منسدلة لاختيار العملية ومعاينتها -->
-                <div class="mb-3">
-                    <select id="reportsDropdownSelect" onchange="window.onReportDropdownChange(this.value)" class="w-full px-4 py-3 bg-white border-2 border-[#7e122f]/30 rounded-2xl text-sm sm:text-base font-bold text-[#580c21] outline-none focus:border-[#7e122f] shadow-xs">
-                        <option value="">-- اضغط هنا لاختيار عملية سابقة --</option>
-                    </select>
+                <!-- الحاوية المنسدلة المخصصة -->
+                <div class="relative mb-3.5" id="customReportsDropdown">
+                    <!-- زر القائمة المنسدلة الرئيسي -->
+                    <button type="button" onclick="window.toggleCustomReportsMenu()" id="customReportsBtn" class="w-full px-4 py-3.5 bg-white border-2 border-[#7e122f]/30 rounded-2xl text-sm sm:text-base font-black text-[#580c21] outline-none flex items-center justify-between shadow-xs active:scale-[0.99] transition-all">
+                        <div id="customReportsBtnContent" class="flex items-center gap-2">
+                            <span>-- اضغط هنا لاختيار عملية سابقة --</span>
+                        </div>
+                        <span id="customReportsArrow" class="text-xs text-gray-500 transition-transform duration-200">▼</span>
+                    </button>
+
+                    <!-- القائمة المنسدلة التي تحتوي على الخيارات الملونة مع اللوجو -->
+                    <div id="customReportsMenu" class="hidden absolute top-full left-0 right-0 mt-2 bg-white border-2 border-rose-200 rounded-2xl shadow-2xl z-[500] max-h-64 overflow-y-auto p-2 space-y-2">
+                        <div class="text-center py-4 text-gray-400 text-sm font-bold">لا توجد عمليات سابقة مسجلة بعد.</div>
+                    </div>
                 </div>
 
                 <!-- بطاقة نظيفة وكبيرة بتفاصيل العملية المختارة من القائمة -->
-                <div id="selectedReportDetailBox" class="hidden bg-gradient-to-br from-rose-50 to-white border-2 border-rose-300 p-4 rounded-2xl shadow-sm space-y-2.5 text-base sm:text-lg">
-                    <!-- تتولد تفاصيل العملية هنا برمجياً -->
+                <div id="selectedReportDetailBox" class="hidden border-2 p-4 rounded-2xl shadow-sm space-y-2.5 text-base sm:text-lg transition-all">
+                    <!-- تتولد تفاصيل العملية هنا برمجياً بلونها ولوجوها المباشر -->
                 </div>
             </div>
         </div>
@@ -542,17 +551,18 @@
         let currentCustomerMethod = "vodafone";
         let cachedCompletedOrders = {};
 
-        const VODAFONE_ICON_BADGE = `
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#E60000] shrink-0">
-                <svg viewBox="0 0 100 100" class="w-3.5 h-3.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+        // اللوجو الرسمي المتجه (Vector SVGs)
+        const VODAFONE_LOGO_ICON = `
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#E60000] shrink-0 shadow-xs">
+                <svg viewBox="0 0 100 100" class="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="50" cy="50" r="38" fill="white"/>
                     <path d="M50 20C38 20 28 29 28 42C28 53 36 61 47 62.5V54C40.5 53 36 48 36 42C36 34 42.5 28 50 28C57.5 28 64 34 64 42C64 46.5 62 50.5 58.5 53.5L64.5 59.5C69.5 55 72.5 49 72.5 42C72.5 29 62 20 50 20Z" fill="#E60000"/>
                     <circle cx="50" cy="42" r="9" fill="white"/>
                 </svg>
             </span>`;
 
-        const INSTAPAY_ICON_BADGE = `
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-white border border-purple-200 p-0.5 shrink-0">
+        const INSTAPAY_LOGO_ICON = `
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-white border border-purple-200 p-0.5 shrink-0 shadow-xs">
                 <svg viewBox="0 0 100 85" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="8" y="18" width="10" height="42" rx="5" transform="skewX(-12)" fill="#4A2277"/>
                     <path d="M26 22 L38 39 L26 56" stroke="#F4735E" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-10)"/>
@@ -757,46 +767,102 @@
             }, 350);
         }
 
-        // دالة عرض تفاصيل العملية عند الاختيار من القائمة المنسدلة
-        window.onReportDropdownChange = function(orderKey) {
+        // التحكم في فتح وغلق القائمة المنسدلة المخصصة
+        window.toggleCustomReportsMenu = function() {
+            const menu = document.getElementById('customReportsMenu');
+            const arrow = document.getElementById('customReportsArrow');
+            const isOpen = !menu.classList.contains('hidden');
+            if (isOpen) {
+                menu.classList.add('hidden');
+                arrow.style.transform = "rotate(0deg)";
+            } else {
+                menu.classList.remove('hidden');
+                arrow.style.transform = "rotate(180deg)";
+            }
+        };
+
+        // إغلاق القائمة عند النقر خارجها
+        document.addEventListener('click', function(e) {
+            const dropdownWrapper = document.getElementById('customReportsDropdown');
+            if (dropdownWrapper && !dropdownWrapper.contains(e.target)) {
+                const menu = document.getElementById('customReportsMenu');
+                const arrow = document.getElementById('customReportsArrow');
+                if (menu && !menu.classList.contains('hidden')) {
+                    menu.classList.add('hidden');
+                    arrow.style.transform = "rotate(0deg)";
+                }
+            }
+        });
+
+        // اختيار عنصر من القائمة المنسدلة وتطبيق التصميم المباشر له
+        window.selectReportItem = function(orderKey) {
+            const item = cachedCompletedOrders[orderKey];
+            if (!item) return;
+
+            const isInstapay = (item.method === 'instapay');
+            const btn = document.getElementById('customReportsBtn');
+            const btnContent = document.getElementById('customReportsBtnContent');
             const detailBox = document.getElementById('selectedReportDetailBox');
-            if(!orderKey || !cachedCompletedOrders[orderKey]) {
-                detailBox.classList.add('hidden');
-                detailBox.innerHTML = "";
-                return;
+
+            // تحديث الزر الرئيسي بالقيمة واللوجو واللون المختار
+            if (isInstapay) {
+                btn.className = "w-full px-4 py-3 bg-purple-50 border-2 border-purple-600 rounded-2xl text-sm sm:text-base font-black text-purple-900 outline-none flex items-center justify-between shadow-xs transition-all";
+                btnContent.innerHTML = `
+                    ${INSTAPAY_LOGO_ICON}
+                    <span>إنستاباي: ${item.amount} ج.م [${item.dateStr}]</span>
+                `;
+            } else {
+                btn.className = "w-full px-4 py-3 bg-red-50 border-2 border-red-600 rounded-2xl text-sm sm:text-base font-black text-red-900 outline-none flex items-center justify-between shadow-xs transition-all";
+                btnContent.innerHTML = `
+                    ${VODAFONE_LOGO_ICON}
+                    <span>فودافون كاش: ${item.amount} ج.م [${item.dateStr}]</span>
+                `;
             }
 
-            const item = cachedCompletedOrders[orderKey];
-            const isInstapay = (item.method === 'instapay');
-            
+            // إغلاق القائمة
+            window.toggleCustomReportsMenu();
+
+            // ملء كارت التفاصيل باللون والشعار الكامل
+            const themeClass = isInstapay 
+                ? 'bg-purple-50/60 border-purple-500 text-purple-950' 
+                : 'bg-red-50/60 border-red-500 text-red-950';
+
+            const badgeBg = isInstapay 
+                ? 'bg-purple-100 border-purple-400 text-purple-800' 
+                : 'bg-red-100 border-red-400 text-red-700';
+
+            detailBox.className = `${themeClass} border-2 p-4 rounded-2xl shadow-sm space-y-3 text-base sm:text-lg`;
             detailBox.innerHTML = `
-                <div class="flex items-center justify-between border-b-2 border-rose-200/80 pb-2">
-                    <span class="font-black text-[#580c21] text-lg">📄 بيانات العملية:</span>
-                    <span class="bg-emerald-600 text-white font-black text-xs px-2.5 py-1 rounded-lg">مسلم بنجاح ✔️</span>
+                <div class="flex items-center justify-between border-b-2 border-black/10 pb-2">
+                    <div class="flex items-center gap-2">
+                        ${isInstapay ? INSTAPAY_LOGO_ICON : VODAFONE_LOGO_ICON}
+                        <span class="font-black text-lg sm:text-xl">${isInstapay ? 'معاملة إنستاباي' : 'معاملة فودافون كاش'}</span>
+                    </div>
+                    <span class="bg-emerald-600 text-white font-black text-xs sm:text-sm px-3 py-1 rounded-xl shadow-xs">مسلم ✔️</span>
                 </div>
                 <div class="grid grid-cols-2 gap-3 pt-1">
                     <div>
                         <span class="text-xs font-bold text-gray-500 block">المبلغ:</span>
-                        <span class="font-black text-2xl text-[#7e122f]">${item.amount} ج.م</span>
+                        <span class="font-black text-2xl sm:text-3xl ${isInstapay ? 'text-purple-700' : 'text-red-600'}">${item.amount} ج.م</span>
                     </div>
                     <div>
-                        <span class="text-xs font-bold text-gray-500 block">إنستاباي ولا لا؟</span>
-                        <span class="font-black text-sm ${isInstapay ? 'text-purple-700 bg-purple-100 border-purple-300' : 'text-red-600 bg-red-100 border-red-300'} px-2.5 py-1 rounded-lg inline-block border mt-0.5">
+                        <span class="text-xs font-bold text-gray-500 block">إنستاباي ولا لا؟:</span>
+                        <span class="font-black text-sm sm:text-base ${badgeBg} px-2.5 py-1 rounded-xl inline-flex items-center gap-1.5 border mt-1">
                             ${isInstapay ? 'نعم (إنستاباي ⚡)' : 'لا (فودافون كاش 📱)'}
                         </span>
                     </div>
                     <div>
                         <span class="text-xs font-bold text-gray-500 block">تاريخ العملية:</span>
-                        <span class="font-black text-gray-800 text-base">${item.dateStr}</span>
+                        <span class="font-black text-gray-800 text-base sm:text-lg">${item.dateStr}</span>
                     </div>
                     <div>
                         <span class="text-xs font-bold text-gray-500 block">وقت العملية:</span>
-                        <span class="font-black text-gray-800 text-base" dir="ltr">${item.timeStr}</span>
+                        <span class="font-black text-gray-800 text-base sm:text-lg" dir="ltr">${item.timeStr}</span>
                     </div>
                 </div>
-                <div class="border-t border-rose-100 pt-2 flex items-center justify-between">
+                <div class="border-t border-black/10 pt-2 flex items-center justify-between">
                     <span class="text-xs font-bold text-gray-500">رقم تليفون العميل:</span>
-                    <span class="font-black text-lg text-[#580c21] tracking-wider" dir="ltr">📞 ${item.customer_phone || '-'}</span>
+                    <span class="font-black text-lg sm:text-xl tracking-wider ${isInstapay ? 'text-purple-800' : 'text-red-700'}" dir="ltr">📞 ${item.customer_phone || '-'}</span>
                 </div>
             `;
             detailBox.classList.remove('hidden');
@@ -992,6 +1058,7 @@
             });
         };
 
+        // استماع للطلبات وتوليد القائمة المنسدلة المخصصة مع اللوجو والألوان
         window.listenToOrders = function() {
             onValue(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), (snap) => {
                 if(snap.exists()) {
@@ -1003,14 +1070,15 @@
             
             onValue(ref(db, 'eqbad_orders'), (snapshot) => {
                 const activeContainer = document.getElementById('liveRequestsContainer');
-                const dropdownSelect = document.getElementById('reportsDropdownSelect');
+                const customMenu = document.getElementById('customReportsMenu');
                 const badge = document.getElementById('ordersCountBadge');
                 
                 let activeCount = 0;
                 let activeHtml = "";
+                let completedCount = 0;
+                let menuHtml = "";
 
                 cachedCompletedOrders = {};
-                let dropdownOptionsHtml = `<option value="">-- اضغط هنا لاختيار عملية سابقة --</option>`;
 
                 if(snapshot.exists()) {
                     const requests = [];
@@ -1023,10 +1091,11 @@
                         
                         if(req.target_merchant === currentMerchantPhone) {
                             const isVf = req.method === 'vodafone';
-                            const iconBadge = isVf ? VODAFONE_ICON_BADGE : INSTAPAY_ICON_BADGE;
+                            const isInstapay = !isVf;
+                            const iconSvg = isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON;
                             const methodLabel = isVf ? 'فودافون كاش' : 'إنستاباي';
 
-                            // 1. الطلبات الجارية
+                            // 1. الطلبات النشطة
                             if(req.status === 'pending' || req.status === 'accepted') {
                                 activeCount++;
                                 const cardBorder = isVf ? 'border-red-500 bg-red-50/20' : 'border-purple-500 bg-purple-50/20';
@@ -1041,8 +1110,8 @@
                                     </div>
                                     <div class="flex justify-between items-center text-xs text-gray-600">
                                         <span>هاتف العميل: <b class="text-gray-800 text-sm" dir="ltr">${req.customer_phone}</b></span>
-                                        <span class="${badgeStyle} px-2.5 py-0.5 rounded-full font-black text-xs flex items-center gap-1">
-                                            ${iconBadge} ${methodLabel}
+                                        <span class="${badgeStyle} px-2.5 py-0.5 rounded-full font-black text-xs flex items-center gap-1.5">
+                                            ${iconSvg} ${methodLabel}
                                         </span>
                                     </div>
                                     <p class="text-xs text-gray-600 truncate bg-white p-2 rounded-xl border border-gray-200">📍 ${req.address || 'عنوان العميل'}</p>
@@ -1057,7 +1126,7 @@
                                                 ✅ تم قبول العملية - العميل في طريقه للمتجر
                                             </div>
                                             <button onclick="window.confirmDeliveredCash('${reqKey}', '${req.amount}', '${req.method || 'vodafone'}')" class="w-full ${isVf ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-700 hover:bg-purple-800'} text-white font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-sm flex items-center justify-center gap-1.5">
-                                                ${iconBadge}
+                                                ${iconSvg}
                                                 <span>تم تسليم المبلغ (خصم من سيولة ${methodLabel})</span>
                                             </button>
                                         `}
@@ -1065,8 +1134,9 @@
                                 </div>`;
                             }
 
-                            // 2. العمليات السابقة (تغذية القائمة المنسدلة فقط)
+                            // 2. العمليات السابقة (بناء عناصر القائمة المنسدلة بالأحمر والبنفسجي مع اللوجو)
                             else if(req.status === 'completed') {
+                                completedCount++;
                                 const amt = parseFloat(req.amount) || 0;
                                 const dateObj = new Date(req.completedAt || req.timestamp);
                                 const dateStr = dateObj.toLocaleDateString('ar-EG', { year: 'numeric', month: 'numeric', day: 'numeric' });
@@ -1080,13 +1150,33 @@
                                     customer_phone: req.customer_phone
                                 };
 
-                                dropdownOptionsHtml += `<option value="${reqKey}">عملية: ${amt} ج.م [${dateStr} - ${timeStr}] (${isVf ? 'فودافون 📱' : 'إنستاباي ⚡'})</option>`;
+                                // خيار فودافون كاش (أحمر صريح + لوجو) / إنستاباي (بنفسجي صريح + لوجو)
+                                const itemStyle = isVf
+                                    ? 'bg-red-50 hover:bg-red-100 border-2 border-red-500 text-red-700'
+                                    : 'bg-purple-50 hover:bg-purple-100 border-2 border-purple-600 text-purple-800';
+
+                                menuHtml += `
+                                <div onclick="window.selectReportItem('${reqKey}')" class="${itemStyle} p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.98] shadow-xs">
+                                    <div class="flex items-center gap-2.5">
+                                        ${iconSvg}
+                                        <div>
+                                            <div class="font-black text-base sm:text-lg">${amt} ج.م <span class="text-xs font-bold opacity-80">(${methodLabel})</span></div>
+                                            <div class="text-xs font-bold opacity-75">${dateStr} - ${timeStr}</div>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs font-black bg-white/90 border border-current px-2 py-0.5 rounded-lg shadow-2xs">عرض 👁️</span>
+                                </div>`;
                             }
                         }
                     });
                 }
 
-                dropdownSelect.innerHTML = dropdownOptionsHtml;
+                if (completedCount > 0) {
+                    customMenu.innerHTML = menuHtml;
+                } else {
+                    customMenu.innerHTML = `<div class="text-center py-5 text-gray-400 text-sm font-bold">لا توجد عمليات سابقة مسجلة بعد.</div>`;
+                    document.getElementById('selectedReportDetailBox').classList.add('hidden');
+                }
 
                 badge.innerText = `${activeCount} طلب`;
                 if(activeCount > 0) {
@@ -1138,15 +1228,15 @@
                         liveMerchantsMapInstance.eachLayer(layer => { if (layer instanceof L.Marker) liveMerchantsMapInstance.removeLayer(layer); });
                     }
 
-                    const custIcon = L.divIcon({ html: '<span style="font-size: 24px;">🏃‍♂️</span>', className: 'text-2xl', iconSize: [26, 26] });
+                    const custIcon = L.divIcon({ html: '<span style="font-size: 26px;">🏃‍♂️</span>', className: 'text-2xl', iconSize: [28, 28] });
                     customerLiveMarker = L.marker([finalCustLat, finalCustLng], { icon: custIcon }).addTo(liveMerchantsMapInstance).bindPopup("<b>موقعك المحدد</b>").openPopup();
 
-                    const merchIcon = L.divIcon({ html: '<span style="font-size: 24px;">🏪</span>', className: 'text-2xl', iconSize: [26, 26] });
+                    const merchIcon = L.divIcon({ html: '<span style="font-size: 26px;">🏪</span>', className: 'text-2xl', iconSize: [28, 28] });
                     let listHTML = "";
                     const isVf = method === 'vodafone';
-                    const iconBadge = isVf ? VODAFONE_ICON_BADGE : INSTAPAY_ICON_BADGE;
+                    const iconSvg = isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON;
                     const methodText = isVf ? 'فودافون كاش' : 'إنستاباي';
-                    const cardHighlight = isVf ? 'border-red-400 bg-red-50/20' : 'border-purple-400 bg-purple-50/20';
+                    const cardHighlight = isVf ? 'border-red-400 bg-red-50/25' : 'border-purple-400 bg-purple-50/25';
                     const balColor = isVf ? 'text-red-600' : 'text-purple-700';
 
                     if(merchants.length === 0) {
@@ -1164,7 +1254,7 @@
                                 <div>
                                     <div class="flex items-center gap-1.5">
                                         <h4 class="font-black text-[#580c21] text-sm sm:text-base">${m.name}</h4>
-                                        ${iconBadge}
+                                        ${iconSvg}
                                     </div>
                                     <span class="text-gray-600 text-xs font-bold">📍 ${m.distance.toFixed(1)} كم | متاح: <b class="${balColor}">${m.availableBal} ج</b></span>
                                 </div>
