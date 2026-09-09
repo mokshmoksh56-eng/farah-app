@@ -223,13 +223,13 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- 6. صفحة التاجر المستقلة (عرض البيانات + أزرار التواصل والخريطة) -->
+        <!-- 6. صفحة التاجر المستقلة -->
         <!-- ============================================== -->
         <div id="merchantDashboardView" class="fade-enter">
-            <!-- الهيدر -->
+            <!-- الهيدر مع زر الخروج الذي يمسح الجلسة -->
             <div class="flex items-center justify-between mb-3 border-b border-rose-100 pb-3">
                 <div class="flex items-center gap-2">
-                    <button type="button" onclick="goBack()" class="w-8 h-8 bg-rose-100 text-[#7e122f] rounded-full flex items-center justify-center hover:bg-rose-200 text-sm border border-rose-200 shadow-sm" title="تسجيل خروج">🚪</button>
+                    <button type="button" onclick="window.logoutMerchant()" class="w-8 h-8 bg-rose-100 text-[#7e122f] rounded-full flex items-center justify-center hover:bg-rose-200 text-sm border border-rose-200 shadow-sm" title="تسجيل خروج">🚪</button>
                     <div>
                         <h2 id="merchantProfileName" class="text-base font-black text-[#580c21] leading-tight">المتجر</h2>
                         <span class="inline-flex items-center gap-1 text-[10px] text-[#7e122f] bg-rose-100/80 px-2 py-0.5 rounded-full border border-rose-200 font-bold">
@@ -253,7 +253,7 @@
                 </div>
             </div>
 
-            <!-- بطاقة بيانات التاجر المستقلة (مع أيقونات الاتصال، الواتس، وإرسال GPS) -->
+            <!-- بطاقة بيانات التاجر -->
             <div class="bg-rose-50/60 border border-rose-200 rounded-2xl p-3 mb-3 text-xs space-y-2.5">
                 <div class="flex justify-between items-center border-b border-rose-200/60 pb-1.5">
                     <span class="text-gray-600 font-bold">رقم الحساب:</span>
@@ -264,7 +264,6 @@
                     <span id="merchantProfileAddress" class="font-bold text-[#580c21] text-left truncate max-w-[200px]">-</span>
                 </div>
 
-                <!-- شريط أزرار: اتصال - واتس - إرسال GPS للعميل -->
                 <div class="pt-1 grid grid-cols-3 gap-2">
                     <a id="merchantCallLink" href="#" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95 transition-all text-center">
                         <span class="text-sm">📞</span> اتصال
@@ -329,7 +328,7 @@
     </div>
 
     <!-- ============================================== -->
-    <!-- أكواد جافا سكريبت -->
+    <!-- أكواد جافا سكريبت التفاعلية -->
     <!-- ============================================== -->
     <script>
         const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A";
@@ -353,7 +352,9 @@
             return 12742 * Math.asin(Math.sqrt(a));
         };
 
+        // حفظ الصفحة المفتوحة في المتصفح
         function showView(viewId) {
+            localStorage.setItem('eqbad_active_view', viewId);
             const views = ['roleView', 'customerView', 'customerResultsView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView'];
             views.forEach(v => {
                 const el = document.getElementById(v);
@@ -364,10 +365,12 @@
                 const target = document.getElementById(viewId);
                 target.classList.remove('fade-enter');
                 target.classList.add('fade-enter-active');
-            }, 300);
+            }, 250);
         }
 
-        function goBack() { showView('roleView'); }
+        function goBack() { 
+            showView('roleView'); 
+        }
 
         function openMap(mode) {
             activeMapMode = mode;
@@ -436,7 +439,6 @@
             closeMapModal();
         }
 
-        // عرض تفاصيل التاجر وربط أزرار الاتصال والواتساب ومشاركة GPS
         function renderMerchantDashboard(data) {
             currentActiveMerchantData = data;
             
@@ -445,7 +447,6 @@
             document.getElementById('merchantProfileAddress').innerText = data.address || "العنوان مسجل بالخريطة";
             document.getElementById('merchantBalanceDisplay').innerText = (data.balance || 0).toLocaleString() + " ج.م";
 
-            // تجهيز روابط الاتصال والواتساب
             const rawPhone = data.phone || "";
             const cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
             
@@ -470,7 +471,6 @@
             }, 350);
         }
 
-        // مشاركة أو إرسال لوكيشن المتجر GPS للعميل عبر الرابط المباشر
         function shareStoreGps() {
             if(!currentActiveMerchantData || !currentActiveMerchantData.lat) {
                 return alert("لم يتم العثور على إحداثيات المتجر.");
@@ -491,7 +491,7 @@
     </script>
 
     <!-- ============================================== -->
-    <!-- أكواد Firebase -->
+    <!-- أكواد Firebase واسترجاع الحالة المحفوظة -->
     <!-- ============================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -511,9 +511,39 @@
         const app = initializeApp(firebaseConfig); 
         const db = getDatabase(app); 
         const auth = getAuth(app);
-        signInAnonymously(auth);
 
         let currentMerchantPhone = ""; 
+
+        // تذكر تسجيل الدخول واستعادة الصفحة عند التحديث
+        signInAnonymously(auth).then(() => {
+            const savedMerchantPhone = localStorage.getItem('eqbad_merchant_phone');
+            const savedView = localStorage.getItem('eqbad_active_view');
+
+            if (savedMerchantPhone) {
+                // استرجاع بيانات التاجر تلقائياً
+                get(ref(db, 'eqbad_merchants/merchant_' + savedMerchantPhone)).then(snap => {
+                    if (snap.exists()) {
+                        currentMerchantPhone = savedMerchantPhone;
+                        renderMerchantDashboard(snap.val());
+                        window.listenToOrders();
+                    } else {
+                        localStorage.removeItem('eqbad_merchant_phone');
+                        showView('roleView');
+                    }
+                });
+            } else if (savedView && savedView !== 'merchantDashboardView') {
+                showView(savedView);
+            }
+        });
+
+        // تسجيل خروج التاجر ومسح الجلسة
+        window.logoutMerchant = function() {
+            localStorage.removeItem('eqbad_merchant_phone');
+            localStorage.removeItem('eqbad_active_view');
+            currentMerchantPhone = "";
+            currentActiveMerchantData = null;
+            showView('roleView');
+        };
 
         window.registerMerchant = function(e) {
             e.preventDefault();
@@ -542,6 +572,9 @@
 
             set(ref(db, 'eqbad_merchants/merchant_' + phone), merchantData).then(() => {
                 currentMerchantPhone = phone;
+                // حفظ رقم التاجر لتذكر الدخول بعد التحديث
+                localStorage.setItem('eqbad_merchant_phone', phone);
+
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
                 btn.disabled = false;
                 renderMerchantDashboard(merchantData);
@@ -567,6 +600,9 @@
                 btn.disabled = false;
                 if(snap.exists() && String(snap.val().pin) === String(pin)) {
                     currentMerchantPhone = phone;
+                    // حفظ رقم التاجر لتذكر الدخول بعد التحديث
+                    localStorage.setItem('eqbad_merchant_phone', phone);
+
                     const data = snap.val();
                     renderMerchantDashboard(data);
                     window.listenToOrders();
@@ -593,7 +629,6 @@
             });
         };
 
-        // استماع للطلبات مع توفير زر إرسال لوكيشن GPS المتجر للعميل عبر الواتس
         window.listenToOrders = function() {
             onValue(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone + '/balance'), (snap) => {
                 if(snap.exists()) {
