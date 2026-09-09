@@ -223,7 +223,7 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- 6. صفحة التاجر المستقلة (عرض البيانات + الخريطة) -->
+        <!-- 6. صفحة التاجر المستقلة (عرض البيانات + أزرار التواصل والخريطة) -->
         <!-- ============================================== -->
         <div id="merchantDashboardView" class="fade-enter">
             <!-- الهيدر -->
@@ -246,15 +246,15 @@
             <!-- خريطة موقع المتجر -->
             <div class="mb-3">
                 <p class="text-[11px] font-bold text-[#580c21] mb-1 flex items-center gap-1">
-                    <span>📍</span> موقع المحل المسجل على الخريطة:
+                    <span>📍</span> موقع المحل على الخريطة:
                 </p>
                 <div class="h-36 w-full rounded-2xl overflow-hidden border border-rose-200 shadow-sm relative z-0">
                     <div id="merchantStoreMap" class="w-full h-full"></div>
                 </div>
             </div>
 
-            <!-- بطاقة بيانات التاجر المستقلة -->
-            <div class="bg-rose-50/60 border border-rose-200 rounded-2xl p-3 mb-3 text-xs space-y-1.5">
+            <!-- بطاقة بيانات التاجر المستقلة (مع أيقونات الاتصال، الواتس، وإرسال GPS) -->
+            <div class="bg-rose-50/60 border border-rose-200 rounded-2xl p-3 mb-3 text-xs space-y-2.5">
                 <div class="flex justify-between items-center border-b border-rose-200/60 pb-1.5">
                     <span class="text-gray-600 font-bold">رقم الحساب:</span>
                     <span id="merchantProfilePhone" class="font-black text-[#580c21] tracking-wider" dir="ltr">-</span>
@@ -263,9 +263,18 @@
                     <span class="text-gray-600 font-bold shrink-0 ml-2">العنوان المسجل:</span>
                     <span id="merchantProfileAddress" class="font-bold text-[#580c21] text-left truncate max-w-[200px]">-</span>
                 </div>
-                <div class="flex justify-between items-center pt-0.5">
-                    <span class="text-gray-600 font-bold">الإحداثيات الجغرافية:</span>
-                    <span id="merchantProfileCoords" class="text-[10px] font-mono text-[#7e122f]" dir="ltr">-</span>
+
+                <!-- شريط أزرار: اتصال - واتس - إرسال GPS للعميل -->
+                <div class="pt-1 grid grid-cols-3 gap-2">
+                    <a id="merchantCallLink" href="#" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95 transition-all text-center">
+                        <span class="text-sm">📞</span> اتصال
+                    </a>
+                    <a id="merchantWhatsappLink" href="#" target="_blank" class="bg-[#25D366] hover:bg-[#20ba59] text-white font-black py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95 transition-all text-center">
+                        <span class="text-sm">💬</span> واتساب
+                    </a>
+                    <button type="button" onclick="shareStoreGps()" class="btn-burgundy font-black py-2 px-2 rounded-xl flex items-center justify-center gap-1 text-[11px] shadow-sm active:scale-95 transition-all text-center">
+                        <span class="text-sm">📍</span> إرسال GPS
+                    </button>
                 </div>
             </div>
 
@@ -283,7 +292,7 @@
                     <span>الطلبات الواردة لتسليم الكاش:</span>
                     <span id="ordersCountBadge" class="text-[10px] bg-rose-100 text-[#7e122f] px-2 py-0.5 rounded-full border border-rose-200 font-bold">0 طلب</span>
                 </h3>
-                <div id="liveRequestsContainer" class="space-y-2 max-h-36 overflow-y-auto pr-1">
+                <div id="liveRequestsContainer" class="space-y-2 max-h-40 overflow-y-auto pr-1">
                     <div class="text-center py-4 text-gray-400 text-xs font-bold bg-white rounded-xl border border-rose-100">
                         لا توجد طلبات سحب معلقة حالياً.
                     </div>
@@ -320,7 +329,7 @@
     </div>
 
     <!-- ============================================== -->
-    <!-- أكواد جافا سكريبت التفاعلية والخريطة -->
+    <!-- أكواد جافا سكريبت -->
     <!-- ============================================== -->
     <script>
         const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A";
@@ -334,6 +343,7 @@
         let liveMerchantsMapInstance = null;
         let merchantStoreMapInstance = null;
         let merchantMarkerInstance = null;
+        let currentActiveMerchantData = null;
 
         const getDistance = (lat1, lon1, lat2, lon2) => {
             if(!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -426,12 +436,21 @@
             closeMapModal();
         }
 
+        // عرض تفاصيل التاجر وربط أزرار الاتصال والواتساب ومشاركة GPS
         function renderMerchantDashboard(data) {
+            currentActiveMerchantData = data;
+            
             document.getElementById('merchantProfileName').innerText = data.name || "متجر مسجل";
             document.getElementById('merchantProfilePhone').innerText = data.phone || "-";
-            document.getElementById('merchantProfileAddress').innerText = data.address || "العنوان مسجل عبر الإحداثيات";
-            document.getElementById('merchantProfileCoords').innerText = `${Number(data.lat).toFixed(4)}, ${Number(data.lng).toFixed(4)}`;
+            document.getElementById('merchantProfileAddress').innerText = data.address || "العنوان مسجل بالخريطة";
             document.getElementById('merchantBalanceDisplay').innerText = (data.balance || 0).toLocaleString() + " ج.م";
+
+            // تجهيز روابط الاتصال والواتساب
+            const rawPhone = data.phone || "";
+            const cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
+            
+            document.getElementById('merchantCallLink').href = `tel:${rawPhone}`;
+            document.getElementById('merchantWhatsappLink').href = `https://wa.me/${cleanPhone}`;
 
             showView('merchantDashboardView');
 
@@ -450,10 +469,29 @@
                 merchantStoreMapInstance.invalidateSize();
             }, 350);
         }
+
+        // مشاركة أو إرسال لوكيشن المتجر GPS للعميل عبر الرابط المباشر
+        function shareStoreGps() {
+            if(!currentActiveMerchantData || !currentActiveMerchantData.lat) {
+                return alert("لم يتم العثور على إحداثيات المتجر.");
+            }
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentActiveMerchantData.lat},${currentActiveMerchantData.lng}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: `موقع ${currentActiveMerchantData.name} لاستلام الكاش`,
+                    text: `رابط الوصول لموقع المتجر على خرائط جوجل:`,
+                    url: mapsUrl
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(mapsUrl);
+                alert("تم نسخ رابط موقع متجرك (GPS) بنجاح!\nيمكنك إرساله للعميل عبر الواتساب أو الرسائل.");
+            }
+        }
     </script>
 
     <!-- ============================================== -->
-    <!-- أكواد Firebase والتفاعل مع قاعدة البيانات -->
+    <!-- أكواد Firebase -->
     <!-- ============================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -555,6 +593,7 @@
             });
         };
 
+        // استماع للطلبات مع توفير زر إرسال لوكيشن GPS المتجر للعميل عبر الواتس
         window.listenToOrders = function() {
             onValue(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone + '/balance'), (snap) => {
                 if(snap.exists()) {
@@ -579,13 +618,24 @@
                         
                         if(req.status === 'pending' && req.target_merchant === currentMerchantPhone) {
                             count++;
+                            const rawCust = req.customer_phone || "";
+                            const custClean = rawCust.startsWith("0") ? "2" + rawCust : rawCust;
+                            const gpsDest = currentActiveMerchantData ? `https://www.google.com/maps/dir/?api=1&destination=${currentActiveMerchantData.lat},${currentActiveMerchantData.lng}` : "";
+                            const waText = encodeURIComponent(`أهلاً بك، تفضل بزيارة متجرنا لاستلام الكاش المطلوبة (${req.amount} ج.م).\nموقعنا عبر خرائط Google (GPS):\n${gpsDest}`);
+
                             html += `
-                            <div class="bg-white border border-rose-200 p-3 rounded-xl relative shadow-sm">
-                                <div class="flex justify-between items-center mb-1">
+                            <div class="bg-white border border-rose-200 p-3 rounded-xl relative shadow-sm space-y-2">
+                                <div class="flex justify-between items-center">
                                     <span class="text-xs font-black text-gray-700">المبلغ المطلوب:</span>
                                     <span class="text-sm font-black text-[#7e122f]">${req.amount} ج.م</span>
                                 </div>
-                                <p class="text-[11px] text-gray-500 mb-2 truncate">📍 ${req.address || 'عنوان العميل'}</p>
+                                <p class="text-[11px] text-gray-500 truncate">📍 ${req.address || 'عنوان العميل'}</p>
+                                
+                                <div class="flex items-center gap-1.5 pt-1">
+                                    <a href="tel:${rawCust}" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-1 rounded-lg text-center text-[10px] shadow-sm">📞 اتصال</a>
+                                    <a href="https://wa.me/${custClean}?text=${waText}" target="_blank" class="flex-1 bg-[#25D366] hover:bg-[#20bd5a] text-white font-black py-1 rounded-lg text-center text-[10px] shadow-sm">💬 إرسال GPS للعميل</a>
+                                </div>
+
                                 <button onclick="window.acceptCustomerRequest('${reqKey}', ${req.amount})" class="w-full btn-burgundy font-black py-1.5 rounded-lg active:scale-95 text-xs shadow-sm">
                                     تسليم المبلغ وخصم من السيولة 💵
                                 </button>
