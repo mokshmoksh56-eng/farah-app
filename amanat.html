@@ -334,6 +334,10 @@
                     </div>
                 </div>
 
+                <!-- قيم افتراضية للتفعيل (مخفية، مفعلة تلقائياً) -->
+                <input type="checkbox" id="regEnableVodafone" checked class="hidden">
+                <input type="checkbox" id="regEnableInstapay" checked class="hidden">
+
                 <div class="bg-white border-2 border-slate-200 p-3 rounded-2xl">
                     <label class="block text-sm font-black text-[#4a0718] mb-1.5">موقع المحل الجغرافي (GPS)</label>
                     <button type="button" onclick="openMap('merchant')" class="w-full btn-burgundy font-black py-2.5 rounded-xl text-sm flex justify-center items-center gap-1.5 shadow-xs">
@@ -348,7 +352,7 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- 6. لوحة تحكم التاجر الرئيسية (بيضاء ونظيفة) -->
+        <!-- 6. لوحة تحكم التاجر الرئيسية -->
         <!-- ============================================== -->
         <div id="merchantDashboardView" class="fade-enter">
             <div class="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
@@ -1100,29 +1104,65 @@
                         document.getElementById('customerStatusMsg').innerHTML = `❌ لم يتم العثور على تجار بهذه الشروط.`;
                     } else {
                         document.getElementById('customerStatusMsg').innerHTML = `✅ تم العثور على (${merchants.length}) تجار يوفرون ${methodText}!`;
+                        
+                        // بناء هيكل الجدول
+                        listHTML = `
+                        <div class="overflow-x-auto pb-2">
+                            <table class="w-full text-sm text-center border-collapse">
+                                <thead class="bg-slate-50 text-[#4a0718] font-black text-[11px] sm:text-xs">
+                                    <tr>
+                                        <th class="p-2 border-b-2 border-slate-200 text-right">التاجر</th>
+                                        <th class="p-2 border-b-2 border-slate-200">تواصل</th>
+                                        <th class="p-2 border-b-2 border-slate-200">الموقع</th>
+                                        <th class="p-2 border-b-2 border-slate-200">إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+
                         merchants.forEach(m => {
+                            // وضع الدبوس على الخريطة
                             L.marker([m.lat, m.lng], { icon: merchIcon })
                              .addTo(liveMerchantsMapInstance)
                              .bindPopup(`<div style="text-align:center;"><b>${m.name}</b><br><span style="color:#7e122f; font-size:12px;">${m.distance.toFixed(1)} كم</span></div>`);
 
+                            // تهيئة رقم الهاتف للواتساب
+                            let rawPhone = m.phone || "";
+                            let cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
+                            
+                            // رابط الاتجاهات من موقع العميل لموقع التاجر
+                            let mapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${finalCustLat},${finalCustLng}&destination=${m.lat},${m.lng}`;
+
                             listHTML += `
-                            <div class="bg-white border-2 ${cardHighlight} rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
-                                <div>
-                                    <div class="flex items-center gap-1.5">
-                                        <h4 class="font-black text-slate-900 text-sm sm:text-base">${m.name}</h4>
-                                        ${iconSvg}
-                                        <span class="text-[11px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">متاح ✔️</span>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                <td class="p-2 text-right">
+                                    <div class="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                                        <div class="scale-75 origin-right">${iconSvg}</div>
+                                        ${m.name}
                                     </div>
-                                    <div class="text-slate-500 text-xs font-bold mt-0.5">
-                                        <span>📍 ${m.distance.toFixed(1)} كم</span> | 
-                                        <span>متاح: <b class="${balColor}">${m.availableBal} ج</b></span>
+                                    <div class="text-[10px] text-slate-500 font-bold mt-1">
+                                        متاح: <span class="${balColor}">${m.availableBal} ج</span> | 📍 ${m.distance.toFixed(1)} كم
                                     </div>
-                                </div>
-                                <button onclick="window.sendTargetedOrder('${m.phone}')" class="btn-burgundy font-black text-xs sm:text-sm px-3.5 py-2 rounded-xl active:scale-95 shadow-xs">
-                                    طلب كاش 🚀
-                                </button>
-                            </div>`;
+                                </td>
+                                <td class="p-1 sm:p-2">
+                                    <div class="flex justify-center gap-1.5">
+                                        <a href="tel:${rawPhone}" class="bg-emerald-100 text-emerald-700 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-transform" title="اتصال">📞</a>
+                                        <a href="https://wa.me/${cleanPhone}" target="_blank" class="bg-[#25D366]/20 text-[#25D366] w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-transform" title="واتساب">💬</a>
+                                    </div>
+                                </td>
+                                <td class="p-1 sm:p-2">
+                                    <a href="${mapsDirectionsUrl}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1.5 rounded-lg font-black text-[10px] sm:text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-blue-100 active:scale-95 transition-colors">
+                                        🗺️ مسار
+                                    </a>
+                                </td>
+                                <td class="p-1 sm:p-2">
+                                    <button onclick="window.sendTargetedOrder('${m.phone}')" class="btn-burgundy font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg active:scale-95 shadow-sm whitespace-nowrap">
+                                        طلب 🚀
+                                    </button>
+                                </td>
+                            </tr>`;
                         });
+                        
+                        listHTML += `</tbody></table></div>`;
                     }
                     document.getElementById('merchantsListContainer').innerHTML = listHTML;
                     liveMerchantsMapInstance.invalidateSize();
