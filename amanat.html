@@ -2,463 +2,218 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شاشات البيتكوين | سيولة الفريمات وميزان القوى</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>أقبض | خريطة التجار</title>
+    
+    <!-- مكتبة Tailwind للتصميم -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- مكتبات الخريطة Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        @keyframes pulse-once { 0% { transform: scale(1.02); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; filter: brightness(1.5); } 100% { transform: scale(1); opacity: 1; } }
-        .animate-pulse-once { animation: pulse-once 1s ease-out forwards; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; border-radius: 8px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-        .tug-of-war { transition: width 0.15s linear; }
+        body { font-family: 'Cairo', sans-serif; background-color: #f3f4f6; }
+        .glass-panel { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
+        .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-2 md:p-4 font-sans">
-    
-    <!-- أصوات التنبيهات -->
-    <audio id="alertSoundNormal" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
-    <audio id="alertSoundWhale" src="https://assets.mixkit.co/active_storage/sfx/2868/2868-preview.mp3" preload="auto"></audio>
+<body class="min-h-screen flex flex-col items-center py-6 px-4 text-gray-900 bg-gray-200 relative">
 
-    <div class="max-w-[1800px] mx-auto space-y-4">
-        
-        <!-- لوحة التحكم العلوية -->
-        <div class="bg-slate-900 p-4 rounded-xl border-2 border-indigo-900 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 class="text-xl font-bold text-indigo-400 flex items-center gap-2 mb-1">
-                    <span>⚖️ خوارزمية SMC + النبض الداخلي لكل فريم</span>
-                </h1>
-                <p class="text-xs text-slate-400">تتبع نسبة الشراء والبيع داخل كل شمعة حية على حدة. <span class="text-rose-400 font-bold">*اضغط بالشاشة لتفعيل الصوت.*</span></p>
+    <!-- كود Mapbox الخاص بالتطبيق المرفق -->
+    <script>
+        const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A"; 
+        const governoratesList = ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "المنوفية", "القليوبية", "البحيرة", "كفر الشيخ", "دمياط", "الإسماعيلية", "بورسعيد", "السويس", "مطروح", "شمال سيناء", "جنوب سيناء", "البحر الأحمر", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "الوادي الجديد"];
+    </script>
+
+    <!-- شاشة الموظف الرئيسية -->
+    <div id="mainView" class="glass-panel shadow-2xl rounded-3xl w-full max-w-lg p-6 sm:p-8 border-t-4 border-green-500 transform transition-all duration-300">
+        <div class="mb-6 text-center">
+            <h2 class="text-3xl font-black text-gray-900">طلب سيولة نقدية (كاش) 💵</h2>
+            <p class="text-gray-500 text-sm mt-2 font-bold">حدد موقعك للبحث عن أقرب متجر متوفر لديه سيولة</p>
+        </div>
+
+        <div class="space-y-5">
+            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-sm">
+                <label class="block text-base font-black text-gray-900 mb-3">كم تحتاج من الكاش؟</label>
+                <input type="number" id="cashAmount" placeholder="أدخل المبلغ (مثال: 1000)" class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-center text-xl">
             </div>
-            <div class="flex gap-3">
-                <button id="soundToggleBtn" onclick="toggleSound()" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:bg-emerald-500/40 flex items-center gap-2 cursor-pointer">
-                    <span id="soundIcon">🔔</span> <span id="soundText">التنبيهات مفعلة</span>
+
+            <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-200 shadow-sm relative">
+                <label class="block text-sm font-black text-blue-900 mb-2">📍 موقعك الحالي (لاستلام الكاش)</label>
+                
+                <button type="button" onclick="openMapModal()" class="w-full mb-3 bg-white border border-blue-300 text-blue-700 hover:bg-blue-100 py-3 rounded-xl shadow-sm font-bold flex items-center justify-center gap-2 active:scale-95 transition">
+                    <span class="text-xl">🗺️</span> فتح الخريطة لتحديد الموقع بدقة
                 </button>
-            </div>
-        </div>
-
-        <!-- ميزان القوى اللحظي السريع (آخر ثانيتين) -->
-        <div class="bg-slate-900 p-5 rounded-xl border-2 border-slate-700 shadow-2xl relative overflow-hidden">
-            <h2 class="text-center font-bold text-slate-300 text-sm mb-4 flex justify-center items-center gap-2">
-                <span>⚡ ساحة المعركة (النبض اللحظي المباشر - Market Orders)</span>
-                <span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-100"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span></span>
-            </h2>
-            
-            <div class="flex justify-between items-end mb-2 px-2">
-                <div class="text-right w-1/3">
-                    <div class="text-emerald-400 font-bold text-lg mb-1">🟢 هجوم شرائي</div>
-                    <div class="text-sm text-slate-400">الكمية: <span id="buyVolText" class="text-emerald-300 font-mono font-bold text-lg">$0</span></div>
-                    <div class="text-xs text-slate-500">ضربات الماركت: <span id="buyCountText" class="font-mono text-white text-base">0</span></div>
-                </div>
                 
-                <div class="text-center flex-1 px-4">
-                    <div id="liveMarketSignal" class="bg-slate-950 border border-slate-700 rounded-lg py-2 px-4 inline-block shadow-inner min-w-[200px]">
-                        <span class="text-sm font-bold text-slate-400">هدوء...</span>
-                    </div>
-                </div>
-                
-                <div class="text-left w-1/3">
-                    <div class="text-rose-400 font-bold text-lg mb-1">🔴 هجوم بيعي</div>
-                    <div class="text-sm text-slate-400">الكمية: <span id="sellVolText" class="text-rose-300 font-mono font-bold text-lg">$0</span></div>
-                    <div class="text-xs text-slate-500">ضربات الماركت: <span id="sellCountText" class="font-mono text-white text-base">0</span></div>
-                </div>
+                <input type="text" id="selectedGov" placeholder="المحافظة (سيتم تحديدها من الخريطة)" readonly class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-xl text-sm font-black text-gray-700 mb-2">
+                <input type="text" id="selectedAddress" placeholder="تفاصيل العنوان..." readonly class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-xl text-sm font-black text-gray-700">
             </div>
 
-            <div class="w-full bg-slate-950 rounded-full h-5 flex overflow-hidden border border-slate-800 shadow-inner">
-                <div id="buyBar" class="bg-emerald-500 h-full tug-of-war flex items-center justify-start px-2 overflow-hidden shadow-[0_0_15px_rgba(16,185,129,0.5)]" style="width: 50%;">
-                    <span id="buyPercentText" class="text-[11px] font-bold text-emerald-950">50%</span>
-                </div>
-                <div id="sellBar" class="bg-rose-500 h-full tug-of-war flex items-center justify-end px-2 overflow-hidden shadow-[0_0_15px_rgba(225,29,72,0.5)]" style="width: 50%;">
-                    <span id="sellPercentText" class="text-[11px] font-bold text-rose-950">50%</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- سجل التنبيهات -->
-        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-xl p-4 flex flex-col h-48 relative overflow-hidden">
-            <div id="whaleGlow" class="absolute inset-0 bg-transparent transition-colors duration-700 pointer-events-none"></div>
-            <h2 class="text-sm font-bold text-white mb-3 flex items-center justify-between border-b border-slate-800 pb-2 relative z-10">
-                <span>📡 سجل الإشارات وتنفيذ الصفقات اللحظية</span>
-            </h2>
-            <div id="alertsLogContainer" class="flex-1 overflow-y-auto space-y-2 pr-2 relative z-10">
-                <div class="text-center text-slate-500 text-sm mt-8 animate-pulse">في انتظار رصد أول إشارة تحليل أو صفقة حوت...</div>
-            </div>
-        </div>
-        
-        <!-- شبكة الرسوم البيانية -->
-        <div id="charts-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-4 mt-2">
-            <!-- سيتم حقن الشاشات هنا -->
+            <button type="button" onclick="searchNearbyMerchants()" class="w-full bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 rounded-xl shadow-lg active:scale-95 flex justify-center items-center gap-2 text-lg">
+                🔍 ابحث عن أقرب تاجر
+            </button>
         </div>
     </div>
 
-    <script>
-        const timeframes = [
-            { interval: "5m", title: "5 دقائق" },
-            { interval: "15m", title: "15 دقيقة" },
-            { interval: "30m", title: "30 دقيقة" },
-            { interval: "1h", title: "1 ساعة" },
-            { interval: "4h", title: "4 ساعات" }, 
-            { interval: "1d", title: "يوم واحد" }
-        ];
-
-        const intervalMsMap = {
-            "5m": 5 * 60 * 1000, "15m": 15 * 60 * 1000, "30m": 30 * 60 * 1000,
-            "1h": 60 * 60 * 1000, "4h": 4 * 60 * 60 * 1000, "1d": 24 * 60 * 60 * 1000
-        };
-
-        const formatCashShort = (n) => {
-            if (n === 0) return '$0';
-            if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
-            if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
-            return '$' + n.toFixed(0);
-        };
-
-        const WHALE_ORDER_THRESHOLD = 500000; 
-        const chartsState = {}; 
-        let soundEnabled = true; 
-        let audioUnlocked = false;
-        let isFirstAlert = true; 
-
-        // متغيرات ميزان القوى السريع
-        const RECENT_TRADES_WINDOW = 2000; 
-        const tradesQueue = []; 
-        let rollingBuyVol = 0, rollingSellVol = 0;
-        let rollingBuyCount = 0, rollingSellCount = 0;
-
-        function unlockAudio() {
-            if (audioUnlocked) return;
-            document.getElementById('alertSoundNormal').play().then(a=>a.pause()).catch(()=>{});
-            document.getElementById('alertSoundWhale').play().then(a=>a.pause()).catch(()=>{});
-            audioUnlocked = true;
-            document.removeEventListener('click', unlockAudio); document.removeEventListener('touchstart', unlockAudio);
-        }
-        document.addEventListener('click', unlockAudio); document.addEventListener('touchstart', unlockAudio);
-
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            const btn = document.getElementById('soundToggleBtn');
-            const icon = document.getElementById('soundIcon');
-            const text = document.getElementById('soundText');
-            if (soundEnabled) {
-                btn.className = "bg-emerald-500/20 text-emerald-400 border border-emerald-500 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:bg-emerald-500/40 flex items-center gap-2 cursor-pointer";
-                icon.innerText = "🔔"; text.innerText = "التنبيهات مفعلة";
-            } else {
-                btn.className = "bg-rose-500/20 text-rose-400 border border-rose-500 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:bg-rose-500/40 flex items-center gap-2 cursor-pointer";
-                icon.innerText = "🔕"; text.innerText = "تفعيل الصوت";
-            }
-        }
-
-        function playAlert(isWhale) {
-            if (!soundEnabled) return;
-            const audio = document.getElementById(isWhale ? 'alertSoundWhale' : 'alertSoundNormal');
-            audio.currentTime = 0;
-            let playPromise = audio.play();
-            if (playPromise !== undefined) playPromise.catch(e => {});
-        }
-
-        function addAlertToLog(interval, text, isWhale, timestamp, signalType) {
-            const container = document.getElementById('alertsLogContainer');
-            if (isFirstAlert) { container.innerHTML = ''; isFirstAlert = false; }
-            const timeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            let bgClass = '', frameBadge = '', whaleBadge = '';
-
-            if (signalType === 'whale_buy') {
-                bgClass = 'bg-emerald-600/30 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] text-emerald-300';
-                frameBadge = `<span class="font-bold bg-emerald-900 border border-emerald-500 px-2 py-1 rounded text-white text-xs">⚡ تنفيذ لحظي</span>`;
-                whaleBadge = `<span class="bg-emerald-500 text-slate-900 px-2 py-0.5 rounded text-xs font-extrabold animate-pulse">🐋 حوت يشتري الماركت!</span>`;
-                triggerGlow('emerald');
-            } else if (signalType === 'whale_sell') {
-                bgClass = 'bg-rose-600/30 border-rose-400 shadow-[0_0_15px_rgba(225,29,72,0.3)] text-rose-300';
-                frameBadge = `<span class="font-bold bg-rose-900 border border-rose-500 px-2 py-1 rounded text-white text-xs">⚡ تنفيذ لحظي</span>`;
-                whaleBadge = `<span class="bg-rose-500 text-white px-2 py-0.5 rounded text-xs font-extrabold animate-pulse">🐋 حوت يبيع الماركت!</span>`;
-                triggerGlow('rose');
-            } else {
-                bgClass = signalType === 'bullish' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400';
-                frameBadge = `<span class="font-bold bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white text-xs">فريم ${interval}</span>`;
-                if (isWhale) whaleBadge = `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/50 px-2 py-0.5 rounded text-xs font-bold animate-pulse">⭐ سيولة مؤكدة!</span>`;
-            }
-
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `flex justify-between items-center p-2 rounded border ${bgClass} animate-pulse-once`;
-            alertDiv.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <span class="font-mono text-xs text-slate-400 bg-slate-950 px-2 py-1 rounded">${timeStr}</span>
-                    ${frameBadge}
-                    <span class="font-bold text-sm ml-2">${text}</span>
-                </div>
-                <div>${whaleBadge}</div>
-            `;
-            container.prepend(alertDiv);
-            if (container.children.length > 20) container.removeChild(container.lastChild); 
-        }
-
-        function triggerGlow(color) {
-            const glow = document.getElementById('whaleGlow');
-            glow.className = color === 'emerald' ? 'absolute inset-0 bg-emerald-500/20 transition-colors duration-300 pointer-events-none' : 'absolute inset-0 bg-rose-500/20 transition-colors duration-300 pointer-events-none';
-            setTimeout(() => { glow.className = 'absolute inset-0 bg-transparent transition-colors duration-700 pointer-events-none'; }, 1000);
-        }
-
-        function updateOrderFlowUI() {
-            document.getElementById('buyVolText').innerText = formatCashShort(rollingBuyVol);
-            document.getElementById('buyCountText').innerText = rollingBuyCount;
-            document.getElementById('sellVolText').innerText = formatCashShort(rollingSellVol);
-            document.getElementById('sellCountText').innerText = rollingSellCount;
-
-            const totalVol = rollingBuyVol + rollingSellVol;
-            let buyPct = 50, sellPct = 50;
-
-            if (totalVol > 0) {
-                buyPct = (rollingBuyVol / totalVol) * 100;
-                sellPct = (rollingSellVol / totalVol) * 100;
-            }
-
-            document.getElementById('buyBar').style.width = `${buyPct}%`;
-            document.getElementById('sellBar').style.width = `${sellPct}%`;
-            document.getElementById('buyPercentText').innerText = buyPct > 10 ? `${buyPct.toFixed(0)}%` : '';
-            document.getElementById('sellPercentText').innerText = sellPct > 10 ? `${sellPct.toFixed(0)}%` : '';
-
-            const signalBox = document.getElementById('liveMarketSignal');
+    <!-- نافذة الخريطة التفاعلية -->
+    <div id="mapModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[999999] flex justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-lg p-5 shadow-2xl flex flex-col h-[85vh]">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xl font-black text-gray-900">حدد موقعك على الخريطة 📍</h3>
+                <button type="button" onclick="closeMapModal()" class="text-gray-500 hover:text-red-500 text-3xl font-bold">&times;</button>
+            </div>
             
-            if (totalVol === 0) {
-                signalBox.innerHTML = `<span class="text-sm font-bold text-slate-500">سكون...</span>`;
-                signalBox.className = "bg-slate-950 border border-slate-700 rounded-lg py-2 px-4 inline-block shadow-inner min-w-[200px]";
-            } else if (buyPct >= 80) {
-                signalBox.innerHTML = `<span class="text-sm font-bold text-emerald-400">🚀 اكتساح شرائي لحظي</span>`;
-                signalBox.className = "bg-emerald-950/60 border border-emerald-400 rounded-lg py-2 px-4 inline-block shadow-[0_0_15px_rgba(16,185,129,0.3)] min-w-[200px]";
-            } else if (buyPct >= 60) {
-                signalBox.innerHTML = `<span class="text-sm font-bold text-emerald-300">📈 ضغط شراء</span>`;
-                signalBox.className = "bg-slate-950 border border-emerald-700 rounded-lg py-2 px-4 inline-block shadow-inner min-w-[200px]";
-            } else if (sellPct >= 80) {
-                signalBox.innerHTML = `<span class="text-sm font-bold text-rose-400">💥 ضرب بيعي عنيف</span>`;
-                signalBox.className = "bg-rose-950/60 border border-rose-400 rounded-lg py-2 px-4 inline-block shadow-[0_0_15px_rgba(225,29,72,0.3)] min-w-[200px]";
-            } else if (sellPct >= 60) {
-                signalBox.innerHTML = `<span class="text-sm font-bold text-rose-300">📉 ضغط بيع</span>`;
-                signalBox.className = "bg-slate-950 border border-rose-700 rounded-lg py-2 px-4 inline-block shadow-inner min-w-[200px]";
-            } else {
-                signalBox.innerHTML = `<span class="text-sm font-bold text-amber-400">⚔️ اشتباك</span>`;
-                signalBox.className = "bg-slate-950 border border-amber-600 rounded-lg py-2 px-4 inline-block shadow-inner min-w-[200px]";
-            }
-        }
-        setInterval(updateOrderFlowUI, 150);
+            <div class="flex gap-2 mb-3">
+                <input type="text" id="mapSearchInput" placeholder="ابحث عن مكان (مثال: المنصورة)..." class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <button type="button" onclick="searchOnMap()" class="bg-blue-500 text-white px-4 py-2 rounded-xl font-bold shadow-md active:scale-95">بحث</button>
+            </div>
+            
+            <div class="flex-1 w-full relative flex flex-col z-0 rounded-xl overflow-hidden shadow-inner border border-gray-300">
+                <div id="leafletMap" class="flex-1 w-full z-0"></div>
+                <button type="button" onclick="goToMyLocationOnMap()" class="absolute bottom-4 right-4 z-[400] w-12 h-12 bg-white text-blue-600 rounded-full shadow-xl border border-gray-200 flex justify-center items-center hover:bg-gray-50 active:scale-95 transition-all">
+                    <span class="text-2xl">🎯</span>
+                </button>
+            </div>
+            
+            <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-800 text-center min-h-[50px] flex items-center justify-center" id="mapAddressPreview">
+                حرك الدبوس أو ابحث لتحديد المكان...
+            </div>
+            <button type="button" onclick="confirmMapSelection()" class="mt-4 w-full bg-gray-800 text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95 text-lg">تأكيد واختيار هذا الموقع</button>
+        </div>
+    </div>
 
-        async function initCharts() {
-            const gridContainer = document.getElementById('charts-grid');
-            for (let tf of timeframes) {
-                const chartCard = document.createElement('div');
-                chartCard.className = "bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col shadow-lg";
-                
-                // إضافة شريط سيولة الشمعة لكل فريم
-                const header = document.createElement('div');
-                header.className = "bg-slate-800 border-b border-slate-700 p-2 flex flex-col gap-1.5";
-                header.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-bold text-white pl-2">${tf.title}</span> 
-                        <span id="timer-${tf.interval}" class="text-cyan-400 font-mono text-[11px] font-bold bg-slate-950 px-2 py-0.5 rounded border border-slate-700">⏳ --:--</span>
-                    </div>
-                    <!-- شريط سيولة الفريم (Taker Buy vs Sell) -->
-                    <div class="w-full bg-slate-950 rounded-full h-1.5 flex overflow-hidden">
-                        <div id="buy-bar-${tf.interval}" class="bg-emerald-500 h-full transition-all duration-300" style="width: 50%;"></div>
-                        <div id="sell-bar-${tf.interval}" class="bg-rose-500 h-full transition-all duration-300" style="width: 50%;"></div>
-                    </div>
-                    <div class="flex justify-between items-center text-[10px] font-mono px-1">
-                        <span id="buy-text-${tf.interval}" class="text-emerald-400">شراء: --%</span>
-                        <span id="vol-text-${tf.interval}" class="text-slate-400 font-bold" title="إجمالي سيولة الشمعة">$0</span>
-                        <span id="sell-text-${tf.interval}" class="text-rose-400">بيع: --%</span>
-                    </div>
-                `;
-                
-                const chartDiv = document.createElement('div');
-                chartDiv.className = "w-full h-[300px] relative"; 
-                chartCard.appendChild(header); chartCard.appendChild(chartDiv); gridContainer.appendChild(chartCard);
+    <!-- سكريبت تشغيل الخريطة -->
+    <script>
+        let mapInstance = null; 
+        let mapMarker = null;
+        let selectedMapGov = ""; 
+        let selectedMapAddress = "";
+        let finalLat = null;
+        let finalLng = null;
 
-                const chart = LightweightCharts.createChart(chartDiv, {
-                    autoSize: true, layout: { background: { type: 'solid', color: '#0f172a' }, textColor: '#94a3b8' },
-                    grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
-                    timeScale: { timeVisible: true, borderColor: '#334155', rightOffset: 5 },
-                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+        window.openMapModal = function() {
+            document.getElementById('mapModal').classList.remove('hidden');
+            if (!mapInstance) {
+                // نقطة البداية الافتراضية
+                mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 7);
+                
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
+                    maxZoom: 18,
+                    attribution: '© Mapbox'
+                }).addTo(mapInstance);
+                
+                mapMarker = L.marker([30.0444, 31.2357], { draggable: true }).addTo(mapInstance);
+                
+                // تحديث الموقع عند النقر أو سحب الدبوس
+                mapInstance.on('click', function(e) {
+                    mapMarker.setLatLng(e.latlng);
+                    updateMapAddress(e.latlng.lat, e.latlng.lng);
                 });
-                const candleSeries = chart.addCandlestickSeries({ upColor: '#10b981', downColor: '#ef4444', borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444' });
-                const topTrendLine = chart.addLineSeries({ color: '#fbbf24', lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
-                const bottomTrendLine = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
+                
+                mapMarker.on('dragend', function(e) {
+                    let position = mapMarker.getLatLng();
+                    updateMapAddress(position.lat, position.lng);
+                });
 
-                chartsState[tf.interval] = { chart, candleSeries, topTrendLine, bottomTrendLine, data: [], resLineObj: null, supLineObj: null, lastAlertedCandleTime: 0 };
-                await fetchHistoricalData(tf.interval);
+                // جلب موقع المستخدم التلقائي عند فتح الخريطة
+                goToMyLocationOnMap();
             }
-            connectMultiplexWebSocket();
-            setInterval(updateCountdowns, 1000);
-        }
+            // إصلاح حجم الخريطة عند ظهور النافذة المنبثقة
+            setTimeout(() => { mapInstance.invalidateSize(); }, 300);
+        };
 
-        function updateCountdowns() {
-            const now = Date.now();
-            timeframes.forEach(tf => {
-                const ms = intervalMsMap[tf.interval];
-                const diff = (Math.ceil(now / ms) * ms) - now;
-                let h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
-                let timeString = h > 0 ? `${h.toString().padStart(2, '0')}:` : "";
-                timeString += `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                const timerEl = document.getElementById(`timer-${tf.interval}`);
-                if (timerEl) {
-                    timerEl.className = (h === 0 && m === 0 && s <= 15) ? "text-rose-400 font-mono text-[11px] font-bold bg-rose-950/30 px-2 py-0.5 rounded border border-rose-500/50 shadow-inner animate-pulse" : "text-cyan-400 font-mono text-[11px] font-bold bg-slate-950 px-2 py-0.5 rounded border border-slate-700 shadow-inner";
-                    timerEl.innerText = `⏳ ${timeString}`;
+        window.closeMapModal = function() { document.getElementById('mapModal').classList.add('hidden'); };
+
+        window.searchOnMap = function() {
+            const query = document.getElementById('mapSearchInput').value.trim();
+            if(!query) return;
+            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري البحث...";
+            
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query + ' مصر')}.json?access_token=${MAPBOX_TOKEN}&language=ar&limit=1`)
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.features && data.features.length > 0) {
+                    const lon = parseFloat(data.features[0].center[0]); 
+                    const lat = parseFloat(data.features[0].center[1]);
+                    mapInstance.setView([lat, lon], 14);
+                    mapMarker.setLatLng([lat, lon]);
+                    updateMapAddress(lat, lon);
+                } else {
+                    document.getElementById('mapAddressPreview').innerHTML = "❌ لم يتم العثور على المكان.";
+                }
+            }).catch(() => document.getElementById('mapAddressPreview').innerHTML = "خطأ في البحث.");
+        };
+
+        window.updateMapAddress = function(lat, lng) {
+            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحليل العنوان...";
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.features && data.features.length > 0) {
+                    let state = "";
+                    let specificAddress = data.features[0].place_name_ar || data.features[0].place_name;
+                    
+                    let context = data.features[0].context || [];
+                    for(let i=0; i<context.length; i++) {
+                        if(context[i].id.startsWith('region')) {
+                            state = context[i].text_ar || context[i].text;
+                            break;
+                        }
+                    }
+                    if(!state && data.features[0].place_type.includes('region')) {
+                        state = data.features[0].text_ar || data.features[0].text;
+                    }
+
+                    let searchState = state || specificAddress;
+                    let mappedGov = governoratesList.find(g => searchState.includes(g) || g.includes(searchState.replace('محافظة ','')));
+                    
+                    selectedMapGov = mappedGov || "غير محدد";
+                    selectedMapAddress = specificAddress.split(',')[0] || state;
+                    finalLat = lat;
+                    finalLng = lng;
+
+                    document.getElementById('mapAddressPreview').innerHTML = `<b>المحافظة:</b> ${selectedMapGov}<br><b>التفاصيل:</b> ${selectedMapAddress}`;
                 }
             });
-        }
+        };
 
-        async function fetchHistoricalData(interval) {
-            try {
-                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=200`);
-                const data = await res.json();
-                chartsState[interval].data = data.map(d => ({ time: Math.floor(d[0]/1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5]) }));
-                recalculateAndDraw(interval);
-            } catch (e) { console.error(e); }
-        }
-
-        function recalculateAndDraw(interval) {
-            const state = chartsState[interval]; const candles = state.data;
-            if (candles.length < 20) return;
-            const swingHighs = [], swingLows = []; let markers = []; const lookback = 3; 
-
-            for (let i = lookback; i < candles.length - lookback; i++) {
-                let isH = true, isL = true; const cHigh = candles[i].high, cLow = candles[i].low;
-                for (let j = 1; j <= lookback; j++) {
-                    if (cHigh <= candles[i - j].high || cHigh <= candles[i + j].high) isH = false;
-                    if (cLow >= candles[i - j].low || cLow >= candles[i + j].low) isL = false;
-                }
-                if (isH) swingHighs.push({ index: i, time: candles[i].time, value: cHigh });
-                if (isL) swingLows.push({ index: i, time: candles[i].time, value: cLow });
+        window.goToMyLocationOnMap = function() {
+            if (navigator.geolocation) {
+                document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحديد موقعك عبر GPS...";
+                navigator.geolocation.getCurrentPosition(pos => {
+                    let lat = pos.coords.latitude; 
+                    let lng = pos.coords.longitude;
+                    mapInstance.setView([lat, lng], 15);
+                    mapMarker.setLatLng([lat, lng]);
+                    updateMapAddress(lat, lng);
+                }, err => {
+                    alert("يرجى تفعيل الـ GPS 📍 والسماح للمتصفح بالوصول للموقع.");
+                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
             }
+        };
 
-            let inSqueeze = false;
-            for (let i = lookback; i < candles.length; i++) {
-                let curr = candles[i], prev = candles[i-1];
-                let volSum = 0; for(let v = Math.max(0, i-20); v < i; v++) volSum += candles[v].volume;
-                let isWhaleVol = curr.volume > ((volSum/20) * 1.5); 
-                let rH = swingHighs.filter(h => h.index < i).pop(), rL = swingLows.filter(l => l.index < i).pop();
-                let hasSig = false, sigText = "", sigType = null;
-
-                if (rH && rL) {
-                    if (curr.high > rH.value && curr.close < rH.value && curr.close < curr.open) {
-                        sigText = `فخ بيع (سيولة مشترين انضربت)`; markers.push({ time: curr.time, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `🩸 فخ بيع` }); hasSig = true; sigType = 'bearish';
-                    } else if (curr.low < rL.value && curr.close > rL.value && curr.close > curr.open) {
-                        sigText = `فخ شراء (سيولة بائعين انضربت)`; markers.push({ time: curr.time, position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: `🟢 فخ شراء` }); hasSig = true; sigType = 'bullish';
-                    }
-                }
-
-                let oDist = (rH && rL) ? (rH.value - rL.value) : null;
-                if (oDist && (curr.high - curr.low) <= oDist * 0.4) inSqueeze = true;
-
-                if (inSqueeze) {
-                    if (curr.close > curr.open && curr.close > prev.high && curr.open < prev.close) {
-                        sigText = `صعود مؤكد (اختراق)`; markers.push({ time: curr.time, position: 'belowBar', color: '#3b82f6', shape: 'arrowUp', text: `🚀 صعود` }); inSqueeze = false; hasSig = true; sigType = 'bullish';
-                    } else if (curr.close < curr.open && curr.close < prev.low && curr.open > prev.close) {
-                        sigText = `هبوط مؤكد (كسر)`; markers.push({ time: curr.time, position: 'aboveBar', color: '#f97316', shape: 'arrowDown', text: `💥 هبوط` }); inSqueeze = false; hasSig = true; sigType = 'bearish';
-                    }
-                }
-
-                if (hasSig && i === candles.length - 1 && state.lastAlertedCandleTime !== curr.time) {
-                    playAlert(isWhaleVol); addAlertToLog(interval, sigText, isWhaleVol, curr.time, sigType); state.lastAlertedCandleTime = curr.time;
-                }
-            }
-
-            state.candleSeries.setData(candles); state.candleSeries.setMarkers(markers);
-            let lstH = swingHighs.length > 0 ? swingHighs[swingHighs.length-1].value : null;
-            let lstL = swingLows.length > 0 ? swingLows[swingLows.length-1].value : null;
-
-            if (state.resLineObj) state.candleSeries.removePriceLine(state.resLineObj);
-            if (lstH) state.resLineObj = state.candleSeries.createPriceLine({ price: lstH, color: '#ef4444', lineWidth: 2, lineStyle: 2, title: 'مقاومة' });
-            if (state.supLineObj) state.candleSeries.removePriceLine(state.supLineObj);
-            if (lstL) state.supLineObj = state.candleSeries.createPriceLine({ price: lstL, color: '#10b981', lineWidth: 2, lineStyle: 2, title: 'دعم' });
+        window.confirmMapSelection = function() {
+            if(!finalLat || !finalLng) return alert("الرجاء تحديد موقع على الخريطة أولاً.");
             
-            let topData = swingHighs.map(h => ({time: h.time, value: h.value})), botData = swingLows.map(l => ({time: l.time, value: l.value}));
-            let lastCandle = candles[candles.length - 1];
-            if (topData.length > 0 && lastCandle.time >= topData[topData.length-1].time) topData.push({ time: lastCandle.time, value: lastCandle.high });
-            if (botData.length > 0 && lastCandle.time >= botData[botData.length-1].time) botData.push({ time: lastCandle.time, value: lastCandle.low });
-            state.topTrendLine.setData(topData); state.bottomTrendLine.setData(botData);
-        }
-
-        function connectMultiplexWebSocket() {
-            const streams = timeframes.map(tf => `btcusdt@kline_${tf.interval}`);
-            streams.push('btcusdt@aggTrade'); 
+            // نقل البيانات من الخريطة إلى الشاشة الرئيسية
+            document.getElementById('selectedGov').value = selectedMapGov;
+            document.getElementById('selectedAddress').value = selectedMapAddress;
             
-            const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams.join('/')}`);
+            closeMapModal();
+        };
 
-            ws.onmessage = (event) => {
-                const msg = JSON.parse(event.data);
-                const now = Date.now();
-                
-                if (msg.stream === 'btcusdt@aggTrade') {
-                    const trade = msg.data;
-                    const price = parseFloat(trade.p);
-                    const qty = parseFloat(trade.q);
-                    const isSell = trade.m; 
-                    const totalValue = price * qty;
-
-                    tradesQueue.push({ t: now, v: totalValue, isSell: isSell });
-                    if (isSell) { rollingSellVol += totalValue; rollingSellCount++; } 
-                    else { rollingBuyVol += totalValue; rollingBuyCount++; }
-
-                    const cutoff = now - RECENT_TRADES_WINDOW;
-                    while (tradesQueue.length > 0 && tradesQueue[0].t < cutoff) {
-                        const oldTrade = tradesQueue.shift();
-                        if (oldTrade.isSell) { rollingSellVol -= oldTrade.v; rollingSellCount--; } 
-                        else { rollingBuyVol -= oldTrade.v; rollingBuyCount--; }
-                    }
-
-                    if (totalValue >= WHALE_ORDER_THRESHOLD) {
-                        const btcQty = qty.toFixed(1);
-                        const valueInK = (totalValue / 1000).toFixed(0) + 'K';
-                        if (!isSell) { playAlert(true); addAlertToLog('لحظي', `شراء ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_buy'); } 
-                        else { playAlert(true); addAlertToLog('لحظي', `بيع ماركت: ${btcQty} بيتكوين ($${valueInK})`, true, trade.T, 'whale_sell'); }
-                    }
-                }
-                
-                if (msg.stream && msg.stream.includes('kline')) {
-                    const interval = msg.data.k.i, k = msg.data.k, state = chartsState[interval];
-                    if (!state) return;
-                    
-                    // استخراج وتحليل سيولة الشمعة الحالية
-                    const totalQuoteVol = parseFloat(k.q); // إجمالي حجم التداول بالدولار
-                    const buyQuoteVol = parseFloat(k.Q);   // حجم الشراء بالدولار
-                    const sellQuoteVol = totalQuoteVol - buyQuoteVol; // حجم البيع بالدولار
-
-                    let buyPct = 50, sellPct = 50;
-                    if (totalQuoteVol > 0) {
-                        buyPct = (buyQuoteVol / totalQuoteVol) * 100;
-                        sellPct = (sellQuoteVol / totalQuoteVol) * 100;
-                    }
-
-                    // تحديث شريط السيولة الخاص بالفريم
-                    const buyBar = document.getElementById(`buy-bar-${interval}`);
-                    const sellBar = document.getElementById(`sell-bar-${interval}`);
-                    const buyText = document.getElementById(`buy-text-${interval}`);
-                    const sellText = document.getElementById(`sell-text-${interval}`);
-                    const volText = document.getElementById(`vol-text-${interval}`);
-
-                    if (buyBar && sellBar) {
-                        buyBar.style.width = `${buyPct}%`;
-                        sellBar.style.width = `${sellPct}%`;
-                        buyText.innerText = `شراء: ${buyPct.toFixed(0)}%`;
-                        sellText.innerText = `بيع: ${sellPct.toFixed(0)}%`;
-                        volText.innerText = formatCashShort(totalQuoteVol);
-                        
-                        buyText.className = buyPct >= 60 ? "text-emerald-400 font-bold text-[11px]" : "text-emerald-500";
-                        sellText.className = sellPct >= 60 ? "text-rose-400 font-bold text-[11px]" : "text-rose-500";
-                    }
-
-                    const time = Math.floor(k.t / 1000);
-                    const updatedCandle = { time: time, open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v) };
-                    const lastDataIndex = state.data.length - 1;
-                    if (state.data[lastDataIndex].time === time) state.data[lastDataIndex] = updatedCandle; 
-                    else { state.data.push(updatedCandle); if(state.data.length > 300) state.data.shift(); }
-                    recalculateAndDraw(interval);
-                }
-            };
-            ws.onclose = () => setTimeout(connectMultiplexWebSocket, 3000);
-        }
-
-        window.addEventListener('DOMContentLoaded', initCharts);
+        window.searchNearbyMerchants = function() {
+            const amount = document.getElementById('cashAmount').value;
+            const gov = document.getElementById('selectedGov').value;
+            
+            if(!amount || amount <= 0) return alert("يرجى إدخال المبلغ المطلوب.");
+            if(!gov) return alert("يرجى تحديد موقعك من الخريطة أولاً.");
+            
+            alert(`سيتم الآن البحث في قاعدة البيانات عن التجار في نطاق الإحداثيات: \nخط العرض: ${finalLat}\nخط الطول: ${finalLng}\nولديهم سيولة أكبر من ${amount} جنيه.`);
+            // هنا سيتم استدعاء كود الـ Backend (Java API) الذي كتبناه مسبقاً
+        };
     </script>
 </body>
 </html>
