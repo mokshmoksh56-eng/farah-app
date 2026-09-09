@@ -3,240 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>أقبض | شاشة مزدوجة للتجربة</title>
+    <title>أقبض | تسجيل الدخول</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+    
     <style>
         body { font-family: 'Cairo', sans-serif; overflow: hidden; }
-        .glass-panel { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
-        .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; }
-        /* تخصيص شريط التمرير */
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* تأثيرات الإضاءة الخلفية (الابتكار) */
+        .glow-blob {
+            position: absolute; width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(16,185,129,0.4) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%; filter: blur(40px); z-index: 0;
+            animation: float 6s infinite ease-in-out alternate;
+        }
+        .glow-blob-2 {
+            position: absolute; width: 250px; height: 250px; bottom: -50px; left: -50px;
+            background: radial-gradient(circle, rgba(59,130,246,0.4) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%; filter: blur(40px); z-index: 0;
+            animation: float 8s infinite ease-in-out alternate-reverse;
+        }
+        @keyframes float { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-30px) scale(1.1); } }
+        
+        /* التصميم الزجاجي */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            z-index: 10; position: relative;
+        }
+        
+        /* إخفاء العناصر بانسيابية */
+        .fade-enter { opacity: 0; transform: translateY(15px); transition: all 0.4s ease-out; pointer-events: none; position: absolute; width: 100%; visibility: hidden; }
+        .fade-enter-active { opacity: 1; transform: translateY(0); pointer-events: auto; position: relative; visibility: visible; }
     </style>
 </head>
-<body class="h-screen w-full flex flex-col bg-gray-200">
+<body class="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative text-white">
 
-    <script>
-        const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A"; 
-        const governoratesList = ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "المنوفية", "القليوبية", "البحيرة", "كفر الشيخ", "دمياط", "الإسماعيلية", "بورسعيد", "السويس", "مطروح", "شمال سيناء", "جنوب سيناء", "البحر الأحمر", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "الوادي الجديد"];
-    </script>
+    <!-- إضاءات الخلفية المتحركة -->
+    <div class="glow-blob top-[-50px] right-[-50px]"></div>
+    <div class="glow-blob-2"></div>
 
-    <!-- ========================================== -->
-    <!-- النصف العلوي: شاشة العميل (طالب الكاش) -->
-    <!-- ========================================== -->
-    <div class="h-1/2 w-full overflow-y-auto bg-gray-100 p-4 border-b-4 border-gray-800 relative shadow-inner">
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
-            <div class="flex items-center gap-2 mb-4 border-b pb-2">
-                <span class="text-3xl">👨‍💼</span>
+    <div class="w-full max-w-md glass-card rounded-3xl p-8 overflow-hidden">
+        
+        <!-- اللوجو (ثابت) -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl shadow-lg shadow-emerald-500/30 transform rotate-3 mb-4">
+                <span class="text-4xl transform -rotate-3 text-white">💸</span>
+            </div>
+            <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-white tracking-tight">أقبض</h1>
+            <p class="text-slate-400 font-bold text-sm mt-1 tracking-wider">كاشك في أي وقت، من أقرب مكان</p>
+        </div>
+
+        <!-- الخطوة 1: اختيار الدور (تظهر في البداية) -->
+        <div id="roleSelection" class="fade-enter-active space-y-4">
+            <h2 class="text-lg font-extrabold text-white mb-4 text-center">حدد طريقة دخولك للتطبيق:</h2>
+            
+            <button onclick="showForm('customer')" class="w-full group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-500/50 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-95">
+                <div class="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">🏃‍♂️</div>
+                <div class="text-right flex-1">
+                    <h3 class="text-xl font-black text-white group-hover:text-emerald-400 transition-colors">أنا عميل (طالب كاش)</h3>
+                    <p class="text-xs text-slate-400 font-bold mt-1">محتاج سيولة نقدية فورية</p>
+                </div>
+            </button>
+
+            <button onclick="showForm('merchant')" class="w-full group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-95">
+                <div class="w-14 h-14 bg-blue-500/20 text-blue-400 rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">🏪</div>
+                <div class="text-right flex-1">
+                    <h3 class="text-xl font-black text-white group-hover:text-blue-400 transition-colors">أنا تاجر (مزود سيولة)</h3>
+                    <p class="text-xs text-slate-400 font-bold mt-1">لدي كاش أرغب في إيداعه رقمياً</p>
+                </div>
+            </button>
+        </div>
+
+        <!-- الخطوة 2: نموذج دخول العميل (مخفي افتراضياً) -->
+        <div id="customerForm" class="fade-enter">
+            <div class="flex items-center gap-3 mb-6">
+                <button onclick="goBack()" class="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/20 transition-colors">&rarr;</button>
+                <h2 class="text-xl font-black text-emerald-400">دخول العميل</h2>
+            </div>
+            
+            <form onsubmit="submitCustomer(event)" class="space-y-5">
                 <div>
-                    <h2 class="text-xl font-black text-gray-900">حساب العميل (الموظف)</h2>
-                    <p class="text-xs font-bold text-gray-500">اطلب الكاش وحدد موقعك</p>
+                    <label class="block text-sm font-bold text-slate-300 mb-2">رقم الهاتف المرتبط بالمحفظة/إنستاباي</label>
+                    <input type="tel" required placeholder="01xxxxxxxx" class="w-full px-4 py-4 bg-slate-800/50 border border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-white text-xl font-black tracking-widest text-left" dir="ltr">
                 </div>
-            </div>
-
-            <div class="space-y-3">
-                <input type="number" id="cashAmount" placeholder="المبلغ المطلوب (مثال: 1000)" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-center text-lg">
-                
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="openMapModal()" class="w-full bg-blue-50 border border-blue-300 text-blue-700 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1 active:scale-95 text-sm transition">
-                        <span>🗺️</span> الخريطة
-                    </button>
-                    <input type="text" id="selectedGov" placeholder="المحافظة..." readonly class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-xl text-xs font-black text-gray-700 text-center">
-                </div>
-
-                <button type="button" onclick="simulateRequestToMerchant()" class="w-full bg-green-500 hover:bg-green-600 text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95 flex justify-center items-center gap-2 text-sm transition">
-                    🔍 إرسال الطلب للتاجر الأقرب
+                <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white font-extrabold py-4 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95 transition-all">
+                    تأكيد وفتح الخريطة 🗺️
                 </button>
-                
-                <p id="customerStatusMsg" class="text-xs text-center font-bold text-green-700 hidden">✅ تم إرسال طلبك للتاجر في الأسفل!</p>
-            </div>
+            </form>
         </div>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- النصف السفلي: شاشة التاجر (مزود الكاش) -->
-    <!-- ========================================== -->
-    <div class="h-1/2 w-full overflow-y-auto bg-slate-800 text-white p-4 relative shadow-inner">
-        <div class="bg-slate-700 rounded-2xl p-4 shadow-md border border-slate-600">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-500 pb-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-3xl">🏪</span>
-                    <div>
-                        <h2 class="text-xl font-black text-white">لوحة التاجر</h2>
-                        <p class="text-xs font-bold text-slate-300">متابعة الرصيد والطلبات</p>
-                    </div>
-                </div>
-                <div class="text-center">
-                    <p class="text-[10px] text-slate-400">السيولة المتاحة</p>
-                    <p class="text-lg font-black text-green-400" id="merchantBalance">25,000 ج</p>
-                </div>
-            </div>
-
-            <!-- مساحة الطلبات الواردة -->
-            <div id="incomingRequestBox" class="hidden bg-slate-600 rounded-xl p-3 border border-yellow-500 shadow-lg animate-pulse">
-                <h3 class="text-sm font-black text-yellow-400 mb-2">🔔 طلب كاش جديد!</h3>
-                <div class="text-xs text-slate-200 space-y-1 mb-3 font-bold">
-                    <p>المبلغ المطلوب: <span id="reqAmountDisplay" class="text-white text-sm"></span> ج.م</p>
-                    <p>موقع العميل: <span id="reqLocationDisplay" class="text-white"></span></p>
-                </div>
-                <button onclick="confirmTransaction()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-extrabold py-2.5 rounded-xl shadow-sm active:scale-95 text-sm transition">
-                    تأكيد تسليم الكاش للعميل ✔️
-                </button>
-            </div>
-
-            <div id="noRequestsMsg" class="text-center py-6 text-slate-400 text-sm font-bold">
-                لا توجد طلبات حالياً. (في انتظار العميل)
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- نافذة الخريطة التفاعلية (تظهر فوق الشاشتين) -->
-    <!-- ========================================== -->
-    <div id="mapModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[999999] flex justify-center items-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-lg p-4 shadow-2xl flex flex-col h-[80vh]">
-            <div class="flex justify-between items-center mb-2">
-                <h3 class="text-lg font-black text-gray-900">حدد موقعك على الخريطة</h3>
-                <button type="button" onclick="closeMapModal()" class="text-gray-500 hover:text-red-500 text-3xl font-bold">&times;</button>
+        <!-- الخطوة 2: نموذج دخول التاجر (مخفي افتراضياً) -->
+        <div id="merchantForm" class="fade-enter">
+            <div class="flex items-center gap-3 mb-6">
+                <button onclick="goBack()" class="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/20 transition-colors">&rarr;</button>
+                <h2 class="text-xl font-black text-blue-400">دخول التاجر</h2>
             </div>
             
-            <div class="flex gap-2 mb-2">
-                <input type="text" id="mapSearchInput" placeholder="ابحث عن مكان..." class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                <button type="button" onclick="searchOnMap()" class="bg-blue-500 text-white px-4 py-2 rounded-xl font-bold shadow-md active:scale-95 text-sm">بحث</button>
-            </div>
-            
-            <div class="flex-1 w-full relative flex flex-col z-0 rounded-xl overflow-hidden border border-gray-300">
-                <div id="leafletMap" class="flex-1 w-full z-0"></div>
-                <button type="button" onclick="goToMyLocationOnMap()" class="absolute bottom-4 right-4 z-[400] w-10 h-10 bg-white text-blue-600 rounded-full shadow-xl border border-gray-200 flex justify-center items-center active:scale-95">
-                    🎯
+            <form onsubmit="submitMerchant(event)" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2">رقم هاتف المتجر</label>
+                    <input type="tel" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-lg font-black tracking-widest text-left" dir="ltr">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2">الرقم السري (PIN)</label>
+                    <input type="password" required placeholder="****" maxlength="4" class="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-center text-2xl font-black tracking-widest" dir="ltr">
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold py-4 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.4)] active:scale-95 transition-all">
+                    فتح لوحة التحكم 🏪
                 </button>
-            </div>
-            
-            <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-xl text-[11px] font-bold text-blue-800 text-center min-h-[40px] flex items-center justify-center" id="mapAddressPreview">
-                حرك الدبوس أو ابحث لتحديد المكان...
-            </div>
-            <button type="button" onclick="confirmMapSelection()" class="mt-2 w-full bg-gray-800 text-white font-extrabold py-3 rounded-xl active:scale-95 text-sm">تأكيد واختيار الموقع</button>
+            </form>
         </div>
+
     </div>
 
-    <!-- السكريبتات للتفاعل والمحاكاة بين الشاشتين -->
     <script>
-        // متغيرات التاجر
-        let merchantBalance = 25000;
-        let currentRequestedAmount = 0;
-
-        // محاكاة إرسال الطلب من العميل إلى التاجر
-        function simulateRequestToMerchant() {
-            const amount = document.getElementById('cashAmount').value;
-            const gov = document.getElementById('selectedGov').value;
-
-            if(!amount || amount <= 0) return alert("يرجى إدخال مبلغ صحيح.");
-            if(!gov) return alert("يرجى تحديد موقعك من الخريطة أولاً.");
-
-            if(amount > merchantBalance) return alert("المبلغ المطلوب أكبر من السيولة المتاحة لدى التاجر!");
-
-            // إظهار رسالة للعميل
-            const msg = document.getElementById('customerStatusMsg');
-            msg.classList.remove('hidden');
-            msg.innerText = "⏳ جاري انتظار تأكيد التاجر...";
-            msg.className = "text-xs text-center font-bold text-yellow-600 mt-2 block";
-
-            // إرسال البيانات لشاشة التاجر (في الأسفل)
-            currentRequestedAmount = parseInt(amount);
-            document.getElementById('reqAmountDisplay').innerText = currentRequestedAmount.toLocaleString();
-            document.getElementById('reqLocationDisplay').innerText = gov;
+        function showForm(role) {
+            // إخفاء قائمة الاختيار
+            document.getElementById('roleSelection').classList.remove('fade-enter-active');
+            document.getElementById('roleSelection').classList.add('fade-enter');
             
-            document.getElementById('noRequestsMsg').classList.add('hidden');
-            document.getElementById('incomingRequestBox').classList.remove('hidden');
-        }
-
-        // محاكاة تأكيد التاجر لخصم الرصيد
-        function confirmTransaction() {
-            if(confirm(`تأكيد تسليم ${currentRequestedAmount} جنيه يدوياً للعميل؟`)) {
-                merchantBalance -= currentRequestedAmount;
-                document.getElementById('merchantBalance').innerText = merchantBalance.toLocaleString() + " ج";
-                
-                document.getElementById('incomingRequestBox').classList.add('hidden');
-                document.getElementById('noRequestsMsg').classList.remove('hidden');
-                
-                // تحديث شاشة العميل
-                const msg = document.getElementById('customerStatusMsg');
-                msg.innerText = "✅ تمت العملية بنجاح! استلم الكاش الخاص بك.";
-                msg.className = "text-xs text-center font-bold text-green-700 mt-2 block";
-                document.getElementById('cashAmount').value = "";
-            }
-        }
-
-        /* --- أكواد الخريطة Mapbox/Leaflet (نفس الكود السابق مع تعديلات طفيفة للحجم) --- */
-        let mapInstance = null, mapMarker = null, selectedMapGov = "", selectedMapAddress = "", finalLat = null, finalLng = null;
-
-        window.openMapModal = function() {
-            document.getElementById('mapModal').classList.remove('hidden');
-            if (!mapInstance) {
-                mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 7);
-                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18, attribution: '© Mapbox' }).addTo(mapInstance);
-                mapMarker = L.marker([30.0444, 31.2357], { draggable: true }).addTo(mapInstance);
-                mapInstance.on('click', e => { mapMarker.setLatLng(e.latlng); updateMapAddress(e.latlng.lat, e.latlng.lng); });
-                mapMarker.on('dragend', e => { let pos = mapMarker.getLatLng(); updateMapAddress(pos.lat, pos.lng); });
-                goToMyLocationOnMap();
-            }
-            setTimeout(() => { mapInstance.invalidateSize(); }, 300);
-        };
-
-        window.closeMapModal = function() { document.getElementById('mapModal').classList.add('hidden'); };
-
-        window.searchOnMap = function() {
-            const query = document.getElementById('mapSearchInput').value.trim();
-            if(!query) return;
-            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري البحث...";
-            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query + ' مصر')}.json?access_token=${MAPBOX_TOKEN}&language=ar&limit=1`)
-            .then(res => res.json()).then(data => {
-                if(data && data.features && data.features.length > 0) {
-                    const lon = parseFloat(data.features[0].center[0]), lat = parseFloat(data.features[0].center[1]);
-                    mapInstance.setView([lat, lon], 14); mapMarker.setLatLng([lat, lon]); updateMapAddress(lat, lon);
-                } else { document.getElementById('mapAddressPreview').innerHTML = "❌ المكان غير موجود."; }
-            });
-        };
-
-        window.updateMapAddress = function(lat, lng) {
-            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحليل العنوان...";
-            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
-            .then(res => res.json()).then(data => {
-                if(data && data.features && data.features.length > 0) {
-                    let state = "", specificAddress = data.features[0].place_name_ar || data.features[0].place_name;
-                    let context = data.features[0].context || [];
-                    for(let i=0; i<context.length; i++) if(context[i].id.startsWith('region')) { state = context[i].text_ar || context[i].text; break; }
-                    if(!state && data.features[0].place_type.includes('region')) state = data.features[0].text_ar || data.features[0].text;
-                    let searchState = state || specificAddress;
-                    let mappedGov = governoratesList.find(g => searchState.includes(g) || g.includes(searchState.replace('محافظة ','')));
-                    selectedMapGov = mappedGov || "غير محدد"; selectedMapAddress = specificAddress.split(',')[0] || state;
-                    finalLat = lat; finalLng = lng;
-                    document.getElementById('mapAddressPreview').innerHTML = `<b>المحافظة:</b> ${selectedMapGov} <br> ${selectedMapAddress}`;
+            // إظهار النموذج المطلوب بعد تأخير بسيط لإعطاء تأثير الانسيابية
+            setTimeout(() => {
+                if(role === 'customer') {
+                    document.getElementById('customerForm').classList.remove('fade-enter');
+                    document.getElementById('customerForm').classList.add('fade-enter-active');
+                } else {
+                    document.getElementById('merchantForm').classList.remove('fade-enter');
+                    document.getElementById('merchantForm').classList.add('fade-enter-active');
                 }
-            });
-        };
+            }, 300);
+        }
 
-        window.goToMyLocationOnMap = function() {
-            if (navigator.geolocation) {
-                document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري التحديد...";
-                navigator.geolocation.getCurrentPosition(pos => {
-                    let lat = pos.coords.latitude, lng = pos.coords.longitude;
-                    mapInstance.setView([lat, lng], 15); mapMarker.setLatLng([lat, lng]); updateMapAddress(lat, lng);
-                }, err => alert("يرجى تفعيل الـ GPS."), { enableHighAccuracy: true, timeout: 10000 });
-            }
-        };
+        function goBack() {
+            // إخفاء النماذج
+            document.getElementById('customerForm').classList.remove('fade-enter-active');
+            document.getElementById('customerForm').classList.add('fade-enter');
+            document.getElementById('merchantForm').classList.remove('fade-enter-active');
+            document.getElementById('merchantForm').classList.add('fade-enter');
+            
+            // العودة لقائمة الاختيار
+            setTimeout(() => {
+                document.getElementById('roleSelection').classList.remove('fade-enter');
+                document.getElementById('roleSelection').classList.add('fade-enter-active');
+            }, 300);
+        }
 
-        window.confirmMapSelection = function() {
-            if(!finalLat || !finalLng) return alert("حدد موقعاً أولاً.");
-            document.getElementById('selectedGov').value = selectedMapGov;
-            closeMapModal();
-        };
+        function submitCustomer(e) {
+            e.preventDefault();
+            // هنا سيتم التوجيه لصفحة العميل أو إخفاء واجهة الدخول وفتح الخريطة
+            alert("سيتم توجيهك الآن لخريطة طلب الكاش...");
+        }
+
+        function submitMerchant(e) {
+            e.preventDefault();
+            // هنا سيتم التحقق من قاعدة البيانات وتوجيه التاجر للوحة التحكم
+            alert("سيتم فتح لوحة تحكم التاجر...");
+        }
     </script>
 </body>
 </html>
