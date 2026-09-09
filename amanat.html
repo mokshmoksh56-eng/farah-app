@@ -3,290 +3,486 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>أقبض | الدخول والتسجيل</title>
+    <title>أقبض | أونلاين</title>
     
+    <!-- مكتبة التصميم (Tailwind) والخطوط -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
+    <!-- مكتبات الخريطة (Leaflet) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body { font-family: 'Cairo', sans-serif; overflow: hidden; }
+        body { font-family: 'Cairo', sans-serif; overflow-x: hidden; color: white; background-color: #0f172a; }
         
-        .glow-blob {
-            position: absolute; width: 300px; height: 300px;
-            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0) 70%);
-            border-radius: 50%; filter: blur(40px); z-index: 0;
-            animation: float 6s infinite ease-in-out alternate;
-        }
-        .glow-blob-2 {
-            position: absolute; width: 250px; height: 250px; bottom: -50px; left: -50px;
-            background: radial-gradient(circle, rgba(147,197,253,0.3) 0%, rgba(0,0,0,0) 70%);
-            border-radius: 50%; filter: blur(40px); z-index: 0;
-            animation: float 8s infinite ease-in-out alternate-reverse;
-        }
+        /* إضاءات خلفية زرقاء ساطعة */
+        .glow-blob { position: fixed; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; filter: blur(40px); z-index: -1; animation: float 6s infinite ease-in-out alternate; top: -50px; right: -50px; }
+        .glow-blob-2 { position: fixed; width: 250px; height: 250px; background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; filter: blur(40px); z-index: -1; animation: float 8s infinite ease-in-out alternate-reverse; bottom: -50px; left: -50px; }
         @keyframes float { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-30px) scale(1.1); } }
         
-        .glass-card {
-            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
-            z-index: 10; position: relative;
-        }
+        /* البطاقة الزجاجية */
+        .glass-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3); }
         
+        /* حركات التنقل بين الشاشات */
         .fade-enter { opacity: 0; transform: translateY(15px); transition: all 0.4s ease-out; pointer-events: none; position: absolute; width: 100%; visibility: hidden; }
         .fade-enter-active { opacity: 1; transform: translateY(0); pointer-events: auto; position: relative; visibility: visible; }
         
         ::placeholder { color: rgba(255, 255, 255, 0.6) !important; }
+        .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; color: black; }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-800 flex items-center justify-center p-4 relative text-white">
+<body class="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-800 flex items-center justify-center p-4 relative">
 
-    <div class="glow-blob top-[-50px] right-[-50px]"></div>
+    <div class="glow-blob"></div>
     <div class="glow-blob-2"></div>
 
-    <div class="w-full max-w-md glass-card rounded-3xl p-8 overflow-hidden">
+    <div class="w-full max-w-md glass-card rounded-3xl p-6 sm:p-8 overflow-hidden relative min-h-[500px]">
         
         <!-- اللوجو -->
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-white/20 border border-white/30 rounded-2xl shadow-lg transform rotate-3 mb-4">
-                <span class="text-4xl transform -rotate-3 text-white">💸</span>
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 border border-white/30 rounded-2xl shadow-lg transform rotate-3 mb-3">
+                <span class="text-3xl transform -rotate-3">💸</span>
             </div>
-            <h1 class="text-4xl font-black text-white tracking-tight">أقبض</h1>
-            <p class="text-white/90 font-bold text-sm mt-1 tracking-wider">كاشك في أي وقت، من أقرب مكان</p>
+            <h1 class="text-3xl font-black text-white tracking-tight">أقبض</h1>
         </div>
 
-        <!-- الخطوة 1: اختيار الدور -->
-        <div id="roleSelection" class="fade-enter-active space-y-4">
+        <!-- ============================================== -->
+        <!-- 1. شاشة اختيار الدور -->
+        <!-- ============================================== -->
+        <div id="roleView" class="fade-enter-active space-y-4">
             <h2 class="text-lg font-extrabold text-white mb-4 text-center">حدد طريقة دخولك للتطبيق:</h2>
-            
-            <button onclick="showForm('customer')" class="w-full group bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/50 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-95">
-                <div class="w-14 h-14 bg-white/20 text-white rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">🏃‍♂️</div>
+            <button onclick="showView('customerView')" class="w-full group bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl p-4 flex items-center gap-4 transition-all active:scale-95">
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">🏃‍♂️</div>
                 <div class="text-right flex-1">
-                    <h3 class="text-xl font-black text-white">أنا عميل (طالب كاش)</h3>
-                    <p class="text-xs text-blue-100 font-bold mt-1">محتاج سيولة نقدية فورية</p>
+                    <h3 class="text-lg font-black text-white">أنا عميل (طالب كاش)</h3>
+                    <p class="text-[11px] text-blue-100 font-bold mt-1">محتاج سيولة نقدية فورية</p>
                 </div>
             </button>
-
-            <button onclick="showForm('merchant')" class="w-full group bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/50 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-95">
-                <div class="w-14 h-14 bg-white/20 text-white rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">🏪</div>
+            <button onclick="showView('merchantLoginView')" class="w-full group bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl p-4 flex items-center gap-4 transition-all active:scale-95">
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">🏪</div>
                 <div class="text-right flex-1">
-                    <h3 class="text-xl font-black text-white">أنا تاجر (مزود سيولة)</h3>
-                    <p class="text-xs text-blue-100 font-bold mt-1">لدي كاش أرغب في إيداعه رقمياً</p>
+                    <h3 class="text-lg font-black text-white">أنا تاجر (مزود سيولة)</h3>
+                    <p class="text-[11px] text-blue-100 font-bold mt-1">لدي كاش، واستقبال طلبات</p>
                 </div>
             </button>
         </div>
 
-        <!-- نموذج دخول العميل -->
-        <div id="customerForm" class="fade-enter">
+        <!-- ============================================== -->
+        <!-- 2. شاشة العميل (طلب الكاش) -->
+        <!-- ============================================== -->
+        <div id="customerView" class="fade-enter">
             <div class="flex items-center gap-3 mb-6">
-                <button type="button" onclick="goBack()" class="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors">&rarr;</button>
+                <button type="button" onclick="goBack()" class="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center hover:bg-white/30">&rarr;</button>
                 <h2 class="text-xl font-black text-white">طلب الكاش</h2>
             </div>
-            
-            <form onsubmit="submitCustomer(event)" class="space-y-4">
+            <form onsubmit="window.sendCashRequest(event)" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-white mb-2">رقم الهاتف</label>
-                    <input type="tel" id="customerPhone" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl focus:ring-2 focus:ring-white focus:border-white outline-none text-white text-lg font-black tracking-widest text-left" dir="ltr">
+                    <label class="block text-sm font-bold text-white mb-1">رقم الهاتف</label>
+                    <input type="tel" id="customerPhone" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white font-black tracking-widest text-left" dir="ltr">
                 </div>
-                
                 <div>
-                    <label class="block text-sm font-bold text-white mb-2">المبلغ المطلوب (كاش)</label>
-                    <input type="number" id="customerAmount" required placeholder="مثال: 1000" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl focus:ring-2 focus:ring-white focus:border-white outline-none text-white text-xl font-black tracking-widest text-center">
+                    <label class="block text-sm font-bold text-white mb-1">المبلغ المطلوب (كاش)</label>
+                    <input type="number" id="customerAmount" required placeholder="مثال: 1000" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white text-xl font-black text-center">
                 </div>
-
-                <button id="btnCustomer" type="submit" class="w-full bg-white text-blue-900 hover:bg-blue-50 font-extrabold py-4 rounded-xl shadow-lg active:scale-95 transition-all text-lg mt-2">
-                    تأكيد وفتح الخريطة 🗺️
+                <div class="bg-white/10 border border-white/20 p-3 rounded-xl mt-2">
+                    <label class="block text-sm font-bold text-white mb-2">مكان استلام الكاش</label>
+                    <button type="button" onclick="openMap('customer')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold py-2 rounded-lg text-sm flex justify-center items-center gap-2 active:scale-95 mb-2">
+                        <span>📍</span> تحديد من الخريطة
+                    </button>
+                    <input type="text" id="custAddressDisplay" readonly placeholder="لم يتم تحديد الموقع..." class="w-full px-2 py-2 bg-black/20 border border-white/10 rounded-lg text-[11px] font-bold text-white text-center">
+                </div>
+                <button type="submit" id="btnCustomerSubmit" class="w-full bg-white text-blue-900 font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 text-lg mt-2">
+                    إرسال الطلب أونلاين 🚀
                 </button>
+                <div id="customerStatusMsg" class="hidden text-center p-3 rounded-xl bg-blue-900/50 border border-blue-400 mt-2 text-sm font-bold text-blue-100 animate-pulse">
+                    ⏳ جاري البحث عن تاجر قريب...
+                </div>
             </form>
         </div>
 
-        <!-- نموذج دخول التاجر (الحالي) -->
-        <div id="merchantForm" class="fade-enter">
+        <!-- ============================================== -->
+        <!-- 3. شاشة دخول التاجر -->
+        <!-- ============================================== -->
+        <div id="merchantLoginView" class="fade-enter">
             <div class="flex items-center gap-3 mb-6">
-                <button type="button" onclick="goBack()" class="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors">&rarr;</button>
-                <h2 class="text-xl font-black text-white">تسجيل دخول التاجر</h2>
+                <button type="button" onclick="goBack()" class="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center hover:bg-white/30">&rarr;</button>
+                <h2 class="text-xl font-black text-white">دخول التاجر</h2>
             </div>
-            
-            <form onsubmit="submitMerchant(event)" class="space-y-4">
+            <form onsubmit="window.loginMerchant(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-white mb-2">رقم هاتف المتجر</label>
-                    <input type="tel" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl focus:ring-2 focus:ring-white focus:border-white outline-none text-white text-lg font-black tracking-widest text-left" dir="ltr">
+                    <input type="tel" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white font-black tracking-widest text-left" dir="ltr">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-white mb-2">الرقم السري (PIN)</label>
-                    <input type="password" required placeholder="****" maxlength="4" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl focus:ring-2 focus:ring-white focus:border-white outline-none text-white text-center text-2xl font-black tracking-widest" dir="ltr">
+                    <input type="password" required placeholder="****" maxlength="4" class="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl outline-none text-white text-center text-2xl font-black tracking-widest" dir="ltr">
                 </div>
-                <button id="btnMerchant" type="submit" class="w-full bg-white text-blue-900 hover:bg-blue-50 font-extrabold py-4 rounded-xl shadow-lg active:scale-95 transition-all text-lg">
+                <button type="submit" id="btnLoginMerchant" class="w-full bg-white text-blue-900 font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 text-lg">
                     دخول للوحة التحكم 🏪
                 </button>
             </form>
-            
             <div class="mt-4 text-center border-t border-white/20 pt-4">
                 <p class="text-sm text-blue-100 font-bold mb-2">ليس لديك حساب تاجر؟</p>
-                <button type="button" onclick="showMerchantRegister()" class="text-white font-black underline hover:text-blue-200 transition-colors">
-                    إنشاء حساب تاجر جديد
-                </button>
+                <button type="button" onclick="showView('merchantRegisterView')" class="text-white font-black underline hover:text-blue-200">إنشاء حساب تاجر جديد</button>
             </div>
         </div>
 
-        <!-- نموذج تسجيل تاجر جديد (مع GPS) -->
-        <div id="merchantRegisterForm" class="fade-enter">
+        <!-- ============================================== -->
+        <!-- 4. شاشة تسجيل تاجر جديد -->
+        <!-- ============================================== -->
+        <div id="merchantRegisterView" class="fade-enter">
             <div class="flex items-center gap-3 mb-6">
-                <button type="button" onclick="showForm('merchant')" class="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors">&rarr;</button>
+                <button type="button" onclick="showView('merchantLoginView')" class="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center hover:bg-white/30">&rarr;</button>
                 <h2 class="text-xl font-black text-white">تسجيل تاجر جديد</h2>
             </div>
-            
-            <form onsubmit="registerMerchant(event)" class="space-y-4">
+            <form onsubmit="window.registerMerchant(event)" class="space-y-3">
                 <div>
-                    <label class="block text-sm font-bold text-white mb-1">رقم التليفون</label>
-                    <input type="tel" id="regPhone" required placeholder="01xxxxxxxx" class="w-full px-3 py-2.5 bg-white/10 border border-white/30 rounded-xl focus:ring-2 focus:ring-white focus:border-white outline-none text-white text-base font-black tracking-widest text-left" dir="ltr">
+                    <label class="block text-[13px] font-bold text-white mb-1">رقم التليفون</label>
+                    <input type="tel" id="regPhone" required placeholder="01xxxxxxxx" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none font-black tracking-widest text-left" dir="ltr">
                 </div>
-                
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-bold text-white mb-1">الرقم السري</label>
-                        <input type="password" id="regPin" required placeholder="****" maxlength="4" class="w-full px-3 py-2.5 bg-white/10 border border-white/30 rounded-xl focus:ring-2 focus:ring-white outline-none text-white text-center text-lg font-black tracking-widest" dir="ltr">
+                        <label class="block text-[13px] font-bold text-white mb-1">الرقم السري</label>
+                        <input type="password" id="regPin" required placeholder="****" maxlength="4" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none text-center font-black tracking-widest" dir="ltr">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-white mb-1">تأكيد السري</label>
-                        <input type="password" id="regPinConfirm" required placeholder="****" maxlength="4" class="w-full px-3 py-2.5 bg-white/10 border border-white/30 rounded-xl focus:ring-2 focus:ring-white outline-none text-white text-center text-lg font-black tracking-widest" dir="ltr">
+                        <label class="block text-[13px] font-bold text-white mb-1">تأكيد السري</label>
+                        <input type="password" id="regPinConfirm" required placeholder="****" maxlength="4" class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-xl outline-none text-center font-black tracking-widest" dir="ltr">
                     </div>
                 </div>
-
-                <div class="bg-white/10 border border-white/20 p-3 rounded-xl mt-2">
-                    <label class="block text-sm font-bold text-white mb-2">مكان المتجر (لإرسال العملاء إليك)</label>
-                    <button type="button" id="btnGps" onclick="getMerchantLocation()" class="w-full bg-blue-600 hover:bg-blue-500 text-white border border-blue-400 font-extrabold py-2.5 rounded-lg active:scale-95 transition-all text-sm flex justify-center items-center gap-2">
-                        <span>📍</span> التقاط موقعي الحالي (GPS)
+                <div class="bg-white/10 border border-white/20 p-3 rounded-xl">
+                    <label class="block text-[13px] font-bold text-white mb-2">مكان المتجر (GPS)</label>
+                    <button type="button" onclick="openMap('merchant')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold py-2 rounded-lg active:scale-95 text-xs flex justify-center items-center gap-2 mb-2">
+                        <span>📍</span> تحديد موقع المتجر من الخريطة
                     </button>
-                    
-                    <!-- حقول مخفية لحفظ الإحداثيات -->
-                    <input type="hidden" id="merchantLat" required>
-                    <input type="hidden" id="merchantLng" required>
-                    
-                    <p id="gpsSuccess" class="text-xs font-black text-green-300 mt-2 text-center hidden">
-                        ✅ تم حفظ موقع المتجر بنجاح!
-                    </p>
+                    <input type="text" id="merchantAddressDisplay" readonly placeholder="لم يتم تحديد الموقع..." class="w-full px-2 py-1.5 bg-black/20 border border-white/10 rounded-lg text-[10px] font-bold text-center">
                 </div>
-
-                <button id="btnRegisterMerchant" type="submit" class="w-full bg-white text-blue-900 hover:bg-blue-50 font-extrabold py-4 rounded-xl shadow-lg active:scale-95 transition-all text-lg mt-2">
+                <button type="submit" id="btnRegMerchant" class="w-full bg-white text-blue-900 font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 text-base mt-2">
                     تأكيد وإنشاء الحساب ✔️
                 </button>
             </form>
         </div>
 
+        <!-- ============================================== -->
+        <!-- 5. لوحة تحكم التاجر (أونلاين) -->
+        <!-- ============================================== -->
+        <div id="merchantDashboardView" class="fade-enter">
+            <div class="flex items-center justify-between mb-4 border-b border-white/20 pb-4">
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="goBack()" class="w-8 h-8 bg-red-500/20 text-red-200 rounded-full flex items-center justify-center hover:bg-red-500/40 text-xs">🚪</button>
+                    <h2 class="text-xl font-black text-white">لوحة التاجر</h2>
+                </div>
+                <div class="text-center bg-black/20 px-3 py-1 rounded-lg">
+                    <p class="text-[10px] text-blue-200">السيولة المتاحة</p>
+                    <p id="merchantBalanceDisplay" class="text-lg font-black text-green-400">25,000 ج</p>
+                </div>
+            </div>
+            
+            <div class="bg-white/10 border border-white/20 rounded-xl p-3 mb-4 flex items-center gap-3">
+                <div class="w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+                <p class="text-sm font-bold text-white">أنت متصل وتستقبل الطلبات...</p>
+            </div>
+
+            <!-- حاوية الطلبات اللحظية -->
+            <div id="liveRequestsContainer" class="space-y-3 h-[250px] overflow-y-auto pr-1">
+                <div class="text-center py-10 text-white/50 text-sm font-bold bg-white/5 rounded-xl border border-white/10">
+                    لا توجد طلبات عملاء جديدة حالياً.
+                </div>
+            </div>
+        </div>
+
     </div>
 
+    <!-- ============================================== -->
+    <!-- نافذة الخريطة التفاعلية (Mapbox/Leaflet) -->
+    <!-- ============================================== -->
+    <div id="mapModal" class="hidden fixed inset-0 bg-black/80 flex justify-center items-center p-4 backdrop-blur-sm z-[99999]">
+        <div class="bg-white rounded-3xl w-full max-w-lg p-4 flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-black text-gray-900">حدد الموقع 📍</h3>
+                <button type="button" onclick="closeMapModal()" class="text-gray-500 text-3xl font-bold">&times;</button>
+            </div>
+            
+            <div class="flex gap-2 mb-2">
+                <input type="text" id="mapSearchInput" placeholder="ابحث عن مدينة أو شارع..." class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl font-bold outline-none text-sm text-black">
+                <button type="button" onclick="searchOnMap()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold active:scale-95 text-sm">بحث</button>
+            </div>
+
+            <div class="flex-1 w-full relative flex flex-col z-0 rounded-xl overflow-hidden border border-gray-300">
+                <div id="leafletMap" class="flex-1 w-full z-0"></div>
+                <button type="button" onclick="goToMyLocationOnMap()" class="absolute bottom-4 right-4 z-[400] w-12 h-12 bg-white text-blue-600 rounded-full shadow-xl flex justify-center items-center active:scale-95 text-2xl border border-gray-200">🎯</button>
+            </div>
+            
+            <div id="mapAddressPreview" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-800 text-center min-h-[40px] flex items-center justify-center">
+                حرك الدبوس لتحديد المكان بدقة...
+            </div>
+            
+            <button type="button" onclick="confirmMapSelection()" class="mt-2 w-full bg-blue-900 text-white font-extrabold py-3 rounded-xl active:scale-95 text-sm">
+                تأكيد واختيار هذا الموقع ✔️
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- أكواد جافا سكريبت (UI و Mapbox) -->
+    <!-- ============================================== -->
     <script>
-        function showForm(role) {
-            document.getElementById('roleSelection').classList.remove('fade-enter-active');
-            document.getElementById('roleSelection').classList.add('fade-enter');
-            document.getElementById('merchantRegisterForm').classList.remove('fade-enter-active');
-            document.getElementById('merchantRegisterForm').classList.add('fade-enter');
-            
+        // مفتاح Mapbox 
+        const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A";
+        
+        let mapInstance = null, mapMarker = null;
+        let activeMapMode = ""; // 'customer' or 'merchant'
+        let tempAddress = "", tempLat = null, tempLng = null;
+        let finalCustLat = null, finalCustLng = null, finalCustAddress = "";
+        let finalMerchLat = null, finalMerchLng = null, finalMerchAddress = "";
+
+        // التنقل بين الشاشات
+        function showView(viewId) {
+            const views = ['roleView', 'customerView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView'];
+            views.forEach(v => {
+                document.getElementById(v).classList.remove('fade-enter-active');
+                document.getElementById(v).classList.add('fade-enter');
+            });
             setTimeout(() => {
-                if(role === 'customer') {
-                    document.getElementById('customerForm').classList.remove('fade-enter');
-                    document.getElementById('customerForm').classList.add('fade-enter-active');
-                } else if(role === 'merchant') {
-                    document.getElementById('merchantForm').classList.remove('fade-enter');
-                    document.getElementById('merchantForm').classList.add('fade-enter-active');
+                document.getElementById(viewId).classList.remove('fade-enter');
+                document.getElementById(viewId).classList.add('fade-enter-active');
+            }, 300);
+        }
+
+        function goBack() { showView('roleView'); }
+
+        // الخريطة
+        function openMap(mode) {
+            activeMapMode = mode;
+            document.getElementById('mapModal').classList.remove('hidden');
+            
+            if (!mapInstance) {
+                mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 13);
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(mapInstance);
+                mapMarker = L.marker([30.0444, 31.2357], { draggable: true }).addTo(mapInstance);
+                
+                mapInstance.on('click', e => { mapMarker.setLatLng(e.latlng); updateMapAddress(e.latlng.lat, e.latlng.lng); });
+                mapMarker.on('dragend', () => { let pos = mapMarker.getLatLng(); updateMapAddress(pos.lat, pos.lng); });
+                goToMyLocationOnMap();
+            }
+            setTimeout(() => { mapInstance.invalidateSize(); }, 300);
+        }
+
+        function closeMapModal() { document.getElementById('mapModal').classList.add('hidden'); }
+
+        function updateMapAddress(lat, lng) {
+            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحليل العنوان...";
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
+            .then(res => res.json()).then(data => {
+                if(data && data.features && data.features.length > 0) {
+                    tempAddress = data.features[0].place_name_ar || data.features[0].place_name;
+                    tempLat = lat; tempLng = lng;
+                    document.getElementById('mapAddressPreview').innerHTML = tempAddress;
                 }
-            }, 300);
+            });
         }
 
-        function showMerchantRegister() {
-            document.getElementById('merchantForm').classList.remove('fade-enter-active');
-            document.getElementById('merchantForm').classList.add('fade-enter');
-            
-            setTimeout(() => {
-                document.getElementById('merchantRegisterForm').classList.remove('fade-enter');
-                document.getElementById('merchantRegisterForm').classList.add('fade-enter-active');
-            }, 300);
+        function searchOnMap() {
+            const query = document.getElementById('mapSearchInput').value.trim();
+            if(!query) return;
+            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري البحث...";
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query + ' مصر')}.json?access_token=${MAPBOX_TOKEN}&language=ar&limit=1`)
+            .then(res => res.json()).then(data => {
+                if(data && data.features && data.features.length > 0) {
+                    const lon = parseFloat(data.features[0].center[0]), lat = parseFloat(data.features[0].center[1]);
+                    mapInstance.setView([lat, lon], 14); mapMarker.setLatLng([lat, lon]); updateMapAddress(lat, lon);
+                } else { document.getElementById('mapAddressPreview').innerHTML = "❌ المكان غير موجود."; }
+            });
         }
 
-        function goBack() {
-            document.getElementById('customerForm').classList.remove('fade-enter-active');
-            document.getElementById('customerForm').classList.add('fade-enter');
-            document.getElementById('merchantForm').classList.remove('fade-enter-active');
-            document.getElementById('merchantForm').classList.add('fade-enter');
-            document.getElementById('merchantRegisterForm').classList.remove('fade-enter-active');
-            document.getElementById('merchantRegisterForm').classList.add('fade-enter');
-            
-            setTimeout(() => {
-                document.getElementById('roleSelection').classList.remove('fade-enter');
-                document.getElementById('roleSelection').classList.add('fade-enter-active');
-            }, 300);
+        function goToMyLocationOnMap() {
+            if (navigator.geolocation) {
+                document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحديد موقعك (GPS)...";
+                navigator.geolocation.getCurrentPosition(pos => {
+                    let lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    mapInstance.setView([lat, lng], 16); mapMarker.setLatLng([lat, lng]); updateMapAddress(lat, lng);
+                }, () => alert("يرجى تفعيل الـ GPS."), { enableHighAccuracy: true });
+            }
         }
 
-        function submitCustomer(e) {
+        function confirmMapSelection() {
+            if(!tempLat) return alert("الرجاء تحديد موقع أولاً.");
+            if(activeMapMode === 'customer') {
+                finalCustLat = tempLat; finalCustLng = tempLng; finalCustAddress = tempAddress;
+                document.getElementById('custAddressDisplay').value = tempAddress;
+            } else if(activeMapMode === 'merchant') {
+                finalMerchLat = tempLat; finalMerchLng = tempLng; finalMerchAddress = tempAddress;
+                document.getElementById('merchantAddressDisplay').value = tempAddress;
+            }
+            closeMapModal();
+        }
+    </script>
+
+    <!-- ============================================== -->
+    <!-- أكواد Firebase (الأونلاين) -->
+    <!-- ============================================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // إعدادات Firebase
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", 
+            authDomain: "azemaa-proo.firebaseapp.com", 
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", 
+            projectId: "azemaa-proo", 
+            storageBucket: "azemaa-proo.firebasestorage.app", 
+            messagingSenderId: "787350492977", 
+            appId: "1:787350492977:web:84061dcf31622fcb07c210" 
+        };
+        
+        const app = initializeApp(firebaseConfig); 
+        const db = getDatabase(app); 
+        const auth = getAuth(app);
+        
+        signInAnonymously(auth);
+
+        let merchantBalance = 25000; // رصيد وهمي للتاجر
+
+        // ----------------------------------------------------
+        // 1. وظائف العميل (طالب الكاش)
+        // ----------------------------------------------------
+        window.sendCashRequest = function(e) {
             e.preventDefault();
             const phone = document.getElementById('customerPhone').value;
             const amount = document.getElementById('customerAmount').value;
-            localStorage.setItem('customer_cash_amount', amount);
             
-            const btn = document.getElementById('btnCustomer');
-            btn.innerHTML = "⏳ جاري فتح الخريطة...";
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
-            setTimeout(() => { window.location.href = "split_app.html"; }, 1200);
-        }
+            if(!finalCustLat || !finalCustAddress) return alert("الرجاء تحديد مكان استلام الكاش من الخريطة.");
 
-        function submitMerchant(e) {
+            const btn = document.getElementById('btnCustomerSubmit');
+            const statusBox = document.getElementById('customerStatusMsg');
+            
+            btn.disabled = true; 
+            btn.innerHTML = "⏳ جاري الإرسال للتجار...";
+            btn.classList.add('opacity-70');
+            
+            // إنشاء طلب أونلاين
+            const newReqRef = push(ref(db, 'eqbad_orders'));
+            const reqId = newReqRef.key;
+            
+            set(newReqRef, {
+                phone: phone,
+                amount: amount,
+                address: finalCustAddress,
+                lat: finalCustLat,
+                lng: finalCustLng,
+                status: 'pending',
+                timestamp: Date.now()
+            }).then(() => {
+                btn.classList.add('hidden');
+                statusBox.classList.remove('hidden');
+                
+                // مراقبة حالة الطلب (إذا وافق التاجر)
+                onValue(ref(db, 'eqbad_orders/' + reqId), (snap) => {
+                    if(snap.exists()) {
+                        const reqData = snap.val();
+                        if(reqData.status === 'accepted') {
+                            statusBox.className = "text-center p-4 rounded-xl bg-green-500/30 border border-green-400 mt-4 text-sm font-bold text-white";
+                            statusBox.innerHTML = "✅ تاجر قريب وافق على طلبك!<br>توجه للمتجر لاستلام الكاش.";
+                        }
+                    }
+                });
+            });
+        };
+
+        // ----------------------------------------------------
+        // 2. وظائف التاجر (مزود الكاش)
+        // ----------------------------------------------------
+        window.loginMerchant = function(e) {
             e.preventDefault();
-            const btn = document.getElementById('btnMerchant');
-            btn.innerHTML = "⏳ جاري التحقق...";
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
-            setTimeout(() => { window.location.href = "split_app.html"; }, 1200);
-        }
-
-        // دالة التقاط الـ GPS للتاجر
-        function getMerchantLocation() {
-            const btn = document.getElementById('btnGps');
-            btn.innerHTML = "⏳ جاري الاتصال بالـ GPS...";
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
-            
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        document.getElementById('merchantLat').value = position.coords.latitude;
-                        document.getElementById('merchantLng').value = position.coords.longitude;
-                        
-                        btn.innerHTML = "📍 إعادة التقاط الموقع (مُحدث)";
-                        btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                        document.getElementById('gpsSuccess').classList.remove('hidden');
-                    },
-                    (error) => {
-                        btn.innerHTML = "📍 التقاط موقعي الحالي (GPS)";
-                        btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                        alert("عفواً، يرجى تفعيل الـ GPS في هاتفك وإعطاء الصلاحية للمتصفح لتحديد موقع المتجر بدقة.");
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
-            } else {
-                alert("متصفحك لا يدعم خاصية تحديد الموقع.");
-            }
-        }
-
-        // دالة إرسال تسجيل التاجر
-        function registerMerchant(e) {
-            e.preventDefault();
-            const pin1 = document.getElementById('regPin').value;
-            const pin2 = document.getElementById('regPinConfirm').value;
-            const lat = document.getElementById('merchantLat').value;
-            
-            if (pin1 !== pin2) {
-                return alert("الرقم السري وتأكيده غير متطابقين!");
-            }
-            if (!lat) {
-                return alert("الرجاء الضغط على زر (التقاط موقعي الحالي) لتسجيل إحداثيات متجرك.");
-            }
-
-            const btn = document.getElementById('btnRegisterMerchant');
-            btn.innerHTML = "⏳ جاري التسجيل...";
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
-            
-            // محاكاة حفظ البيانات والانتقال
+            const btn = document.getElementById('btnLoginMerchant');
+            btn.innerHTML = "⏳ جاري الدخول...";
             setTimeout(() => {
-                window.location.href = "split_app.html";
-            }, 1500);
-        }
+                showView('merchantDashboardView');
+                window.listenToOrders(); // بدء استقبال الطلبات
+            }, 800);
+        };
+
+        window.registerMerchant = function(e) {
+            e.preventDefault();
+            const p1 = document.getElementById('regPin').value;
+            const p2 = document.getElementById('regPinConfirm').value;
+            if(p1 !== p2) return alert("الرقم السري وتأكيده غير متطابقين.");
+            if(!finalMerchLat) return alert("يرجى تحديد موقع المتجر من الخريطة.");
+
+            const btn = document.getElementById('btnRegMerchant');
+            btn.innerHTML = "⏳ جاري إنشاء الحساب...";
+            setTimeout(() => {
+                showView('merchantDashboardView');
+                window.listenToOrders(); // بدء استقبال الطلبات
+            }, 1000);
+        };
+
+        // الاستماع للطلبات الواردة (Real-time)
+        window.listenToOrders = function() {
+            document.getElementById('merchantBalanceDisplay').innerText = merchantBalance.toLocaleString() + " ج";
+            
+            onValue(ref(db, 'eqbad_orders'), (snapshot) => {
+                const container = document.getElementById('liveRequestsContainer');
+                let hasPending = false;
+                let html = "";
+
+                if(snapshot.exists()) {
+                    // ترتيب عكسي (الأحدث أولاً)
+                    const requests = [];
+                    snapshot.forEach((child) => { requests.push({key: child.key, val: child.val()}); });
+                    requests.reverse();
+
+                    requests.forEach((reqObj) => {
+                        const req = reqObj.val;
+                        const reqKey = reqObj.key;
+                        
+                        if(req.status === 'pending') {
+                            hasPending = true;
+                            // حساب وقت الطلب
+                            const timeAgo = Math.floor((Date.now() - req.timestamp) / 60000);
+                            const timeTxt = timeAgo < 1 ? "الآن" : `منذ ${timeAgo} دقيقة`;
+
+                            html += `
+                            <div class="bg-white/10 border border-yellow-500/40 p-4 rounded-xl relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-yellow-500 text-blue-900 text-[10px] font-black px-2 py-1 rounded-bl-lg">طلب جديد (${timeTxt})</div>
+                                <p class="text-sm font-bold text-white mt-2">المبلغ: <span class="text-yellow-400 text-lg mx-1">${req.amount}</span> ج.م</p>
+                                <p class="text-[11px] text-gray-300 mt-1 mb-3 bg-black/20 p-2 rounded-lg">📍 ${req.address}</p>
+                                <button onclick="acceptCustomerRequest('${reqKey}', ${req.amount})" class="w-full bg-yellow-500 hover:bg-yellow-400 text-blue-900 font-extrabold py-2.5 rounded-lg active:scale-95 text-sm transition-all shadow-md">
+                                    تأكيد وتسليم الكاش 💵
+                                </button>
+                            </div>`;
+                        }
+                    });
+                }
+
+                if(hasPending) {
+                    container.innerHTML = html;
+                    if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
+                } else {
+                    container.innerHTML = `<div class="text-center py-10 text-white/50 text-sm font-bold bg-white/5 rounded-xl border border-white/10">لا توجد طلبات عملاء جديدة حالياً.</div>`;
+                }
+            });
+        };
+
+        // قبول الطلب وخصم الرصيد
+        window.acceptCustomerRequest = function(reqKey, amount) {
+            if(amount > merchantBalance) return alert("رصيدك الحالي لا يكفي لتسليم هذا المبلغ!");
+            
+            if(confirm(`تأكيد تسليم ${amount} جنيه للعميل وخصمها من عهدتك؟`)) {
+                // تحديث قاعدة البيانات
+                update(ref(db, 'eqbad_orders/' + reqKey), {
+                    status: 'accepted'
+                }).then(() => {
+                    // خصم الرصيد محلياً
+                    merchantBalance -= amount;
+                    document.getElementById('merchantBalanceDisplay').innerText = merchantBalance.toLocaleString() + " ج";
+                    alert("تم تأكيد العملية بنجاح! تم إبلاغ العميل.");
+                });
+            }
+        };
     </script>
 </body>
 </html>
