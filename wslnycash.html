@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تحصيل النقود | إقبض</title>
+    <title>وصلني كاش</title>
     
     <!-- Tailwind CSS & Cairo Font -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -100,20 +100,6 @@
         .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; }
         .leaflet-popup-content { text-align: center; font-weight: bold; font-family: 'Cairo', sans-serif; color: #580c21; font-size: 14px; }
 
-        .merchant-tooltip {
-            background-color: #ffffff !important;
-            color: #4a0718 !important;
-            border: 1.5px solid #7e122f !important;
-            border-radius: 8px !important;
-            font-weight: 800 !important;
-            font-family: 'Cairo', sans-serif !important;
-            font-size: 11px !important;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-            padding: 2px 6px !important;
-            white-space: nowrap !important;
-        }
-        .merchant-tooltip::before { border-top-color: #7e122f !important; }
-
         .map-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -137,13 +123,10 @@
 
     <div class="w-full max-w-xl main-card rounded-3xl p-6 sm:p-8 overflow-hidden relative min-h-[620px] flex flex-col my-4">
         
-        <!-- اللوجو -->
-        <div class="text-center mb-5 shrink-0">
-            <div class="inline-block w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-amber-500 shadow-lg mx-auto mb-2 bg-slate-900">
-                <img src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=300&auto=format&fit=crop&q=80" alt="تحصيل النقود" class="w-full h-full object-cover">
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-black text-[#4a0718] tracking-tight">إقبض (Eqbad)</h1>
-            <p class="text-xs sm:text-sm font-extrabold text-[#7e122f] mt-1">فودافون كاش & إنستاباي</p>
+        <!-- الترويسة واسم التطبيق -->
+        <div class="text-center mb-6 shrink-0 mt-4">
+            <h1 class="text-3xl sm:text-4xl font-black text-[#4a0718] tracking-tight">وصلني كاش</h1>
+            <p class="text-sm font-extrabold text-[#7e122f] mt-2">فودافون كاش & إنستاباي</p>
         </div>
 
         <!-- 1. شاشة اختيار الدور -->
@@ -607,8 +590,9 @@
         
         window.currentCustomerPhone = "";
         window.currentCustomerName = "";
-        window.currentMerchantPhone = ""; // تم الإصلاح هنا
-        window.currentMerchantKey = "";   // تم إضافته لضمان تحديد المسار الصحيح
+        window.currentMerchantPhone = ""; 
+        window.currentMerchantKey = "";   
+        window.notifiedOrders = new Set(); // لتتبع الطلبات التي تم التنبيه عليها
 
         // === نظام التنقل الجديد (Back / Forward) ===
         let viewHistory = [];
@@ -834,7 +818,7 @@
             showView('merchantDashboardView');
 
             setTimeout(() => {
-                const lat = data.lat || 30.0444; // تفادي الانهيار إذا لم يكن هناك GPS محفوظ
+                const lat = data.lat || 30.0444; 
                 const lng = data.lng || 31.2357;
 
                 if (!merchantStoreMapInstance) {
@@ -870,6 +854,20 @@
                 btnIp.innerHTML = "غير متاح ❌";
             }
         };
+
+        // دالة تشغيل صوت التنبيه والاهتزاز
+        window.playLoudNotification = function() {
+            try {
+                // صوت منبه إلكتروني قوي ومسموع من مكتبة الأصوات المجانية
+                const audio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
+                audio.volume = 1.0;
+                audio.play().catch(e => console.warn("Browser blocked autoplay."));
+                
+                if(navigator.vibrate) {
+                    navigator.vibrate([500, 250, 500, 250, 500]);
+                }
+            } catch(e) {}
+        };
     </script>
 
     <!-- أكواد Firebase -->
@@ -899,12 +897,17 @@
             const savedCustomerPhone = localStorage.getItem('eqbad_customer_phone');
             const savedCustomerName = localStorage.getItem('eqbad_customer_name');
 
+            // طلب صلاحيات الإشعارات للتاجر بصمت
+            if ("Notification" in window && Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+
             if (savedMerchantPhone) {
                 let mKey = savedMerchantKey || ('merchant_' + savedMerchantPhone);
                 try {
                     let snap = await get(ref(db, 'eqbad_merchants/' + mKey));
                     if (!snap.exists() && !savedMerchantKey) {
-                        mKey = savedMerchantPhone; // تجربة بدون الـ prefix
+                        mKey = savedMerchantPhone; 
                         snap = await get(ref(db, 'eqbad_merchants/' + mKey));
                     }
                     if (snap.exists()) {
@@ -946,7 +949,7 @@
             try {
                 let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
                 let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
-                let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone)); // للقديم
+                let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone)); 
 
                 if(custSnap.exists() || merchSnap.exists() || merchSnap2.exists()) {
                     btn.innerHTML = "إنشاء الحساب ✔️";
@@ -1037,6 +1040,10 @@
             
             if(!window.finalMerchLat) return alert("يرجى تحديد موقع المتجر من الخريطة أولاً.");
 
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+
             const btn = document.getElementById('btnRegMerchant');
             btn.innerHTML = "⏳ جاري الفحص...";
             btn.disabled = true;
@@ -1094,6 +1101,10 @@
             const pin = document.getElementById('loginPin').value.trim();
             const btn = document.getElementById('btnLoginMerchant');
             
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+
             btn.innerHTML = "⏳ جاري التحقق...";
             btn.disabled = true;
 
@@ -1102,7 +1113,7 @@
                 let snap = await get(ref(db, 'eqbad_merchants/' + actualKey));
                 
                 if (!snap.exists()) {
-                    actualKey = phone; // تجربة بدون بادئة
+                    actualKey = phone; 
                     snap = await get(ref(db, 'eqbad_merchants/' + actualKey));
                 }
 
@@ -1132,6 +1143,7 @@
             window.currentMerchantPhone = "";
             window.currentMerchantKey = "";
             window.currentActiveMerchantData = null;
+            window.notifiedOrders.clear();
             viewHistory = [];
             currentHistoryIndex = -1;
             showView('roleView');
@@ -1206,15 +1218,35 @@
             onValue(ref(db, 'eqbad_orders'), (snapshot) => {
                 const activeContainer = document.getElementById('liveRequestsContainer');
                 const badge = document.getElementById('ordersCountBadge');
-                let activeCount = 0; let activeHtml = "";
+                let activeCount = 0; 
+                let activeHtml = "";
+                let isNewOrderArrived = false; // تتبع الطلبات الجديدة لإطلاق الإنذار
 
                 if(snapshot.exists()) {
                     let requests = [];
                     snapshot.forEach(child => requests.push({key: child.key, val: child.val()}));
+                    
                     requests.reverse().forEach(reqObj => {
                         const req = reqObj.val, reqKey = reqObj.key;
+                        
                         if(req.target_merchant === window.currentMerchantPhone && (req.status === 'pending' || req.status === 'accepted')) {
                             activeCount++;
+
+                            // ====== نظام التنبيهات ======
+                            if(req.status === 'pending' && !window.notifiedOrders.has(reqKey)) {
+                                window.notifiedOrders.add(reqKey);
+                                isNewOrderArrived = true;
+
+                                // إرسال إشعار متصفح (Push Notification)
+                                if (Notification.permission === "granted") {
+                                    new Notification("🚨 طلب سيولة جديد!", {
+                                        body: `طلب بقيمة ${req.amount} ج.م من ${req.customer_name || 'عميل'}`,
+                                        icon: "https://cdn-icons-png.flaticon.com/512/3135/3135673.png"
+                                    });
+                                }
+                            }
+                            // ===========================
+
                             const isVf = req.method === 'vodafone';
                             const badgeStyle = isVf ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-800 border-purple-200';
                             const totalTransfer = req.total_amount || req.amount;
@@ -1262,6 +1294,12 @@
                         }
                     });
                 }
+                
+                // تشغيل الصوت إذا تم اكتشاف طلب جديد
+                if (isNewOrderArrived) {
+                    window.playLoudNotification();
+                }
+
                 badge.innerText = `${activeCount} طلب`;
                 activeContainer.innerHTML = activeCount > 0 ? activeHtml : `<div class="text-center py-5 text-slate-400 text-sm font-black bg-white rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
             });
@@ -1455,7 +1493,7 @@
                             statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
                             if(actionDiv) {
                                 const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
-                                const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount} ج.م شامل العمولة عبر تطبيق إقبض.`);
+                                const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount} ج.م شامل العمولة عبر تطبيق وصلني كاش.`);
                                 actionDiv.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
                                 actionDiv.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
                             }
