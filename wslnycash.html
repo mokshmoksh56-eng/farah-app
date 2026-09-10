@@ -317,17 +317,32 @@
 
         <!-- لوحة التاجر -->
         <div id="merchantDashboardView" class="fade-enter">
+            <!-- الهيدر مع حالة المتجر -->
             <div class="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
                 <div class="flex items-center gap-3">
                     <button type="button" onclick="window.logoutMerchant()" class="text-xs bg-rose-50 text-[#7e122f] border border-rose-200 px-3 py-1.5 rounded-xl font-bold hover:bg-rose-100 shadow-sm transition-colors">تسجيل الخروج</button>
                     <div>
                         <h2 id="merchantProfileName" class="text-lg sm:text-xl font-black text-[#4a0718] leading-tight">المتجر</h2>
-                        <span class="inline-flex items-center gap-1 text-[11px] text-[#7e122f] bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 font-black">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> متصل أونلاين
+                        <span id="merchantOnlineBadge" class="inline-flex items-center gap-1 text-[11px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-black mt-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> ظاهر للعملاء
                         </span>
                     </div>
                 </div>
                 <span class="text-xs sm:text-sm font-bold text-slate-500 hidden sm:block">لوحة تحكم التاجر</span>
+            </div>
+
+            <!-- زر التحكم الرئيسي في الظهور للعملاء (الميزة الجديدة) -->
+            <div class="bg-white border-2 border-slate-200 p-3 rounded-2xl flex items-center justify-between mb-4 shadow-xs">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl drop-shadow-sm">👁️</span>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-black text-slate-900 leading-tight">الظهور على الخريطة</span>
+                        <span class="text-[10px] font-bold text-slate-500 mt-0.5">إخفاء متجرك مؤقتاً عند الإغلاق</span>
+                    </div>
+                </div>
+                <button type="button" id="btnToggleVisibility" onclick="window.toggleMerchantVisibility()" class="px-4 py-2.5 rounded-xl font-black text-xs shadow-sm transition-all active:scale-95 bg-slate-200 text-slate-600">
+                    ⏳ تحميل...
+                </button>
             </div>
 
             <!-- أزرار التحكم السريع في حالة السيولة والتحويل للتاجر -->
@@ -383,7 +398,7 @@
                 </div>
             </div>
 
-            <div class="bg-white border-2 border-slate-200 rounded-2xl p-3 mb-4 space-y-2 shadow-xs">
+            <div class="bg-white border-2 border-slate-200 p-3 rounded-2xl mb-4 space-y-2 shadow-xs">
                 <div class="flex gap-2.5">
                     <select id="updateBalanceType" class="w-1/2 px-3 py-2 bg-white border-2 border-slate-200 text-xs sm:text-sm font-black rounded-xl outline-none focus:border-[#7e122f]">
                         <option value="vodafone" class="text-red-700 font-bold">فودافون كاش</option>
@@ -729,10 +744,9 @@
             document.getElementById('merchantVodafoneDisplay').innerText = vfBal.toLocaleString() + " ج.م";
             document.getElementById('merchantInstapayDisplay').innerText = ipBal.toLocaleString() + " ج.م";
 
-            const vfActive = (data.enable_vodafone !== false);
-            const ipActive = (data.enable_instapay !== false);
-            window.updateServiceButtonsUI(vfActive, ipActive);
+            window.updateServiceButtonsUI(data.enable_vodafone !== false, data.enable_instapay !== false);
             window.updateProvideServicesUI(data.provide_cash, data.provide_transfer);
+            window.updateVisibilityUI(data.status);
 
             showView('merchantDashboardView');
 
@@ -754,6 +768,26 @@
             }, 350);
         };
 
+        window.updateVisibilityUI = function(status) {
+            const btn = document.getElementById('btnToggleVisibility');
+            const badge = document.getElementById('merchantOnlineBadge');
+            if(!btn || !badge) return;
+
+            if(status === 'active') {
+                btn.className = "px-4 py-2.5 rounded-xl font-black text-xs shadow-md transition-all active:scale-95 bg-rose-50 text-rose-700 border border-rose-200";
+                btn.innerHTML = "إخفاء المتجر ❌";
+                
+                badge.className = "inline-flex items-center gap-1 text-[11px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-black mt-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> ظاهر للعملاء`;
+            } else {
+                btn.className = "px-4 py-2.5 rounded-xl font-black text-xs shadow-md transition-all active:scale-95 bg-emerald-500 text-white";
+                btn.innerHTML = "إظهار المتجر ✔️";
+                
+                badge.className = "inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-300 font-black mt-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> مخفي (مغلق)`;
+            }
+        };
+
         window.updateServiceButtonsUI = function(vfActive, ipActive) {
             const btnVf = document.getElementById('btnToggleVf');
             const btnIp = document.getElementById('btnToggleIp');
@@ -762,7 +796,7 @@
                 btnVf.className = "mt-2 w-full py-2 px-2 rounded-xl font-black text-xs bg-red-600 hover:bg-red-700 text-white shadow-md active:scale-95 transition-all";
                 btnVf.innerHTML = "مفعل للعملاء ✔️";
             } else {
-                btnVf.className = "mt-2 w-full py-2 px-2 rounded-xl font-black text-xs bg-slate-100 hover:bg-slate-200 text-slate-500 border-2 border-slate-200 active:scale-95 transition-all";
+                btnVf.className = "mt-2 w-full py-2 px-2 rounded-xl font-black text-xs bg-slate-100 hover:bg-slate-200 text-slate-500 border-2 border-slate-200 active:scale-scale-95 transition-all";
                 btnVf.innerHTML = "غير متاح ❌";
             }
             if (ipActive) {
@@ -1147,6 +1181,27 @@
             }).catch(err => alert("خطأ: " + err.message));
         };
 
+        window.toggleMerchantVisibility = function() {
+            if(!window.currentMerchantPhone) return;
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            
+            const btn = document.getElementById('btnToggleVisibility');
+            btn.innerHTML = "⏳ جاري التحديث...";
+            btn.disabled = true;
+
+            get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
+                if(!snap.exists()) return;
+                const currentStatus = snap.val().status || 'active';
+                const newStatus = (currentStatus === 'active') ? 'offline' : 'active';
+                update(ref(window.dbRef, 'eqbad_merchants/' + mKey), { status: newStatus }).finally(() => {
+                    btn.disabled = false;
+                });
+            }).catch(err => {
+                alert("خطأ: " + err.message);
+                btn.disabled = false;
+            });
+        };
+
         window.updateMerchantBalance = function() {
             const type = document.getElementById('updateBalanceType').value;
             const newBal = parseFloat(document.getElementById('updateBalanceInput').value);
@@ -1218,6 +1273,7 @@
                         document.getElementById('merchantInstapayDisplay').innerText = (parseFloat(m.balance_instapay) || 0).toLocaleString() + " ج.م";
                         window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
                         window.updateProvideServicesUI(m.provide_cash, m.provide_transfer);
+                        window.updateVisibilityUI(m.status);
                     }
                 } catch(err) { console.error("merchant data listener error:", err); }
             }, (err) => console.error("merchant data onValue error:", err));
