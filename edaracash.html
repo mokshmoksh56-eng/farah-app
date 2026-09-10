@@ -398,7 +398,6 @@
             allMerchants = {};
             if(snap.exists()){
                 snap.forEach(child => {
-                    // سحب المفتاح الحقيقي من قاعدة البيانات مباشرة لتجنب أي أخطاء
                     allMerchants[child.key] = { fb_key: child.key, ...child.val() };
                 });
             }
@@ -429,6 +428,58 @@
             renderMerchantsTable(); 
             renderCustomersTable(); 
             renderOrdersTable();
+        });
+
+        // ================= ميزة السحب للأسفل للتحديث (Pull to Refresh) =================
+        let ptrStartY = 0;
+        let ptrCurrentY = 0;
+        
+        const ptrElement = document.createElement('div');
+        ptrElement.className = "flex justify-center items-center overflow-hidden transition-all duration-200 bg-slate-200 text-slate-700 font-bold text-sm w-full";
+        ptrElement.style.height = "0px";
+        ptrElement.innerHTML = '<span class="mr-2 text-lg" id="ptr-icon">⬇️</span> <span id="ptr-text">اسحب لأسفل للتحديث</span>';
+        document.body.prepend(ptrElement);
+
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) {
+                ptrStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', (e) => {
+            if (window.scrollY === 0 && ptrStartY > 0) {
+                ptrCurrentY = e.touches[0].clientY;
+                let distance = ptrCurrentY - ptrStartY;
+                
+                if (distance > 0 && distance < 180) {
+                    ptrElement.style.height = (distance / 2.5) + 'px';
+                    
+                    if (distance > 120) {
+                        document.getElementById('ptr-icon').innerText = '🔄';
+                        document.getElementById('ptr-text').innerText = 'أفلت الآن للتحديث';
+                    } else {
+                        document.getElementById('ptr-icon').innerText = '⬇️';
+                        document.getElementById('ptr-text').innerText = 'اسحب لأسفل للتحديث';
+                    }
+                }
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => {
+            if (window.scrollY === 0 && ptrStartY > 0) {
+                let distance = ptrCurrentY - ptrStartY;
+                if (distance > 120) {
+                    ptrElement.style.height = '50px';
+                    document.getElementById('ptr-icon').innerText = '⏳';
+                    document.getElementById('ptr-text').innerText = 'جاري التحديث...';
+                    
+                    setTimeout(() => window.location.reload(), 400);
+                } else {
+                    ptrElement.style.height = '0px';
+                }
+            }
+            ptrStartY = 0;
+            ptrCurrentY = 0;
         });
 
     </script>
