@@ -590,23 +590,25 @@
         const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A";
         
         let mapInstance = null, mapMarker = null;
-        let activeMapMode = ""; 
-        let tempAddress = "", tempLat = null, tempLng = null;
-        let finalCustLat = null, finalCustLng = null, finalCustAddress = "";
-        let finalMerchLat = null, finalMerchLng = null, finalMerchAddress = "";
-        
         let liveMerchantsMapInstance = null;
         let customerLiveMarker = null;
         let merchantStoreMapInstance = null;
         let merchantMarkerInstance = null;
         let merchantLiveGpsMarker = null;
         
-        let currentActiveMerchantData = null;
-        let currentCustomerMethod = "vodafone";
+        // ربط جميع المتغيرات بـ window لحل مشكلة عدم التعريف في الـ Module
+        window.activeMapMode = ""; 
+        window.tempAddress = ""; window.tempLat = null; window.tempLng = null;
+        window.finalCustLat = null; window.finalCustLng = null; window.finalCustAddress = "";
+        window.finalMerchLat = null; window.finalMerchLng = null; window.finalMerchAddress = "";
         
-        let currentCustomerPhone = "";
-        let currentCustomerName = "";
-        let currentMerchantPhone = ""; // <-- تم إضافة المتغير هنا لحل المشكلة
+        window.currentActiveMerchantData = null;
+        window.currentCustomerMethod = "vodafone";
+        
+        window.currentCustomerPhone = "";
+        window.currentCustomerName = "";
+        window.currentMerchantPhone = ""; // تم الإصلاح هنا
+        window.currentMerchantKey = "";   // تم إضافته لضمان تحديد المسار الصحيح
 
         // === نظام التنقل الجديد (Back / Forward) ===
         let viewHistory = [];
@@ -752,7 +754,7 @@
         }
 
         function openMap(mode) {
-            activeMapMode = mode;
+            window.activeMapMode = mode;
             document.getElementById('mapModal').classList.remove('hidden');
             if (!mapInstance) {
                 mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 13);
@@ -779,14 +781,14 @@
             fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
             .then(res => res.json()).then(data => {
                 if(data && data.features && data.features.length > 0) {
-                    tempAddress = data.features[0].place_name_ar || data.features[0].place_name;
-                    tempLat = lat; tempLng = lng;
-                    document.getElementById('mapAddressPreview').innerHTML = tempAddress;
+                    window.tempAddress = data.features[0].place_name_ar || data.features[0].place_name;
+                    window.tempLat = lat; window.tempLng = lng;
+                    document.getElementById('mapAddressPreview').innerHTML = window.tempAddress;
                 }
             }).catch(() => {
-                tempAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                tempLat = lat; tempLng = lng;
-                document.getElementById('mapAddressPreview').innerHTML = tempAddress;
+                window.tempAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                window.tempLat = lat; window.tempLng = lng;
+                document.getElementById('mapAddressPreview').innerHTML = window.tempAddress;
             });
         }
 
@@ -804,19 +806,19 @@
         }
 
         function confirmMapSelection() {
-            if(!tempLat) return alert("الرجاء تحديد النقطة على الخريطة أولاً.");
-            if(activeMapMode === 'customer') {
-                finalCustLat = tempLat; finalCustLng = tempLng; finalCustAddress = tempAddress;
-                document.getElementById('custAddressDisplay').value = tempAddress;
-            } else if(activeMapMode === 'merchant') {
-                finalMerchLat = tempLat; finalMerchLng = tempLng; finalMerchAddress = tempAddress;
-                document.getElementById('merchantAddressDisplay').value = tempAddress;
+            if(!window.tempLat) return alert("الرجاء تحديد النقطة على الخريطة أولاً.");
+            if(window.activeMapMode === 'customer') {
+                window.finalCustLat = window.tempLat; window.finalCustLng = window.tempLng; window.finalCustAddress = window.tempAddress;
+                document.getElementById('custAddressDisplay').value = window.tempAddress;
+            } else if(window.activeMapMode === 'merchant') {
+                window.finalMerchLat = window.tempLat; window.finalMerchLng = window.tempLng; window.finalMerchAddress = window.tempAddress;
+                document.getElementById('merchantAddressDisplay').value = window.tempAddress;
             }
             closeMapModal();
         }
 
-        function renderMerchantDashboard(data) {
-            currentActiveMerchantData = data;
+        window.renderMerchantDashboard = function(data) {
+            window.currentActiveMerchantData = data;
             
             document.getElementById('merchantProfileName').innerText = data.name || "متجر مسجل";
             
@@ -827,27 +829,30 @@
 
             const vfActive = (data.enable_vodafone !== false);
             const ipActive = (data.enable_instapay !== false);
-            updateServiceButtonsUI(vfActive, ipActive);
+            window.updateServiceButtonsUI(vfActive, ipActive);
 
             showView('merchantDashboardView');
 
             setTimeout(() => {
+                const lat = data.lat || 30.0444; // تفادي الانهيار إذا لم يكن هناك GPS محفوظ
+                const lng = data.lng || 31.2357;
+
                 if (!merchantStoreMapInstance) {
-                    merchantStoreMapInstance = L.map('merchantStoreMap').setView([data.lat, data.lng], 15);
+                    merchantStoreMapInstance = L.map('merchantStoreMap').setView([lat, lng], 15);
                     L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(merchantStoreMapInstance);
                     
                     const storeIcon = L.divIcon({ html: '<span style="font-size: 26px;">🏪</span>', className: 'text-2xl', iconSize: [28, 28] });
-                    merchantMarkerInstance = L.marker([data.lat, data.lng], { icon: storeIcon }).addTo(merchantStoreMapInstance);
+                    merchantMarkerInstance = L.marker([lat, lng], { icon: storeIcon }).addTo(merchantStoreMapInstance);
                 } else {
-                    merchantStoreMapInstance.setView([data.lat, data.lng], 15);
-                    merchantMarkerInstance.setLatLng([data.lat, data.lng]);
+                    merchantStoreMapInstance.setView([lat, lng], 15);
+                    merchantMarkerInstance.setLatLng([lat, lng]);
                 }
-                merchantMarkerInstance.bindPopup(`<b>${data.name}</b><br><span style="font-size:10px; color:#7e122f;">${data.address || 'موقع متجرك الحالي'}</span>`).openPopup();
+                merchantMarkerInstance.bindPopup(`<b>${data.name || 'المتجر'}</b><br><span style="font-size:10px; color:#7e122f;">${data.address || 'موقع المتجر'}</span>`).openPopup();
                 merchantStoreMapInstance.invalidateSize();
             }, 350);
-        }
+        };
 
-        function updateServiceButtonsUI(vfActive, ipActive) {
+        window.updateServiceButtonsUI = function(vfActive, ipActive) {
             const btnVf = document.getElementById('btnToggleVf');
             const btnIp = document.getElementById('btnToggleIp');
             if (vfActive) {
@@ -864,7 +869,7 @@
                 btnIp.className = "mt-2 w-full py-2 px-2 rounded-xl font-black text-xs bg-slate-100 hover:bg-slate-200 text-slate-500 border-2 border-slate-200 active:scale-95 transition-all";
                 btnIp.innerHTML = "غير متاح ❌";
             }
-        }
+        };
     </script>
 
     <!-- أكواد Firebase -->
@@ -888,27 +893,36 @@
         const auth = getAuth(app);
 
         // Auto Login Logic
-        signInAnonymously(auth).then(() => {
+        signInAnonymously(auth).then(async () => {
             const savedMerchantPhone = localStorage.getItem('eqbad_merchant_phone');
+            const savedMerchantKey = localStorage.getItem('eqbad_merchant_key');
             const savedCustomerPhone = localStorage.getItem('eqbad_customer_phone');
             const savedCustomerName = localStorage.getItem('eqbad_customer_name');
 
             if (savedMerchantPhone) {
-                get(ref(db, 'eqbad_merchants/merchant_' + savedMerchantPhone)).then(snap => {
+                let mKey = savedMerchantKey || ('merchant_' + savedMerchantPhone);
+                try {
+                    let snap = await get(ref(db, 'eqbad_merchants/' + mKey));
+                    if (!snap.exists() && !savedMerchantKey) {
+                        mKey = savedMerchantPhone; // تجربة بدون الـ prefix
+                        snap = await get(ref(db, 'eqbad_merchants/' + mKey));
+                    }
                     if (snap.exists()) {
-                        currentMerchantPhone = savedMerchantPhone;
-                        renderMerchantDashboard(snap.val());
+                        window.currentMerchantPhone = savedMerchantPhone;
+                        window.currentMerchantKey = mKey;
+                        window.renderMerchantDashboard(snap.val());
                         window.listenToOrders();
                     } else {
                         localStorage.removeItem('eqbad_merchant_phone');
+                        localStorage.removeItem('eqbad_merchant_key');
                         showView('roleView');
                     }
-                });
+                } catch(e) { showView('roleView'); }
             } else if (savedCustomerPhone) {
-                currentCustomerPhone = savedCustomerPhone;
-                currentCustomerName = savedCustomerName || "عميل مسجل";
-                document.getElementById('custProfileName').innerText = currentCustomerName;
-                document.getElementById('custProfilePhone').innerText = currentCustomerPhone;
+                window.currentCustomerPhone = savedCustomerPhone;
+                window.currentCustomerName = savedCustomerName || "عميل مسجل";
+                document.getElementById('custProfileName').innerText = window.currentCustomerName;
+                document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
                 showView('customerView');
             } else {
                 showView('roleView');
@@ -916,7 +930,7 @@
         });
 
         // ================= AUTH: CUSTOMER =================
-        window.registerCustomer = function(e) {
+        window.registerCustomer = async function(e) {
             e.preventDefault();
             const name = document.getElementById('regCustName').value.trim();
             const phone = document.getElementById('regCustPhone').value.trim();
@@ -929,46 +943,44 @@
             btn.innerHTML = "⏳ جاري الفحص...";
             btn.disabled = true;
 
-            Promise.all([
-                get(ref(db, 'eqbad_customers/customer_' + phone)),
-                get(ref(db, 'eqbad_merchants/merchant_' + phone))
-            ]).then(([custSnap, merchSnap]) => {
-                if(custSnap.exists() || merchSnap.exists()) {
+            try {
+                let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
+                let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
+                let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone)); // للقديم
+
+                if(custSnap.exists() || merchSnap.exists() || merchSnap2.exists()) {
                     btn.innerHTML = "إنشاء الحساب ✔️";
                     btn.disabled = false;
                     return alert("هذا الرقم مسجل بالفعل في التطبيق! برجاء تسجيل الدخول.");
                 }
 
-                set(ref(db, 'eqbad_customers/customer_' + phone), {
+                await set(ref(db, 'eqbad_customers/customer_' + phone), {
                     name: name,
                     phone: phone,
                     pin: pin,
                     createdAt: Date.now()
-                }).then(() => {
-                    currentCustomerPhone = phone;
-                    currentCustomerName = name;
-                    localStorage.setItem('eqbad_customer_phone', phone);
-                    localStorage.setItem('eqbad_customer_name', name);
-                    
-                    document.getElementById('custProfileName').innerText = name;
-                    document.getElementById('custProfilePhone').innerText = phone;
-                    
-                    btn.innerHTML = "إنشاء الحساب ✔️";
-                    btn.disabled = false;
-                    showView('customerView');
-                }).catch(err => {
-                    btn.innerHTML = "إنشاء الحساب ✔️";
-                    btn.disabled = false;
-                    alert("تعذر الحفظ في قاعدة البيانات: " + err.message);
                 });
-            }).catch(err => {
+
+                window.currentCustomerPhone = phone;
+                window.currentCustomerName = name;
+                localStorage.setItem('eqbad_customer_phone', phone);
+                localStorage.setItem('eqbad_customer_name', name);
+                
+                document.getElementById('custProfileName').innerText = name;
+                document.getElementById('custProfilePhone').innerText = phone;
+                
                 btn.innerHTML = "إنشاء الحساب ✔️";
                 btn.disabled = false;
-                alert("خطأ في الاتصال بقاعدة البيانات (تأكد من الإنترنت والصلاحيات): " + err.message);
-            });
+                showView('customerView');
+
+            } catch (err) {
+                btn.innerHTML = "إنشاء الحساب ✔️";
+                btn.disabled = false;
+                alert("خطأ في الاتصال بقاعدة البيانات: " + err.message);
+            }
         };
 
-        window.loginCustomer = function(e) {
+        window.loginCustomer = async function(e) {
             e.preventDefault();
             const phone = document.getElementById('loginCustPhone').value.trim();
             const pin = document.getElementById('loginCustPin').value.trim();
@@ -977,40 +989,42 @@
             btn.innerHTML = "⏳ جاري التحقق...";
             btn.disabled = true;
 
-            get(ref(db, 'eqbad_customers/customer_' + phone)).then(snap => {
+            try {
+                let snap = await get(ref(db, 'eqbad_customers/customer_' + phone));
                 btn.innerHTML = "تسجيل الدخول 🏃‍♂️";
                 btn.disabled = false;
+
                 if(snap.exists() && String(snap.val().pin) === String(pin)) {
-                    currentCustomerPhone = phone;
-                    currentCustomerName = snap.val().name;
+                    window.currentCustomerPhone = phone;
+                    window.currentCustomerName = snap.val().name;
                     localStorage.setItem('eqbad_customer_phone', phone);
-                    localStorage.setItem('eqbad_customer_name', currentCustomerName);
+                    localStorage.setItem('eqbad_customer_name', window.currentCustomerName);
                     
-                    document.getElementById('custProfileName').innerText = currentCustomerName;
-                    document.getElementById('custProfilePhone').innerText = currentCustomerPhone;
+                    document.getElementById('custProfileName').innerText = window.currentCustomerName;
+                    document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
                     showView('customerView');
                 } else {
                     alert("عفواً، رقم الهاتف أو الرقم السري غير صحيح.");
                 }
-            }).catch(err => {
+            } catch (err) {
                 btn.innerHTML = "تسجيل الدخول 🏃‍♂️";
                 btn.disabled = false;
-                alert("خطأ: " + err.message);
-            });
+                alert("حدث خطأ أثناء تسجيل الدخول: " + err.message);
+            }
         };
 
         window.logoutCustomer = function() {
             localStorage.removeItem('eqbad_customer_phone');
             localStorage.removeItem('eqbad_customer_name');
-            currentCustomerPhone = "";
-            currentCustomerName = "";
+            window.currentCustomerPhone = "";
+            window.currentCustomerName = "";
             viewHistory = [];
             currentHistoryIndex = -1;
             showView('roleView');
         };
 
         // ================= AUTH: MERCHANT =================
-        window.registerMerchant = function(e) {
+        window.registerMerchant = async function(e) {
             e.preventDefault();
             const storeName = document.getElementById('regStoreName').value.trim();
             const phone = document.getElementById('regPhone').value.trim();
@@ -1021,17 +1035,18 @@
             const enableVf = document.getElementById('regEnableVodafone').checked;
             const enableIp = document.getElementById('regEnableInstapay').checked;
             
-            if(!finalMerchLat) return alert("يرجى تحديد موقع المتجر من الخريطة أولاً.");
+            if(!window.finalMerchLat) return alert("يرجى تحديد موقع المتجر من الخريطة أولاً.");
 
             const btn = document.getElementById('btnRegMerchant');
             btn.innerHTML = "⏳ جاري الفحص...";
             btn.disabled = true;
 
-            Promise.all([
-                get(ref(db, 'eqbad_customers/customer_' + phone)),
-                get(ref(db, 'eqbad_merchants/merchant_' + phone))
-            ]).then(([custSnap, merchSnap]) => {
-                if(custSnap.exists() || merchSnap.exists()) {
+            try {
+                let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
+                let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
+                let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone));
+
+                if(custSnap.exists() || merchSnap.exists() || merchSnap2.exists()) {
                     btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
                     btn.disabled = false;
                     return alert("هذا الرقم مسجل بالفعل في التطبيق! استخدم رقم آخر للتاجر.");
@@ -1046,33 +1061,34 @@
                     commission_rate: commRate,
                     enable_vodafone: enableVf,
                     enable_instapay: enableIp,
-                    lat: finalMerchLat,
-                    lng: finalMerchLng,
-                    address: finalMerchAddress || "موقع محدد عبر الخريطة",
+                    lat: window.finalMerchLat,
+                    lng: window.finalMerchLng,
+                    address: window.finalMerchAddress || "موقع محدد عبر الخريطة",
                     status: 'active',
                     createdAt: Date.now()
                 };
 
-                set(ref(db, 'eqbad_merchants/merchant_' + phone), merchantData).then(() => {
-                    currentMerchantPhone = phone; // <--- هذا المتغير الذي أدى للخطأ تم تعريفه الآن في الأعلى
-                    localStorage.setItem('eqbad_merchant_phone', phone);
-                    btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
-                    btn.disabled = false;
-                    renderMerchantDashboard(merchantData);
-                    window.listenToOrders();
-                }).catch(err => {
-                    btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
-                    btn.disabled = false;
-                    alert("تعذر الحفظ في قاعدة البيانات: " + err.message);
-                });
-            }).catch(err => {
+                let mKey = 'merchant_' + phone;
+                await set(ref(db, 'eqbad_merchants/' + mKey), merchantData);
+                
+                window.currentMerchantPhone = phone;
+                window.currentMerchantKey = mKey;
+                localStorage.setItem('eqbad_merchant_phone', phone);
+                localStorage.setItem('eqbad_merchant_key', mKey);
+                
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
                 btn.disabled = false;
-                alert("خطأ في الاتصال بقاعدة البيانات (تأكد من الإنترنت والصلاحيات): " + err.message);
-            });
+                window.renderMerchantDashboard(merchantData);
+                window.listenToOrders();
+
+            } catch (err) {
+                btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
+                btn.disabled = false;
+                alert("خطأ في الاتصال بقاعدة البيانات: " + err.message);
+            }
         };
 
-        window.loginMerchant = function(e) {
+        window.loginMerchant = async function(e) {
             e.preventDefault();
             const phone = document.getElementById('loginPhone').value.trim();
             const pin = document.getElementById('loginPin').value.trim();
@@ -1080,48 +1096,69 @@
             
             btn.innerHTML = "⏳ جاري التحقق...";
             btn.disabled = true;
-            
-            get(ref(db, 'eqbad_merchants/merchant_' + phone)).then(snap => {
+
+            try {
+                let actualKey = 'merchant_' + phone;
+                let snap = await get(ref(db, 'eqbad_merchants/' + actualKey));
+                
+                if (!snap.exists()) {
+                    actualKey = phone; // تجربة بدون بادئة
+                    snap = await get(ref(db, 'eqbad_merchants/' + actualKey));
+                }
+
                 btn.innerHTML = "دخول لصفحة المتجر 🏪";
                 btn.disabled = false;
+
                 if(snap.exists() && String(snap.val().pin) === String(pin)) {
-                    currentMerchantPhone = phone;
+                    window.currentMerchantPhone = phone;
+                    window.currentMerchantKey = actualKey;
                     localStorage.setItem('eqbad_merchant_phone', phone);
-                    renderMerchantDashboard(snap.val());
+                    localStorage.setItem('eqbad_merchant_key', actualKey);
+                    window.renderMerchantDashboard(snap.val());
                     window.listenToOrders();
                 } else {
-                    alert("عفواً، رقم الهاتف أو الـ PIN غير صحيح.");
+                    alert("عفواً، رقم الهاتف أو الرقم السري غير صحيح.");
                 }
-            });
+            } catch (err) {
+                btn.innerHTML = "دخول لصفحة المتجر 🏪";
+                btn.disabled = false;
+                alert("حدث خطأ أثناء تسجيل الدخول: " + err.message);
+            }
         };
 
         window.logoutMerchant = function() {
             localStorage.removeItem('eqbad_merchant_phone');
-            currentMerchantPhone = "";
-            currentActiveMerchantData = null;
+            localStorage.removeItem('eqbad_merchant_key');
+            window.currentMerchantPhone = "";
+            window.currentMerchantKey = "";
+            window.currentActiveMerchantData = null;
             viewHistory = [];
             currentHistoryIndex = -1;
             showView('roleView');
         };
 
         window.toggleServiceStatus = function(type) {
-            if(!currentMerchantPhone) return;
-            get(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone)).then(snap => {
+            if(!window.currentMerchantPhone) return;
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            get(ref(db, 'eqbad_merchants/' + mKey)).then(snap => {
                 if(!snap.exists()) return;
                 const field = (type === 'vodafone') ? 'enable_vodafone' : 'enable_instapay';
-                update(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), { [field]: !(snap.val()[field] !== false) });
-            });
+                update(ref(db, 'eqbad_merchants/' + mKey), { [field]: !(snap.val()[field] !== false) });
+            }).catch(err => alert("خطأ: " + err.message));
         };
 
         window.updateMerchantBalance = function() {
             const type = document.getElementById('updateBalanceType').value;
             const newBal = parseFloat(document.getElementById('updateBalanceInput').value);
             if(isNaN(newBal) || newBal < 0) return alert("أدخل مبلغ سيولة صحيح.");
+            
             const field = type === 'vodafone' ? 'balance_vodafone' : 'balance_instapay';
-            update(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), { [field]: newBal }).then(() => {
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            
+            update(ref(db, 'eqbad_merchants/' + mKey), { [field]: newBal }).then(() => {
                 document.getElementById('updateBalanceInput').value = "";
                 alert(`✅ تم تحديث سيولة ${type === 'vodafone' ? 'فودافون كاش' : 'إنستاباي'} بنجاح.`);
-            });
+            }).catch(err => alert("حدث خطأ أثناء التحديث: " + err.message));
         };
 
         // ================= ORDERS LOGIC =================
@@ -1137,7 +1174,9 @@
 
         window.confirmDeliveredCash = function(reqKey, amount, method) {
             const numAmount = parseFloat(amount) || 0;
-            get(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone)).then(snap => {
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            
+            get(ref(db, 'eqbad_merchants/' + mKey)).then(snap => {
                 const m = snap.val();
                 const field = (method === 'vodafone') ? 'balance_vodafone' : 'balance_instapay';
                 const currentBalance = parseFloat(m[field]) || 0;
@@ -1146,19 +1185,21 @@
                 
                 if(confirm(`تأكيد تسليم ${numAmount} ج.م للعميل وخصمها من سيولتك؟`)) {
                     update(ref(db, 'eqbad_orders/' + reqKey), { status: 'completed', completedAt: Date.now() })
-                    .then(() => update(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), { [field]: currentBalance - numAmount }))
+                    .then(() => update(ref(db, 'eqbad_merchants/' + mKey), { [field]: currentBalance - numAmount }))
                     .then(() => alert(`🎉 تم التسليم بنجاح!`));
                 }
             });
         };
 
         window.listenToOrders = function() {
-            onValue(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), (snap) => {
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            
+            onValue(ref(db, 'eqbad_merchants/' + mKey), (snap) => {
                 if(snap.exists()) {
                     const m = snap.val();
                     document.getElementById('merchantVodafoneDisplay').innerText = (parseFloat(m.balance_vodafone) || 0).toLocaleString() + " ج.م";
                     document.getElementById('merchantInstapayDisplay').innerText = (parseFloat(m.balance_instapay) || 0).toLocaleString() + " ج.م";
-                    updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
+                    window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
                 }
             });
             
@@ -1172,7 +1213,7 @@
                     snapshot.forEach(child => requests.push({key: child.key, val: child.val()}));
                     requests.reverse().forEach(reqObj => {
                         const req = reqObj.val, reqKey = reqObj.key;
-                        if(req.target_merchant === currentMerchantPhone && (req.status === 'pending' || req.status === 'accepted')) {
+                        if(req.target_merchant === window.currentMerchantPhone && (req.status === 'pending' || req.status === 'accepted')) {
                             activeCount++;
                             const isVf = req.method === 'vodafone';
                             const badgeStyle = isVf ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-800 border-purple-200';
@@ -1222,7 +1263,7 @@
                     });
                 }
                 badge.innerText = `${activeCount} طلب`;
-                activeContainer.innerHTML = activeCount > 0 ? activeHtml : `<div class="text-center py-5 text-slate-400 text-sm font-black bg-white rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية.</div>`;
+                activeContainer.innerHTML = activeCount > 0 ? activeHtml : `<div class="text-center py-5 text-slate-400 text-sm font-black bg-white rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
             });
         };
 
@@ -1237,7 +1278,7 @@
                 if(snapshot.exists()) {
                     snapshot.forEach(child => {
                         let req = child.val();
-                        if(req.target_merchant === currentMerchantPhone && req.status === 'completed') {
+                        if(req.target_merchant === window.currentMerchantPhone && req.status === 'completed') {
                             records.push(req);
                             totalAmount += parseFloat(req.amount) || 0;
                             totalComm += parseFloat(req.commission_amount) || 0;
@@ -1272,7 +1313,7 @@
                 if(snapshot.exists()) {
                     snapshot.forEach(child => {
                         let req = child.val();
-                        if(req.customer_phone === currentCustomerPhone && req.status === 'completed') {
+                        if(req.customer_phone === window.currentCustomerPhone && req.status === 'completed') {
                             records.push(req);
                             totalCash += parseFloat(req.amount) || 0;
                             totalComm += parseFloat(req.commission_amount) || 0;
@@ -1301,9 +1342,9 @@
             e.preventDefault();
             const amount = parseFloat(document.getElementById('customerAmount').value);
             const method = document.querySelector('input[name="serviceMethod"]:checked').value;
-            currentCustomerMethod = method;
+            window.currentCustomerMethod = method;
 
-            if(!finalCustLat) return alert("الرجاء تحديد موقعك من الخريطة أولاً.");
+            if(!window.finalCustLat) return alert("الرجاء تحديد موقعك من الخريطة أولاً.");
 
             const btn = document.getElementById('btnCustomerSearch');
             btn.innerHTML = "⏳ جاري البحث..."; btn.disabled = true;
@@ -1317,7 +1358,7 @@
                     snap.forEach(child => {
                         let m = child.val();
                         if(m.status === 'active' && m[enableField] !== false && parseFloat(m[balField] || 0) >= amount) {
-                            m.distance = getDistance(finalCustLat, finalCustLng, m.lat, m.lng);
+                            m.distance = getDistance(window.finalCustLat, window.finalCustLng, m.lat, m.lng);
                             m.availableBal = parseFloat(m[balField] || 0);
                             merchants.push(m);
                         }
@@ -1329,14 +1370,14 @@
 
                 setTimeout(() => {
                     if(!liveMerchantsMapInstance) {
-                        liveMerchantsMapInstance = L.map('liveMerchantsMap').setView([finalCustLat, finalCustLng], 14);
+                        liveMerchantsMapInstance = L.map('liveMerchantsMap').setView([window.finalCustLat, window.finalCustLng], 14);
                         L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(liveMerchantsMapInstance);
                     } else {
-                        liveMerchantsMapInstance.setView([finalCustLat, finalCustLng], 14);
+                        liveMerchantsMapInstance.setView([window.finalCustLat, window.finalCustLng], 14);
                         liveMerchantsMapInstance.eachLayer(layer => { if (layer instanceof L.Marker) liveMerchantsMapInstance.removeLayer(layer); });
                     }
 
-                    customerLiveMarker = L.marker([finalCustLat, finalCustLng], { icon: L.divIcon({ html: '<span style="font-size: 26px;">🏃‍♂️</span>', className: 'text-2xl', iconSize: [28, 28] }) }).addTo(liveMerchantsMapInstance);
+                    customerLiveMarker = L.marker([window.finalCustLat, window.finalCustLng], { icon: L.divIcon({ html: '<span style="font-size: 26px;">🏃‍♂️</span>', className: 'text-2xl', iconSize: [28, 28] }) }).addTo(liveMerchantsMapInstance);
                     const merchIcon = L.divIcon({ html: '<span style="font-size: 26px;">🏪</span>', className: 'text-2xl', iconSize: [28, 28] });
                     const isVf = method === 'vodafone';
                     
@@ -1392,14 +1433,14 @@
             const newReqRef = push(ref(db, 'eqbad_orders'));
             set(newReqRef, {
                 target_merchant: merchantPhone,
-                customer_phone: currentCustomerPhone,
-                customer_name: currentCustomerName,
+                customer_phone: window.currentCustomerPhone,
+                customer_name: window.currentCustomerName,
                 amount: reqAmount,
                 commission_rate: commRate,
                 commission_amount: commAmount,
                 total_amount: reqAmount + commAmount,
-                method: currentCustomerMethod,
-                address: finalCustAddress,
+                method: window.currentCustomerMethod,
+                address: window.finalCustAddress,
                 status: 'pending',
                 timestamp: Date.now()
             }).then(() => {
@@ -1416,7 +1457,7 @@
                                 const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
                                 const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount} ج.م شامل العمولة عبر تطبيق إقبض.`);
                                 actionDiv.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
-                                actionDiv.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${finalCustLat},${finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
+                                actionDiv.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
                             }
                         } else if(ord.status === 'rejected') {
                             statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm";
