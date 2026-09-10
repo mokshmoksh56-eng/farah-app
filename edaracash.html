@@ -205,31 +205,31 @@
 
         // ================= ADMIN ACTIONS =================
 
-        window.deleteMerchant = function(phone) {
+        window.deleteMerchant = function(key) {
             if(confirm("تحذير: هل أنت متأكد من حذف هذا المتجر نهائياً؟ لن يمكن التراجع عن هذا الإجراء.")) {
-                remove(ref(db, 'eqbad_merchants/merchant_' + phone)).then(() => alert('تم الحذف بنجاح.'));
+                remove(ref(db, 'eqbad_merchants/' + key)).then(() => alert('تم الحذف بنجاح.'));
             }
         };
 
-        window.toggleBlockMerchant = function(phone, currentStatus) {
+        window.toggleBlockMerchant = function(key, currentStatus) {
             const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
             const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
             if(confirm(`هل تريد ${actionText} هذا المتجر؟`)) {
-                update(ref(db, 'eqbad_merchants/merchant_' + phone), { status: newStatus });
+                update(ref(db, 'eqbad_merchants/' + key), { status: newStatus });
             }
         };
 
-        window.deleteCustomer = function(phone) {
+        window.deleteCustomer = function(key) {
             if(confirm("تحذير: هل أنت متأكد من حذف هذا العميل نهائياً؟ لن يمكن التراجع عن هذا الإجراء.")) {
-                remove(ref(db, 'eqbad_customers/customer_' + phone)).then(() => alert('تم الحذف بنجاح.'));
+                remove(ref(db, 'eqbad_customers/' + key)).then(() => alert('تم الحذف بنجاح.'));
             }
         };
 
-        window.toggleBlockCustomer = function(phone, currentStatus) {
+        window.toggleBlockCustomer = function(key, currentStatus) {
             const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
             const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
             if(confirm(`هل تريد ${actionText} هذا العميل؟`)) {
-                update(ref(db, 'eqbad_customers/customer_' + phone), { status: newStatus });
+                update(ref(db, 'eqbad_customers/' + key), { status: newStatus });
             }
         };
 
@@ -270,7 +270,7 @@
 
         function renderMerchantsTable() {
             let html = '';
-            Object.values(allMerchants).forEach(m => {
+            Object.entries(allMerchants).forEach(([key, m]) => {
                 const mOrders = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
                 const isBlocked = m.status === 'blocked';
                 
@@ -296,8 +296,8 @@
                     <td class="p-3 text-center font-black text-blue-600 bg-blue-50 rounded-lg m-1">${mOrders}</td>
                     <td class="p-3">
                         <div class="flex justify-center gap-1">
-                            <button onclick="window.toggleBlockMerchant('${m.phone}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
-                            <button onclick="window.deleteMerchant('${m.phone}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
+                            <button onclick="window.toggleBlockMerchant('${key}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
+                            <button onclick="window.deleteMerchant('${key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
                         </div>
                     </td>
                 </tr>`;
@@ -307,7 +307,7 @@
 
         function renderCustomersTable() {
             let html = '';
-            Object.values(allCustomers).forEach(c => {
+            Object.entries(allCustomers).forEach(([key, c]) => {
                 const cOrders = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
                 const d = new Date(c.createdAt || Date.now());
                 const isBlocked = c.status === 'blocked';
@@ -327,8 +327,8 @@
                     <td class="p-3 text-center font-black text-emerald-600 bg-emerald-50 rounded-lg m-1">${cOrders}</td>
                     <td class="p-3">
                         <div class="flex justify-center gap-1">
-                            <button onclick="window.toggleBlockCustomer('${c.phone}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
-                            <button onclick="window.deleteCustomer('${c.phone}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
+                            <button onclick="window.toggleBlockCustomer('${key}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
+                            <button onclick="window.deleteCustomer('${key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
                         </div>
                     </td>
                 </tr>`;
@@ -353,6 +353,13 @@
 
                 const methodLabel = o.method === 'vodafone' ? '<span class="text-red-600 font-black text-[11px]">فودافون</span>' : '<span class="text-purple-700 font-black text-[11px]">إنستاباي</span>';
 
+                let targetMerchantName = 'تاجر';
+                Object.values(allMerchants).forEach(m => {
+                    if (m.phone === o.target_merchant) {
+                        targetMerchantName = m.name;
+                    }
+                });
+
                 html += `
                 <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
                     <td class="p-3 text-[11px] text-slate-500 font-bold whitespace-nowrap">${dStr}</td>
@@ -361,7 +368,7 @@
                         <div class="text-[10px] text-slate-500" dir="ltr">${o.customer_phone}</div>
                     </td>
                     <td class="p-3">
-                        <div class="font-black text-xs text-slate-800">${allMerchants[o.target_merchant]?.name || 'تاجر'}</div>
+                        <div class="font-black text-xs text-slate-800">${targetMerchantName}</div>
                         <div class="text-[10px] text-slate-500" dir="ltr">${o.target_merchant}</div>
                     </td>
                     <td class="p-3">
@@ -385,6 +392,7 @@
             allMerchants = snap.val() || {};
             updateDashboard();
             renderMerchantsTable();
+            renderOrdersTable(); // تحديث الطلبات لجلب أسماء المتاجر الصحيحة
         });
 
         onValue(ref(db, 'eqbad_customers'), snap => {
