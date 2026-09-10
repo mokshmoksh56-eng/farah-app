@@ -172,9 +172,15 @@
             </div>
             
             <form onsubmit="window.searchMerchants(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-black text-slate-900 mb-1.5">رقم الهاتف للتواصل</label>
-                    <input type="tel" id="customerPhone" inputmode="numeric" pattern="[0-9]*" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none text-slate-950 font-black tracking-widest text-left text-lg shadow-xs" dir="ltr">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-black text-slate-900 mb-1.5">الاسم (اختياري)</label>
+                        <input type="text" id="customerName" placeholder="أحمد محمد" class="w-full px-4 py-3 bg-white border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none text-slate-950 font-black text-sm shadow-xs">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-black text-slate-900 mb-1.5">الهاتف للتواصل</label>
+                        <input type="tel" id="customerPhone" inputmode="numeric" pattern="[0-9]*" required placeholder="01xxxxxxxx" class="w-full px-4 py-3 bg-white border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none text-slate-950 font-black tracking-widest text-left text-sm shadow-xs" dir="ltr">
+                    </div>
                 </div>
 
                 <div>
@@ -408,6 +414,11 @@
                 </div>
             </div>
 
+            <!-- زر التقارير -->
+            <button type="button" onclick="window.loadMerchantReports()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-black py-3 rounded-xl shadow-md active:scale-95 text-sm mb-4 flex justify-center items-center gap-2 transition-all">
+                <span>📊</span> عرض تقارير العمليات السابقة
+            </button>
+
             <!-- خريطة المتجر -->
             <div class="mb-3">
                 <p class="text-xs sm:text-sm font-black text-[#4a0718] mb-1 flex items-center gap-1">
@@ -448,6 +459,38 @@
                     <div class="text-center py-5 text-slate-500 text-sm font-black bg-white rounded-2xl border-2 border-slate-200">
                         لا توجد طلبات جارية حالياً.
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. شاشة تقارير التاجر -->
+        <div id="merchantReportsView" class="fade-enter flex flex-col h-full flex-1">
+            <div class="flex items-center justify-between mb-4 shrink-0 border-b border-slate-200 pb-3">
+                <h2 class="text-xl sm:text-2xl font-black text-[#4a0718]">سجل العمليات السابقة</h2>
+                <button type="button" onclick="showView('merchantDashboardView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm transition-colors">عودة للوحة</button>
+            </div>
+            
+            <!-- إحصائيات سريعة (ابتكار) -->
+            <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
+                <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 rounded-2xl text-white shadow-md relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 opacity-20 text-6xl">💰</div>
+                    <p class="text-xs font-bold mb-1 opacity-90">إجمالي الكاش المُسلم</p>
+                    <p id="reportTotalAmount" class="text-xl font-black mt-1">0 ج.م</p>
+                </div>
+                <div class="bg-gradient-to-br from-blue-500 to-blue-700 p-4 rounded-2xl text-white shadow-md relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 opacity-20 text-6xl">📈</div>
+                    <p class="text-xs font-bold mb-1 opacity-90">عدد العمليات الناجحة</p>
+                    <p id="reportTotalCount" class="text-xl font-black mt-1">0 عملية</p>
+                </div>
+            </div>
+
+            <!-- قائمة العمليات -->
+            <div class="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex-1 flex flex-col min-h-[250px]">
+                <div class="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+                    <p class="text-sm font-black text-[#7e122f]">تفاصيل العمليات 🧾</p>
+                </div>
+                <div class="overflow-y-auto p-3 space-y-3 flex-1" id="reportsListContainer">
+                    <div class="text-center py-10 text-slate-400 text-sm font-black">جاري جلب البيانات...</div>
                 </div>
             </div>
         </div>
@@ -561,7 +604,7 @@
             }
 
             localStorage.setItem('eqbad_active_view', viewId);
-            const views = ['roleView', 'customerView', 'customerResultsView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView'];
+            const views = ['roleView', 'customerView', 'customerResultsView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView', 'merchantReportsView'];
             
             views.forEach(v => {
                 const el = document.getElementById(v);
@@ -752,10 +795,6 @@
         function renderMerchantDashboard(data) {
             currentActiveMerchantData = data;
             
-            // تم إيقاف قفل التنقل الخلفي بناءً على طلبك
-            // viewHistory = ['merchantDashboardView'];
-            // currentHistoryIndex = 0;
-
             document.getElementById('merchantProfileName').innerText = data.name || "متجر مسجل";
             
             const vfBal = parseFloat(data.balance_vodafone) || 0;
@@ -1060,6 +1099,7 @@
                                 const cardBorder = isVf ? 'border-red-600' : 'border-purple-600';
                                 const badgeStyle = isVf ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-purple-50 text-purple-800 border border-purple-200';
                                 const amountColor = isVf ? 'text-red-700' : 'text-purple-800';
+                                const custName = req.customer_name ? `<span class="text-xs font-black text-slate-800 ml-1 block">${req.customer_name}</span>` : '';
 
                                 activeHtml += `
                                 <div class="bg-white border-2 ${cardBorder} p-3.5 rounded-2xl relative shadow-xs space-y-2.5">
@@ -1068,8 +1108,12 @@
                                         <span class="text-xl font-black ${amountColor}">${req.amount} ج.م</span>
                                     </div>
                                     <div class="flex justify-between items-center text-xs text-slate-600">
-                                        <span>هاتف العميل: <b class="text-slate-900 text-sm" dir="ltr">${req.customer_phone}</b></span>
-                                        <span class="${badgeStyle} px-2.5 py-0.5 rounded-full font-black text-xs flex items-center gap-1.5">
+                                        <div>
+                                            <span>العميل: </span>
+                                            ${custName}
+                                            <b class="text-slate-900 text-[11px]" dir="ltr">${req.customer_phone}</b>
+                                        </div>
+                                        <span class="${badgeStyle} px-2.5 py-0.5 rounded-full font-black text-xs flex items-center gap-1.5 shrink-0">
                                             ${iconSvg} ${methodLabel}
                                         </span>
                                     </div>
@@ -1102,6 +1146,75 @@
                 } else {
                     activeContainer.innerHTML = `<div class="text-center py-5 text-slate-400 text-sm font-black bg-white rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
                 }
+            });
+        };
+
+        window.loadMerchantReports = function() {
+            showView('merchantReportsView');
+            const container = document.getElementById('reportsListContainer');
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm font-black">⏳ جاري تحميل السجل...</div>`;
+            
+            get(ref(db, 'eqbad_orders')).then(snapshot => {
+                let completedOrders = [];
+                let totalAmount = 0;
+                
+                if(snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        let req = child.val();
+                        if(req.target_merchant === currentMerchantPhone && req.status === 'completed') {
+                            completedOrders.push(req);
+                            totalAmount += parseFloat(req.amount) || 0;
+                        }
+                    });
+                }
+                
+                completedOrders.sort((a, b) => (b.completedAt || b.timestamp) - (a.completedAt || a.timestamp));
+                
+                document.getElementById('reportTotalAmount').innerText = totalAmount.toLocaleString() + ' ج.م';
+                document.getElementById('reportTotalCount').innerText = completedOrders.length + ' عملية';
+                
+                if(completedOrders.length === 0) {
+                    container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm font-black flex flex-col items-center gap-2"><span class="text-3xl">📭</span> لا توجد عمليات سابقة مكتملة حتى الآن.</div>`;
+                    return;
+                }
+                
+                let html = "";
+                completedOrders.forEach(ord => {
+                    const dateObj = new Date(ord.completedAt || ord.timestamp);
+                    const dateStr = dateObj.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+                    const timeStr = dateObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                    
+                    const isVf = ord.method === 'vodafone';
+                    const methodLabel = isVf ? 'فودافون' : 'إنستاباي';
+                    const colorClass = isVf ? 'text-red-600 bg-red-50 border-red-200' : 'text-purple-700 bg-purple-50 border-purple-200';
+                    const sideColor = isVf ? 'bg-red-500' : 'bg-purple-600';
+                    const custName = ord.customer_name ? ord.customer_name : 'عميل غير مسجل الاسم';
+                    
+                    html += `
+                    <div class="bg-white border-2 border-slate-100 p-3 rounded-2xl relative shadow-sm hover:shadow-md transition-shadow group overflow-hidden">
+                        <div class="absolute right-0 top-0 bottom-0 w-1.5 ${sideColor}"></div>
+                        <div class="flex justify-between items-start mb-2 pr-4 pl-1">
+                            <div>
+                                <p class="text-[13px] font-black text-slate-900 mb-0.5">👤 ${custName}</p>
+                                <p class="text-[11px] text-slate-500 font-bold" dir="ltr">📞 ${ord.customer_phone}</p>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-lg font-black ${isVf ? 'text-red-600' : 'text-purple-700'}">${ord.amount} ج</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-100 pr-3 pl-1">
+                            <div class="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-slate-500">
+                                <span>🕒</span>
+                                <span>${dateStr} - ${timeStr}</span>
+                            </div>
+                            <span class="${colorClass} px-2 py-1 rounded-lg border font-black text-[10px] flex items-center gap-1">
+                                ${methodLabel} ✔️
+                            </span>
+                        </div>
+                    </div>`;
+                });
+                
+                container.innerHTML = html;
             });
         };
 
@@ -1228,6 +1341,8 @@
         window.sendTargetedOrder = function(merchantPhone, merchLat, merchLng) {
             const phone = document.getElementById('customerPhone').value;
             const amount = document.getElementById('customerAmount').value;
+            const nameEl = document.getElementById('customerName');
+            const custName = nameEl ? nameEl.value.trim() : "";
             const statusBox = document.getElementById('customerStatusMsg');
             
             statusBox.innerHTML = "⏳ جاري إرسال الطلب للمتجر...";
@@ -1238,6 +1353,7 @@
             set(newReqRef, {
                 target_merchant: merchantPhone,
                 customer_phone: phone,
+                customer_name: custName,
                 amount: amount,
                 method: currentCustomerMethod,
                 address: finalCustAddress,
