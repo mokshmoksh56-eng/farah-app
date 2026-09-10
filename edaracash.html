@@ -70,6 +70,26 @@
                 <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3>
                 <div id="adminMap" class="map-container border-2 border-slate-200"></div>
             </div>
+
+            <!-- GPS Locations Table -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن المتاجر (GPS)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-50 text-slate-500">
+                            <tr>
+                                <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
+                                <th class="p-3 font-black">رقم الهاتف</th>
+                                <th class="p-3 font-black">العنوان</th>
+                                <th class="p-3 rounded-tl-xl font-black text-center">الموقع على الخريطة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableLocations" class="divide-y divide-slate-100">
+                            <!-- Data -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Merchants Tab -->
@@ -122,9 +142,10 @@
         <!-- Orders Tab -->
         <div id="tab-orders" class="hidden fade-enter space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                     <h3 class="text-xl font-black text-slate-800">سجل العمليات الشامل</h3>
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <button onclick="window.deleteAllOrders()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-lg text-xs font-bold shadow border border-rose-700 active:scale-95 transition-all">🗑️ حذف كل السجل</button>
                         <span class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg text-xs font-bold border border-emerald-200" id="badgeCompleted">0 ناجحة</span>
                         <span class="bg-rose-50 text-rose-700 px-3 py-1 rounded-lg text-xs font-bold border border-rose-200" id="badgeRejected">0 مرفوضة</span>
                     </div>
@@ -138,7 +159,8 @@
                                 <th class="p-3 font-black">التاجر المستهدف</th>
                                 <th class="p-3 font-black">المبلغ + العمولة</th>
                                 <th class="p-3 font-black">الطريقة</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">الحالة</th>
+                                <th class="p-3 font-black text-center">الحالة</th>
+                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody id="tableOrders" class="divide-y divide-slate-100">
@@ -239,6 +261,23 @@
             }
         };
 
+        // حذف عملية واحدة
+        window.deleteOrder = function(key) {
+            if(confirm("هل أنت متأكد من حذف هذه العملية من السجل؟")) {
+                remove(ref(db, `eqbad_orders/${key}`))
+                    .catch((error) => alert('فشل الحذف:\n' + error.message));
+            }
+        };
+
+        // حذف كل العمليات
+        window.deleteAllOrders = function() {
+            if(confirm("تحذير خطير: هل أنت متأكد من مسح جميع العمليات؟ لا يمكن التراجع عن هذا الإجراء!")) {
+                remove(ref(db, 'eqbad_orders'))
+                    .then(() => alert('تم مسح السجل بالكامل بنجاح.'))
+                    .catch((error) => alert('فشل المسح:\n' + error.message));
+            }
+        };
+
         // ================= RENDER LOGIC =================
 
         function updateDashboard() {
@@ -272,6 +311,26 @@
                     }
                 });
             }
+        }
+
+        // دالة إنشاء جدول إحداثيات المتاجر
+        function renderLocationsTable() {
+            let html = '';
+            Object.values(allMerchants).forEach(m => {
+                const hasLocation = m.lat && m.lng;
+                const locationLink = hasLocation 
+                    ? `<a href="https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}" target="_blank" class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded font-bold text-[11px] border border-blue-200 hover:bg-blue-100 shadow-sm transition inline-block">📍 فتح في الخرائط</a>`
+                    : `<span class="text-[11px] font-bold text-slate-400">لا يوجد إحداثيات</span>`;
+                    
+                html += `
+                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                    <td class="p-3 font-black text-slate-800">${m.name}</td>
+                    <td class="p-3 text-slate-600 font-bold" dir="ltr">${m.phone}</td>
+                    <td class="p-3 text-xs text-slate-500">${m.address || 'بدون عنوان'}</td>
+                    <td class="p-3 text-center">${locationLink}</td>
+                </tr>`;
+            });
+            document.getElementById('tableLocations').innerHTML = html;
         }
 
         function renderMerchantsTable() {
@@ -383,6 +442,9 @@
                     </td>
                     <td class="p-3 text-center">${methodLabel}</td>
                     <td class="p-3 text-center">${statusBadge}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="window.deleteOrder('${o.key}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded text-xs font-bold transition active:scale-95 shadow-sm">حذف</button>
+                    </td>
                 </tr>`;
             });
 
@@ -402,6 +464,7 @@
                 });
             }
             updateDashboard();
+            renderLocationsTable(); // تحديث جدول الأماكن الجديد
             renderMerchantsTable();
             renderOrdersTable();
         });
