@@ -167,7 +167,7 @@
         <div id="customerResultsView" class="fade-enter flex flex-col h-full flex-1">
             <div class="flex items-center justify-between mb-3 shrink-0">
                 <h2 class="text-lg sm:text-xl font-black text-[#4a0718]">التجار المتاحين</h2>
-                <button type="button" onclick="showView('customerView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm">تعديل البحث</button>
+                <button type="button" id="btnBackToSearch" onclick="showView('customerView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm transition-colors">تعديل البحث</button>
             </div>
             <div id="customerStatusMsg" class="text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0 transition-colors duration-300">جاري فحص المسافات والسيولة المتاحة...</div>
             <div id="liveMerchantsMapWrapper" class="h-48 w-full rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm relative z-0 mb-3 shrink-0">
@@ -433,6 +433,7 @@
         window.currentMerchantPhone = ""; 
         window.currentMerchantKey = "";   
         window.notifiedOrders = new Set(); 
+        window.activeCustomerOrderRef = null; // لتتبع حالة الطلب الحالي
 
         // ==== أداة تطبيع رقم الهاتف ====
         window.normalizePhone = function(p) {
@@ -743,17 +744,14 @@
         const db = getDatabase(app); 
         const auth = getAuth(app);
 
-        // ==== حفظ مراجع إلغاء الاشتراك لمنع المستمعين المكررة ====
         window._orderUnsub = null;
         window._merchantDataUnsub = null;
         window._authReady = false;
 
-        // ==== انتظر المصادقة قبل تحميل أي شيء ====
         onAuthStateChanged(auth, async (user) => {
             if (!user) return;
             if (window._authReady) return;
             window._authReady = true;
-            console.log("✅ Firebase Auth ready, uid:", user.uid);
 
             try {
                 if ("Notification" in window && Notification.permission === "default") {
@@ -785,7 +783,6 @@
                         showView('roleView');
                     }
                 } catch(e) { 
-                    console.error("Auto login merchant error:", e);
                     showView('roleView'); 
                 }
             } else if (savedCustomerPhone) {
@@ -1000,7 +997,6 @@
                     localStorage.setItem('eqbad_merchant_key', actualKey);
                     window.renderMerchantDashboard(snap.val());
                     window.listenToOrders();
-                    console.log("🏪 Merchant logged in:", phone, "key:", actualKey);
                 } else {
                     alert("عفواً، رقم الهاتف أو الرقم السري غير صحيح.");
                 }
@@ -1012,7 +1008,6 @@
         };
 
         window.logoutMerchant = function() {
-            // تنظيف المستمعين
             if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
             if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
 
@@ -1081,20 +1076,15 @@
             });
         };
 
-        // ======== المستمع الرئيسي للطلبات (تم إصلاح الإرجاع التلقائي هنا) ========
         window.listenToOrders = function() {
             const myPhone = window.normalizePhone(
                 window.currentMerchantPhone || localStorage.getItem('eqbad_merchant_phone')
             );
             let mKey = window.currentMerchantKey || ('merchant_' + myPhone);
 
-            console.log("🎧 listenToOrders started. Merchant phone (normalized):", myPhone, "| key:", mKey);
-
-            // إلغاء المستمعين القدامى إن وجدوا
             if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
             if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
 
-            // مستمع بيانات التاجر (الرصيد/التفعيل)
             window._merchantDataUnsub = onValue(ref(db, 'eqbad_merchants/' + mKey), (snap) => {
                 try {
                     if(snap.exists()) {
@@ -1104,9 +1094,8 @@
                         window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
                     }
                 } catch(err) { console.error("merchant data listener error:", err); }
-            }, (err) => console.error("merchant data onValue error:", err));
+            });
 
-            // مستمع الطلبات
             window._orderUnsub = onValue(ref(db, 'eqbad_orders'), (snapshot) => {
                 try {
                     const activeContainer = document.getElementById('liveRequestsContainer');
@@ -1119,7 +1108,6 @@
 
                     if(snapshot.exists()) {
                         let requests = [];
-                        // تم إصلاح الخلل هنا بإضافة {} لضمان استمرار حلقة forEach وعدم التوقف
                         snapshot.forEach(child => { 
                             requests.push({key: child.key, val: child.val()}); 
                         });
@@ -1201,9 +1189,6 @@
                 } catch(err) {
                     console.error("orders listener error:", err);
                 }
-            }, (err) => {
-                console.error("orders onValue error:", err);
-                alert("⚠️ تعذر الاتصال بقاعدة بيانات الطلبات: " + err.message);
             });
         };
 
@@ -1338,7 +1323,7 @@
                             const totalToTransfer = amount + ((amount * commRate) / 100);
 
                             listHTML += `
-                            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col merchant-card-item" data-phone="${m.phone}">
                                 <div class="p-3 flex justify-between items-start bg-white">
                                     <div class="flex-1">
                                         <div class="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${m.name}</div>
@@ -1348,7 +1333,7 @@
                                     <div class="text-left shrink-0 bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl flex flex-col items-center"><span class="text-xs font-black text-[#7e122f]">${m.distance.toFixed(1)} كم</span></div>
                                 </div>
                                 <div id="merchant-action-${m.phone}" class="bg-slate-50 p-2 border-t border-slate-100 mt-auto">
-                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="btn-burgundy w-full font-black text-[11px] sm:text-xs px-3 py-2.5 rounded-xl shadow-sm transition-all">طلب (سأحول ${totalToTransfer} ج) 🚀</button>
+                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="btn-burgundy w-full font-black text-[11px] sm:text-xs px-3 py-2.5 rounded-xl shadow-sm transition-all order-action-btn">طلب (سأحول ${totalToTransfer} ج) 🚀</button>
                                 </div>
                             </div>`;
                         });
@@ -1366,6 +1351,18 @@
                 btnElement.innerHTML = "⏳ جاري الإرسال..."; 
             }
 
+            // إخفاء زر "تعديل البحث" لجعل الشاشة ثابتة تماماً أثناء دورة الطلب
+            const btnBackToSearch = document.getElementById('btnBackToSearch');
+            if(btnBackToSearch) btnBackToSearch.style.display = 'none';
+
+            // تعطيل باقي أزرار التجار في القائمة لمنع إرسال طلبات متعددة
+            document.querySelectorAll('.order-action-btn').forEach(b => {
+                if(b !== btnElement) {
+                    b.disabled = true;
+                    b.classList.add('opacity-40', 'cursor-not-allowed');
+                }
+            });
+
             const commAmount = (reqAmount * commRate) / 100;
             const statusBox = document.getElementById('customerStatusMsg');
             
@@ -1375,6 +1372,8 @@
             const safeTargetMerchant = window.normalizePhone(merchantPhone);
             
             const newReqRef = push(ref(db, 'eqbad_orders'));
+            window.activeCustomerOrderRef = newReqRef.key;
+
             try {
                 await set(newReqRef, {
                     target_merchant: safeTargetMerchant,
@@ -1389,16 +1388,15 @@
                     status: 'pending',
                     timestamp: Date.now()
                 });
-                console.log("📤 Order sent to merchant:", safeTargetMerchant, "| key:", newReqRef.key);
 
                 if(btnElement) {
-                    btnElement.innerHTML = "بانتظار التاجر ⏳";
+                    btnElement.innerHTML = "بانتظار موافقة التاجر ⏳";
                     btnElement.classList.replace('btn-burgundy', 'bg-amber-500'); 
                     btnElement.classList.add('text-white');
                 }
                 
                 statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs transition-colors duration-300";
-                statusBox.innerHTML = "⏳ تم إرسال الطلب بنجاح، بانتظار موافقة التاجر...";
+                statusBox.innerHTML = "🔒 تم قفل العملية في هذه الشاشة. بانتظار رد التاجر...";
                 
                 onValue(ref(db, 'eqbad_orders/' + newReqRef.key), (snap) => {
                     try {
@@ -1408,7 +1406,7 @@
                             
                             if(ord.status === 'accepted') {
                                 statusBox.className = "text-center p-3 rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 mb-2 text-sm font-black shadow-md";
-                                statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
+                                statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل والتوجه متاحة بالأسفل.";
                                 if(actionDiv) {
                                     const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
                                     const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount} ج.م شامل العمولة عبر تطبيق وصلني كاش.`);
@@ -1417,18 +1415,29 @@
                                 }
                             } else if(ord.status === 'rejected') {
                                 statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm";
-                                statusBox.innerHTML = "❌ التاجر رفض الطلب. يرجى طلب تاجر آخر.";
+                                statusBox.innerHTML = "❌ رفض التاجر الطلب. يمكنك الآن العودة لتعديل البحث أو اختيار تاجر آخر.";
                                 if(actionDiv) actionDiv.innerHTML = `<div class="text-center text-rose-600 font-bold text-xs py-1">مرفوض ❌</div>`;
+                                
+                                // إعادة إظهار زر العودة والبحث بعد الرفض لفك قفل الشاشة
+                                if(btnBackToSearch) btnBackToSearch.style.display = 'block';
+                                document.querySelectorAll('.order-action-btn').forEach(b => {
+                                    b.disabled = false;
+                                    b.classList.remove('opacity-40', 'cursor-not-allowed');
+                                });
                             } else if(ord.status === 'completed') {
                                 statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md";
-                                statusBox.innerHTML = "✨ تم استلام الكاش بنجاح! شكراً لك.";
+                                statusBox.innerHTML = "✨ تم استلام الكاش بنجاح! شكراً لاستخدامك وصلني كاش.";
                                 if(actionDiv) actionDiv.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">عملية مكتملة ✔️</div>`;
+                                
+                                // إعادة إظهار زر العودة بعد اكتمال العملية
+                                if(btnBackToSearch) btnBackToSearch.style.display = 'block';
                             }
                         }
                     } catch(err) { console.error("customer order watch error:", err); }
                 });
             } catch(err) {
                 alert("تعذر إرسال الطلب: " + err.message);
+                if(btnBackToSearch) btnBackToSearch.style.display = 'block';
                 if(btnElement) { 
                     btnElement.disabled = false; 
                     btnElement.innerHTML = `إعادة الإرسال 🔄`; 
