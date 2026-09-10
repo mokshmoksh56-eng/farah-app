@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>أقبض | أونلاين</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- مكتبات الخريطة Leaflet من تطبيق نقلة -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #0f172a; overflow-x: hidden; color: white; }
+        
+        /* تأثيرات الإضاءة الزرقاء */
+        .glow-blob { position: fixed; width: 300px; height: 300px; background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; filter: blur(40px); z-index: -1; animation: float 6s infinite ease-in-out alternate; top: -50px; right: -50px; }
+        .glow-blob-2 { position: fixed; width: 250px; height: 250px; background: radial-gradient(circle, rgba(147,197,253,0.2) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; filter: blur(40px); z-index: -1; animation: float 8s infinite ease-in-out alternate-reverse; bottom: -50px; left: -50px; }
+        @keyframes float { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-30px) scale(1.1); } }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; color: black; }
+        
+        /* تنسيق الخريطة */
+        #mapModal { z-index: 99999; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 px-4 relative">
+
+    <div class="glow-blob"></div>
+    <div class="glow-blob-2"></div>
+
+    <!-- شاشة اختيار الدور (الرئيسية) -->
+    <div id="homeView" class="glass-panel rounded-3xl w-full max-w-md p-6 sm:p-8 text-center transition-all duration-300 mt-10">
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-500/20 border border-blue-400/50 rounded-2xl shadow-lg transform rotate-3 mb-4 text-4xl">💸</div>
+        <h1 class="text-4xl font-black text-white tracking-tight mb-8">أقبض</h1>
+        
+        <div class="space-y-4">
+            <button onclick="showView('customerView')" class="w-full bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl p-4 flex items-center gap-4 transition-all active:scale-95 text-right">
+                <div class="w-12 h-12 bg-blue-500/30 text-blue-300 rounded-xl flex items-center justify-center text-2xl">🏃‍♂️</div>
+                <div>
+                    <h3 class="text-xl font-black text-white">أنا عميل</h3>
+                    <p class="text-xs text-blue-200">أريد طلب كاش الآن</p>
+                </div>
+            </button>
+            <button onclick="showView('merchantView')" class="w-full bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl p-4 flex items-center gap-4 transition-all active:scale-95 text-right">
+                <div class="w-12 h-12 bg-green-500/30 text-green-300 rounded-xl flex items-center justify-center text-2xl">🏪</div>
+                <div>
+                    <h3 class="text-xl font-black text-white">أنا تاجر</h3>
+                    <p class="text-xs text-green-200">استقبال طلبات العملاء (أونلاين)</p>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- شاشة العميل (طلب الكاش) -->
+    <div id="customerView" class="hidden glass-panel rounded-3xl w-full max-w-md p-6 border-t-4 border-blue-500 transition-all duration-300">
+        <div class="flex items-center gap-3 mb-6">
+            <button onclick="showView('homeView')" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30">&rarr;</button>
+            <h2 class="text-xl font-black text-blue-300">طلب سيولة نقدية</h2>
+        </div>
+        
+        <div class="space-y-4">
+            <input type="number" id="custAmount" placeholder="المبلغ المطلوب (مثال: 1000)" class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-center text-xl font-black outline-none focus:border-blue-400">
+            
+            <div class="bg-white/5 p-3 rounded-xl border border-white/10">
+                <label class="block text-sm font-bold text-blue-200 mb-2">موقع الاستلام (GPS)</label>
+                <button type="button" onclick="openMapModal()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold flex justify-center items-center gap-2 active:scale-95 text-sm mb-2">
+                    <span>🗺️</span> تحديد الموقع من الخريطة
+                </button>
+                <input type="text" id="custAddress" readonly placeholder="لم يتم تحديد الموقع..." class="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-xs font-bold text-white text-center">
+            </div>
+
+            <button id="btnSendRequest" onclick="sendCashRequest()" class="w-full bg-white text-blue-900 hover:bg-blue-50 font-extrabold py-3 rounded-xl shadow-lg active:scale-95 text-lg mt-2">
+                إرسال الطلب أونلاين 🚀
+            </button>
+            
+            <div id="customerStatus" class="hidden text-center p-3 rounded-xl bg-blue-900/50 border border-blue-400 mt-4 text-sm font-bold text-blue-200 animate-pulse">
+                ⏳ جاري البحث عن تاجر قريب...
+            </div>
+        </div>
+    </div>
+
+    <!-- شاشة التاجر (لوحة التحكم واستقبال الطلبات) -->
+    <div id="merchantView" class="hidden glass-panel rounded-3xl w-full max-w-md p-6 border-t-4 border-green-500 transition-all duration-300">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <button onclick="showView('homeView')" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30">&rarr;</button>
+                <h2 class="text-xl font-black text-green-400">لوحة التاجر</h2>
+            </div>
+            <div class="text-center bg-black/20 px-3 py-1 rounded-lg">
+                <p class="text-[10px] text-gray-400">السيولة المتاحة</p>
+                <p id="merchantBalanceDisplay" class="text-lg font-black text-white">25,000 ج</p>
+            </div>
+        </div>
+        
+        <div class="bg-green-900/30 border border-green-500/50 rounded-xl p-3 mb-4 flex items-center gap-3">
+            <div class="w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+            <p class="text-sm font-bold text-green-200">أنت متصل الآن وتستقبل الطلبات...</p>
+        </div>
+
+        <div id="requestsContainer" class="space-y-3">
+            <div class="text-center py-8 text-gray-400 text-sm font-bold bg-white/5 rounded-xl border border-white/10">
+                لا توجد طلبات جديدة حالياً.
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة خريطة Mapbox (من تطبيق نقلة) -->
+    <div id="mapModal" class="hidden fixed inset-0 bg-black/80 flex justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-lg p-4 flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-black text-gray-900">حدد موقعك 📍</h3>
+                <button type="button" onclick="closeMapModal()" class="text-gray-500 text-3xl font-bold">&times;</button>
+            </div>
+            <div class="flex-1 w-full relative flex flex-col z-0 rounded-xl overflow-hidden border border-gray-300">
+                <div id="leafletMap" class="flex-1 w-full z-0"></div>
+                <button type="button" onclick="goToMyLocationOnMap()" class="absolute bottom-4 right-4 z-[400] w-12 h-12 bg-white text-blue-600 rounded-full shadow-xl flex justify-center items-center active:scale-95 text-2xl">🎯</button>
+            </div>
+            <div id="mapAddressPreview" class="mt-2 p-2 bg-blue-50 rounded-xl text-xs font-bold text-blue-800 text-center min-h-[40px]">حرك الدبوس لتحديد المكان...</div>
+            <button type="button" onclick="confirmMapSelection()" class="mt-2 w-full bg-blue-900 text-white font-extrabold py-3 rounded-xl active:scale-95 text-sm">تأكيد الموقع</button>
+        </div>
+    </div>
+
+    <!-- إعدادات Mapbox والـ GPS -->
+    <script>
+        const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A"; //[span_3](start_span)[span_3](end_span)
+        let mapInstance = null, mapMarker = null, finalAddress = "", finalLat = null, finalLng = null;
+
+        function showView(viewId) {
+            ['homeView', 'customerView', 'merchantView'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        function openMapModal() {
+            document.getElementById('mapModal').classList.remove('hidden');
+            if (!mapInstance) {
+                mapInstance = L.map('leafletMap').setView([30.0444, 31.2357], 13);
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(mapInstance); //[span_4](start_span)[span_4](end_span)
+                mapMarker = L.marker([30.0444, 31.2357], { draggable: true }).addTo(mapInstance);
+                
+                mapInstance.on('click', e => { mapMarker.setLatLng(e.latlng); updateMapAddress(e.latlng.lat, e.latlng.lng); });
+                mapMarker.on('dragend', () => { let pos = mapMarker.getLatLng(); updateMapAddress(pos.lat, pos.lng); });
+                goToMyLocationOnMap();
+            }
+            setTimeout(() => { mapInstance.invalidateSize(); }, 300);
+        }
+
+        function closeMapModal() { document.getElementById('mapModal').classList.add('hidden'); }
+
+        function updateMapAddress(lat, lng) {
+            document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري التحليل...";
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`)
+            .then(res => res.json()).then(data => {
+                if(data && data.features && data.features.length > 0) {
+                    finalAddress = data.features[0].place_name_ar || data.features[0].place_name;
+                    finalLat = lat; finalLng = lng;
+                    document.getElementById('mapAddressPreview').innerHTML = finalAddress;
+                }
+            }); //[span_5](start_span)[span_5](end_span)
+        }
+
+        function goToMyLocationOnMap() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    let lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    mapInstance.setView([lat, lng], 16); mapMarker.setLatLng([lat, lng]); updateMapAddress(lat, lng);
+                }, () => alert("يرجى تفعيل الـ GPS.")); //[span_6](start_span)[span_6](end_span)
+            }
+        }
+
+        function confirmMapSelection() {
+            if(!finalLat) return alert("حدد موقعاً أولاً.");
+            document.getElementById('custAddress').value = finalAddress;
+            closeMapModal();
+        }
+    </script>
+
+    <!-- إعدادات Firebase للأونلاين (من تطبيق نقلة) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // إعدادات قاعدة البيانات الخاصة بك[span_7](start_span)[span_7](end_span)
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", 
+            authDomain: "azemaa-proo.firebaseapp.com", 
+            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", 
+            projectId: "azemaa-proo", 
+            storageBucket: "azemaa-proo.firebasestorage.app", 
+            messagingSenderId: "787350492977", 
+            appId: "1:787350492977:web:84061dcf31622fcb07c210" 
+        }; //[span_8](start_span)[span_8](end_span)
+        
+        const app = initializeApp(firebaseConfig); 
+        const db = getDatabase(app); 
+        const auth = getAuth(app);
+        
+        signInAnonymously(auth); //[span_9](start_span)[span_9](end_span)
+
+        let currentRequestId = null;
+        let merchantLocalBalance = 25000;
+
+        // دالة إرسال الطلب (للعميل)
+        window.sendCashRequest = function() {
+            const amount = document.getElementById('custAmount').value;
+            if(!amount || amount <= 0) return alert("أدخل مبلغ صحيح.");
+            if(!finalLat) return alert("حدد موقعك من الخريطة.");
+
+            const btn = document.getElementById('btnSendRequest');
+            const statusBox = document.getElementById('customerStatus');
+            
+            btn.disabled = true; btn.innerHTML = "⏳ جاري الإرسال...";
+            
+            // إنشاء طلب جديد في Firebase
+            const newReqRef = push(ref(db, 'eqbad_requests'));
+            currentRequestId = newReqRef.key;
+            
+            set(newReqRef, {
+                amount: amount,
+                address: finalAddress,
+                status: 'pending',
+                timestamp: Date.now()
+            }).then(() => {
+                btn.classList.add('hidden');
+                statusBox.classList.remove('hidden');
+                
+                // الاستماع لتغيير حالة الطلب من قبل التاجر[span_10](start_span)[span_10](end_span)
+                onValue(ref(db, 'eqbad_requests/' + currentRequestId), (snap) => {
+                    if(snap.exists()) {
+                        const reqData = snap.val();
+                        if(reqData.status === 'accepted') {
+                            statusBox.className = "text-center p-4 rounded-xl bg-green-900 border border-green-400 mt-4 text-sm font-bold text-green-200";
+                            statusBox.innerHTML = "✅ التاجر وافق على طلبك! توجه إليه لاستلام الكاش.";
+                        }
+                    }
+                });
+            });
+        };
+
+        // استماع التاجر للطلبات الجديدة (أونلاين)
+        onValue(ref(db, 'eqbad_requests'), (snapshot) => {
+            const container = document.getElementById('requestsContainer');
+            let hasPending = false;
+            let html = "";
+
+            if(snapshot.exists()) {
+                snapshot.forEach((childSnap) => {
+                    const req = childSnap.val();
+                    const reqKey = childSnap.key;
+                    
+                    // إظهار الطلبات المعلقة فقط
+                    if(req.status === 'pending') {
+                        hasPending = true;
+                        html += `
+                        <div class="bg-white/10 border border-yellow-500/50 p-4 rounded-xl shadow-lg relative overflow-hidden">
+                            <div class="absolute top-0 right-0 bg-yellow-500 text-black text-[10px] font-black px-2 py-1 rounded-bl-lg">طلب جديد</div>
+                            <p class="text-sm font-bold text-white mt-2">المبلغ المطلوب: <span class="text-yellow-400 text-lg">${req.amount} ج</span></p>
+                            <p class="text-xs text-gray-300 mt-1 mb-3">📍 ${req.address}</p>
+                            <button onclick="acceptRequest('${reqKey}', ${req.amount})" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold py-2 rounded-lg active:scale-95 transition-all text-sm">
+                                قبول وتسليم الكاش ✔️
+                            </button>
+                        </div>`;
+                    }
+                });
+            }
+
+            if(hasPending) {
+                container.innerHTML = html;
+                // تنبيه التاجر عند وصول طلب
+                if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
+            } else {
+                container.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm font-bold bg-white/5 rounded-xl border border-white/10">لا توجد طلبات جديدة حالياً.</div>`;
+            }
+        }); //[span_11](start_span)[span_11](end_span)
+
+        // دالة التاجر لقبول الطلب وخصم الرصيد
+        window.acceptRequest = function(reqKey, amount) {
+            if(amount > merchantLocalBalance) return alert("رصيدك لا يكفي لتسليم هذا المبلغ!");
+            
+            if(confirm("هل أنت متأكد من تسليم الكاش للعميل؟")) {
+                // تحديث حالة الطلب في Firebase ليراها العميل[span_12](start_span)[span_12](end_span)
+                update(ref(db, 'eqbad_requests/' + reqKey), {
+                    status: 'accepted'
+                }).then(() => {
+                    // خصم الرصيد محلياً للتاجر
+                    merchantLocalBalance -= amount;
+                    document.getElementById('merchantBalanceDisplay').innerText = merchantLocalBalance.toLocaleString() + " ج";
+                    alert("تم تأكيد العملية بنجاح!");
+                });
+            }
+        };
+    </script>
+</body>
+</html>
