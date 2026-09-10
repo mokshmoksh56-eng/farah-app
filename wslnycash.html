@@ -100,6 +100,20 @@
         .leaflet-container { font-family: 'Cairo', sans-serif !important; z-index: 1; }
         .leaflet-popup-content { text-align: center; font-weight: bold; font-family: 'Cairo', sans-serif; color: #580c21; font-size: 14px; }
 
+        .merchant-tooltip {
+            background-color: #ffffff !important;
+            color: #4a0718 !important;
+            border: 1.5px solid #7e122f !important;
+            border-radius: 8px !important;
+            font-weight: 800 !important;
+            font-family: 'Cairo', sans-serif !important;
+            font-size: 11px !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+            padding: 2px 6px !important;
+            white-space: nowrap !important;
+        }
+        .merchant-tooltip::before { border-top-color: #7e122f !important; }
+
         .map-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -1465,23 +1479,35 @@
             const commAmount = (reqAmount * commRate) / 100;
             const statusBox = document.getElementById('customerStatusMsg');
             
-            statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs transition-colors duration-300";
-            statusBox.innerHTML = "⏳ تم إرسال الطلب، بانتظار موافقة التاجر...";
+            // التأكد من عدم وجود بيانات فارغة (undefined) تسبب انهيار Firebase
+            const safeCustName = window.currentCustomerName || "عميل";
+            const safeCustAddress = window.finalCustAddress || "موقع محدد عبر الخريطة";
             
             const newReqRef = push(ref(db, 'eqbad_orders'));
             set(newReqRef, {
-                target_merchant: merchantPhone,
-                customer_phone: window.currentCustomerPhone,
-                customer_name: window.currentCustomerName,
+                target_merchant: merchantPhone.trim(),
+                customer_phone: window.currentCustomerPhone.trim(),
+                customer_name: safeCustName,
                 amount: reqAmount,
                 commission_rate: commRate,
                 commission_amount: commAmount,
                 total_amount: reqAmount + commAmount,
-                method: window.currentCustomerMethod,
-                address: window.finalCustAddress,
+                method: window.currentCustomerMethod || "vodafone",
+                address: safeCustAddress,
                 status: 'pending',
                 timestamp: Date.now()
             }).then(() => {
+                
+                // --- إصلاح شكل الزر بعد نجاح الإرسال ---
+                if(btnElement) {
+                    btnElement.innerHTML = "تم الإرسال بانتظار التاجر ⏳";
+                    btnElement.classList.replace('btn-burgundy', 'bg-amber-500'); 
+                    btnElement.classList.add('text-white');
+                }
+                
+                statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs transition-colors duration-300";
+                statusBox.innerHTML = "⏳ تم إرسال الطلب، بانتظار موافقة التاجر...";
+                
                 // مراقبة حالة الطلب لحظياً
                 onValue(ref(db, 'eqbad_orders/' + newReqRef.key), (snap) => {
                     if(snap.exists()) {
@@ -1513,6 +1539,7 @@
                 if(btnElement) { 
                     btnElement.disabled = false; 
                     btnElement.innerHTML = `إعادة الإرسال 🔄`; 
+                    btnElement.classList.replace('bg-amber-500', 'btn-burgundy');
                 }
             });
         };
