@@ -46,7 +46,7 @@
         <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="fade-enter-active space-y-6">
             <!-- Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div class="stat-card border-t-4 border-t-blue-500">
                     <p class="text-sm font-bold text-slate-500 mb-1">إجمالي المتاجر</p>
                     <p id="statMerchants" class="text-3xl font-black text-slate-900">0</p>
@@ -55,13 +55,17 @@
                     <p class="text-sm font-bold text-slate-500 mb-1">العملاء المسجلين</p>
                     <p id="statCustomers" class="text-3xl font-black text-slate-900">0</p>
                 </div>
-                <div class="stat-card border-t-4 border-t-purple-500">
+                <div class="stat-card border-t-4 border-t-slate-800">
                     <p class="text-sm font-bold text-slate-500 mb-1">إجمالي العمليات</p>
                     <p id="statOrders" class="text-3xl font-black text-slate-900">0</p>
                 </div>
-                <div class="stat-card border-t-4 border-t-amber-500">
-                    <p class="text-sm font-bold text-slate-500 mb-1">السيولة المتاحة بالسوق</p>
-                    <p id="statTotalLiquidity" class="text-2xl font-black text-slate-900">0 ج.م</p>
+                <div class="stat-card border-t-4 border-t-red-500 bg-red-50">
+                    <p class="text-sm font-bold text-red-600 mb-1">سيولة فودافون</p>
+                    <p id="statVodaLiquidity" class="text-2xl font-black text-red-700">0 ج.م</p>
+                </div>
+                <div class="stat-card border-t-4 border-t-purple-500 bg-purple-50">
+                    <p class="text-sm font-bold text-purple-600 mb-1">سيولة إنستاباي</p>
+                    <p id="statInstaLiquidity" class="text-2xl font-black text-purple-700">0 ج.م</p>
                 </div>
             </div>
 
@@ -205,7 +209,7 @@
         let allCustomers = {};
         let allOrders = [];
 
-        // Tab Switching
+        // Tab Switching - مع حفظ التاب النشط
         window.switchTab = function(tabName) {
             ['dashboard', 'merchants', 'customers', 'orders'].forEach(t => {
                 document.getElementById('tab-' + t).classList.add('hidden');
@@ -219,7 +223,14 @@
             document.getElementById('btnTab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
 
             if(tabName === 'dashboard' && map) setTimeout(() => map.invalidateSize(), 100);
+
+            // حفظ التاب الحالي في ذاكرة المتصفح
+            localStorage.setItem('activeEqbadAdminTab', tabName);
         };
+
+        // استعادة التاب المحفوظ عند تحميل الصفحة
+        const savedTab = localStorage.getItem('activeEqbadAdminTab') || 'dashboard';
+        window.switchTab(savedTab);
 
         // جلب العنوان العكسي عبر Mapbox API
         async function fetchAddress(lat, lng) {
@@ -323,15 +334,20 @@
             const custCount = Object.keys(allCustomers).length;
             const orderCount = allOrders.length;
             
-            let totalLiquidity = 0;
+            let totalVodafone = 0;
+            let totalInstapay = 0;
+            
             Object.values(allMerchants).forEach(m => {
-                totalLiquidity += (parseFloat(m.balance_vodafone) || 0) + (parseFloat(m.balance_instapay) || 0);
+                totalVodafone += parseFloat(m.balance_vodafone) || 0;
+                totalInstapay += parseFloat(m.balance_instapay) || 0;
             });
 
             document.getElementById('statMerchants').innerText = merchCount;
             document.getElementById('statCustomers').innerText = custCount;
             document.getElementById('statOrders').innerText = orderCount;
-            document.getElementById('statTotalLiquidity').innerText = totalLiquidity.toLocaleString() + ' ج.م';
+            
+            document.getElementById('statVodaLiquidity').innerText = totalVodafone.toLocaleString() + ' ج.م';
+            document.getElementById('statInstaLiquidity').innerText = totalInstapay.toLocaleString() + ' ج.م';
 
             if(map) {
                 // إزالة الماركرز القديمة
