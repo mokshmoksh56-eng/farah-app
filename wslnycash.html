@@ -434,13 +434,11 @@
         window.currentMerchantKey = "";   
         window.notifiedOrders = new Set(); 
 
-        // ==== أداة تطبيع رقم الهاتف (لحل مشكلة عدم التطابق) ====
+        // ==== أداة تطبيع رقم الهاتف ====
         window.normalizePhone = function(p) {
             if (!p) return "";
             let s = String(p).trim();
-            // تحويل الأرقام العربية إلى إنجليزية
             s = s.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
-            // إزالة كل ما ليس رقماً
             s = s.replace(/\D/g, "");
             return s;
         };
@@ -1083,7 +1081,7 @@
             });
         };
 
-        // ======== المستمع الرئيسي للطلبات (مع تطبيع الأرقام + منع التكرار) ========
+        // ======== المستمع الرئيسي للطلبات (تم إصلاح الإرجاع التلقائي هنا) ========
         window.listenToOrders = function() {
             const myPhone = window.normalizePhone(
                 window.currentMerchantPhone || localStorage.getItem('eqbad_merchant_phone')
@@ -1121,7 +1119,10 @@
 
                     if(snapshot.exists()) {
                         let requests = [];
-                        snapshot.forEach(child => requests.push({key: child.key, val: child.val()}));
+                        // تم إصلاح الخلل هنا بإضافة {} لضمان استمرار حلقة forEach وعدم التوقف
+                        snapshot.forEach(child => { 
+                            requests.push({key: child.key, val: child.val()}); 
+                        });
                         
                         requests.reverse().forEach(reqObj => {
                             const req = reqObj.val, reqKey = reqObj.key;
