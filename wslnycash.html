@@ -334,7 +334,7 @@
                 <span class="text-xs sm:text-sm font-bold text-slate-500 hidden sm:block">لوحة تحكم التاجر</span>
             </div>
 
-            <!-- زر التحكم الرئيسي في الظهور للعملاء (النسخة المحدثة) -->
+            <!-- زر التحكم الرئيسي في الظهور للعملاء -->
             <div class="bg-white border-2 border-slate-200 p-3.5 rounded-2xl mb-4 shadow-xs">
                 <div class="flex items-center gap-2.5 mb-3">
                     <span class="text-2xl drop-shadow-sm">📍</span>
@@ -1323,24 +1323,33 @@
                             if(dbTargetMerchant === myPhone && (req.status === 'pending' || req.status === 'accepted')) {
                                 activeCount++;
 
+                                const isVf = req.method === 'vodafone';
+                                const badgeStyle = isVf ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-800 border-purple-200';
+                                const totalTransfer = req.total_amount || req.amount;
+                                const isCashOut = req.transaction_type === 'cash_out' || !req.transaction_type; 
+
+                                // نظام الإشعارات الذكي (شعار فودافون أو إنستاباي مع تفاصيل البطاقة)
                                 if(req.status === 'pending' && !window.notifiedOrders.has(reqKey)) {
                                     window.notifiedOrders.add(reqKey);
                                     isNewOrderArrived = true;
+                                    
+                                    const notifIcon = isVf ? "1572113.jpg" : "2537130_0.png";
+                                    const notifTitle = isCashOut 
+                                        ? `💵 طلب سيولة كاش (${isVf ? 'فودافون' : 'إنستاباي'})` 
+                                        : `📱 طلب تحويل رصيد (${isVf ? 'فودافون' : 'إنستاباي'})`;
+                                    const notifBody = `العميل: ${req.customer_name || 'عميل'}\nالمبلغ الأساسي: ${req.amount} ج.م\nالإجمالي المطلوب: ${totalTransfer} ج.م`;
+
                                     try {
                                         if ("Notification" in window && Notification.permission === "granted") {
-                                            new Notification("🚨 طلب عملية جديد!", {
-                                                body: `طلب بقيمة ${req.amount} ج.م من ${req.customer_name || 'عميل'}`,
-                                                icon: "https://cdn-icons-png.flaticon.com/512/3135/3135673.png"
+                                            new Notification(notifTitle, {
+                                                body: notifBody,
+                                                icon: notifIcon,
+                                                dir: "rtl"
                                             });
                                         }
                                     } catch(e) {}
                                 }
 
-                                const isVf = req.method === 'vodafone';
-                                const badgeStyle = isVf ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-800 border-purple-200';
-                                const totalTransfer = req.total_amount || req.amount;
-
-                                const isCashOut = req.transaction_type === 'cash_out' || !req.transaction_type; 
                                 const typeHtml = isCashOut 
                                     ? `<div class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-2 rounded-xl text-xs font-black text-center mb-2 shadow-xs">💵 العميل يطلب سيولة كاش<br><span class="text-[10px] font-bold">(وسيحول لك ${totalTransfer} ج رقمياً)</span></div>`
                                     : `<div class="bg-blue-50 text-blue-800 border border-blue-200 px-3 py-2 rounded-xl text-xs font-black text-center mb-2 shadow-xs">📱 العميل يطلب تحويل رصيد رقمي<br><span class="text-[10px] font-bold">(وسيدفع لك ${totalTransfer} ج كاش)</span></div>`;
