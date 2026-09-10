@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تحصيل النقود | كاش فوري</title>
+    <title>تحصيل النقود | إقبض</title>
     
     <!-- Tailwind CSS & Cairo Font -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -140,7 +140,7 @@
             <div class="inline-block w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-amber-500 shadow-lg mx-auto mb-2 bg-slate-900">
                 <img src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=300&auto=format&fit=crop&q=80" alt="تحصيل النقود" class="w-full h-full object-cover">
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black text-[#4a0718] tracking-tight">تحصيل النقود الفوري</h1>
+            <h1 class="text-2xl sm:text-3xl font-black text-[#4a0718] tracking-tight">إقبض (Eqbad)</h1>
             <p class="text-xs sm:text-sm font-extrabold text-[#7e122f] mt-1">فودافون كاش & إنستاباي</p>
         </div>
 
@@ -239,7 +239,7 @@
                 <button type="button" onclick="showView('customerView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200">تعديل البحث</button>
             </div>
             
-            <div id="customerStatusMsg" class="text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0">
+            <div id="customerStatusMsg" class="text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0 transition-colors duration-300">
                 جاري فحص المسافات والسيولة المتاحة...
             </div>
             
@@ -257,7 +257,7 @@
                 <div class="p-2.5 border-b border-slate-200 bg-slate-50">
                     <p class="text-xs sm:text-sm font-black text-[#7e122f] text-center">التجار المتاحون الآن 📍</p>
                 </div>
-                <div class="overflow-y-auto max-h-56 p-2.5 space-y-2.5" id="merchantsListContainer"></div>
+                <div class="overflow-y-auto max-h-56 p-2.5 bg-slate-50/50" id="merchantsListContainer"></div>
             </div>
         </div>
 
@@ -455,7 +455,7 @@
                     <span>الطلبات الواردة النشطة:</span>
                     <span id="ordersCountBadge" class="text-xs bg-rose-50 text-[#7e122f] px-2.5 py-0.5 rounded-full border border-rose-200 font-black">0 طلب</span>
                 </h3>
-                <div id="liveRequestsContainer" class="space-y-2.5 max-h-52 overflow-y-auto pr-1">
+                <div id="liveRequestsContainer" class="space-y-2.5 max-h-52 overflow-y-auto pr-1 pb-2">
                     <div class="text-center py-5 text-slate-500 text-sm font-black bg-white rounded-2xl border-2 border-slate-200">
                         لا توجد طلبات جارية حالياً.
                     </div>
@@ -470,7 +470,7 @@
                 <button type="button" onclick="showView('merchantDashboardView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm transition-colors">عودة للوحة</button>
             </div>
             
-            <!-- إحصائيات سريعة (ابتكار) -->
+            <!-- إحصائيات سريعة -->
             <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
                 <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 rounded-2xl text-white shadow-md relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 opacity-20 text-6xl">💰</div>
@@ -1133,7 +1133,7 @@
                                                 <button onclick="window.acceptOrder('${reqKey}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex items-center justify-center gap-1">
                                                     <span>✔️</span> قبول
                                                 </button>
-                                                <button onclick="window.rejectOrder('${reqKey}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex items-center justify-center gap-1">
+                                                <button onclick="window.rejectOrder('${reqKey}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-rose-200 font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex items-center justify-center gap-1">
                                                     <span>❌</span> رفض
                                                 </button>
                                             </div>
@@ -1241,6 +1241,7 @@
 
             const btn = document.getElementById('btnCustomerSearch');
             btn.innerHTML = "⏳ جاري البحث...";
+            btn.disabled = true; // منع الضغط المزدوج على زر البحث
             
             get(ref(db, 'eqbad_merchants')).then(snap => {
                 let merchants = [];
@@ -1264,6 +1265,7 @@
                 merchants.sort((a,b) => a.distance - b.distance);
                 showView('customerResultsView');
                 btn.innerHTML = "بحث عن أقرب تجار متاحين 🔍";
+                btn.disabled = false;
 
                 setTimeout(() => {
                     if(!liveMerchantsMapInstance) {
@@ -1282,24 +1284,17 @@
                     const isVf = method === 'vodafone';
                     const iconSvg = isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON;
                     const methodText = isVf ? 'فودافون كاش' : 'إنستاباي';
+                    const balColor = isVf ? 'text-red-700' : 'text-purple-800';
 
                     if(merchants.length === 0) {
                         listHTML = `<div class="p-4 text-center text-sm font-black text-rose-800 bg-rose-50 rounded-2xl border-2 border-rose-200">عفواً، لا يوجد تجار يمتلكون سيولة ${methodText} كافية حالياً.</div>`;
+                        document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0";
                         document.getElementById('customerStatusMsg').innerHTML = `❌ لم يتم العثور على تجار بهذه الشروط.`;
                     } else {
+                        document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-emerald-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0";
                         document.getElementById('customerStatusMsg').innerHTML = `✅ تم العثور على (${merchants.length}) تجار يوفرون ${methodText}!`;
                         
-                        listHTML = `
-                        <div class="overflow-x-auto pb-2">
-                            <table class="w-full text-sm text-center border-collapse">
-                                <thead class="bg-slate-50 text-[#4a0718] font-black text-[11px] sm:text-xs">
-                                    <tr>
-                                        <th class="p-2 border-b-2 border-slate-200 text-right">المتجر والمكان</th>
-                                        <th class="p-2 border-b-2 border-slate-200">المسافة</th>
-                                        <th class="p-2 border-b-2 border-slate-200">إجراء</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
+                        listHTML = `<div class="space-y-3 pb-2 px-1">`;
 
                         merchants.forEach(m => {
                             L.marker([m.lat, m.lng], { icon: merchIcon })
@@ -1307,30 +1302,36 @@
                              .bindTooltip(m.name, { permanent: true, direction: 'top', className: 'merchant-tooltip', offset: [0, -12] })
                              .bindPopup(`<div style="text-align:center;"><b>${m.name}</b><br><span style="color:#7e122f; font-size:12px;">${m.distance.toFixed(1)} كم</span></div>`);
 
-                            // تم إزالة أزرار التواصل وإضافة عنوان المتجر النصي هنا
+                            // تم تحويل الجدول إلى كروت جميلة ليظهر زر التواصل كشريط سفلي تحت المتجر
                             listHTML += `
-                            <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                <td class="p-2 text-right">
-                                    <div class="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-                                        <div class="scale-75 origin-right">${iconSvg}</div>
-                                        ${m.name}
+                            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                                <div class="p-3 flex justify-between items-start bg-white">
+                                    <div class="flex-1">
+                                        <div class="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                                            <div class="scale-75 origin-right">${iconSvg}</div>
+                                            ${m.name}
+                                        </div>
+                                        <div class="text-[11px] text-slate-500 font-bold mt-1 line-clamp-1">
+                                            📍 ${m.address || 'موقع محدد على الخريطة'}
+                                        </div>
+                                        <div class="text-[11px] font-bold mt-1 text-[#7e122f]">
+                                            متاح: <span class="${balColor} font-black">${m.availableBal} ج</span>
+                                        </div>
                                     </div>
-                                    <div class="text-[10px] text-slate-500 font-bold mt-1 line-clamp-1">
-                                        📍 ${m.address || 'موقع محدد على الخريطة'}
+                                    <div class="text-left shrink-0 bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl flex flex-col items-center">
+                                        <span class="text-xs font-black text-[#7e122f]">${m.distance.toFixed(1)} كم</span>
                                     </div>
-                                </td>
-                                <td class="p-1 sm:p-2 text-center text-xs font-black text-[#7e122f]">
-                                    ${m.distance.toFixed(1)} كم
-                                </td>
-                                <td class="p-1 sm:p-2 text-center">
-                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng})" class="btn-burgundy w-full font-black text-[10px] sm:text-xs px-2 py-2 rounded-lg active:scale-95 shadow-sm whitespace-nowrap">
-                                        طلب الكاش 🚀
+                                </div>
+                                <!-- شريط الإجراء / التواصل السفلي -->
+                                <div id="merchant-action-${m.phone}" class="bg-slate-50 p-2 border-t border-slate-100 mt-auto">
+                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng}, this)" class="btn-burgundy w-full font-black text-[11px] sm:text-xs px-3 py-2.5 rounded-xl active:scale-95 shadow-sm transition-all">
+                                        طلب الكاش من هنا 🚀
                                     </button>
-                                </td>
-                            </tr>`;
+                                </div>
+                            </div>`;
                         });
                         
-                        listHTML += `</tbody></table></div>`;
+                        listHTML += `</div>`;
                     }
                     document.getElementById('merchantsListContainer').innerHTML = listHTML;
                     liveMerchantsMapInstance.invalidateSize();
@@ -1338,14 +1339,24 @@
             });
         };
 
-        window.sendTargetedOrder = function(merchantPhone, merchLat, merchLng) {
+        window.sendTargetedOrder = function(merchantPhone, merchLat, merchLng, btnElement) {
+            // منع الضغط المزدوج: إذا كان الزر معطلاً لا تقم بأي إجراء
+            if(btnElement && btnElement.disabled) return; 
+            
+            if(btnElement) {
+                btnElement.disabled = true;
+                btnElement.classList.add('opacity-50', 'cursor-not-allowed');
+                btnElement.innerHTML = "⏳ جاري إرسال الطلب...";
+            }
+
             const phone = document.getElementById('customerPhone').value;
             const amount = document.getElementById('customerAmount').value;
             const nameEl = document.getElementById('customerName');
             const custName = nameEl ? nameEl.value.trim() : "";
             const statusBox = document.getElementById('customerStatusMsg');
             
-            statusBox.innerHTML = "⏳ جاري إرسال الطلب للمتجر...";
+            statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs shrink-0 transition-colors duration-300";
+            statusBox.innerHTML = "⏳ تم إرسال الطلب، في انتظار موافقة التاجر...";
             
             const newReqRef = push(ref(db, 'eqbad_orders'));
             const reqId = newReqRef.key;
@@ -1360,38 +1371,52 @@
                 status: 'pending',
                 timestamp: Date.now()
             }).then(() => {
-                statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs shrink-0";
-                statusBox.innerHTML = "⏳ تم إرسال الطلب، في انتظار موافقة التاجر لعرض بيانات التواصل...";
                 onValue(ref(db, 'eqbad_orders/' + reqId), (snap) => {
                     if(snap.exists()) {
                         const ord = snap.val();
-                        if(ord.status === 'accepted') {
-                            const rawPhone = ord.target_merchant || "";
-                            const cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
-                            const waMsg = encodeURIComponent(`السلام عليكم، بخصوص طلب استلام كاش بقيمة ${ord.amount} ج.م عبر تطبيق تحصيل النقود.`);
-                            const mapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${finalCustLat},${finalCustLng}&destination=${merchLat},${merchLng}`;
+                        const actionDiv = document.getElementById('merchant-action-' + merchantPhone);
 
-                            statusBox.className = "text-center p-3 rounded-2xl bg-emerald-600 text-white mb-2 text-sm font-black shadow-md";
-                            statusBox.innerHTML = `
-                                <div class="mb-2 text-sm sm:text-base">🎉 وافق التاجر على طلبك! توجه إليه الآن:</div>
-                                <div class="grid grid-cols-3 gap-2 mt-2">
-                                    <a href="tel:${rawPhone}" class="bg-white text-emerald-800 py-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95">
-                                        <span>📞</span> اتصال
-                                    </a>
-                                    <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95">
-                                        <span>💬</span> واتس
-                                    </a>
-                                    <a href="${mapsDirectionsUrl}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95">
-                                        <span>🗺️</span> مسار
-                                    </a>
-                                </div>
-                            `;
+                        if(ord.status === 'accepted') {
+                            statusBox.className = "text-center p-3 rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 mb-2 text-sm font-black shadow-md transition-colors duration-300";
+                            statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
+                            
+                            if(actionDiv) {
+                                const rawPhone = ord.target_merchant || "";
+                                const cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
+                                const waMsg = encodeURIComponent(`السلام عليكم، بخصوص طلب استلام كاش بقيمة ${ord.amount} ج.م عبر تطبيق إقبض.`);
+                                const mapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${finalCustLat},${finalCustLng}&destination=${merchLat},${merchLng}`;
+
+                                // يظهر جدول التواصل كشريط سفلي داخل كارت المتجر
+                                actionDiv.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto transition-colors duration-300";
+                                actionDiv.innerHTML = `
+                                    <div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ تواصل الآن للتوجه للفرع:</div>
+                                    <div class="grid grid-cols-3 gap-1.5">
+                                        <a href="tel:${rawPhone}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-[11px] sm:text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
+                                            <span>📞</span> اتصال
+                                        </a>
+                                        <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-[11px] sm:text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
+                                            <span>💬</span> واتس
+                                        </a>
+                                        <a href="${mapsDirectionsUrl}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-[11px] sm:text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
+                                            <span>🗺️</span> مسار
+                                        </a>
+                                    </div>
+                                `;
+                            }
                         } else if(ord.status === 'rejected') {
-                            statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm shrink-0";
-                            statusBox.innerHTML = "❌ نعتذر، التاجر رفض الطلب حالياً (قد يكون المتجر مزدحماً أو غير متاح). يرجى طلب تاجر آخر.";
+                            statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm shrink-0 transition-colors duration-300";
+                            statusBox.innerHTML = "❌ التاجر رفض الطلب حالياً (قد يكون المتجر مزدحماً). يرجى طلب تاجر آخر.";
+                            if(actionDiv) {
+                                actionDiv.className = "bg-rose-50 p-2 border-t border-rose-100 mt-auto transition-colors duration-300";
+                                actionDiv.innerHTML = `<div class="text-center text-rose-600 font-bold text-xs py-1">الطلب مرفوض ❌</div>`;
+                            }
                         } else if(ord.status === 'completed') {
-                            statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md";
+                            statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md transition-colors duration-300";
                             statusBox.innerHTML = "✨ تم تسليم المبلغ واستلام الكاش بنجاح! شكراً لك.";
+                            if(actionDiv) {
+                                actionDiv.className = "bg-slate-100 p-2 border-t border-slate-200 mt-auto transition-colors duration-300";
+                                actionDiv.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">العملية مكتملة ✔️</div>`;
+                            }
                         }
                     }
                 });
