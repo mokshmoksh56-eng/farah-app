@@ -68,7 +68,7 @@
             <!-- Map -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                 <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3>
-                <div id="adminMap" class="map-container border-2 border-slate-200"></div>
+                <div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div>
             </div>
 
             <!-- GPS Locations Table -->
@@ -80,8 +80,8 @@
                             <tr>
                                 <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
                                 <th class="p-3 font-black">رقم الهاتف</th>
-                                <th class="p-3 font-black">العنوان</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">الموقع على الخريطة</th>
+                                <th class="p-3 font-black">العنوان (المسجل)</th>
+                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات الجغرافية</th>
                             </tr>
                         </thead>
                         <tbody id="tableLocations" class="divide-y divide-slate-100">
@@ -173,11 +173,13 @@
 
     </div>
 
-    <!-- Firebase Logic -->
+    <!-- Firebase & Mapbox Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A";
 
         const firebaseConfig = { 
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", 
@@ -196,7 +198,8 @@
         signInAnonymously(auth).catch(console.error);
 
         let map = null;
-        let markers = [];
+        let merchantMarkers = {};
+        let addressCache = {};
         
         let allMerchants = {};
         let allCustomers = {};
@@ -218,12 +221,49 @@
             if(tabName === 'dashboard' && map) setTimeout(() => map.invalidateSize(), 100);
         };
 
+        // جلب العنوان العكسي عبر Mapbox API
+        async function fetchAddress(lat, lng) {
+            const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`; 
+            if(addressCache[cacheKey]) return addressCache[cacheKey];
+            try {
+                let response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`);
+                let data = await response.json();
+                if(data && data.features && data.features.length > 0) {
+                    let placeName = data.features[0].place_name_ar || data.features[0].place_name;
+                    let addrParts = placeName.split(',');
+                    let addr = addrParts.slice(0, 2).join('،').trim(); 
+                    addressCache[cacheKey] = addr;
+                    return addr;
+                }
+                return "العنوان غير معروف";
+            } catch (e) { return "تعذر جلب العنوان"; }
+        }
+
+        // تهيئة الخريطة بـ Mapbox
         function initMap() {
             if(!map) {
                 map = L.map('adminMap').setView([30.0444, 31.2357], 6);
-                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${'pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A'}`, { maxZoom: 18 }).addTo(map);
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { 
+                    maxZoom: 18,
+                    attribution: '© Mapbox'
+                }).addTo(map);
             }
         }
+
+        window.focusMerchantOnMap = function(phone) {
+            if(document.getElementById('tab-dashboard').classList.contains('hidden')) {
+                window.switchTab('dashboard');
+            }
+            if (merchantMarkers[phone]) {
+                setTimeout(() => {
+                    document.getElementById('adminMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    map.flyTo(merchantMarkers[phone].getLatLng(), 16);
+                    merchantMarkers[phone].openPopup();
+                }, 300);
+            } else {
+                alert("لا توجد إحداثيات جغرافية دقيقة مسجلة لهذا المتجر.");
+            }
+        };
 
         // ================= ADMIN ACTIONS =================
 
@@ -261,7 +301,6 @@
             }
         };
 
-        // حذف عملية واحدة
         window.deleteOrder = function(key) {
             if(confirm("هل أنت متأكد من حذف هذه العملية من السجل؟")) {
                 remove(ref(db, `eqbad_orders/${key}`))
@@ -269,7 +308,6 @@
             }
         };
 
-        // حذف كل العمليات
         window.deleteAllOrders = function() {
             if(confirm("تحذير خطير: هل أنت متأكد من مسح جميع العمليات؟ لا يمكن التراجع عن هذا الإجراء!")) {
                 remove(ref(db, 'eqbad_orders'))
@@ -296,38 +334,57 @@
             document.getElementById('statTotalLiquidity').innerText = totalLiquidity.toLocaleString() + ' ج.م';
 
             if(map) {
-                markers.forEach(m => map.removeLayer(m));
-                markers = [];
+                // إزالة الماركرز القديمة
+                Object.values(merchantMarkers).forEach(m => map.removeLayer(m));
+                merchantMarkers = {};
+
                 const storeIcon = L.divIcon({ html: '<span style="font-size: 24px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">🏪</span>', className: 'bg-transparent', iconSize: [24, 24] });
                 
                 Object.values(allMerchants).forEach(m => {
                     if(m.lat && m.lng && m.status !== 'blocked') {
-                        const marker = L.marker([m.lat, m.lng], { icon: storeIcon }).addTo(map)
-                        .bindPopup(`<div class="text-center font-cairo">
+                        const pPhone = m.phone;
+                        let popupHtml = `<div class="text-center font-cairo" dir="rtl">
                             <b class="text-[#7e122f]">${m.name}</b><br>
-                            <span class="text-xs text-slate-600">${m.phone}</span>
-                        </div>`);
-                        markers.push(marker);
+                            <span class="text-xs text-slate-600" dir="ltr">${m.phone}</span>
+                            <div id="address_box_${pPhone}"></div>
+                        </div>`;
+
+                        const marker = L.marker([m.lat, m.lng], { icon: storeIcon }).bindPopup(popupHtml).addTo(map);
+                        
+                        marker.on('click', function() {
+                            fetchAddress(m.lat, m.lng).then(addr => {
+                                let box = document.getElementById(`address_box_${pPhone}`);
+                                if(box) { 
+                                    box.innerHTML = `📍 ${addr}`; 
+                                    box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; 
+                                }
+                            });
+                        });
+
+                        merchantMarkers[pPhone] = marker;
                     }
                 });
             }
         }
 
-        // دالة إنشاء جدول إحداثيات المتاجر
         function renderLocationsTable() {
             let html = '';
             Object.values(allMerchants).forEach(m => {
                 const hasLocation = m.lat && m.lng;
-                const locationLink = hasLocation 
-                    ? `<a href="https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}" target="_blank" class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded font-bold text-[11px] border border-blue-200 hover:bg-blue-100 shadow-sm transition inline-block">📍 فتح في الخرائط</a>`
-                    : `<span class="text-[11px] font-bold text-slate-400">لا يوجد إحداثيات</span>`;
-                    
+                
                 html += `
                 <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
                     <td class="p-3 font-black text-slate-800">${m.name}</td>
                     <td class="p-3 text-slate-600 font-bold" dir="ltr">${m.phone}</td>
                     <td class="p-3 text-xs text-slate-500">${m.address || 'بدون عنوان'}</td>
-                    <td class="p-3 text-center">${locationLink}</td>
+                    <td class="p-3 text-center">
+                        ${hasLocation ? `
+                        <div class="flex justify-center gap-2">
+                            <button onclick="window.focusMerchantOnMap('${m.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 hover:bg-indigo-100 shadow-sm transition active:scale-95">🗺️ الخريطة</button>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200 hover:bg-blue-100 shadow-sm transition inline-block">📍 جوجل</a>
+                        </div>
+                        ` : '<span class="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">لا توجد إحداثيات</span>'}
+                    </td>
                 </tr>`;
             });
             document.getElementById('tableLocations').innerHTML = html;
@@ -464,7 +521,7 @@
                 });
             }
             updateDashboard();
-            renderLocationsTable(); // تحديث جدول الأماكن الجديد
+            renderLocationsTable();
             renderMerchantsTable();
             renderOrdersTable();
         });
