@@ -206,8 +206,10 @@
         // ================= ADMIN ACTIONS =================
 
         window.deleteMerchant = function(key) {
-            if(confirm("تحذير: هل أنت متأكد من حذف هذا المتجر نهائياً؟ لن يمكن التراجع عن هذا الإجراء.")) {
-                remove(ref(db, 'eqbad_merchants/' + key)).then(() => alert('تم الحذف بنجاح.'));
+            if(confirm("تحذير: هل أنت متأكد من حذف هذا المتجر نهائياً؟")) {
+                remove(ref(db, `eqbad_merchants/${key}`))
+                    .then(() => alert('تم حذف المتجر بنجاح.'))
+                    .catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
             }
         };
 
@@ -215,13 +217,16 @@
             const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
             const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
             if(confirm(`هل تريد ${actionText} هذا المتجر؟`)) {
-                update(ref(db, 'eqbad_merchants/' + key), { status: newStatus });
+                update(ref(db, `eqbad_merchants/${key}`), { status: newStatus })
+                    .catch((error) => alert('فشل التعديل:\n' + error.message));
             }
         };
 
         window.deleteCustomer = function(key) {
-            if(confirm("تحذير: هل أنت متأكد من حذف هذا العميل نهائياً؟ لن يمكن التراجع عن هذا الإجراء.")) {
-                remove(ref(db, 'eqbad_customers/' + key)).then(() => alert('تم الحذف بنجاح.'));
+            if(confirm("تحذير: هل أنت متأكد من حذف هذا العميل نهائياً؟")) {
+                remove(ref(db, `eqbad_customers/${key}`))
+                    .then(() => alert('تم حذف العميل بنجاح.'))
+                    .catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
             }
         };
 
@@ -229,7 +234,8 @@
             const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
             const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
             if(confirm(`هل تريد ${actionText} هذا العميل؟`)) {
-                update(ref(db, 'eqbad_customers/' + key), { status: newStatus });
+                update(ref(db, `eqbad_customers/${key}`), { status: newStatus })
+                    .catch((error) => alert('فشل التعديل:\n' + error.message));
             }
         };
 
@@ -270,7 +276,7 @@
 
         function renderMerchantsTable() {
             let html = '';
-            Object.entries(allMerchants).forEach(([key, m]) => {
+            Object.values(allMerchants).forEach(m => {
                 const mOrders = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
                 const isBlocked = m.status === 'blocked';
                 
@@ -296,8 +302,8 @@
                     <td class="p-3 text-center font-black text-blue-600 bg-blue-50 rounded-lg m-1">${mOrders}</td>
                     <td class="p-3">
                         <div class="flex justify-center gap-1">
-                            <button onclick="window.toggleBlockMerchant('${key}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
-                            <button onclick="window.deleteMerchant('${key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
+                            <button onclick="window.toggleBlockMerchant('${m.fb_key}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
+                            <button onclick="window.deleteMerchant('${m.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
                         </div>
                     </td>
                 </tr>`;
@@ -307,7 +313,7 @@
 
         function renderCustomersTable() {
             let html = '';
-            Object.entries(allCustomers).forEach(([key, c]) => {
+            Object.values(allCustomers).forEach(c => {
                 const cOrders = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
                 const d = new Date(c.createdAt || Date.now());
                 const isBlocked = c.status === 'blocked';
@@ -327,8 +333,8 @@
                     <td class="p-3 text-center font-black text-emerald-600 bg-emerald-50 rounded-lg m-1">${cOrders}</td>
                     <td class="p-3">
                         <div class="flex justify-center gap-1">
-                            <button onclick="window.toggleBlockCustomer('${key}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
-                            <button onclick="window.deleteCustomer('${key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
+                            <button onclick="window.toggleBlockCustomer('${c.fb_key}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
+                            <button onclick="window.deleteCustomer('${c.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
                         </div>
                     </td>
                 </tr>`;
@@ -389,14 +395,25 @@
         initMap();
 
         onValue(ref(db, 'eqbad_merchants'), snap => {
-            allMerchants = snap.val() || {};
+            allMerchants = {};
+            if(snap.exists()){
+                snap.forEach(child => {
+                    // سحب المفتاح الحقيقي من قاعدة البيانات مباشرة لتجنب أي أخطاء
+                    allMerchants[child.key] = { fb_key: child.key, ...child.val() };
+                });
+            }
             updateDashboard();
             renderMerchantsTable();
-            renderOrdersTable(); // تحديث الطلبات لجلب أسماء المتاجر الصحيحة
+            renderOrdersTable();
         });
 
         onValue(ref(db, 'eqbad_customers'), snap => {
-            allCustomers = snap.val() || {};
+            allCustomers = {};
+            if(snap.exists()){
+                snap.forEach(child => {
+                    allCustomers[child.key] = { fb_key: child.key, ...child.val() };
+                });
+            }
             updateDashboard();
             renderCustomersTable();
         });
