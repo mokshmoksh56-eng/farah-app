@@ -758,6 +758,7 @@
 
         window._orderUnsub = null;
         window._merchantDataUnsub = null;
+        window._customerPendingUnsub = null;
         window._authReady = false;
 
         onAuthStateChanged(auth, async (user) => {
@@ -896,6 +897,7 @@
         };
 
         window.logoutCustomer = function() {
+            if (window._customerPendingUnsub) { try { window._customerPendingUnsub(); } catch(e){} window._customerPendingUnsub = null; }
             localStorage.removeItem('eqbad_customer_phone');
             localStorage.removeItem('eqbad_customer_name');
             window.currentCustomerPhone = "";
@@ -1281,13 +1283,19 @@
             });
         };
 
+        // المزامنة الحية (Real-time listener) لمتابعة الطلبات المعلقة والنشطة للعميل
         window.fetchCustomerPendingOrders = function() {
             showView('customerPendingView');
             const container = document.getElementById('custPendingListContainer');
             container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">⏳ جاري جلب الطلبات المعلقة والنشطة...</div>`;
             const myPhone = window.normalizePhone(window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone'));
 
-            get(ref(db, 'eqbad_orders')).then(snapshot => {
+            if (window._customerPendingUnsub) { 
+                try { window._customerPendingUnsub(); } catch(e){} 
+                window._customerPendingUnsub = null; 
+            }
+
+            window._customerPendingUnsub = onValue(ref(db, 'eqbad_orders'), (snapshot) => {
                 let records = [];
                 if(snapshot.exists()) {
                     snapshot.forEach(child => {
@@ -1341,7 +1349,7 @@
                         ${actionHtml}
                     </div>`;
                 }).join('');
-            }).catch(err => {
+            }, (err) => {
                 container.innerHTML = `<div class="text-center py-10 text-rose-500 font-black">حدث خطأ أثناء جلب الطلبات: ${err.message}</div>`;
             });
         };
@@ -1351,13 +1359,11 @@
                 update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() })
                 .then(() => {
                     alert("تم إلغاء الطلب بنجاح.");
-                    window.fetchCustomerPendingOrders();
                 })
                 .catch(err => alert("خطأ: " + err.message));
             }
         };
 
-        // دالة إلغاء الطلب مباشرة أثناء الانتظار في شاشة النتائج
         window.cancelActiveOrder = function(reqKey, targetMerchantPhone) {
             if(confirm("هل أنت متأكد من إلغاء هذا الطلب قبل موافقة التاجر؟")) {
                 update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() })
