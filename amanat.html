@@ -594,7 +594,6 @@
         }
 
         function showView(viewId, isHistoryNav = false) {
-            // تحديث السجل إذا لم يكن التنقل عبر أسهم Back/Forward
             if(!isHistoryNav) {
                 if(viewHistory[currentHistoryIndex] !== viewId) {
                     viewHistory = viewHistory.slice(0, currentHistoryIndex + 1);
@@ -898,7 +897,6 @@
             currentMerchantPhone = "";
             currentActiveMerchantData = null;
             
-            // إعادة ضبط التنقل للبداية
             viewHistory = ['roleView'];
             currentHistoryIndex = 0;
             showView('roleView', true);
@@ -916,9 +914,7 @@
                 const updateData = {};
                 updateData[field] = newVal;
 
-                update(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), updateData).then(() => {
-                    const name = (type === 'vodafone') ? 'فودافون كاش' : 'إنستاباي';
-                });
+                update(ref(db, 'eqbad_merchants/merchant_' + currentMerchantPhone), updateData);
             });
         };
 
@@ -1027,6 +1023,17 @@
             });
         };
 
+        window.rejectOrder = function(reqKey) {
+            if(confirm("هل أنت متأكد من رفض هذه العملية؟ لن يتمكن العميل من التواصل معك.")) {
+                update(ref(db, 'eqbad_orders/' + reqKey), {
+                    status: 'rejected',
+                    rejectedAt: Date.now()
+                }).catch(err => {
+                    alert("حدث خطأ في رفض الطلب: " + err.message);
+                });
+            }
+        };
+
         window.confirmDeliveredCash = function(reqKey, amount, method) {
             const numAmount = parseFloat(amount) || 0;
             
@@ -1094,6 +1101,7 @@
                             const iconSvg = isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON;
                             const methodLabel = isVf ? 'فودافون كاش' : 'إنستاباي';
 
+                            // نعرض فقط الطلبات المعلقة والمقبولة (الطلبات المرفوضة ستختفي تلقائياً)
                             if(req.status === 'pending' || req.status === 'accepted') {
                                 activeCount++;
                                 const cardBorder = isVf ? 'border-red-600' : 'border-purple-600';
@@ -1121,9 +1129,14 @@
                                     
                                     <div class="pt-1">
                                         ${req.status === 'pending' ? `
-                                            <button onclick="window.acceptOrder('${reqKey}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex items-center justify-center gap-1.5">
-                                                <span>✔️</span> قبول العملية
-                                            </button>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <button onclick="window.acceptOrder('${reqKey}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex items-center justify-center gap-1">
+                                                    <span>✔️</span> قبول
+                                                </button>
+                                                <button onclick="window.rejectOrder('${reqKey}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex items-center justify-center gap-1">
+                                                    <span>❌</span> رفض
+                                                </button>
+                                            </div>
                                         ` : `
                                             <div class="bg-emerald-50 text-emerald-800 text-xs font-black py-2 px-3 rounded-xl border-2 border-emerald-300 text-center mb-2 leading-relaxed">
                                                 ✅ تم قبول العملية! في انتظار تواصل العميل معك
@@ -1250,7 +1263,7 @@
 
                 merchants.sort((a,b) => a.distance - b.distance);
                 showView('customerResultsView');
-                btn.innerHTML = "بحث عن أقرب تجار 🔍";
+                btn.innerHTML = "بحث عن أقرب تجار متاحين 🔍";
 
                 setTimeout(() => {
                     if(!liveMerchantsMapInstance) {
@@ -1269,7 +1282,6 @@
                     const isVf = method === 'vodafone';
                     const iconSvg = isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON;
                     const methodText = isVf ? 'فودافون كاش' : 'إنستاباي';
-                    const balColor = isVf ? 'text-red-700' : 'text-purple-800';
 
                     if(merchants.length === 0) {
                         listHTML = `<div class="p-4 text-center text-sm font-black text-rose-800 bg-rose-50 rounded-2xl border-2 border-rose-200">عفواً، لا يوجد تجار يمتلكون سيولة ${methodText} كافية حالياً.</div>`;
@@ -1282,9 +1294,8 @@
                             <table class="w-full text-sm text-center border-collapse">
                                 <thead class="bg-slate-50 text-[#4a0718] font-black text-[11px] sm:text-xs">
                                     <tr>
-                                        <th class="p-2 border-b-2 border-slate-200 text-right">التاجر</th>
-                                        <th class="p-2 border-b-2 border-slate-200">تواصل</th>
-                                        <th class="p-2 border-b-2 border-slate-200">الموقع</th>
+                                        <th class="p-2 border-b-2 border-slate-200 text-right">المتجر والمكان</th>
+                                        <th class="p-2 border-b-2 border-slate-200">المسافة</th>
                                         <th class="p-2 border-b-2 border-slate-200">إجراء</th>
                                     </tr>
                                 </thead>
@@ -1296,10 +1307,7 @@
                              .bindTooltip(m.name, { permanent: true, direction: 'top', className: 'merchant-tooltip', offset: [0, -12] })
                              .bindPopup(`<div style="text-align:center;"><b>${m.name}</b><br><span style="color:#7e122f; font-size:12px;">${m.distance.toFixed(1)} كم</span></div>`);
 
-                            let rawPhone = m.phone || "";
-                            let cleanPhone = rawPhone.startsWith("0") ? "2" + rawPhone : rawPhone;
-                            let mapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${finalCustLat},${finalCustLng}&destination=${m.lat},${m.lng}`;
-
+                            // تم إزالة أزرار التواصل وإضافة عنوان المتجر النصي هنا
                             listHTML += `
                             <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                 <td class="p-2 text-right">
@@ -1307,24 +1315,16 @@
                                         <div class="scale-75 origin-right">${iconSvg}</div>
                                         ${m.name}
                                     </div>
-                                    <div class="text-[10px] text-slate-500 font-bold mt-1">
-                                        متاح: <span class="${balColor}">${m.availableBal} ج</span> | 📍 ${m.distance.toFixed(1)} كم
+                                    <div class="text-[10px] text-slate-500 font-bold mt-1 line-clamp-1">
+                                        📍 ${m.address || 'موقع محدد على الخريطة'}
                                     </div>
                                 </td>
-                                <td class="p-1 sm:p-2">
-                                    <div class="flex justify-center gap-1.5">
-                                        <a href="tel:${rawPhone}" class="bg-emerald-100 text-emerald-700 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-transform" title="اتصال">📞</a>
-                                        <a href="https://wa.me/${cleanPhone}" target="_blank" class="bg-[#25D366]/20 text-[#25D366] w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-transform" title="واتساب">💬</a>
-                                    </div>
+                                <td class="p-1 sm:p-2 text-center text-xs font-black text-[#7e122f]">
+                                    ${m.distance.toFixed(1)} كم
                                 </td>
-                                <td class="p-1 sm:p-2">
-                                    <a href="${mapsDirectionsUrl}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1.5 rounded-lg font-black text-[10px] sm:text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-blue-100 active:scale-95 transition-colors">
-                                        🗺️ مسار
-                                    </a>
-                                </td>
-                                <td class="p-1 sm:p-2">
-                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng})" class="btn-burgundy font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg active:scale-95 shadow-sm whitespace-nowrap">
-                                        طلب 🚀
+                                <td class="p-1 sm:p-2 text-center">
+                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng})" class="btn-burgundy w-full font-black text-[10px] sm:text-xs px-2 py-2 rounded-lg active:scale-95 shadow-sm whitespace-nowrap">
+                                        طلب الكاش 🚀
                                     </button>
                                 </td>
                             </tr>`;
@@ -1360,7 +1360,8 @@
                 status: 'pending',
                 timestamp: Date.now()
             }).then(() => {
-                statusBox.innerHTML = "✅ تم إرسال الطلب، بانتظار موافقة التاجر...";
+                statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs shrink-0";
+                statusBox.innerHTML = "⏳ تم إرسال الطلب، في انتظار موافقة التاجر لعرض بيانات التواصل...";
                 onValue(ref(db, 'eqbad_orders/' + reqId), (snap) => {
                     if(snap.exists()) {
                         const ord = snap.val();
@@ -1385,6 +1386,9 @@
                                     </a>
                                 </div>
                             `;
+                        } else if(ord.status === 'rejected') {
+                            statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm shrink-0";
+                            statusBox.innerHTML = "❌ نعتذر، التاجر رفض الطلب حالياً (قد يكون المتجر مزدحماً أو غير متاح). يرجى طلب تاجر آخر.";
                         } else if(ord.status === 'completed') {
                             statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md";
                             statusBox.innerHTML = "✨ تم تسليم المبلغ واستلام الكاش بنجاح! شكراً لك.";
