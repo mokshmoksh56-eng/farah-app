@@ -330,6 +330,25 @@
                 <span class="text-xs sm:text-sm font-bold text-slate-500 hidden sm:block">لوحة تحكم التاجر</span>
             </div>
 
+            <!-- أزرار التحكم السريع في حالة السيولة والتحويل للتاجر -->
+            <div class="mb-4 bg-white border-2 border-slate-200 p-3 rounded-2xl shadow-xs">
+                <h3 class="text-xs sm:text-sm font-black text-[#4a0718] mb-2.5 flex items-center gap-1.5">
+                    <span>⚙️</span> التحكم السريع في خدماتك المتاحة الآن:
+                </h3>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button type="button" id="btnProvideCash" onclick="window.toggleProvideService('cash')" class="relative p-3 rounded-xl border-2 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 shadow-sm">
+                        <span class="text-3xl drop-shadow-md">💵</span>
+                        <span class="text-xs sm:text-sm font-black">خزنة الكاش</span>
+                        <span id="txtProvideCash" class="text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-lg mt-0.5">جاري التحميل...</span>
+                    </button>
+                    <button type="button" id="btnProvideTransfer" onclick="window.toggleProvideService('transfer')" class="relative p-3 rounded-xl border-2 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 shadow-sm">
+                        <span class="text-3xl drop-shadow-md">📱</span>
+                        <span class="text-xs sm:text-sm font-black">رصيد التحويل</span>
+                        <span id="txtProvideTransfer" class="text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-lg mt-0.5">جاري التحميل...</span>
+                    </button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="bg-white border-2 border-red-600 p-3 rounded-2xl text-center shadow-xs flex flex-col justify-between">
                     <div>
@@ -713,6 +732,7 @@
             const vfActive = (data.enable_vodafone !== false);
             const ipActive = (data.enable_instapay !== false);
             window.updateServiceButtonsUI(vfActive, ipActive);
+            window.updateProvideServicesUI(data.provide_cash, data.provide_transfer);
 
             showView('merchantDashboardView');
 
@@ -754,6 +774,37 @@
             }
         };
 
+        window.updateProvideServicesUI = function(provideCash, provideTransfer) {
+            const btnCash = document.getElementById('btnProvideCash');
+            const txtCash = document.getElementById('txtProvideCash');
+            const btnTransfer = document.getElementById('btnProvideTransfer');
+            const txtTransfer = document.getElementById('txtProvideTransfer');
+
+            if(btnCash && txtCash) {
+                if(provideCash !== false) { 
+                    btnCash.className = "relative p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 shadow-sm";
+                    txtCash.className = "text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-emerald-200 text-emerald-800";
+                    txtCash.innerText = "متاح تسليم كاش ✔️";
+                } else {
+                    btnCash.className = "relative p-3 rounded-xl border-2 border-slate-300 bg-slate-50 text-slate-500 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 opacity-75 grayscale";
+                    txtCash.className = "text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-slate-200 text-slate-600";
+                    txtCash.innerText = "لا توجد سيولة ❌";
+                }
+            }
+
+            if(btnTransfer && txtTransfer) {
+                if(provideTransfer !== false) {
+                    btnTransfer.className = "relative p-3 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-900 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 shadow-sm";
+                    txtTransfer.className = "text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-blue-200 text-blue-800";
+                    txtTransfer.innerText = "متاح تحويل رصيد ✔️";
+                } else {
+                    btnTransfer.className = "relative p-3 rounded-xl border-2 border-slate-300 bg-slate-50 text-slate-500 transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5 opacity-75 grayscale";
+                    txtTransfer.className = "text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-slate-200 text-slate-600";
+                    txtTransfer.innerText = "موقف تحويلات ❌";
+                }
+            }
+        };
+
         window.playLoudNotification = function() {
             try {
                 const audio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
@@ -787,6 +838,8 @@
         const app = initializeApp(firebaseConfig); 
         const db = getDatabase(app); 
         const auth = getAuth(app);
+
+        window.dbRef = db; 
 
         window._orderUnsub = null;
         window._merchantDataUnsub = null;
@@ -984,6 +1037,8 @@
                     commission_rate: commRate,
                     enable_vodafone: enableVf,
                     enable_instapay: enableIp,
+                    provide_cash: true,
+                    provide_transfer: true,
                     lat: window.finalMerchLat,
                     lng: window.finalMerchLng,
                     address: window.finalMerchAddress || "موقع محدد عبر الخريطة",
@@ -1080,6 +1135,18 @@
             }).catch(err => alert("خطأ: " + err.message));
         };
 
+        window.toggleProvideService = function(type) {
+            if(!window.currentMerchantPhone) return;
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
+                if(!snap.exists()) return;
+                const field = (type === 'cash') ? 'provide_cash' : 'provide_transfer';
+                const currentVal = snap.val()[field];
+                const newVal = (currentVal === undefined) ? false : !currentVal;
+                update(ref(window.dbRef, 'eqbad_merchants/' + mKey), { [field]: newVal });
+            }).catch(err => alert("خطأ: " + err.message));
+        };
+
         window.updateMerchantBalance = function() {
             const type = document.getElementById('updateBalanceType').value;
             const newBal = parseFloat(document.getElementById('updateBalanceInput').value);
@@ -1150,6 +1217,7 @@
                         document.getElementById('merchantVodafoneDisplay').innerText = (parseFloat(m.balance_vodafone) || 0).toLocaleString() + " ج.م";
                         document.getElementById('merchantInstapayDisplay').innerText = (parseFloat(m.balance_instapay) || 0).toLocaleString() + " ج.م";
                         window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
+                        window.updateProvideServicesUI(m.provide_cash, m.provide_transfer);
                     }
                 } catch(err) { console.error("merchant data listener error:", err); }
             }, (err) => console.error("merchant data onValue error:", err));
@@ -1523,11 +1591,16 @@
                     snap.forEach(child => {
                         let m = child.val();
                         let hasEnoughBalance = true;
-                        if(txType === 'cash_in') {
+                        let isServiceProvided = true;
+
+                        if(txType === 'cash_in') { 
                             hasEnoughBalance = parseFloat(m[balField] || 0) >= amount;
+                            isServiceProvided = (m.provide_transfer !== false);
+                        } else if (txType === 'cash_out') { 
+                            isServiceProvided = (m.provide_cash !== false);
                         }
 
-                        if(m.status === 'active' && m[enableField] !== false && hasEnoughBalance) {
+                        if(m.status === 'active' && m[enableField] !== false && hasEnoughBalance && isServiceProvided) {
                             m.distance = getDistance(window.finalCustLat, window.finalCustLng, m.lat, m.lng);
                             m.availableBal = parseFloat(m[balField] || 0);
                             merchants.push(m);
@@ -1556,7 +1629,7 @@
                     
                     if(merchants.length === 0) {
                         document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs";
-                        document.getElementById('customerStatusMsg').innerHTML = `❌ لم يتم العثور على تجار بهذه الشروط.`;
+                        document.getElementById('customerStatusMsg').innerHTML = `❌ لم يتم العثور على تجار بهذه الشروط (تأكد من اختيار نوع الخدمة الصحيح).`;
                         document.getElementById('merchantsListContainer').innerHTML = "";
                     } else {
                         document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-emerald-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs";
