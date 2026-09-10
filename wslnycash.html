@@ -161,13 +161,14 @@
             </form>
 
             <button type="button" onclick="window.fetchCustomerReports()" class="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border-2 border-slate-200 font-black py-3 rounded-xl shadow-sm active:scale-95 text-sm flex justify-center items-center gap-2 transition-all"><span>📜</span> عرض سجل طلباتي السابقة</button>
+            <button type="button" onclick="window.fetchCustomerPendingOrders()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 border-2 border-amber-200 font-black py-3 rounded-xl shadow-sm active:scale-95 text-sm flex justify-center items-center gap-2 transition-all mt-2.5"><span>⏳</span> متابعة الطلبات المعلقة والنشطة</button>
         </div>
 
         <!-- نتائج بحث العميل -->
         <div id="customerResultsView" class="fade-enter flex flex-col h-full flex-1">
             <div class="flex items-center justify-between mb-3 shrink-0">
                 <h2 class="text-lg sm:text-xl font-black text-[#4a0718]">التجار المتاحين</h2>
-                <button type="button" id="btnBackToSearch" onclick="showView('customerView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm transition-colors">تعديل البحث</button>
+                <button type="button" onclick="showView('customerView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm">تعديل البحث</button>
             </div>
             <div id="customerStatusMsg" class="text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0 transition-colors duration-300">جاري فحص المسافات والسيولة المتاحة...</div>
             <div id="liveMerchantsMapWrapper" class="h-48 w-full rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm relative z-0 mb-3 shrink-0">
@@ -205,6 +206,18 @@
             <div class="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex-1 flex flex-col min-h-[250px]">
                 <div class="p-3 border-b border-slate-200 bg-slate-50"><p class="text-sm font-black text-[#7e122f]">تفاصيل العمليات السابقة 🧾</p></div>
                 <div class="overflow-y-auto p-3 space-y-3 flex-1" id="custReportsListContainer"><div class="text-center py-10 text-slate-400 text-sm font-black">جاري جلب البيانات...</div></div>
+            </div>
+        </div>
+
+        <!-- الطلبات المعلقة والنشطة للعميل -->
+        <div id="customerPendingView" class="fade-enter flex flex-col h-full flex-1">
+            <div class="flex items-center justify-between mb-4 shrink-0 border-b border-slate-200 pb-3">
+                <h2 class="text-xl sm:text-2xl font-black text-[#4a0718]">الطلبات المعلقة والنشطة</h2>
+                <button type="button" onclick="showView('customerView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm">عودة</button>
+            </div>
+            <div class="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex-1 flex flex-col min-h-[250px]">
+                <div class="p-3 border-b border-slate-200 bg-slate-50"><p class="text-sm font-black text-[#7e122f]">الطلبات التي بانتظار الموافقة أو المقبولة ⏳</p></div>
+                <div class="overflow-y-auto p-3 space-y-3 flex-1" id="custPendingListContainer"><div class="text-center py-10 text-slate-400 text-sm font-black">جاري جلب الطلبات المعلقة...</div></div>
             </div>
         </div>
 
@@ -433,7 +446,6 @@
         window.currentMerchantPhone = ""; 
         window.currentMerchantKey = "";   
         window.notifiedOrders = new Set(); 
-        window.activeCustomerOrderRef = null; // لتتبع حالة الطلب الحالي
 
         // ==== أداة تطبيع رقم الهاتف ====
         window.normalizePhone = function(p) {
@@ -490,7 +502,7 @@
                 }
             }
             localStorage.setItem('eqbad_active_view', viewId);
-            const views = ['roleView', 'customerLoginView', 'customerRegisterView', 'customerView', 'customerResultsView', 'customerReportsView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView', 'merchantReportsView'];
+            const views = ['roleView', 'customerLoginView', 'customerRegisterView', 'customerView', 'customerResultsView', 'customerReportsView', 'customerPendingView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView', 'merchantReportsView'];
             views.forEach(v => {
                 const el = document.getElementById(v);
                 if(el) {
@@ -744,14 +756,17 @@
         const db = getDatabase(app); 
         const auth = getAuth(app);
 
+        // ==== حفظ مراجع إلغاء الاشتراك لمنع المستمعين المكررة ====
         window._orderUnsub = null;
         window._merchantDataUnsub = null;
         window._authReady = false;
 
+        // ==== انتظر المصادقة قبل تحميل أي شيء ====
         onAuthStateChanged(auth, async (user) => {
             if (!user) return;
             if (window._authReady) return;
             window._authReady = true;
+            console.log("✅ Firebase Auth ready, uid:", user.uid);
 
             try {
                 if ("Notification" in window && Notification.permission === "default") {
@@ -783,6 +798,7 @@
                         showView('roleView');
                     }
                 } catch(e) { 
+                    console.error("Auto login merchant error:", e);
                     showView('roleView'); 
                 }
             } else if (savedCustomerPhone) {
@@ -997,6 +1013,7 @@
                     localStorage.setItem('eqbad_merchant_key', actualKey);
                     window.renderMerchantDashboard(snap.val());
                     window.listenToOrders();
+                    console.log("🏪 Merchant logged in:", phone, "key:", actualKey);
                 } else {
                     alert("عفواً، رقم الهاتف أو الرقم السري غير صحيح.");
                 }
@@ -1076,6 +1093,7 @@
             });
         };
 
+        // ======== المستمع الرئيسي للطلبات للتاجر ========
         window.listenToOrders = function() {
             const myPhone = window.normalizePhone(
                 window.currentMerchantPhone || localStorage.getItem('eqbad_merchant_phone')
@@ -1094,7 +1112,7 @@
                         window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
                     }
                 } catch(err) { console.error("merchant data listener error:", err); }
-            });
+            }, (err) => console.error("merchant data onValue error:", err));
 
             window._orderUnsub = onValue(ref(db, 'eqbad_orders'), (snapshot) => {
                 try {
@@ -1189,10 +1207,12 @@
                 } catch(err) {
                     console.error("orders listener error:", err);
                 }
+            }, (err) => {
+                console.error("orders onValue error:", err);
             });
         };
 
-        // ================= REPORTS =================
+        // ================= REPORTS & PENDING (CUSTOMER & MERCHANT) =================
         window.loadMerchantReports = function() {
             showView('merchantReportsView');
             const container = document.getElementById('reportsListContainer');
@@ -1264,6 +1284,82 @@
             });
         };
 
+        window.fetchCustomerPendingOrders = function() {
+            showView('customerPendingView');
+            const container = document.getElementById('custPendingListContainer');
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">⏳ جاري جلب الطلبات المعلقة والنشطة...</div>`;
+            const myPhone = window.normalizePhone(window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone'));
+
+            get(ref(db, 'eqbad_orders')).then(snapshot => {
+                let records = [];
+                if(snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        let req = child.val();
+                        let reqKey = child.key;
+                        if(window.normalizePhone(req.customer_phone) === myPhone && (req.status === 'pending' || req.status === 'accepted')) {
+                            records.push({key: reqKey, ...req});
+                        }
+                    });
+                }
+                records.sort((a, b) => b.timestamp - a.timestamp);
+                
+                if(records.length === 0) {
+                    return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black bg-white rounded-2xl border-2 border-slate-200">لا توجد طلبات معلقة أو نشطة حالياً.</div>`;
+                }
+
+                container.innerHTML = records.map(ord => {
+                    const isVf = ord.method === 'vodafone';
+                    const isPending = ord.status === 'pending';
+                    const statusBadge = isPending 
+                        ? `<span class="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full font-black text-xs">⏳ بانتظار موافقة التاجر</span>`
+                        : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black text-xs">✔️ مقبول من التاجر</span>`;
+
+                    let actionHtml = '';
+                    if (isPending) {
+                        actionHtml = `<button onclick="window.cancelCustomerOrder('${ord.key}')" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black py-2 rounded-xl text-xs active:scale-95 shadow-xs">إلغاء الطلب ❌</button>`;
+                    } else {
+                        const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
+                        const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount || ord.amount} ج.م شامل العمولة عبر تطبيق وصلني كاش.`);
+                        actionHtml = `
+                        <div class="space-y-1.5 pt-1 border-t border-slate-100 mt-2">
+                            <div class="text-[11px] font-black text-emerald-700 text-center">التاجر وافق! تواصل معه أو توجه للفرع:</div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a>
+                                <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتساب</a>
+                            </div>
+                        </div>`;
+                    }
+
+                    return `
+                    <div class="bg-white border-2 ${isVf ? 'border-red-600' : 'border-purple-600'} p-3.5 rounded-2xl relative shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-black text-slate-900">المبلغ: <span class="${isVf ? 'text-red-600' : 'text-purple-700'} font-black">${ord.amount} ج.م</span></span>
+                            ${statusBadge}
+                        </div>
+                        <div class="text-xs text-slate-600 flex justify-between items-center">
+                            <span>رقم التاجر: <b class="text-slate-900" dir="ltr">${ord.target_merchant}</b></span>
+                            <span class="font-black text-slate-700">إجمالي: ${ord.total_amount || ord.amount} ج</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200">📍 ${ord.address}</div>
+                        ${actionHtml}
+                    </div>`;
+                }).join('');
+            }).catch(err => {
+                container.innerHTML = `<div class="text-center py-10 text-rose-500 font-black">حدث خطأ أثناء جلب الطلبات: ${err.message}</div>`;
+            });
+        };
+
+        window.cancelCustomerOrder = function(reqKey) {
+            if(confirm("هل أنت متأكد من إلغاء هذا الطلب المعلق؟")) {
+                update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() })
+                .then(() => {
+                    alert("تم إلغاء الطلب بنجاح.");
+                    window.fetchCustomerPendingOrders();
+                })
+                .catch(err => alert("خطأ: " + err.message));
+            }
+        };
+
         // ================= SEARCH & ORDER =================
         window.searchMerchants = function(e) {
             e.preventDefault();
@@ -1323,7 +1419,7 @@
                             const totalToTransfer = amount + ((amount * commRate) / 100);
 
                             listHTML += `
-                            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col merchant-card-item" data-phone="${m.phone}">
+                            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
                                 <div class="p-3 flex justify-between items-start bg-white">
                                     <div class="flex-1">
                                         <div class="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${m.name}</div>
@@ -1333,7 +1429,7 @@
                                     <div class="text-left shrink-0 bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl flex flex-col items-center"><span class="text-xs font-black text-[#7e122f]">${m.distance.toFixed(1)} كم</span></div>
                                 </div>
                                 <div id="merchant-action-${m.phone}" class="bg-slate-50 p-2 border-t border-slate-100 mt-auto">
-                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="btn-burgundy w-full font-black text-[11px] sm:text-xs px-3 py-2.5 rounded-xl shadow-sm transition-all order-action-btn">طلب (سأحول ${totalToTransfer} ج) 🚀</button>
+                                    <button onclick="window.sendTargetedOrder('${m.phone}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="btn-burgundy w-full font-black text-[11px] sm:text-xs px-3 py-2.5 rounded-xl shadow-sm transition-all">طلب (سأحول ${totalToTransfer} ج) 🚀</button>
                                 </div>
                             </div>`;
                         });
@@ -1351,18 +1447,6 @@
                 btnElement.innerHTML = "⏳ جاري الإرسال..."; 
             }
 
-            // إخفاء زر "تعديل البحث" لجعل الشاشة ثابتة تماماً أثناء دورة الطلب
-            const btnBackToSearch = document.getElementById('btnBackToSearch');
-            if(btnBackToSearch) btnBackToSearch.style.display = 'none';
-
-            // تعطيل باقي أزرار التجار في القائمة لمنع إرسال طلبات متعددة
-            document.querySelectorAll('.order-action-btn').forEach(b => {
-                if(b !== btnElement) {
-                    b.disabled = true;
-                    b.classList.add('opacity-40', 'cursor-not-allowed');
-                }
-            });
-
             const commAmount = (reqAmount * commRate) / 100;
             const statusBox = document.getElementById('customerStatusMsg');
             
@@ -1372,8 +1456,6 @@
             const safeTargetMerchant = window.normalizePhone(merchantPhone);
             
             const newReqRef = push(ref(db, 'eqbad_orders'));
-            window.activeCustomerOrderRef = newReqRef.key;
-
             try {
                 await set(newReqRef, {
                     target_merchant: safeTargetMerchant,
@@ -1390,13 +1472,13 @@
                 });
 
                 if(btnElement) {
-                    btnElement.innerHTML = "بانتظار موافقة التاجر ⏳";
+                    btnElement.innerHTML = "بانتظار التاجر ⏳";
                     btnElement.classList.replace('btn-burgundy', 'bg-amber-500'); 
                     btnElement.classList.add('text-white');
                 }
                 
                 statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs transition-colors duration-300";
-                statusBox.innerHTML = "🔒 تم قفل العملية في هذه الشاشة. بانتظار رد التاجر...";
+                statusBox.innerHTML = "⏳ تم إرسال الطلب بنجاح، بانتظار موافقة التاجر...";
                 
                 onValue(ref(db, 'eqbad_orders/' + newReqRef.key), (snap) => {
                     try {
@@ -1406,7 +1488,7 @@
                             
                             if(ord.status === 'accepted') {
                                 statusBox.className = "text-center p-3 rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 mb-2 text-sm font-black shadow-md";
-                                statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل والتوجه متاحة بالأسفل.";
+                                statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
                                 if(actionDiv) {
                                     const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
                                     const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount} ج.م شامل العمولة عبر تطبيق وصلني كاش.`);
@@ -1415,29 +1497,18 @@
                                 }
                             } else if(ord.status === 'rejected') {
                                 statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm";
-                                statusBox.innerHTML = "❌ رفض التاجر الطلب. يمكنك الآن العودة لتعديل البحث أو اختيار تاجر آخر.";
+                                statusBox.innerHTML = "❌ التاجر رفض الطلب. يرجى طلب تاجر آخر.";
                                 if(actionDiv) actionDiv.innerHTML = `<div class="text-center text-rose-600 font-bold text-xs py-1">مرفوض ❌</div>`;
-                                
-                                // إعادة إظهار زر العودة والبحث بعد الرفض لفك قفل الشاشة
-                                if(btnBackToSearch) btnBackToSearch.style.display = 'block';
-                                document.querySelectorAll('.order-action-btn').forEach(b => {
-                                    b.disabled = false;
-                                    b.classList.remove('opacity-40', 'cursor-not-allowed');
-                                });
                             } else if(ord.status === 'completed') {
                                 statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md";
-                                statusBox.innerHTML = "✨ تم استلام الكاش بنجاح! شكراً لاستخدامك وصلني كاش.";
+                                statusBox.innerHTML = "✨ تم استلام الكاش بنجاح! شكراً لك.";
                                 if(actionDiv) actionDiv.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">عملية مكتملة ✔️</div>`;
-                                
-                                // إعادة إظهار زر العودة بعد اكتمال العملية
-                                if(btnBackToSearch) btnBackToSearch.style.display = 'block';
                             }
                         }
                     } catch(err) { console.error("customer order watch error:", err); }
                 });
             } catch(err) {
                 alert("تعذر إرسال الطلب: " + err.message);
-                if(btnBackToSearch) btnBackToSearch.style.display = 'block';
                 if(btnElement) { 
                     btnElement.disabled = false; 
                     btnElement.innerHTML = `إعادة الإرسال 🔄`; 
