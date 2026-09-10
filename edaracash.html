@@ -81,12 +81,11 @@
                         <thead class="bg-slate-50 text-slate-500">
                             <tr>
                                 <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
-                                <th class="p-3 font-black">رقم الهاتف</th>
-                                <th class="p-3 font-black">العنوان</th>
-                                <th class="p-3 font-black">سيولة فودافون</th>
-                                <th class="p-3 font-black">سيولة إنستاباي</th>
+                                <th class="p-3 font-black">رقم الهاتف / السرّي</th>
+                                <th class="p-3 font-black">سيولة المتجر</th>
                                 <th class="p-3 font-black">العمولة</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">عدد العمليات</th>
+                                <th class="p-3 font-black text-center">العمليات</th>
+                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات (حظر / حذف)</th>
                             </tr>
                         </thead>
                         <tbody id="tableMerchants" class="divide-y divide-slate-100">
@@ -106,9 +105,10 @@
                         <thead class="bg-slate-50 text-slate-500">
                             <tr>
                                 <th class="p-3 rounded-tr-xl font-black">اسم العميل</th>
-                                <th class="p-3 font-black">رقم الهاتف</th>
+                                <th class="p-3 font-black">رقم الهاتف / السرّي</th>
                                 <th class="p-3 font-black">تاريخ التسجيل</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">العمليات الناجحة</th>
+                                <th class="p-3 font-black text-center">العمليات الناجحة</th>
+                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات (حظر / حذف)</th>
                             </tr>
                         </thead>
                         <tbody id="tableCustomers" class="divide-y divide-slate-100">
@@ -136,9 +136,7 @@
                                 <th class="p-3 rounded-tr-xl font-black">التاريخ والوقت</th>
                                 <th class="p-3 font-black">العميل</th>
                                 <th class="p-3 font-black">التاجر المستهدف</th>
-                                <th class="p-3 font-black">المبلغ</th>
-                                <th class="p-3 font-black">العمولة</th>
-                                <th class="p-3 font-black">الإجمالي</th>
+                                <th class="p-3 font-black">المبلغ + العمولة</th>
                                 <th class="p-3 font-black">الطريقة</th>
                                 <th class="p-3 rounded-tl-xl font-black text-center">الحالة</th>
                             </tr>
@@ -156,7 +154,7 @@
     <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = { 
@@ -182,7 +180,7 @@
         let allCustomers = {};
         let allOrders = [];
 
-        // Tab Switching Logic
+        // Tab Switching
         window.switchTab = function(tabName) {
             ['dashboard', 'merchants', 'customers', 'orders'].forEach(t => {
                 document.getElementById('tab-' + t).classList.add('hidden');
@@ -195,9 +193,7 @@
             setTimeout(() => activeTab.classList.add('fade-enter-active'), 50);
             document.getElementById('btnTab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
 
-            if(tabName === 'dashboard' && map) {
-                setTimeout(() => map.invalidateSize(), 100);
-            }
+            if(tabName === 'dashboard' && map) setTimeout(() => map.invalidateSize(), 100);
         };
 
         function initMap() {
@@ -207,8 +203,39 @@
             }
         }
 
+        // ================= ADMIN ACTIONS =================
+
+        window.deleteMerchant = function(phone) {
+            if(confirm("تحذير: هل أنت متأكد من حذف هذا المتجر نهائياً؟ لن يمكن التراجع عن هذا الإجراء.")) {
+                remove(ref(db, 'eqbad_merchants/merchant_' + phone)).then(() => alert('تم الحذف بنجاح.'));
+            }
+        };
+
+        window.toggleBlockMerchant = function(phone, currentStatus) {
+            const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
+            const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
+            if(confirm(`هل تريد ${actionText} هذا المتجر؟`)) {
+                update(ref(db, 'eqbad_merchants/merchant_' + phone), { status: newStatus });
+            }
+        };
+
+        window.deleteCustomer = function(phone) {
+            if(confirm("تحذير: هل أنت متأكد من حذف هذا العميل نهائياً؟ لن يمكن التراجع عن هذا الإجراء.")) {
+                remove(ref(db, 'eqbad_customers/customer_' + phone)).then(() => alert('تم الحذف بنجاح.'));
+            }
+        };
+
+        window.toggleBlockCustomer = function(phone, currentStatus) {
+            const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
+            const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
+            if(confirm(`هل تريد ${actionText} هذا العميل؟`)) {
+                update(ref(db, 'eqbad_customers/customer_' + phone), { status: newStatus });
+            }
+        };
+
+        // ================= RENDER LOGIC =================
+
         function updateDashboard() {
-            // Stats
             const merchCount = Object.keys(allMerchants).length;
             const custCount = Object.keys(allCustomers).length;
             const orderCount = allOrders.length;
@@ -223,48 +250,56 @@
             document.getElementById('statOrders').innerText = orderCount;
             document.getElementById('statTotalLiquidity').innerText = totalLiquidity.toLocaleString() + ' ج.م';
 
-            // Map Markers
             if(map) {
                 markers.forEach(m => map.removeLayer(m));
                 markers = [];
-                
                 const storeIcon = L.divIcon({ html: '<span style="font-size: 24px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">🏪</span>', className: 'bg-transparent', iconSize: [24, 24] });
                 
                 Object.values(allMerchants).forEach(m => {
-                    if(m.lat && m.lng) {
+                    if(m.lat && m.lng && m.status !== 'blocked') {
                         const marker = L.marker([m.lat, m.lng], { icon: storeIcon }).addTo(map)
                         .bindPopup(`<div class="text-center font-cairo">
                             <b class="text-[#7e122f]">${m.name}</b><br>
-                            <span class="text-xs text-slate-600">${m.phone}</span><br>
-                            <span class="text-[10px] font-bold">فودافون: ${m.balance_vodafone||0} ج</span><br>
-                            <span class="text-[10px] font-bold">إنستاباي: ${m.balance_instapay||0} ج</span>
+                            <span class="text-xs text-slate-600">${m.phone}</span>
                         </div>`);
                         markers.push(marker);
                     }
                 });
-                
-                if(markers.length > 0) {
-                    const group = new L.featureGroup(markers);
-                    map.fitBounds(group.getBounds().pad(0.1));
-                }
             }
         }
 
         function renderMerchantsTable() {
             let html = '';
             Object.values(allMerchants).forEach(m => {
-                // حساب عدد العمليات لكل تاجر
                 const mOrders = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
+                const isBlocked = m.status === 'blocked';
                 
+                const blockBtnText = isBlocked ? '✅ فك حظر' : '🚫 حظر';
+                const blockBtnClass = isBlocked ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
+                const nameBadge = isBlocked ? `<span class="bg-red-100 text-red-700 px-1 py-0.5 rounded text-[10px] mr-1">معلق 🚫</span>` : '';
+
                 html += `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="p-3 font-black text-slate-900">${m.name}</td>
-                    <td class="p-3 text-slate-600 font-bold" dir="ltr">${m.phone}</td>
-                    <td class="p-3 text-xs text-slate-500 max-w-[150px] truncate" title="${m.address}">${m.address}</td>
-                    <td class="p-3 font-black text-red-600">${parseFloat(m.balance_vodafone||0).toLocaleString()} ج</td>
-                    <td class="p-3 font-black text-purple-700">${parseFloat(m.balance_instapay||0).toLocaleString()} ج</td>
+                <tr class="hover:bg-slate-50 transition-colors ${isBlocked ? 'opacity-60 bg-slate-100' : ''}">
+                    <td class="p-3">
+                        <div class="font-black text-slate-900">${m.name} ${nameBadge}</div>
+                        <div class="text-xs text-slate-500 max-w-[150px] truncate" title="${m.address}">${m.address || 'بدون عنوان'}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="text-slate-900 font-bold" dir="ltr">${m.phone}</div>
+                        <div class="text-xs text-rose-600 font-black">السرّي: ${m.pin}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="text-[11px] font-bold text-red-600">فودافون: ${parseFloat(m.balance_vodafone||0).toLocaleString()} ج</div>
+                        <div class="text-[11px] font-bold text-purple-700">إنستا: ${parseFloat(m.balance_instapay||0).toLocaleString()} ج</div>
+                    </td>
                     <td class="p-3 font-black text-emerald-600">${m.commission_rate||0}%</td>
                     <td class="p-3 text-center font-black text-blue-600 bg-blue-50 rounded-lg m-1">${mOrders}</td>
+                    <td class="p-3">
+                        <div class="flex justify-center gap-1">
+                            <button onclick="window.toggleBlockMerchant('${m.phone}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
+                            <button onclick="window.deleteMerchant('${m.phone}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
+                        </div>
+                    </td>
                 </tr>`;
             });
             document.getElementById('tableMerchants').innerHTML = html;
@@ -274,14 +309,28 @@
             let html = '';
             Object.values(allCustomers).forEach(c => {
                 const cOrders = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
-                const d = new Date(c.createdAt);
+                const d = new Date(c.createdAt || Date.now());
+                const isBlocked = c.status === 'blocked';
                 
+                const blockBtnText = isBlocked ? '✅ فك حظر' : '🚫 حظر';
+                const blockBtnClass = isBlocked ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
+                const nameBadge = isBlocked ? `<span class="bg-red-100 text-red-700 px-1 py-0.5 rounded text-[10px] mr-1">معلق 🚫</span>` : '';
+
                 html += `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="p-3 font-black text-slate-900">${c.name}</td>
-                    <td class="p-3 text-slate-600 font-bold" dir="ltr">${c.phone}</td>
+                <tr class="hover:bg-slate-50 transition-colors ${isBlocked ? 'opacity-60 bg-slate-100' : ''}">
+                    <td class="p-3 font-black text-slate-900">${c.name} ${nameBadge}</td>
+                    <td class="p-3">
+                        <div class="text-slate-900 font-bold" dir="ltr">${c.phone}</div>
+                        <div class="text-xs text-rose-600 font-black">السرّي: ${c.pin}</div>
+                    </td>
                     <td class="p-3 text-xs text-slate-500">${d.toLocaleDateString('ar-EG')}</td>
                     <td class="p-3 text-center font-black text-emerald-600 bg-emerald-50 rounded-lg m-1">${cOrders}</td>
+                    <td class="p-3">
+                        <div class="flex justify-center gap-1">
+                            <button onclick="window.toggleBlockCustomer('${c.phone}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
+                            <button onclick="window.deleteCustomer('${c.phone}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
+                        </div>
+                    </td>
                 </tr>`;
             });
             document.getElementById('tableCustomers').innerHTML = html;
@@ -289,9 +338,7 @@
 
         function renderOrdersTable() {
             let html = '';
-            let compCount = 0;
-            let rejCount = 0;
-
+            let compCount = 0; let rejCount = 0;
             const sortedOrders = [...allOrders].sort((a, b) => (b.timestamp||0) - (a.timestamp||0));
 
             sortedOrders.forEach(o => {
@@ -304,23 +351,24 @@
                 else if(o.status === 'accepted') { statusBadge = '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold text-[10px]">مقبولة (جاري)</span>'; }
                 else { statusBadge = '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold text-[10px]">قيد الانتظار</span>'; }
 
-                const methodLabel = o.method === 'vodafone' ? '<span class="text-red-600 font-black text-xs">فودافون</span>' : '<span class="text-purple-700 font-black text-xs">إنستاباي</span>';
+                const methodLabel = o.method === 'vodafone' ? '<span class="text-red-600 font-black text-[11px]">فودافون</span>' : '<span class="text-purple-700 font-black text-[11px]">إنستاباي</span>';
 
                 html += `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="p-3 text-xs text-slate-500 font-bold whitespace-nowrap">${dStr}</td>
+                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                    <td class="p-3 text-[11px] text-slate-500 font-bold whitespace-nowrap">${dStr}</td>
                     <td class="p-3">
-                        <div class="font-black text-sm text-slate-800">${o.customer_name || 'بدون اسم'}</div>
+                        <div class="font-black text-xs text-slate-800">${o.customer_name || 'بدون اسم'}</div>
                         <div class="text-[10px] text-slate-500" dir="ltr">${o.customer_phone}</div>
                     </td>
                     <td class="p-3">
-                        <div class="font-black text-sm text-slate-800">${allMerchants[o.target_merchant]?.name || 'تاجر'}</div>
+                        <div class="font-black text-xs text-slate-800">${allMerchants[o.target_merchant]?.name || 'تاجر'}</div>
                         <div class="text-[10px] text-slate-500" dir="ltr">${o.target_merchant}</div>
                     </td>
-                    <td class="p-3 font-black text-slate-900">${o.amount} ج</td>
-                    <td class="p-3 font-black text-emerald-600">+${o.commission_amount||0} ج</td>
-                    <td class="p-3 font-black text-[#7e122f] bg-rose-50 rounded-lg m-1">${o.total_amount||o.amount} ج</td>
-                    <td class="p-3">${methodLabel}</td>
+                    <td class="p-3">
+                        <div class="font-black text-sm text-slate-900">${o.total_amount||o.amount} ج</div>
+                        <div class="text-[10px] text-emerald-600 font-bold">ربح التاجر: ${o.commission_amount||0} ج</div>
+                    </td>
+                    <td class="p-3 text-center">${methodLabel}</td>
                     <td class="p-3 text-center">${statusBadge}</td>
                 </tr>`;
             });
@@ -353,8 +401,8 @@
                 });
             }
             updateDashboard();
-            renderMerchantsTable(); // To update order counts per merchant
-            renderCustomersTable(); // To update order counts per customer
+            renderMerchantsTable(); 
+            renderCustomersTable(); 
             renderOrdersTable();
         });
 
