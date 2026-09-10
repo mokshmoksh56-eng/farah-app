@@ -756,12 +756,10 @@
         const db = getDatabase(app); 
         const auth = getAuth(app);
 
-        // ==== حفظ مراجع إلغاء الاشتراك لمنع المستمعين المكررة ====
         window._orderUnsub = null;
         window._merchantDataUnsub = null;
         window._authReady = false;
 
-        // ==== انتظر المصادقة قبل تحميل أي شيء ====
         onAuthStateChanged(auth, async (user) => {
             if (!user) return;
             if (window._authReady) return;
@@ -1013,7 +1011,6 @@
                     localStorage.setItem('eqbad_merchant_key', actualKey);
                     window.renderMerchantDashboard(snap.val());
                     window.listenToOrders();
-                    console.log("🏪 Merchant logged in:", phone, "key:", actualKey);
                 } else {
                     alert("عفواً، رقم الهاتف أو الرقم السري غير صحيح.");
                 }
@@ -1212,7 +1209,7 @@
             });
         };
 
-        // ================= REPORTS & PENDING (CUSTOMER & MERCHANT) =================
+        // ================= REPORTS & PENDING =================
         window.loadMerchantReports = function() {
             showView('merchantReportsView');
             const container = document.getElementById('reportsListContainer');
@@ -1360,9 +1357,29 @@
             }
         };
 
+        // دالة إلغاء الطلب مباشرة أثناء الانتظار في شاشة النتائج
+        window.cancelActiveOrder = function(reqKey, targetMerchantPhone) {
+            if(confirm("هل أنت متأكد من إلغاء هذا الطلب قبل موافقة التاجر؟")) {
+                update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() })
+                .then(() => {
+                    const actionDiv = document.getElementById('merchant-action-' + targetMerchantPhone);
+                    const statusBox = document.getElementById('customerStatusMsg');
+                    if(actionDiv) {
+                        actionDiv.className = "bg-slate-50 p-2 border-t border-slate-100 mt-auto";
+                        actionDiv.innerHTML = `<button onclick="window.searchMerchants(event)" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-xs py-2.5 rounded-xl shadow-xs">تم الإلغاء ❌ (ابحث مجدداً)</button>`;
+                    }
+                    if(statusBox) {
+                        statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-3 text-sm font-black shadow-xs";
+                        statusBox.innerHTML = "❌ تم إلغاء الطلب بنجاح.";
+                    }
+                })
+                .catch(err => alert("خطأ: " + err.message));
+            }
+        };
+
         // ================= SEARCH & ORDER =================
         window.searchMerchants = function(e) {
-            e.preventDefault();
+            if(e) e.preventDefault();
             const amount = parseFloat(document.getElementById('customerAmount').value);
             const method = document.querySelector('input[name="serviceMethod"]:checked').value;
             window.currentCustomerMethod = method;
@@ -1370,7 +1387,7 @@
             if(!window.finalCustLat) return alert("الرجاء تحديد موقعك من الخريطة أولاً.");
 
             const btn = document.getElementById('btnCustomerSearch');
-            btn.innerHTML = "⏳ جاري البحث..."; btn.disabled = true;
+            if(btn) { btn.innerHTML = "⏳ جاري البحث..."; btn.disabled = true; }
             
             get(ref(db, 'eqbad_merchants')).then(snap => {
                 let merchants = [];
@@ -1389,7 +1406,7 @@
                 }
                 merchants.sort((a,b) => a.distance === b.distance ? (a.commission_rate||0) - (b.commission_rate||0) : a.distance - b.distance);
                 showView('customerResultsView');
-                btn.innerHTML = "بحث عن أقرب تجار 🔍"; btn.disabled = false;
+                if(btn) { btn.innerHTML = "بحث عن أقرب تجار 🔍"; btn.disabled = false; }
 
                 setTimeout(() => {
                     if(!liveMerchantsMapInstance) {
@@ -1442,10 +1459,6 @@
 
         window.sendTargetedOrder = async function(merchantPhone, merchLat, merchLng, btnElement, commRate, reqAmount) {
             if(btnElement && btnElement.disabled) return; 
-            if(btnElement) { 
-                btnElement.disabled = true; 
-                btnElement.innerHTML = "⏳ جاري الإرسال..."; 
-            }
 
             const commAmount = (reqAmount * commRate) / 100;
             const statusBox = document.getElementById('customerStatusMsg');
@@ -1471,10 +1484,14 @@
                     timestamp: Date.now()
                 });
 
-                if(btnElement) {
-                    btnElement.innerHTML = "بانتظار التاجر ⏳";
-                    btnElement.classList.replace('btn-burgundy', 'bg-amber-500'); 
-                    btnElement.classList.add('text-white');
+                const actionDiv = document.getElementById('merchant-action-' + safeTargetMerchant);
+                if(actionDiv) {
+                    actionDiv.innerHTML = `
+                        <div class="space-y-1.5">
+                            <button disabled class="w-full bg-amber-500 text-white font-black text-[11px] sm:text-xs px-3 py-2 rounded-xl shadow-xs">بانتظار موافقة التاجر ⏳</button>
+                            <button onclick="window.cancelActiveOrder('${newReqRef.key}', '${safeTargetMerchant}')" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-[11px] sm:text-xs px-3 py-1.5 rounded-xl active:scale-95 shadow-xs">إلغاء الطلب ❌</button>
+                        </div>
+                    `;
                 }
                 
                 statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs transition-colors duration-300";
@@ -1484,36 +1501,33 @@
                     try {
                         if(snap.exists()) {
                             const ord = snap.val();
-                            const actionDiv = document.getElementById('merchant-action-' + safeTargetMerchant);
+                            const actionDivTarget = document.getElementById('merchant-action-' + safeTargetMerchant);
                             
                             if(ord.status === 'accepted') {
                                 statusBox.className = "text-center p-3 rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 mb-2 text-sm font-black shadow-md";
                                 statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
-                                if(actionDiv) {
+                                if(actionDivTarget) {
                                     const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
                                     const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount} ج.م شامل العمولة عبر تطبيق وصلني كاش.`);
-                                    actionDiv.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
-                                    actionDiv.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
+                                    actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
+                                    actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
                                 }
                             } else if(ord.status === 'rejected') {
-                                statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm";
-                                statusBox.innerHTML = "❌ التاجر رفض الطلب. يرجى طلب تاجر آخر.";
-                                if(actionDiv) actionDiv.innerHTML = `<div class="text-center text-rose-600 font-bold text-xs py-1">مرفوض ❌</div>`;
+                                if(actionDivTarget && !actionDivTarget.innerHTML.includes("تم الإلغاء")) {
+                                    statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm";
+                                    statusBox.innerHTML = "❌ تم إلغاء أو رفض الطلب.";
+                                    actionDivTarget.innerHTML = `<div class="text-center text-rose-600 font-bold text-xs py-1">ملغي / مرفوض ❌</div>`;
+                                }
                             } else if(ord.status === 'completed') {
                                 statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md";
                                 statusBox.innerHTML = "✨ تم استلام الكاش بنجاح! شكراً لك.";
-                                if(actionDiv) actionDiv.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">عملية مكتملة ✔️</div>`;
+                                if(actionDivTarget) actionDivTarget.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">عملية مكتملة ✔️</div>`;
                             }
                         }
                     } catch(err) { console.error("customer order watch error:", err); }
                 });
             } catch(err) {
                 alert("تعذر إرسال الطلب: " + err.message);
-                if(btnElement) { 
-                    btnElement.disabled = false; 
-                    btnElement.innerHTML = `إعادة الإرسال 🔄`; 
-                    btnElement.classList.replace('bg-amber-500', 'btn-burgundy');
-                }
             }
         };
     </script>
