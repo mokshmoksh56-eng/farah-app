@@ -606,7 +606,17 @@
         };
 
         function locateMeOnCustomerMap() {
+            if (!confirm("هل ترغب في تحديد موقعك الحالي باستخدام الـ GPS؟")) return;
             if (!navigator.geolocation) return alert("متصفحك لا يدعم تحديد الموقع.");
+            
+            const btn = document.querySelector('#liveMerchantsMapWrapper .btn-locate-map');
+            let originalText = "";
+            if (btn) {
+                originalText = btn.innerHTML;
+                btn.innerHTML = "⏳ جاري التحديد...";
+                btn.disabled = true;
+            }
+
             navigator.geolocation.getCurrentPosition(pos => {
                 const lat = pos.coords.latitude, lng = pos.coords.longitude;
                 if (liveMerchantsMapInstance) {
@@ -617,11 +627,20 @@
                     } else { customerLiveMarker.setLatLng([lat, lng]); }
                     customerLiveMarker.bindPopup("<b>أنت هنا الآن 📍</b>").openPopup();
                 }
-            }, () => alert("يرجى التأكد من تشغيل الـ GPS ومنح الإذن للمتصفح."), { enableHighAccuracy: true });
+                if (btn) {
+                    btn.innerHTML = "✅ تم التحديد";
+                    setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+                }
+                alert("✅ تم تحديد موقعك بنجاح!");
+            }, () => {
+                alert("يرجى التأكد من تشغيل الـ GPS ومنح الإذن للمتصفح.");
+                if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
+            }, { enableHighAccuracy: true });
         }
         window.locateMeOnCustomerMap = locateMeOnCustomerMap;
 
         function locateMeOnMerchantMap() {
+            if (!confirm("هل أنت متأكد من تحديث موقع المتجر إلى مكانك الحالي باستخدام الـ GPS؟")) return;
             if (!navigator.geolocation) return alert("متصفحك لا يدعم تحديد الموقع.");
             
             const btn = document.querySelector('#merchantStoreMapWrapper .btn-locate-map');
@@ -643,6 +662,7 @@
                 if(window.saveMerchantGps) window.saveMerchantGps(lat, lng);
                 
                 btn.innerHTML = "✅ تم الحفظ بنجاح";
+                alert("✅ تم تحديد وحفظ موقع المتجر بنجاح!");
                 setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
             }, () => {
                 alert("يرجى التأكد من تشغيل الـ GPS ومنح الإذن للمتصفح.");
@@ -652,6 +672,7 @@
         window.locateMeOnMerchantMap = locateMeOnMerchantMap;
 
         function goToMyLocationOnMap() {
+            if (!confirm("هل ترغب في تحديد موقعك الحالي باستخدام الـ GPS؟")) return;
             if (navigator.geolocation) {
                 document.getElementById('mapAddressPreview').innerHTML = "⏳ جاري تحديد موقعك الحالي (GPS)...";
                 navigator.geolocation.getCurrentPosition(pos => {
@@ -659,6 +680,7 @@
                     mapInstance.setView([lat, lng], 16); 
                     mapMarker.setLatLng([lat, lng]); 
                     updateMapAddress(lat, lng);
+                    alert("✅ تم تحديد موقعك على الخريطة بنجاح!");
                 }, () => alert("يرجى التأكد من تشغيل الـ GPS والسماح بالوصول للموقع."), { enableHighAccuracy: true });
             } else { alert("خاصية تحديد الموقع غير مدعومة في متصفحك."); }
         }
@@ -1909,22 +1931,7 @@
                             } else if(ord.status === 'completed') {
                                 statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md";
                                 statusBox.innerHTML = "✨ تم إتمام العملية بنجاح! شكراً لك.";
-                                if(actionDivTarget) {
-                                    if(!ord.rated) {
-                                        actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
-                                        actionDivTarget.innerHTML = `
-                                            <div class="text-center text-emerald-800 font-black text-xs py-1 mb-2">✨ العملية اكتملت بنجاح! تقييمك للتاجر؟</div>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <button onclick="window.rateMerchant('${ord.target_merchant}', '${newReqRef.key}', 5)" class="text-xs py-2 bg-white text-emerald-700 rounded-xl border-2 border-emerald-200 hover:bg-emerald-100 font-black shadow-sm transition-all active:scale-95">😍 خدمة ممتازة</button>
-                                                <button onclick="window.rateMerchant('${ord.target_merchant}', '${newReqRef.key}', 4)" class="text-xs py-2 bg-white text-blue-700 rounded-xl border-2 border-blue-200 hover:bg-blue-100 font-black shadow-sm transition-all active:scale-95">😊 جيدة جداً</button>
-                                                <button onclick="window.rateMerchant('${ord.target_merchant}', '${newReqRef.key}', 3)" class="text-xs py-2 bg-white text-amber-700 rounded-xl border-2 border-amber-200 hover:bg-amber-100 font-black shadow-sm transition-all active:scale-95">🙂 جيدة</button>
-                                                <button onclick="window.rateMerchant('${ord.target_merchant}', '${newReqRef.key}', 1)" class="text-xs py-2 bg-white text-rose-700 rounded-xl border-2 border-rose-200 hover:bg-rose-100 font-black shadow-sm transition-all active:scale-95">😞 ليست جيدة</button>
-                                            </div>`;
-                                    } else {
-                                        actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
-                                        actionDivTarget.innerHTML = `<div class="text-center text-emerald-700 font-black text-sm py-2">تمت العملية وتقييم التاجر بنجاح ✔️ شكرًا لك!</div>`;
-                                    }
-                                }
+                                if(actionDivTarget) actionDivTarget.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">عملية مكتملة ✔️</div>`;
                             }
                         }
                     } catch(err) { console.error("customer order watch error:", err); }
