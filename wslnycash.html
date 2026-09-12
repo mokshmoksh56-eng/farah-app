@@ -56,7 +56,7 @@
                 <div class="w-14 h-14 bg-rose-50 text-[#7e122f] rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">🏃‍♂️</div>
                 <div class="text-right flex-1">
                     <h3 class="text-lg sm:text-xl font-black text-slate-900">أنا عميل (مستخدم)</h3>
-                    <p class="text-sm text-slate-500 font-bold mt-1">محتاج سيولة نقدية أو تحويل رقمي في مكاني</p>
+                    <p class="text-sm text-slate-500 font-bold mt-1">محتاج سيولة نقدية أو تحويل فودافون كاش/إنستاباي</p>
                 </div>
             </button>
             <button onclick="showView('merchantLoginView')" class="w-full group bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 hover:border-[#7e122f] rounded-2xl p-5 flex items-center gap-4 transition-all active:scale-95 shadow-xs">
@@ -148,7 +148,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-black text-slate-900 mb-1.5">طريقة الدفع / الاستلام الرقمية</label>
+                    <label class="block text-sm font-black text-slate-900 mb-1.5">طريقة الدفع / الاستلام (فودافون كاش أو إنستاباي)</label>
                     <div class="grid grid-cols-2 gap-3">
                         <label id="lbl-method-vf" class="relative flex items-center justify-center gap-2 p-3 rounded-2xl border-2 transition-all active:scale-95 cursor-pointer shadow-sm border-red-500 bg-red-50 text-red-900">
                             <input type="radio" name="serviceMethod" value="vodafone" checked class="hidden" onchange="window.updateCustomerTheme('vodafone')">
@@ -1090,10 +1090,8 @@
             }
         };
 
-        // ========== تعديل الأمان الذي يمنع رسالة Permission Denied ==========
         onAuthStateChanged(auth, async (user) => {
             if (!user) {
-                // إذا لم يكن الهاتف مسجل دخول، قم بتسجيله مخفياً فوراً ليتمكن من الاتصال بالقاعدة
                 signInAnonymously(auth).catch(err => {
                     console.error("Auth Error:", err);
                     alert("يرجى تفعيل Anonymous Sign-in من لوحة تحكم Firebase");
@@ -1145,7 +1143,6 @@
                 showView('roleView');
             }
         });
-        // =====================================================================
 
         window.registerCustomer = async function(e) {
             e.preventDefault();
@@ -1452,14 +1449,15 @@
                 const m = snap.val();
                 const field = (method === 'vodafone') ? 'balance_vodafone' : 'balance_instapay';
                 const currentBalance = parseFloat(m[field]) || 0;
-
+                
+                const methodName = (method === 'vodafone') ? 'فودافون كاش' : 'إنستاباي';
                 const isCashIn = (txType === 'cash_in');
 
-                if(isCashIn && numAmount > currentBalance) return alert(`رصيدك الرقمي لا يكفي لتحويل هذا المبلغ للعميل.`);
+                if(isCashIn && numAmount > currentBalance) return alert(`رصيدك في ${methodName} لا يكفي لتحويل هذا المبلغ للعميل.`);
                 
                 let confirmMsg = isCashIn 
-                    ? `تأكيد استلامك الكاش وتحويل ${window.numEN(numAmount)} ج.م رقمياً للعميل (سيتم خصمها من رصيدك)؟`
-                    : `تأكيد استلامك تحويل العميل وتسليمه ${window.numEN(numAmount)} ج.م كاش (سيتم إضافتها لرصيدك الرقمي)؟`;
+                    ? `تأكيد استلامك الكاش وتحويل ${window.numEN(numAmount)} ج.م عبر ${methodName} للعميل (سيتم خصمها من رصيدك)؟`
+                    : `تأكيد استلامك تحويل العميل وتسليمه ${window.numEN(numAmount)} ج.م كاش (سيتم إضافتها لرصيدك في ${methodName})؟`;
 
                 if(confirm(confirmMsg)) {
                     let newBalance = isCashIn ? (currentBalance - numAmount) : (currentBalance + numTotal);
@@ -1530,6 +1528,7 @@
                                 activeCount++;
 
                                 const isVf = req.method === 'vodafone';
+                                const methodName = isVf ? 'فودافون كاش' : 'إنستاباي';
                                 const badgeStyle = isVf ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-800 border-purple-200';
                                 const totalTransfer = req.total_amount || req.amount;
                                 const isCashOut = req.transaction_type === 'cash_out' || !req.transaction_type; 
@@ -1540,8 +1539,8 @@
                                     
                                     const notifIcon = isVf ? "1572113.jpg" : "2537130_0.png";
                                     const notifTitle = isCashOut 
-                                        ? `💵 طلب سيولة كاش (${isVf ? 'فودافون' : 'إنستاباي'})` 
-                                        : `📱 طلب تحويل رصيد (${isVf ? 'فودافون' : 'إنستاباي'})`;
+                                        ? `💵 طلب سيولة كاش (${methodName})` 
+                                        : `📱 طلب تحويل رصيد (${methodName})`;
                                     const notifBody = `العميل: ${req.customer_name || 'عميل'}\nالمبلغ الأساسي: ${window.numEN(req.amount)} ج.م\nالإجمالي المطلوب: ${window.numEN(totalTransfer)} ج.م`;
 
                                     try {
@@ -1559,7 +1558,7 @@
                                     ? `<div class="bg-emerald-50 text-emerald-900 border-2 border-emerald-400 p-2.5 rounded-xl font-black text-center mb-2 shadow-sm">
                                            <div class="text-sm mb-2">💵 العميل يطلب سيولة كاش</div>
                                            <div class="flex flex-col gap-1.5 text-xs">
-                                               <div class="bg-slate-50 px-2 py-1.5 rounded-lg border border-emerald-200">العميل سيُحول لك رقمياً: <span class="text-emerald-700 text-sm">${window.fmtNum(totalTransfer)} ج</span></div>
+                                               <div class="bg-slate-50 px-2 py-1.5 rounded-lg border border-emerald-200">العميل سيُحول لك عبر ${methodName}: <span class="text-emerald-700 text-sm">${window.fmtNum(totalTransfer)} ج</span></div>
                                                <div class="text-emerald-600 font-extrabold">⬇️ إذن مطلوب منك ⬇️</div>
                                                <div class="bg-emerald-600 text-white px-2 py-2 rounded-lg text-sm">تسليم العميل كاش: <span class="text-yellow-300 text-lg">${window.fmtNum(req.amount)} ج</span></div>
                                            </div>
@@ -1583,7 +1582,7 @@
                                             <b class="text-slate-900 en-num" dir="ltr">${req.customer_phone}</b>
                                         </div>
                                         <span class="${badgeStyle} px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1.5">
-                                            ${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${isVf ? 'فودافون' : 'إنستاباي'}
+                                            ${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${methodName}
                                         </span>
                                     </div>
                                     <p class="text-xs text-slate-600 truncate bg-slate-100 p-2 rounded-xl border border-slate-300">📍 ${req.address}</p>
@@ -1718,6 +1717,7 @@
                     const dateStr = dateObj.toLocaleDateString('en-GB');
                     const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                     const isVf = ord.method === 'vodafone';
+                    const methodName = isVf ? 'فودافون' : 'إنستاباي';
                     const methodColor = isVf ? 'text-red-600' : 'text-purple-700';
                     const methodBadge = isVf 
                         ? `<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-200 text-[10px] font-black">${VODAFONE_LOGO_ICON} فودافون</span>`
@@ -1804,6 +1804,7 @@
 
                 container.innerHTML = records.map(ord => {
                     const isVf = ord.method === 'vodafone';
+                    const methodName = isVf ? 'فودافون كاش' : 'إنستاباي';
                     const isPending = ord.status === 'pending';
                     const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
 
@@ -1818,8 +1819,8 @@
                         const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
                         const waMsg = encodeURIComponent(
                             isCashOut 
-                            ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك رقمياً، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)`
-                            : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي رقمياً. (تطبيق وصلني كاش)`
+                            ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك عبر ${methodName}، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)`
+                            : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي عبر ${methodName}. (تطبيق وصلني كاش)`
                         );
                         actionHtml = `
                         <div class="space-y-1.5 pt-1 border-t border-slate-200 mt-2">
@@ -1833,10 +1834,10 @@
 
                     const amountDetailsHtml = isCashOut
                         ? `<div class="bg-slate-100 border border-slate-200 p-2 rounded-xl text-center text-xs font-black mt-2 mb-2">
-                               سأُحول للتاجر: <span class="text-rose-600">${window.fmtNum(ord.total_amount || ord.amount)} ج</span> ➔ أستلم كاش: <span class="text-emerald-600">${window.fmtNum(ord.amount)} ج</span>
+                               سأُحول للتاجر عبر ${methodName}: <span class="text-rose-600">${window.fmtNum(ord.total_amount || ord.amount)} ج</span> ➔ أستلم كاش: <span class="text-emerald-600">${window.fmtNum(ord.amount)} ج</span>
                            </div>`
                         : `<div class="bg-slate-100 border border-slate-200 p-2 rounded-xl text-center text-xs font-black mt-2 mb-2">
-                               سأدفع للتاجر كاش: <span class="text-emerald-600">${window.fmtNum(ord.total_amount || ord.amount)} ج</span> ➔ يُحول لي رصيد: <span class="text-rose-600">${window.fmtNum(ord.amount)} ج</span>
+                               سأدفع للتاجر كاش: <span class="text-emerald-600">${window.fmtNum(ord.total_amount || ord.amount)} ج</span> ➔ يُحول لي عبر ${methodName}: <span class="text-rose-600">${window.fmtNum(ord.amount)} ج</span>
                            </div>`;
 
                     return `
@@ -1954,6 +1955,7 @@
                     customerLiveMarker = L.marker([window.finalCustLat, window.finalCustLng], { icon: L.divIcon({ html: '<span style="font-size: 26px;">🏃‍♂️</span>', className: 'text-2xl', iconSize: [28, 28] }) }).addTo(liveMerchantsMapInstance);
                     const merchIcon = L.divIcon({ html: '<span style="font-size: 26px;">🏪</span>', className: 'text-2xl', iconSize: [28, 28] });
                     const isVf = method === 'vodafone';
+                    const methodName = isVf ? 'فودافون كاش' : 'إنستاباي';
                     
                     if(merchants.length === 0) {
                         document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs";
@@ -1985,12 +1987,12 @@
                             
                             const actionBtnText = txType === 'cash_out' 
                                 ? `<div class="flex flex-col items-center w-full">
-                                     <span class="text-[11px] sm:text-xs text-white/90 mb-0.5 font-bold">سأُحول لك ${window.fmtNum(totalToTransfer)} ج (رقمياً)</span>
+                                     <span class="text-[11px] sm:text-xs text-white/90 mb-0.5 font-bold">سأُحول لك ${window.fmtNum(totalToTransfer)} ج (${methodName})</span>
                                      <span class="text-sm sm:text-base font-black">➔ وتعطيني <span class="text-yellow-300 text-lg">${window.fmtNum(amount)} ج</span> (كاش)</span>
                                    </div>`
                                 : `<div class="flex flex-col items-center w-full">
                                      <span class="text-[11px] sm:text-xs text-white/90 mb-0.5 font-bold">سأدفع لك ${window.fmtNum(totalToTransfer)} ج (كاش)</span>
-                                     <span class="text-sm sm:text-base font-black">➔ وتُحول لي <span class="text-yellow-300 text-lg">${window.fmtNum(amount)} ج</span> (رقمياً)</span>
+                                     <span class="text-sm sm:text-base font-black">➔ وتُحول لي <span class="text-yellow-300 text-lg">${window.fmtNum(amount)} ج</span> (${methodName})</span>
                                    </div>`;
 
                             listHTML += `
@@ -2079,10 +2081,12 @@
                                 if(actionDivTarget) {
                                     const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
                                     const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
+                                    const isVf = ord.method === 'vodafone';
+                                    const methodName = isVf ? 'فودافون كاش' : 'إنستاباي';
                                     const waMsg = encodeURIComponent(
                                         isCashOut 
-                                        ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك رقمياً، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)`
-                                        : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي رقمياً. (تطبيق وصلني كاش)`
+                                        ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك عبر ${methodName}، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)`
+                                        : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي عبر ${methodName}. (تطبيق وصلني كاش)`
                                     );
                                     actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
                                     actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
