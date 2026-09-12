@@ -1090,8 +1090,16 @@
             }
         };
 
+        // ========== تعديل الأمان الذي يمنع رسالة Permission Denied ==========
         onAuthStateChanged(auth, async (user) => {
-            if (!user) return;
+            if (!user) {
+                // إذا لم يكن الهاتف مسجل دخول، قم بتسجيله مخفياً فوراً ليتمكن من الاتصال بالقاعدة
+                signInAnonymously(auth).catch(err => {
+                    console.error("Auth Error:", err);
+                    alert("يرجى تفعيل Anonymous Sign-in من لوحة تحكم Firebase");
+                });
+                return;
+            }
             if (window._authReady) return;
             window._authReady = true;
 
@@ -1137,6 +1145,7 @@
                 showView('roleView');
             }
         });
+        // =====================================================================
 
         window.registerCustomer = async function(e) {
             e.preventDefault();
@@ -1844,6 +1853,8 @@
                         ${actionHtml}
                     </div>`;
                 }).join('');
+            }, (err) => {
+                container.innerHTML = `<div class="text-center py-10 text-rose-500 font-black">حدث خطأ أثناء جلب الطلبات: ${err.message}</div>`;
             });
         };
 
