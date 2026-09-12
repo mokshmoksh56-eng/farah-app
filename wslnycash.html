@@ -136,17 +136,6 @@
                 </div>
             </div>
             
-            <!-- التنبيه الأمني الأول -->
-            <div class="bg-amber-50 border-2 border-amber-400 p-3.5 rounded-2xl mb-4 shadow-sm flex items-start gap-3">
-                <div class="text-2xl shrink-0 mt-0.5 animate-pulse">🛡️</div>
-                <div>
-                    <h4 class="text-sm font-black text-amber-900 mb-1">تنبيه لضمان سلامتك</h4>
-                    <p class="text-xs font-bold text-amber-800 leading-relaxed">
-                        يرجى التعامل <span class="font-black text-red-600 underline">حصرياً داخل المحلات التجارية المعتمدة</span>. يمنع تماماً التعامل مع الأفراد أو تسليم/تحويل الأموال في الشارع.
-                    </p>
-                </div>
-            </div>
-            
             <form onsubmit="window.searchMerchants(event)" class="space-y-4 border-b border-slate-200 pb-4 mb-4">
                 <div class="mb-2">
                     <label class="block text-sm font-black text-slate-900 mb-2">ماذا تريد أن تفعل؟</label>
@@ -207,17 +196,6 @@
                 <button type="button" onclick="showView('customerView')" class="text-xs bg-slate-200 text-[#7e122f] border border-slate-300 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-300 shadow-sm">تعديل البحث</button>
             </div>
             <div id="customerStatusMsg" class="text-center p-3 rounded-2xl bg-slate-50 border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0 transition-colors duration-300">جاري فحص المسافات والسيولة المتاحة...</div>
-            
-            <!-- التنبيه الأمني الثاني -->
-            <div class="bg-amber-50 border-2 border-amber-400 p-3 rounded-2xl mb-3 shadow-sm flex items-start gap-2 shrink-0">
-                <div class="text-xl shrink-0">🛡️</div>
-                <div>
-                    <p class="text-[11px] font-bold text-amber-800 leading-relaxed">
-                        تعامل <span class="font-black text-red-600">فقط داخل المحلات</span> الموضحة على الخريطة ولا تتعامل مع أشخاص مجهولين في الشارع.
-                    </p>
-                </div>
-            </div>
-
             <div id="liveMerchantsMapWrapper" class="h-40 w-full rounded-2xl overflow-hidden border-2 border-slate-300 shadow-sm relative z-0 mb-3 shrink-0">
                 <button type="button" onclick="toggleMapFullscreen('liveMerchantsMapWrapper', this)" class="absolute top-2.5 left-2.5 z-[1000] bg-slate-50 text-[#7e122f] border border-rose-200 px-3 py-1 rounded-xl shadow-md font-black text-xs flex items-center gap-1 active:scale-95"><span>⛶</span> <span class="fs-text">شاشة كاملة</span></button>
                 <div id="liveMerchantsMap" class="w-full h-full"></div>
@@ -2062,6 +2040,30 @@
             });
         };
 
+        window.drawMapboxRoute = function(startLat, startLng, endLat, endLng) {
+            if (!liveMerchantsMapInstance) return;
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+            fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if(data.routes && data.routes.length > 0) {
+                    const route = data.routes[0].geometry;
+                    if(window.currentRouteLayer) {
+                        liveMerchantsMapInstance.removeLayer(window.currentRouteLayer);
+                    }
+                    window.currentRouteLayer = L.geoJSON(route, {
+                        style: { color: '#2563eb', weight: 5, opacity: 0.8 }
+                    }).addTo(liveMerchantsMapInstance);
+                    liveMerchantsMapInstance.fitBounds(window.currentRouteLayer.getBounds(), { padding: [30, 30] });
+                    const mapWrapper = document.getElementById('liveMerchantsMapWrapper');
+                    if(mapWrapper) mapWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    alert("لم يتم العثور على مسار متاح.");
+                }
+            })
+            .catch(err => alert("حدث خطأ أثناء رسم المسار: " + err.message));
+        };
+        
         window.sendTargetedOrder = async function(merchantPhone, merchantName, merchLat, merchLng, btnElement, commRate, reqAmount) {
             if(btnElement && btnElement.disabled) return; 
 
@@ -2122,7 +2124,7 @@
                                         : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي رقمياً. (تطبيق وصلني كاش)`
                                     );
                                     actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
-                                    actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
+                                    actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><button type="button" onclick="window.drawMapboxRoute(${window.finalCustLat}, ${window.finalCustLng}, ${merchLat}, ${merchLng})" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</button></div>`;
                                 }
                             } else if(ord.status === 'rejected') {
                                 if(actionDivTarget && !actionDivTarget.innerHTML.includes("تم الإلغاء")) {
