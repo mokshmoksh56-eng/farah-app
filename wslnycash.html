@@ -16,8 +16,8 @@
             --burgundy-light: #9c1c3f;
         }
         * { font-weight: bold; font-family: 'Cairo', sans-serif; }
-        body { font-family: 'Cairo', sans-serif; font-weight: bold; overflow-x: hidden; color: #0f172a; font-size: 16px; background-color: #ffffff; }
-        .main-card { background: #ffffff; border: 2px solid #e2e8f0; box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.08); }
+        body { font-family: 'Cairo', sans-serif; font-weight: bold; overflow-x: hidden; color: #0f172a; font-size: 16px; background-color: #ffffff; transition: background-color 0.3s, color 0.3s; }
+        .main-card { background: #ffffff; border: 2px solid #e2e8f0; box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.08); transition: background-color 0.3s, border-color 0.3s; }
         .btn-burgundy { background: linear-gradient(135deg, var(--burgundy-main) 0%, var(--burgundy-dark) 100%); color: white; transition: all 0.25s ease; }
         .btn-burgundy:hover { background: linear-gradient(135deg, var(--burgundy-light) 0%, var(--burgundy-main) 100%); box-shadow: 0 8px 18px -4px rgba(126, 18, 47, 0.35); }
         .btn-burgundy:disabled { background: #94a3b8 !important; box-shadow: none !important; cursor: not-allowed; transform: none !important; }
@@ -332,9 +332,6 @@
                 </span>
             </div>
 
-            <!-- زر الإعدادات والتقارير الجديد -->
-            <button type="button" onclick="showView('merchantSettingsView')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-black py-3 rounded-xl shadow-md active:scale-95 text-sm mb-4 flex justify-center items-center gap-2 transition-all"><span>⚙️</span> إعدادات المتجر والتقارير</button>
-
             <!-- زر التحكم الرئيسي في الظهور للعملاء مدمج مع الحالة -->
             <div class="bg-white border-2 border-slate-200 p-2 rounded-2xl mb-4 flex items-center justify-between shadow-xs">
                 <div id="merchantVisibilityText" class="text-[10px] sm:text-xs font-black text-slate-700 flex-1 flex items-center gap-1.5 pr-1">
@@ -384,6 +381,58 @@
                 </button>
             </div>
 
+            <!-- إدارة الأرصدة والحدود (مدمجة هنا لتوفير المساحة) -->
+            <div class="mb-4">
+                <button type="button" onclick="document.getElementById('financesPanel').classList.toggle('hidden')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-black py-3.5 rounded-2xl shadow-md active:scale-95 text-sm flex justify-between items-center px-4 transition-all">
+                    <span class="flex items-center gap-2"><span class="text-xl">💰</span> إدارة الأرصدة وحدود الاستقبال</span>
+                    <span class="text-xs bg-slate-700 px-2 py-1 rounded-lg">فتح / إغلاق</span>
+                </button>
+                
+                <div id="financesPanel" class="hidden mt-2 bg-white border-2 border-slate-200 p-4 rounded-2xl shadow-sm space-y-5">
+                    <!-- تحديث الرصيد -->
+                    <div>
+                        <h4 class="text-xs font-black text-slate-500 mb-2 flex items-center gap-1"><span>1️⃣</span> تحديث رصيد السيولة الحالي:</h4>
+                        <div class="flex gap-2 mb-2">
+                            <select id="updateBalanceType" class="w-1/2 px-2 py-2 bg-slate-50 border-2 border-slate-200 text-xs sm:text-sm font-black rounded-xl outline-none focus:border-[#7e122f]">
+                                <option value="vodafone" class="text-red-700 font-bold">فودافون كاش</option>
+                                <option value="instapay" class="text-purple-800 font-bold">إنستاباي</option>
+                            </select>
+                            <input type="number" id="updateBalanceInput" inputmode="numeric" pattern="[0-9]*" placeholder="الرصيد الجديد..." class="w-1/2 px-2 py-2 bg-slate-50 border-2 border-slate-200 focus:border-[#7e122f] rounded-xl text-base tracking-widest font-black text-slate-950 outline-none text-center" dir="ltr">
+                        </div>
+                        <button type="button" onclick="window.updateMerchantBalance()" class="w-full bg-blue-50 text-blue-700 border border-blue-200 font-black py-2.5 rounded-xl shadow-xs active:scale-95 text-xs hover:bg-blue-100 transition-colors">حفظ الرصيد الجديد 💾</button>
+                    </div>
+                    
+                    <hr class="border-slate-100">
+
+                    <!-- حدود الاستقبال -->
+                    <div>
+                        <h4 class="text-xs font-black text-slate-500 mb-2 flex items-center gap-1"><span>2️⃣</span> حدود استقبال الطلبات للعملاء:</h4>
+                        
+                        <!-- Vodafone Limits -->
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-10 text-center font-black text-[11px] text-red-600 bg-red-50 py-2 rounded-lg border border-red-100 shadow-sm">V.F</span>
+                            <input type="number" id="settingMinVf" placeholder="من" class="w-1/2 px-2 py-2.5 bg-slate-50 border border-red-200 rounded-xl text-lg tracking-widest font-black text-center focus:border-red-500 outline-none" dir="ltr">
+                            <span class="text-slate-300 font-black">-</span>
+                            <input type="number" id="settingMaxVf" placeholder="إلى" class="w-1/2 px-2 py-2.5 bg-slate-50 border border-red-200 rounded-xl text-lg tracking-widest font-black text-center focus:border-red-500 outline-none" dir="ltr">
+                        </div>
+                        
+                        <!-- Instapay Limits -->
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="w-10 text-center font-black text-[11px] text-purple-700 bg-purple-50 py-2 rounded-lg border border-purple-100 shadow-sm">I.P</span>
+                            <input type="number" id="settingMinIp" placeholder="من" class="w-1/2 px-2 py-2.5 bg-slate-50 border border-purple-200 rounded-xl text-lg tracking-widest font-black text-center focus:border-purple-500 outline-none" dir="ltr">
+                            <span class="text-slate-300 font-black">-</span>
+                            <input type="number" id="settingMaxIp" placeholder="إلى" class="w-1/2 px-2 py-2.5 bg-slate-50 border border-purple-200 rounded-xl text-lg tracking-widest font-black text-center focus:border-purple-500 outline-none" dir="ltr">
+                        </div>
+                        <button type="button" onclick="window.updateMerchantLimits()" class="w-full bg-blue-50 text-blue-700 border border-blue-200 font-black py-2.5 rounded-xl shadow-xs active:scale-95 text-xs hover:bg-blue-100 transition-colors">حفظ حدود الاستقبال 💾</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- زر فتح التقارير وسجل العمليات -->
+            <button type="button" onclick="window.loadMerchantReports()" class="w-full bg-slate-50 border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-black py-3.5 rounded-2xl shadow-sm active:scale-95 text-sm flex justify-center items-center gap-2 transition-colors mb-4">
+                <span class="text-xl">📊</span> سجل العمليات والتقارير
+            </button>
+
             <div class="mb-3">
                 <p class="text-xs sm:text-sm font-black text-[#4a0718] mb-1 flex items-center gap-1"><span>📍</span> موقع المحل على الخريطة:</p>
                 <div id="merchantStoreMapWrapper" class="h-36 w-full rounded-2xl overflow-hidden border-2 border-slate-200 shadow-xs relative z-0">
@@ -391,17 +440,6 @@
                     <button type="button" onclick="locateMeOnMerchantMap()" class="btn-locate-map text-xs py-1.5 px-2.5 bottom-2 right-2"><span>🎯</span> أين مكاني</button>
                     <div id="merchantStoreMap" class="w-full h-full"></div>
                 </div>
-            </div>
-
-            <div class="bg-white border-2 border-slate-200 p-3 rounded-2xl mb-4 space-y-2 shadow-xs">
-                <div class="flex gap-2.5">
-                    <select id="updateBalanceType" class="w-1/2 px-3 py-2 bg-white border-2 border-slate-200 text-xs sm:text-sm font-black rounded-xl outline-none focus:border-[#7e122f]">
-                        <option value="vodafone" class="text-red-700 font-bold">فودافون كاش</option>
-                        <option value="instapay" class="text-purple-800 font-bold">إنستاباي</option>
-                    </select>
-                    <input type="number" id="updateBalanceInput" inputmode="numeric" pattern="[0-9]*" placeholder="الرصيد الجديد..." class="w-1/2 px-3 py-2 bg-white border-2 border-slate-200 focus:border-[#7e122f] rounded-xl text-sm font-black text-slate-950 outline-none">
-                </div>
-                <button onclick="window.updateMerchantBalance()" class="w-full btn-burgundy py-2.5 rounded-xl font-black text-sm shadow-xs active:scale-95">تحديث رصيد السيولة 💾</button>
             </div>
 
             <div>
@@ -415,75 +453,11 @@
             </div>
         </div>
 
-        <!-- واجهة إعدادات التاجر والتقارير الجديدة -->
-        <div id="merchantSettingsView" class="fade-enter flex flex-col h-full flex-1">
-            <div class="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
-                <h2 class="text-xl font-black text-[#4a0718]">الإعدادات والتقارير ⚙️</h2>
-                <button type="button" onclick="showView('merchantDashboardView')" class="text-xs bg-slate-100 text-[#7e122f] px-4 py-2 rounded-xl font-bold shadow-sm active:scale-95">عودة للوحة</button>
-            </div>
-            
-            <!-- إعدادات الحد الأدنى والأقصى للتحويل -->
-            <div class="bg-white border-2 border-slate-200 p-4 rounded-2xl mb-6 shadow-sm">
-                <div class="flex items-center gap-2 mb-4 border-b border-slate-100 pb-2">
-                    <span class="text-2xl">⚖️</span>
-                    <div>
-                        <h3 class="text-base font-black text-slate-800">حدود استقبال الطلبات</h3>
-                        <p class="text-[11px] text-slate-500 font-bold">لن تظهر للعملاء إذا كان طلبهم خارج هذا النطاق</p>
-                    </div>
-                </div>
-
-                <!-- فودافون كاش -->
-                <div class="mb-4">
-                    <div class="flex items-center gap-1.5 mb-2">
-                        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#E60000] shrink-0"><svg viewBox="0 0 100 100" class="w-3.5 h-3.5" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="38" fill="white"/><path d="M50 20C38 20 28 29 28 42C28 53 36 61 47 62.5V54C40.5 53 36 48 36 42C36 34 42.5 28 50 28C57.5 28 64 34 64 42C64 46.5 62 50.5 58.5 53.5L64.5 59.5C69.5 55 72.5 49 72.5 42C72.5 29 62 20 50 20Z" fill="#E60000"/><circle cx="50" cy="42" r="9" fill="white"/></svg></span>
-                        <span class="text-sm font-black text-red-700">فودافون كاش</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex-1 relative">
-                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 bg-slate-50 px-1">من</span>
-                            <input type="number" id="settingMinVf" placeholder="50" class="w-full pl-2 pr-9 py-3 bg-slate-50 border-2 border-red-200 rounded-xl text-xl tracking-widest font-black text-slate-900 outline-none focus:border-red-500 text-center transition-colors font-sans" dir="ltr">
-                        </div>
-                        <div class="text-slate-400 font-black">⇄</div>
-                        <div class="flex-1 relative">
-                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 bg-slate-50 px-1">إلى</span>
-                            <input type="number" id="settingMaxVf" placeholder="30000" class="w-full pl-2 pr-9 py-3 bg-slate-50 border-2 border-red-200 rounded-xl text-xl tracking-widest font-black text-slate-900 outline-none focus:border-red-500 text-center transition-colors font-sans" dir="ltr">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- إنستاباي -->
-                <div class="mb-2">
-                    <div class="flex items-center gap-1.5 mb-2">
-                        <span class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-white border border-purple-300 p-0.5 shrink-0"><svg viewBox="0 0 100 85" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="18" width="10" height="42" rx="5" transform="skewX(-12)" fill="#4A2277"/><path d="M26 22 L38 39 L26 56" stroke="#F4735E" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-10)"/><path d="M42 22 L54 39 L42 56" stroke="#EE4E23" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-10)"/><path d="M58 20 L58 62 M58 20 C76 20 86 28 84 41 C82 52 70 54 58 54" stroke="#4A2277" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-10)"/></svg></span>
-                        <span class="text-sm font-black text-purple-800">إنستاباي</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex-1 relative">
-                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 bg-slate-50 px-1">من</span>
-                            <input type="number" id="settingMinIp" placeholder="50" class="w-full pl-2 pr-9 py-3 bg-slate-50 border-2 border-purple-200 rounded-xl text-xl tracking-widest font-black text-slate-900 outline-none focus:border-purple-500 text-center transition-colors font-sans" dir="ltr">
-                        </div>
-                        <div class="text-slate-400 font-black">⇄</div>
-                        <div class="flex-1 relative">
-                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 bg-slate-50 px-1">إلى</span>
-                            <input type="number" id="settingMaxIp" placeholder="30000" class="w-full pl-2 pr-9 py-3 bg-slate-50 border-2 border-purple-200 rounded-xl text-xl tracking-widest font-black text-slate-900 outline-none focus:border-purple-500 text-center transition-colors font-sans" dir="ltr">
-                        </div>
-                    </div>
-                </div>
-
-                <button type="button" onclick="window.updateMerchantLimits()" class="w-full mt-5 bg-slate-800 hover:bg-slate-900 text-white font-black py-3.5 rounded-xl shadow-md active:scale-95 text-sm transition-colors">حفظ الحدود الجدیدة 💾</button>
-            </div>
-
-            <!-- زر فتح التقارير -->
-            <button type="button" onclick="window.loadMerchantReports()" class="w-full bg-blue-50 border-2 border-blue-200 hover:bg-blue-100 text-blue-800 font-black py-4 rounded-2xl shadow-sm active:scale-95 text-base flex justify-center items-center gap-2 transition-colors">
-                <span class="text-2xl">📊</span> فتح تقارير وسجل العمليات
-            </button>
-        </div>
-
-        <!-- تقارير التاجر (تم تكبيرها وتصغير العنوان) -->
+        <!-- تقارير التاجر -->
         <div id="merchantReportsView" class="fade-enter flex flex-col h-full flex-1">
             <div class="flex items-center justify-between mb-4 shrink-0 border-b border-slate-200 pb-2">
                 <h2 class="text-base font-black text-[#4a0718]">سجل العمليات 🧾</h2>
-                <button type="button" onclick="showView('merchantSettingsView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm transition-colors">عودة للإعدادات</button>
+                <button type="button" onclick="showView('merchantDashboardView')" class="text-xs bg-slate-100 text-[#7e122f] border border-slate-200 px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-200 shadow-sm transition-colors">عودة للوحة المتجر</button>
             </div>
             <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
                 <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 rounded-2xl text-white shadow-md relative overflow-hidden">
@@ -502,7 +476,6 @@
                     <p class="text-xs font-black text-slate-700">التفاصيل والأرقام 📊</p>
                     <span id="reportTotalCountBadge" class="text-[10px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded-full shadow-sm">0 عملية</span>
                 </div>
-                <!-- تكبير مساحة القائمة لتأخذ الباقي -->
                 <div class="overflow-y-auto flex-1 p-2" id="reportsListContainer"><div class="text-center py-10 text-slate-400 text-sm font-black">جاري جلب البيانات...</div></div>
             </div>
         </div>
@@ -660,7 +633,7 @@
                 }
             }
             localStorage.setItem('eqbad_active_view', viewId);
-            const views = ['roleView', 'customerLoginView', 'customerRegisterView', 'customerView', 'customerResultsView', 'customerReportsView', 'customerPendingView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView', 'merchantReportsView', 'merchantSettingsView'];
+            const views = ['roleView', 'customerLoginView', 'customerRegisterView', 'customerView', 'customerResultsView', 'customerReportsView', 'customerPendingView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView', 'merchantReportsView'];
             views.forEach(v => {
                 const el = document.getElementById(v);
                 if(el) {
@@ -833,10 +806,10 @@
             document.getElementById('merchantVodafoneDisplay').innerText = vfBal.toLocaleString() + " ج.م";
             document.getElementById('merchantInstapayDisplay').innerText = ipBal.toLocaleString() + " ج.م";
             
-            const minVf = parseFloat(data.min_amount_vf) || 50;
-            const maxVf = parseFloat(data.max_amount_vf) || 30000;
-            const minIp = parseFloat(data.min_amount_ip) || 50;
-            const maxIp = parseFloat(data.max_amount_ip) || 30000;
+            const minVf = parseFloat(data.min_amount_vf) || parseFloat(data.min_amount) || 50;
+            const maxVf = parseFloat(data.max_amount_vf) || parseFloat(data.max_amount) || 30000;
+            const minIp = parseFloat(data.min_amount_ip) || parseFloat(data.min_amount) || 50;
+            const maxIp = parseFloat(data.max_amount_ip) || parseFloat(data.max_amount) || 30000;
             
             if(document.getElementById('settingMinVf')) document.getElementById('settingMinVf').value = minVf;
             if(document.getElementById('settingMaxVf')) document.getElementById('settingMaxVf').value = maxVf;
@@ -1060,7 +1033,6 @@
             .catch(err => alert("حدث خطأ أثناء تحديث الموقع: " + err.message));
         };
 
-        // دالة تحديث حدود المعاملات للتاجر (فودافون وإنستاباي)
         window.updateMerchantLimits = function() {
             const minVf = parseFloat(document.getElementById('settingMinVf').value) || 0;
             const maxVf = parseFloat(document.getElementById('settingMaxVf').value) || 0;
@@ -1079,7 +1051,23 @@
                 max_amount_ip: maxIp
             }).then(() => {
                 alert("✅ تم حفظ حدود استقبال الطلبات بنجاح.\nلن تظهر للعملاء إذا طلبوا مبالغ خارج هذا النطاق.");
+                document.getElementById('financesPanel').classList.add('hidden');
             }).catch(err => alert("حدث خطأ أثناء الحفظ: " + err.message));
+        };
+
+        window.updateMerchantBalance = function() {
+            const type = document.getElementById('updateBalanceType').value;
+            const newBal = parseFloat(document.getElementById('updateBalanceInput').value);
+            if(isNaN(newBal) || newBal < 0) return alert("أدخل مبلغ سيولة صحيح.");
+            
+            const field = type === 'vodafone' ? 'balance_vodafone' : 'balance_instapay';
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            
+            update(ref(db, 'eqbad_merchants/' + mKey), { [field]: newBal }).then(() => {
+                document.getElementById('updateBalanceInput').value = "";
+                alert(`✅ تم تحديث سيولة ${type === 'vodafone' ? 'فودافون كاش' : 'إنستاباي'} بنجاح.`);
+                document.getElementById('financesPanel').classList.add('hidden');
+            }).catch(err => alert("حدث خطأ أثناء التحديث: " + err.message));
         };
 
         onAuthStateChanged(auth, async (user) => {
@@ -1408,20 +1396,6 @@
             });
         };
 
-        window.updateMerchantBalance = function() {
-            const type = document.getElementById('updateBalanceType').value;
-            const newBal = parseFloat(document.getElementById('updateBalanceInput').value);
-            if(isNaN(newBal) || newBal < 0) return alert("أدخل مبلغ سيولة صحيح.");
-            
-            const field = type === 'vodafone' ? 'balance_vodafone' : 'balance_instapay';
-            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-            
-            update(ref(db, 'eqbad_merchants/' + mKey), { [field]: newBal }).then(() => {
-                document.getElementById('updateBalanceInput').value = "";
-                alert(`✅ تم تحديث سيولة ${type === 'vodafone' ? 'فودافون كاش' : 'إنستاباي'} بنجاح.`);
-            }).catch(err => alert("حدث خطأ أثناء التحديث: " + err.message));
-        };
-
         // ================= ORDERS LOGIC =================
         window.acceptOrder = function(reqKey) {
             update(ref(db, 'eqbad_orders/' + reqKey), { status: 'accepted', acceptedAt: Date.now() });
@@ -1625,7 +1599,6 @@
                 
                 if(records.length === 0) return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">لا توجد عمليات سابقة.</div>`;
                 
-                // تحديث شكل التقارير كما طلبت (تاريخ، يوم، اسم، مبلغ، هاتف)
                 container.innerHTML = records.map(ord => {
                     const dateObj = new Date(ord.completedAt || ord.timestamp);
                     const dayName = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
