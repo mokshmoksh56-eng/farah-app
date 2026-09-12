@@ -2040,59 +2040,6 @@
             });
         };
 
-        // ====== دالة رسم المسار وفتح الشاشة الكاملة ومحاكاة التنقل ======
-        window.drawMapboxRoute = function(startLat, startLng, endLat, endLng) {
-            if (!liveMerchantsMapInstance) return;
-            
-            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
-            
-            fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                if(data.routes && data.routes.length > 0) {
-                    const route = data.routes[0].geometry;
-                    
-                    if(window.currentRouteLayer) {
-                        liveMerchantsMapInstance.removeLayer(window.currentRouteLayer);
-                    }
-                    
-                    // 1. رسم المسار الأزرق على الخريطة
-                    window.currentRouteLayer = L.geoJSON(route, {
-                        style: { color: '#2563eb', weight: 6, opacity: 0.9 }
-                    }).addTo(liveMerchantsMapInstance);
-
-                    // 2. تحويل حاوية الخريطة لتصبح بكامل الشاشة (تلقائياً)
-                    const mapWrapper = document.getElementById('liveMerchantsMapWrapper');
-                    if(mapWrapper && !mapWrapper.classList.contains('map-fullscreen')) {
-                        const fsBtn = mapWrapper.querySelector('button');
-                        if (fsBtn) window.toggleMapFullscreen('liveMerchantsMapWrapper', fsBtn);
-                    }
-
-                    // 3. احتواء الخريطة للمسار بالكامل
-                    liveMerchantsMapInstance.fitBounds(window.currentRouteLayer.getBounds(), { padding: [50, 50] });
-
-                    // 4. محاكاة بدء التنقل (Zoom In) على مكان المستخدم بعد ثانية
-                    setTimeout(() => {
-                        liveMerchantsMapInstance.flyTo([startLat, startLng], 18, {
-                            animate: true,
-                            duration: 2
-                        });
-                        
-                        // رسالة تأكيد صغيرة
-                        const statusBox = document.getElementById('customerStatusMsg');
-                        if(statusBox) {
-                            statusBox.innerHTML = "📍 تم تفعيل الخريطة للمسار، توجه للتاجر الآن.";
-                            statusBox.className = "text-center p-3 rounded-2xl bg-blue-50 border-2 border-blue-200 text-blue-800 mb-3 text-sm font-black shadow-xs z-[999999] relative";
-                        }
-                    }, 1200);
-
-                } else {
-                    alert("لم يتم العثور على مسار متاح.");
-                }
-            })
-            .catch(err => alert("حدث خطأ أثناء رسم المسار: " + err.message));
-        };
-        
         window.sendTargetedOrder = async function(merchantPhone, merchantName, merchLat, merchLng, btnElement, commRate, reqAmount) {
             if(btnElement && btnElement.disabled) return; 
 
@@ -2153,7 +2100,7 @@
                                         : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي رقمياً. (تطبيق وصلني كاش)`
                                     );
                                     actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
-                                    actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><button type="button" onclick="window.drawMapboxRoute(${window.finalCustLat}, ${window.finalCustLng}, ${merchLat}, ${merchLng})" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</button></div>`;
+                                    actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
                                 }
                             } else if(ord.status === 'rejected') {
                                 if(actionDivTarget && !actionDivTarget.innerHTML.includes("تم الإلغاء")) {
