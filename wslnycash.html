@@ -62,7 +62,7 @@
                 <div class="w-14 h-14 bg-rose-50 text-[#7e122f] rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">🏃‍♂️</div>
                 <div class="text-right flex-1">
                     <h3 class="text-lg sm:text-xl font-black text-slate-900">أنا عميل (مستخدم)</h3>
-                    <p class="text-sm text-slate-500 font-bold mt-1">محتاج سيولة نقدية أو تحويل رقمي في مكاني</p>
+                    <p class="text-sm text-slate-500 font-bold mt-1">محتاج سيولة نقدية أو تحويل انستاباى في مكاني</p>
                 </div>
             </button>
             <button onclick="showView('merchantLoginView')" class="w-full group bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 hover:border-[#7e122f] rounded-2xl p-5 flex items-center gap-4 transition-all active:scale-95 shadow-xs">
@@ -146,18 +146,18 @@
                             <input type="radio" name="transactionType" value="cash_out" checked class="hidden" onchange="window.updateCustomerTxUI()">
                             <span class="text-3xl drop-shadow-md">💵</span>
                             <span class="text-xs sm:text-sm font-black">أريد سيولة (كاش)</span>
-                            <span class="text-[10px] font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-emerald-200 text-emerald-800 text-center leading-tight">سأدفع من محفظتي<br>وأستلم ورقياً</span>
+                            <span class="text-[10px] font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-emerald-200 text-emerald-800 text-center leading-tight">سأدفع من محفظتي<br>وأستلم كاش</span>
                         </label>
                         <label id="lbl-tx-cashin" class="relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border-2 transition-all active:scale-95 cursor-pointer opacity-75 grayscale border-slate-300 bg-slate-100 text-slate-500">
                             <input type="radio" name="transactionType" value="cash_in" class="hidden" onchange="window.updateCustomerTxUI()">
                             <span class="text-3xl drop-shadow-md">📱</span>
                             <span class="text-xs sm:text-sm font-black">أريد تحويل (رصيد)</span>
-                            <span class="text-[10px] font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-slate-200 text-slate-600 text-center leading-tight">سأدفع ورقياً (كاش)<br>وأستلم في محفظتي</span>
+                            <span class="text-[10px] font-black px-2.5 py-0.5 rounded-lg mt-0.5 bg-slate-200 text-slate-600 text-center leading-tight">سأدفع كاش<br>وأستلم في محفظتي</span>
                         </label>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-black text-slate-900 mb-1.5">طريقة الدفع / الاستلام الرقمية</label>
+                    <label class="block text-sm font-black text-slate-900 mb-1.5">طريقة الدفع / الاستلام (انستاباى / محفظة)</label>
                     <div class="grid grid-cols-2 gap-3">
                         <label id="lbl-method-vf" class="relative flex items-center justify-center gap-2 p-3 rounded-2xl border-2 transition-all active:scale-95 cursor-pointer shadow-sm border-red-500 bg-red-50 text-red-900">
                             <input type="radio" name="serviceMethod" value="vodafone" checked class="hidden" onchange="window.updateCustomerTheme('vodafone')">
@@ -1034,6 +1034,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue, update, push, get, off } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
         const firebaseConfig = { 
             apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", 
@@ -1042,12 +1044,15 @@
             projectId: "azemaa-proo", 
             storageBucket: "azemaa-proo.firebasestorage.app", 
             messagingSenderId: "787350492977", 
-            appId: "1:787350492977:web:84061dcf31622fcb07c210" 
+            appId: "1:787350492977:web:84061dcf31622fcb07c210",
+            measurementId: "G-R28J7010TH"
         };
         
         const app = initializeApp(firebaseConfig); 
         const db = getDatabase(app); 
         const auth = getAuth(app);
+        const analytics = getAnalytics(app);
+        const messaging = getMessaging(app);
 
         window.dbRef = db; 
 
@@ -1055,6 +1060,37 @@
         window._merchantDataUnsub = null;
         window._customerPendingUnsub = null;
         window._authReady = false;
+
+        window.requestPushPermissions = async function(userType, phone) {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    const currentToken = await getToken(messaging, { 
+                        vapidKey: 'BHlaSnheargWsxUa5b18VBog6KSq778kZ398P5drxS0tUwsUdUy8I0ADAzRO6CS3BJKNmZTfjBzG_Fv6gIBOuwI' 
+                    });
+                    
+                    if (currentToken) {
+                        const path = userType === 'merchant' 
+                            ? `eqbad_merchants/${window.currentMerchantKey || 'merchant_' + phone}` 
+                            : `eqbad_customers/customer_${phone}`;
+                        update(ref(db, path), { fcmToken: currentToken });
+                    }
+                }
+            } catch (error) {
+                console.log('حدث خطأ أثناء تفعيل الإشعارات: ', error);
+            }
+        };
+
+        onMessage(messaging, (payload) => {
+            window.playLoudNotification();
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(payload.notification.title || "إشعار جديد", {
+                    body: payload.notification.body,
+                    icon: '/icon.png',
+                    dir: 'rtl'
+                });
+            }
+        });
 
         window.updateMerchantLocationToDB = function(lat, lng) {
             let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
@@ -1119,13 +1155,6 @@
             if (!user) return;
             if (window._authReady) return;
             window._authReady = true;
-            console.log("✅ Firebase Auth ready, uid:", user.uid);
-
-            try {
-                if ("Notification" in window && Notification.permission === "default") {
-                    Notification.requestPermission().catch(e=>console.log(e));
-                }
-            } catch(e) {}
 
             const savedMerchantPhone = localStorage.getItem('eqbad_merchant_phone');
             const savedMerchantKey   = localStorage.getItem('eqbad_merchant_key');
@@ -1143,6 +1172,7 @@
                     if (snap.exists()) {
                         window.currentMerchantPhone = window.normalizePhone(savedMerchantPhone);
                         window.currentMerchantKey = mKey;
+                        window.requestPushPermissions('merchant', window.currentMerchantPhone);
                         window.renderMerchantDashboard(snap.val());
                         window.listenToOrders();
                     } else {
@@ -1151,12 +1181,12 @@
                         showView('roleView');
                     }
                 } catch(e) { 
-                    console.error("Auto login merchant error:", e);
                     showView('roleView'); 
                 }
             } else if (savedCustomerPhone) {
                 window.currentCustomerPhone = window.normalizePhone(savedCustomerPhone);
                 window.currentCustomerName = savedCustomerName || "عميل مسجل";
+                window.requestPushPermissions('customer', window.currentCustomerPhone);
                 document.getElementById('custProfileName').innerText = window.currentCustomerName;
                 document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
                 showView('customerView');
@@ -1191,16 +1221,15 @@
                 }
 
                 await set(ref(db, 'eqbad_customers/customer_' + phone), {
-                    name: name,
-                    phone: phone,
-                    pin: pin,
-                    createdAt: Date.now()
+                    name: name, phone: phone, pin: pin, createdAt: Date.now()
                 });
 
                 window.currentCustomerPhone = phone;
                 window.currentCustomerName = name;
                 localStorage.setItem('eqbad_customer_phone', phone);
                 localStorage.setItem('eqbad_customer_name', name);
+                
+                window.requestPushPermissions('customer', phone);
                 
                 document.getElementById('custProfileName').innerText = name;
                 document.getElementById('custProfilePhone').innerText = phone;
@@ -1235,6 +1264,8 @@
                     window.currentCustomerName = snap.val().name;
                     localStorage.setItem('eqbad_customer_phone', phone);
                     localStorage.setItem('eqbad_customer_name', window.currentCustomerName);
+                    
+                    window.requestPushPermissions('customer', phone);
                     
                     document.getElementById('custProfileName').innerText = window.currentCustomerName;
                     document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
@@ -1272,12 +1303,6 @@
             if (!phone) return alert("رقم الهاتف غير صحيح.");
             if(!window.finalMerchLat) return alert("يرجى تحديد موقع المتجر من الخريطة أولاً.");
 
-            try {
-                if ("Notification" in window && Notification.permission !== "granted") {
-                    Notification.requestPermission().catch(e=>console.log(e));
-                }
-            } catch(e) {}
-
             const btn = document.getElementById('btnRegMerchant');
             btn.innerHTML = "⏳ جاري الفحص...";
             btn.disabled = true;
@@ -1294,25 +1319,10 @@
                 }
 
                 const merchantData = {
-                    name: storeName,
-                    phone: phone,
-                    pin: pin,
-                    commission_rate: commRate,
-                    enable_vodafone: enableVf,
-                    enable_instapay: enableIp,
-                    provide_cash: true,
-                    provide_transfer: true,
-                    min_amount_vf: 50,
-                    max_amount_vf: 30000,
-                    min_amount_ip: 50,
-                    max_amount_ip: 30000,
-                    balance_vodafone: 30000,
-                    balance_instapay: 30000,
-                    lat: window.finalMerchLat,
-                    lng: window.finalMerchLng,
-                    address: window.finalMerchAddress || "موقع محدد عبر الخريطة",
-                    status: 'active',
-                    createdAt: Date.now()
+                    name: storeName, phone: phone, pin: pin, commission_rate: commRate, enable_vodafone: enableVf, enable_instapay: enableIp,
+                    provide_cash: true, provide_transfer: true, min_amount_vf: 50, max_amount_vf: 30000, min_amount_ip: 50, max_amount_ip: 30000,
+                    balance_vodafone: 30000, balance_instapay: 30000, lat: window.finalMerchLat, lng: window.finalMerchLng,
+                    address: window.finalMerchAddress || "موقع محدد عبر الخريطة", status: 'active', createdAt: Date.now()
                 };
 
                 let mKey = 'merchant_' + phone;
@@ -1322,6 +1332,8 @@
                 window.currentMerchantKey = mKey;
                 localStorage.setItem('eqbad_merchant_phone', phone);
                 localStorage.setItem('eqbad_merchant_key', mKey);
+                
+                window.requestPushPermissions('merchant', phone);
                 
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
                 btn.disabled = false;
@@ -1340,12 +1352,6 @@
             const phone = window.normalizePhone(document.getElementById('loginPhone').value);
             const pin = document.getElementById('loginPin').value.trim();
             const btn = document.getElementById('btnLoginMerchant');
-            
-            try {
-                if ("Notification" in window && Notification.permission !== "granted") {
-                    Notification.requestPermission().catch(e=>console.log(e));
-                }
-            } catch(e) {}
 
             btn.innerHTML = "⏳ جاري التحقق...";
             btn.disabled = true;
@@ -1367,6 +1373,9 @@
                     window.currentMerchantKey = actualKey;
                     localStorage.setItem('eqbad_merchant_phone', phone);
                     localStorage.setItem('eqbad_merchant_key', actualKey);
+                    
+                    window.requestPushPermissions('merchant', phone);
+                    
                     window.renderMerchantDashboard(snap.val());
                     window.listenToOrders();
                 } else {
@@ -1564,22 +1573,6 @@
                                 if(req.status === 'pending' && !window.notifiedOrders.has(reqKey)) {
                                     window.notifiedOrders.add(reqKey);
                                     isNewOrderArrived = true;
-                                    
-                                    const notifIcon = isVf ? "1572113.jpg" : "2537130_0.png";
-                                    const notifTitle = isCashOut 
-                                        ? `💵 طلب سيولة كاش (${isVf ? 'فودافون' : 'إنستاباي'})` 
-                                        : `📱 طلب تحويل رصيد (${isVf ? 'فودافون' : 'إنستاباي'})`;
-                                    const notifBody = `العميل: ${req.customer_name || 'عميل'}\nالمبلغ الأساسي: ${window.numEN(req.amount)} ج.م\nالإجمالي المطلوب: ${window.numEN(totalTransfer)} ج.م`;
-
-                                    try {
-                                        if ("Notification" in window && Notification.permission === "granted") {
-                                            new Notification(notifTitle, {
-                                                body: notifBody,
-                                                icon: notifIcon,
-                                                dir: "rtl"
-                                            });
-                                        }
-                                    } catch(e) {}
                                 }
 
                                 const typeHtml = isCashOut 
@@ -1652,13 +1645,12 @@
                 update(ref(db, 'eqbad_orders/' + reqKey), { status: 'deleted_by_merchant', deletedAt: Date.now() })
                 .then(() => {
                     alert("تم إخفاء العملية من سجلك بنجاح.");
-                    window.loadMerchantReports(); // تحديث الواجهة
+                    window.loadMerchantReports(); 
                 })
                 .catch(err => alert("حدث خطأ: " + err.message));
             }
         };
 
-        // ================= REPORTS & PENDING =================
         window.loadMerchantReports = function() {
             showView('merchantReportsView');
             const container = document.getElementById('reportsListContainer');
