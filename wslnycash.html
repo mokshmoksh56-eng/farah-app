@@ -54,7 +54,6 @@
 
     <div class="w-full max-w-xl main-card rounded-3xl p-6 sm:p-8 overflow-hidden relative min-h-[620px] flex flex-col my-4">
         
-        <!-- تم تصغير عنوان "وصلني كاش" -->
         <div class="text-center mb-6 shrink-0 mt-2">
             <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
                 <span class="text-red-600">وصلني</span> <span class="text-purple-700">كاش</span>
@@ -437,7 +436,7 @@
             </div>
             
             <!-- زر التبديل بين ليلي ونهاري -->
-            <div class="bg-white border-2 border-slate-200 p-4 rounded-2xl mb-6 flex justify-between items-center shadow-sm">
+            <div class="bg-white border-2 border-slate-200 p-4 rounded-2xl mb-4 flex justify-between items-center shadow-sm">
                 <div class="flex items-center gap-3">
                     <span class="text-2xl drop-shadow-sm" id="themeIcon">☀️</span>
                     <div>
@@ -449,6 +448,29 @@
                     <input type="checkbox" id="themeToggle" class="sr-only peer" onchange="window.toggleTheme()">
                     <div class="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-800 shadow-inner"></div>
                 </label>
+            </div>
+
+            <!-- إعدادات الحد الأدنى والأقصى للتحويل -->
+            <div class="bg-white border-2 border-slate-200 p-4 rounded-2xl mb-6 shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xl">⚖️</span>
+                    <div>
+                        <h3 class="text-sm font-black text-slate-800">حدود استقبال الطلبات</h3>
+                        <p class="text-[10px] text-slate-500 font-bold">لن تظهر للعملاء إذا كان طلبهم خارج هذا النطاق</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 relative">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 bg-slate-50 px-1">من (ج.م)</span>
+                        <input type="number" id="settingMinAmount" placeholder="مثال: 50" class="w-full pl-3 pr-14 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-black text-slate-900 outline-none focus:border-[#7e122f] text-center transition-colors" dir="ltr">
+                    </div>
+                    <div class="text-slate-400 font-black">⇄</div>
+                    <div class="flex-1 relative">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 bg-slate-50 px-1">إلى (ج.م)</span>
+                        <input type="number" id="settingMaxAmount" placeholder="مثال: 10000" class="w-full pl-3 pr-14 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-black text-slate-900 outline-none focus:border-[#7e122f] text-center transition-colors" dir="ltr">
+                    </div>
+                </div>
+                <button type="button" onclick="window.updateMerchantLimits()" class="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-black py-2.5 rounded-xl shadow-xs active:scale-95 text-xs transition-colors">حفظ الحدود الجدیدة 💾</button>
             </div>
 
             <!-- زر فتح التقارير -->
@@ -836,6 +858,11 @@
             const ipBal = parseFloat(data.balance_instapay) || 0;
             document.getElementById('merchantVodafoneDisplay').innerText = vfBal.toLocaleString() + " ج.م";
             document.getElementById('merchantInstapayDisplay').innerText = ipBal.toLocaleString() + " ج.م";
+            
+            const minAmt = parseFloat(data.min_amount) || 50;
+            const maxAmt = parseFloat(data.max_amount) || 30000;
+            document.getElementById('settingMinAmount').value = minAmt;
+            document.getElementById('settingMaxAmount').value = maxAmt;
 
             window.updateServiceButtonsUI(data.enable_vodafone !== false, data.enable_instapay !== false);
             window.updateProvideServicesUI(data.provide_cash, data.provide_transfer);
@@ -1054,6 +1081,24 @@
             .catch(err => alert("حدث خطأ أثناء تحديث الموقع: " + err.message));
         };
 
+        // دالة تحديث حدود المعاملات للتاجر
+        window.updateMerchantLimits = function() {
+            const minAmt = parseFloat(document.getElementById('settingMinAmount').value) || 0;
+            const maxAmt = parseFloat(document.getElementById('settingMaxAmount').value) || 0;
+            
+            if(minAmt < 0 || maxAmt <= minAmt) {
+                return alert("يرجى إدخال حدود صحيحة (الحد الأقصى يجب أن يكون أكبر من الحد الأدنى).");
+            }
+            
+            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            update(ref(db, 'eqbad_merchants/' + mKey), { 
+                min_amount: minAmt, 
+                max_amount: maxAmt 
+            }).then(() => {
+                alert("✅ تم حفظ حدود استقبال الطلبات بنجاح.\nلن تظهر للعملاء إذا طلبوا مبالغ خارج هذا النطاق.");
+            }).catch(err => alert("حدث خطأ أثناء الحفظ: " + err.message));
+        };
+
         onAuthStateChanged(auth, async (user) => {
             if (!user) return;
             if (window._authReady) return;
@@ -1247,6 +1292,8 @@
                     enable_instapay: enableIp,
                     provide_cash: true,
                     provide_transfer: true,
+                    min_amount: 50,    // القيمة الافتراضية
+                    max_amount: 30000, // القيمة الافتراضية
                     lat: window.finalMerchLat,
                     lng: window.finalMerchLng,
                     address: window.finalMerchAddress || "موقع محدد عبر الخريطة",
@@ -1874,7 +1921,12 @@
                             isServiceProvided = (m.provide_cash !== false);
                         }
 
-                        if(m.status === 'active' && m[enableField] !== false && hasEnoughBalance && isServiceProvided) {
+                        // التحقق من أن المبلغ المطلوب يقع داخل حدود التاجر (الحد الأدنى والأقصى)
+                        const minAmt = parseFloat(m.min_amount) || 0;
+                        const maxAmt = parseFloat(m.max_amount) || Infinity;
+                        let isWithinLimits = (amount >= minAmt && amount <= maxAmt);
+
+                        if(m.status === 'active' && m[enableField] !== false && hasEnoughBalance && isServiceProvided && isWithinLimits) {
                             m.distance = getDistance(window.finalCustLat, window.finalCustLng, m.lat, m.lng);
                             m.availableBal = parseFloat(m[balField] || 0);
                             merchants.push(m);
