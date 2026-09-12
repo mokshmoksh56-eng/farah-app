@@ -193,7 +193,7 @@
             <div id="customerStatusMsg" class="text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs shrink-0 transition-colors duration-300">جاري فحص المسافات والسيولة المتاحة...</div>
             <div id="liveMerchantsMapWrapper" class="h-40 w-full rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm relative z-0 mb-3 shrink-0">
                 <button type="button" onclick="toggleMapFullscreen('liveMerchantsMapWrapper', this)" class="absolute top-2.5 left-2.5 z-[1000] bg-white text-[#7e122f] border border-rose-200 px-3 py-1 rounded-xl shadow-md font-black text-xs flex items-center gap-1 active:scale-95"><span>⛶</span> <span class="fs-text">شاشة كاملة</span></button>
-                <button type="button" onclick="locateMeOnCustomerMap()" class="btn-locate-map"><span>🎯</span> أين مكاني</button>
+                <!-- تم إزالة زر أين مكاني من هنا بناءً على طلبك -->
                 <div id="liveMerchantsMap" class="w-full h-full"></div>
             </div>
             
@@ -510,6 +510,8 @@
         window.currentMerchantPhone = ""; 
         window.currentMerchantKey = "";   
         window.notifiedOrders = new Set(); 
+        
+        window.merchantMarkers = {}; // لتخزين علامات التجار على الخريطة للوصول السريع
 
         window.updateCustomerTheme = function(method) {
             window.currentCustomerMethod = method;
@@ -874,6 +876,24 @@
                     navigator.vibrate([500, 250, 500, 250, 500]);
                 }
             } catch(e) {}
+        };
+        
+        // --- الدالة المسؤولة عن تحريك الخريطة للتاجر عند الضغط على الكارت الخاص به ---
+        window.focusMerchantOnMap = function(phone) {
+            if (window.merchantMarkers && window.merchantMarkers[phone] && liveMerchantsMapInstance) {
+                const marker = window.merchantMarkers[phone];
+                
+                // الانتقال للعلامة على الخريطة بشكل سلس مع التقريب
+                liveMerchantsMapInstance.flyTo(marker.getLatLng(), 16, {
+                    animate: true,
+                    duration: 1.5
+                });
+                
+                // إظهار اسم التاجر على الخريطة
+                setTimeout(() => {
+                    marker.openPopup();
+                }, 500);
+            }
         };
     </script>
 
@@ -1723,23 +1743,24 @@
                         document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-emerald-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs";
                         document.getElementById('customerStatusMsg').innerHTML = `✅ تم العثور على (${merchants.length}) تجار يوفرون طلبك!`;
                         
+                        window.merchantMarkers = {}; // تفريغ العلامات السابقة
+                        
                         let listHTML = `<div class="space-y-3 pb-2 px-1">`;
                         merchants.forEach((m, index) => {
-                            // 1. تحديد لون متبادل للخانات (أبيض ثم رمادي فاتح جداً) للتفرقة بينهم
                             const cardBgColor = index % 2 === 0 ? 'bg-white' : 'bg-slate-50';
 
-                            // 2. وضع العلامة على الخريطة
+                            // تخزين العلامة وربطها بالخريطة
                             let marker = L.marker([m.lat, m.lng], { icon: merchIcon })
                                           .addTo(liveMerchantsMapInstance)
                                           .bindPopup(`<b>${m.name}</b>`);
+                                          
+                            window.merchantMarkers[m.phone] = marker;
 
-                            // 3. التمرير التلقائي وإضاءة البطاقة عند الضغط على العلامة
                             marker.on('click', function() {
                                 const card = document.getElementById(`merchant-card-${m.phone}`);
                                 if(card) {
                                     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                     
-                                    // إضاءة البطاقة باللون الأحمر الفاتح للحظات للفت الانتباه
                                     card.classList.remove(cardBgColor);
                                     card.classList.add('border-red-500', 'bg-red-50', 'scale-[1.02]');
                                     
@@ -1757,10 +1778,10 @@
                                 ? `طلب كاش (سأحول لك ${totalToTransfer} ج)` 
                                 : `طلب تحويل (سأدفع لك ${totalToTransfer} ج كاش)`;
 
-                            // 4. بناء البطاقة باستخدام اللون المتبادل والمعرف الخاص (id)
                             listHTML += `
                             <div id="merchant-card-${m.phone}" class="${cardBgColor} border-2 border-slate-200 rounded-2xl overflow-hidden shadow-md flex flex-col mb-2 transition-all duration-300">
-                                <div class="p-3.5 flex justify-between items-start bg-transparent">
+                                <!-- تمت إضافة حدث الضغط هنا لنقل الخريطة إلى التاجر -->
+                                <div onclick="window.focusMerchantOnMap('${m.phone}')" class="p-3.5 flex justify-between items-start bg-transparent cursor-pointer hover:bg-slate-200/50 transition-colors" title="اضغط لرؤية موقع التاجر على الخريطة">
                                     <div class="flex-1">
                                         <div class="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${m.name}</div>
                                         <div class="text-xs sm:text-sm text-slate-500 font-bold mt-1.5 line-clamp-1">📍 ${m.address}</div>
