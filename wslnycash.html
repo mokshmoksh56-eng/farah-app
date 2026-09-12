@@ -1420,7 +1420,7 @@
                                 const totalTransfer = req.total_amount || req.amount;
                                 const isCashOut = req.transaction_type === 'cash_out' || !req.transaction_type; 
 
-                                // نظام الإشعارات الذكي (شعار فودافون أو إنستاباي مع تفاصيل البطاقة)
+                                // نظام الإشعارات الذكي
                                 if(req.status === 'pending' && !window.notifiedOrders.has(reqKey)) {
                                     window.notifiedOrders.add(reqKey);
                                     isNewOrderArrived = true;
@@ -1443,8 +1443,22 @@
                                 }
 
                                 const typeHtml = isCashOut 
-                                    ? `<div class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-2 rounded-xl text-xs font-black text-center mb-2 shadow-xs">💵 العميل يطلب سيولة كاش<br><span class="text-[10px] font-bold">(وسيحول لك ${totalTransfer} ج رقمياً)</span></div>`
-                                    : `<div class="bg-blue-50 text-blue-800 border border-blue-200 px-3 py-2 rounded-xl text-xs font-black text-center mb-2 shadow-xs">📱 العميل يطلب تحويل رصيد رقمي<br><span class="text-[10px] font-bold">(وسيدفع لك ${totalTransfer} ج كاش)</span></div>`;
+                                    ? `<div class="bg-emerald-50 text-emerald-900 border-2 border-emerald-400 p-2.5 rounded-xl font-black text-center mb-2 shadow-sm">
+                                           <div class="text-sm mb-2">💵 العميل يطلب سيولة كاش</div>
+                                           <div class="flex flex-col gap-1.5 text-xs">
+                                               <div class="bg-white px-2 py-1.5 rounded-lg border border-emerald-200">العميل سيُحول لك رقمياً: <span class="text-emerald-700 text-sm">${totalTransfer} ج</span></div>
+                                               <div class="text-emerald-600 font-extrabold">⬇️ إذن مطلوب منك ⬇️</div>
+                                               <div class="bg-emerald-600 text-white px-2 py-2 rounded-lg text-sm">تسليم العميل كاش: <span class="text-yellow-300 text-lg">${req.amount} ج</span></div>
+                                           </div>
+                                       </div>`
+                                    : `<div class="bg-blue-50 text-blue-900 border-2 border-blue-400 p-2.5 rounded-xl font-black text-center mb-2 shadow-sm">
+                                           <div class="text-sm mb-2">📱 العميل يطلب تحويل رصيد</div>
+                                           <div class="flex flex-col gap-1.5 text-xs">
+                                               <div class="bg-white px-2 py-1.5 rounded-lg border border-blue-200">العميل سيَدفع لك كاش: <span class="text-blue-700 text-sm">${totalTransfer} ج</span></div>
+                                               <div class="text-blue-600 font-extrabold">⬇️ إذن مطلوب منك ⬇️</div>
+                                               <div class="bg-blue-600 text-white px-2 py-2 rounded-lg text-sm">تحويل رصيد للعميل: <span class="text-yellow-300 text-lg">${req.amount} ج</span></div>
+                                           </div>
+                                       </div>`;
 
                                 activeHtml += `
                                 <div class="bg-white border-2 ${isVf ? 'border-red-600' : 'border-purple-600'} p-3.5 rounded-2xl shadow-xs space-y-2.5">
@@ -1677,6 +1691,8 @@
                 container.innerHTML = records.map(ord => {
                     const isVf = ord.method === 'vodafone';
                     const isPending = ord.status === 'pending';
+                    const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
+
                     const statusBadge = isPending 
                         ? `<span class="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full font-black text-xs">⏳ بانتظار موافقة التاجر</span>`
                         : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black text-xs">✔️ مقبول من التاجر</span>`;
@@ -1686,7 +1702,11 @@
                         actionHtml = `<button onclick="window.cancelCustomerOrder('${ord.key}')" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black py-2 rounded-xl text-xs active:scale-95 shadow-xs">إلغاء الطلب ❌</button>`;
                     } else {
                         const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
-                        const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount || ord.amount} ج.م شامل العمولة عبر تطبيق وصلني كاش.`);
+                        const waMsg = encodeURIComponent(
+                            isCashOut 
+                            ? `السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount || ord.amount} ج.م لك رقمياً، لاستلام ${ord.amount} ج.م كاش. (تطبيق وصلني كاش)`
+                            : `السلام عليكم، سأدفع لك مبلغ ${ord.total_amount || ord.amount} ج.م كاش، لتحويل ${ord.amount} ج.م لي رقمياً. (تطبيق وصلني كاش)`
+                        );
                         actionHtml = `
                         <div class="space-y-1.5 pt-1 border-t border-slate-100 mt-2">
                             <div class="text-[11px] font-black text-emerald-700 text-center">التاجر وافق! تواصل معه أو توجه للفرع:</div>
@@ -1697,15 +1717,23 @@
                         </div>`;
                     }
 
+                    const amountDetailsHtml = isCashOut
+                        ? `<div class="bg-slate-50 border border-slate-200 p-2 rounded-xl text-center text-xs font-black mt-2 mb-2">
+                               سأُحول للتاجر: <span class="text-rose-600">${ord.total_amount || ord.amount} ج</span> ➔ أستلم كاش: <span class="text-emerald-600">${ord.amount} ج</span>
+                           </div>`
+                        : `<div class="bg-slate-50 border border-slate-200 p-2 rounded-xl text-center text-xs font-black mt-2 mb-2">
+                               سأدفع للتاجر كاش: <span class="text-emerald-600">${ord.total_amount || ord.amount} ج</span> ➔ يُحول لي رصيد: <span class="text-rose-600">${ord.amount} ج</span>
+                           </div>`;
+
                     return `
                     <div class="bg-white border-2 ${isVf ? 'border-red-600' : 'border-purple-600'} p-3.5 rounded-2xl relative shadow-sm space-y-2">
                         <div class="flex justify-between items-center">
-                            <span class="text-sm font-black text-slate-900">المبلغ: <span class="${isVf ? 'text-red-600' : 'text-purple-700'} font-black">${ord.amount} ج.م</span></span>
+                            <span class="text-sm font-black text-slate-900">الطلب: <span class="${isVf ? 'text-red-600' : 'text-purple-700'} font-black">${ord.amount} ج.م</span></span>
                             ${statusBadge}
                         </div>
+                        ${amountDetailsHtml}
                         <div class="text-xs text-slate-600 flex justify-between items-center">
                             <span>رقم التاجر: <b class="text-slate-900" dir="ltr">${ord.target_merchant}</b></span>
-                            <span class="font-black text-slate-700">إجمالي: ${ord.total_amount || ord.amount} ج</span>
                         </div>
                         <div class="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200">📍 ${ord.address}</div>
                         ${actionHtml}
@@ -1833,9 +1861,16 @@
                             const commRate = parseFloat(m.commission_rate || 0);
                             const totalToTransfer = amount + ((amount * commRate) / 100);
                             const btnThemeClass = isVf ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-700 hover:bg-purple-800';
+                            
                             const actionBtnText = txType === 'cash_out' 
-                                ? `طلب كاش (سأحول لك ${totalToTransfer} ج)` 
-                                : `طلب تحويل (سأدفع لك ${totalToTransfer} ج كاش)`;
+                                ? `<div class="flex flex-col items-center w-full">
+                                     <span class="text-[11px] sm:text-xs text-white/90 mb-0.5 font-bold">سأُحول لك ${totalToTransfer} ج (رقمياً)</span>
+                                     <span class="text-sm sm:text-base font-black">➔ وتعطيني <span class="text-yellow-300 text-lg">${amount} ج</span> (كاش)</span>
+                                   </div>`
+                                : `<div class="flex flex-col items-center w-full">
+                                     <span class="text-[11px] sm:text-xs text-white/90 mb-0.5 font-bold">سأدفع لك ${totalToTransfer} ج (كاش)</span>
+                                     <span class="text-sm sm:text-base font-black">➔ وتُحول لي <span class="text-yellow-300 text-lg">${amount} ج</span> (رقمياً)</span>
+                                   </div>`;
 
                             listHTML += `
                             <div id="merchant-card-${m.phone}" data-bg="${cardBgColor}" class="merchant-card-item ${cardBgColor} border-2 border-slate-200 rounded-2xl overflow-hidden shadow-md flex flex-col mb-2 transition-all duration-300">
@@ -1854,8 +1889,8 @@
                                     </div>
                                 </div>
                                 
-                                <div id="merchant-action-${m.phone}" class="bg-black/5 p-3 border-t-2 border-slate-200 mt-auto">
-                                    <button onclick="window.sendTargetedOrder('${m.phone}', '${m.name}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="${btnThemeClass} text-white w-full font-black text-sm sm:text-base px-4 py-3.5 rounded-xl shadow-md active:scale-95 transition-all">${actionBtnText} 🚀</button>
+                                <div id="merchant-action-${m.phone}" class="bg-black/5 p-2 border-t-2 border-slate-200 mt-auto">
+                                    <button onclick="window.sendTargetedOrder('${m.phone}', '${m.name}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="${btnThemeClass} text-white w-full px-2 py-2 rounded-xl shadow-md active:scale-95 transition-all">${actionBtnText}</button>
                                 </div>
                             </div>`;
                         });
@@ -1919,7 +1954,12 @@
                                 statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
                                 if(actionDivTarget) {
                                     const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
-                                    const waMsg = encodeURIComponent(`السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount} ج.م شامل العمولة عبر تطبيق وصلني كاش.`);
+                                    const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
+                                    const waMsg = encodeURIComponent(
+                                        isCashOut 
+                                        ? `السلام عليكم، سأقوم بتحويل مبلغ ${ord.total_amount || ord.amount} ج.م لك رقمياً، لاستلام ${ord.amount} ج.م كاش. (تطبيق وصلني كاش)`
+                                        : `السلام عليكم، سأدفع لك مبلغ ${ord.total_amount || ord.amount} ج.م كاش، لتحويل ${ord.amount} ج.م لي رقمياً. (تطبيق وصلني كاش)`
+                                    );
                                     actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
                                     actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
                                 }
