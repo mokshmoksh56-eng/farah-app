@@ -69,29 +69,59 @@
                 </div>
             </div>
 
-            <!-- Map -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3>
-                <div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Merchant Map -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3>
+                    <div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div>
+                </div>
+
+                <!-- Customer Map -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار العملاء</h3>
+                    <div id="customerAdminMap" class="map-container border-2 border-slate-200 shadow-inner"></div>
+                </div>
             </div>
 
-            <!-- GPS Locations Table -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن المتاجر (GPS)</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
-                        <thead class="bg-slate-50 text-slate-500">
-                            <tr>
-                                <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
-                                <th class="p-3 font-black">رقم الهاتف</th>
-                                <th class="p-3 font-black">العنوان (المسجل)</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات الجغرافية</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableLocations" class="divide-y divide-slate-100">
-                            <!-- Data -->
-                        </tbody>
-                    </table>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Merchants GPS Locations Table -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن المتاجر</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
+                                    <th class="p-3 font-black">رقم الهاتف</th>
+                                    <th class="p-3 font-black">العنوان</th>
+                                    <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableLocations" class="divide-y divide-slate-100">
+                                <!-- Data -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Customers GPS Locations Table -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن العملاء</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="p-3 rounded-tr-xl font-black">اسم العميل</th>
+                                    <th class="p-3 font-black">رقم الهاتف</th>
+                                    <th class="p-3 font-black">العنوان (آخر طلب)</th>
+                                    <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableCustomerLocations" class="divide-y divide-slate-100">
+                                <!-- Data -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -202,7 +232,9 @@
         signInAnonymously(auth).catch(console.error);
 
         let map = null;
+        let customerMap = null; // خريطة العملاء
         let merchantMarkers = {};
+        let customerMarkers = {}; // علامات العملاء
         let addressCache = {};
         
         let allMerchants = {};
@@ -222,17 +254,18 @@
             setTimeout(() => activeTab.classList.add('fade-enter-active'), 50);
             document.getElementById('btnTab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
 
-            if(tabName === 'dashboard' && map) setTimeout(() => map.invalidateSize(), 100);
+            if(tabName === 'dashboard') {
+                if(map) setTimeout(() => map.invalidateSize(), 100);
+                if(customerMap) setTimeout(() => customerMap.invalidateSize(), 100);
+            }
 
             // حفظ التاب الحالي في ذاكرة المتصفح
             localStorage.setItem('activeEqbadAdminTab', tabName);
         };
 
-        // استعادة التاب المحفوظ عند تحميل الصفحة
         const savedTab = localStorage.getItem('activeEqbadAdminTab') || 'dashboard';
         window.switchTab(savedTab);
 
-        // جلب العنوان العكسي عبر Mapbox API
         async function fetchAddress(lat, lng) {
             const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`; 
             if(addressCache[cacheKey]) return addressCache[cacheKey];
@@ -250,14 +283,19 @@
             } catch (e) { return "تعذر جلب العنوان"; }
         }
 
-        // تهيئة الخريطة بـ Mapbox
+        // تهيئة الخرائط بـ Mapbox
         function initMap() {
             if(!map) {
                 map = L.map('adminMap').setView([30.0444, 31.2357], 6);
                 L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { 
-                    maxZoom: 18,
-                    attribution: '© Mapbox'
+                    maxZoom: 18, attribution: '© Mapbox'
                 }).addTo(map);
+            }
+            if(!customerMap) {
+                customerMap = L.map('customerAdminMap').setView([30.0444, 31.2357], 6);
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { 
+                    maxZoom: 18, attribution: '© Mapbox'
+                }).addTo(customerMap);
             }
         }
 
@@ -276,13 +314,26 @@
             }
         };
 
+        window.focusCustomerOnMap = function(phone) {
+            if(document.getElementById('tab-dashboard').classList.contains('hidden')) {
+                window.switchTab('dashboard');
+            }
+            if (customerMarkers[phone]) {
+                setTimeout(() => {
+                    document.getElementById('customerAdminMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    customerMap.flyTo(customerMarkers[phone].getLatLng(), 16);
+                    customerMarkers[phone].openPopup();
+                }, 300);
+            } else {
+                alert("لا توجد إحداثيات جغرافية دقيقة مسجلة لهذا العميل.");
+            }
+        };
+
         // ================= ADMIN ACTIONS =================
 
         window.deleteMerchant = function(key) {
             if(confirm("تحذير: هل أنت متأكد من حذف هذا المتجر نهائياً؟")) {
-                remove(ref(db, `eqbad_merchants/${key}`))
-                    .then(() => alert('تم حذف المتجر بنجاح.'))
-                    .catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
+                remove(ref(db, `eqbad_merchants/${key}`)).then(() => alert('تم حذف المتجر بنجاح.')).catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
             }
         };
 
@@ -290,16 +341,13 @@
             const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
             const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
             if(confirm(`هل تريد ${actionText} هذا المتجر؟`)) {
-                update(ref(db, `eqbad_merchants/${key}`), { status: newStatus })
-                    .catch((error) => alert('فشل التعديل:\n' + error.message));
+                update(ref(db, `eqbad_merchants/${key}`), { status: newStatus }).catch((error) => alert('فشل التعديل:\n' + error.message));
             }
         };
 
         window.deleteCustomer = function(key) {
             if(confirm("تحذير: هل أنت متأكد من حذف هذا العميل نهائياً؟")) {
-                remove(ref(db, `eqbad_customers/${key}`))
-                    .then(() => alert('تم حذف العميل بنجاح.'))
-                    .catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
+                remove(ref(db, `eqbad_customers/${key}`)).then(() => alert('تم حذف العميل بنجاح.')).catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
             }
         };
 
@@ -307,23 +355,19 @@
             const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
             const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
             if(confirm(`هل تريد ${actionText} هذا العميل؟`)) {
-                update(ref(db, `eqbad_customers/${key}`), { status: newStatus })
-                    .catch((error) => alert('فشل التعديل:\n' + error.message));
+                update(ref(db, `eqbad_customers/${key}`), { status: newStatus }).catch((error) => alert('فشل التعديل:\n' + error.message));
             }
         };
 
         window.deleteOrder = function(key) {
             if(confirm("هل أنت متأكد من حذف هذه العملية من السجل؟")) {
-                remove(ref(db, `eqbad_orders/${key}`))
-                    .catch((error) => alert('فشل الحذف:\n' + error.message));
+                remove(ref(db, `eqbad_orders/${key}`)).catch((error) => alert('فشل الحذف:\n' + error.message));
             }
         };
 
         window.deleteAllOrders = function() {
             if(confirm("تحذير خطير: هل أنت متأكد من مسح جميع العمليات؟ لا يمكن التراجع عن هذا الإجراء!")) {
-                remove(ref(db, 'eqbad_orders'))
-                    .then(() => alert('تم مسح السجل بالكامل بنجاح.'))
-                    .catch((error) => alert('فشل المسح:\n' + error.message));
+                remove(ref(db, 'eqbad_orders')).then(() => alert('تم مسح السجل بالكامل بنجاح.')).catch((error) => alert('فشل المسح:\n' + error.message));
             }
         };
 
@@ -349,8 +393,8 @@
             document.getElementById('statVodaLiquidity').innerText = totalVodafone.toLocaleString() + ' ج.م';
             document.getElementById('statInstaLiquidity').innerText = totalInstapay.toLocaleString() + ' ج.م';
 
+            // تحديث خريطة المتاجر
             if(map) {
-                // إزالة الماركرز القديمة
                 Object.values(merchantMarkers).forEach(m => map.removeLayer(m));
                 merchantMarkers = {};
 
@@ -376,8 +420,50 @@
                                 }
                             });
                         });
-
                         merchantMarkers[pPhone] = marker;
+                    }
+                });
+            }
+
+            // تحديث خريطة العملاء
+            if(customerMap) {
+                Object.values(customerMarkers).forEach(m => customerMap.removeLayer(m));
+                customerMarkers = {};
+
+                const custIcon = L.divIcon({ html: '<span style="font-size: 24px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">🏃‍♂️</span>', className: 'bg-transparent', iconSize: [24, 24] });
+                
+                Object.values(allCustomers).forEach(c => {
+                    let lat = c.lat;
+                    let lng = c.lng;
+                    // إذا لم يكن العميل يمتلك إحداثيات مسجلة، نبحث في آخر طلب له
+                    if (!lat || !lng) {
+                        const custOrder = allOrders.find(o => o.customer_phone === c.phone && o.lat && o.lng);
+                        if (custOrder) {
+                            lat = custOrder.lat;
+                            lng = custOrder.lng;
+                        }
+                    }
+
+                    if(lat && lng && c.status !== 'blocked') {
+                        const pPhone = c.phone;
+                        let popupHtml = `<div class="text-center font-cairo" dir="rtl">
+                            <b class="text-[#0f172a]">${c.name}</b><br>
+                            <span class="text-xs text-slate-600" dir="ltr">${c.phone}</span>
+                            <div id="cust_address_box_${pPhone}"></div>
+                        </div>`;
+
+                        const marker = L.marker([lat, lng], { icon: custIcon }).bindPopup(popupHtml).addTo(customerMap);
+                        
+                        marker.on('click', function() {
+                            fetchAddress(lat, lng).then(addr => {
+                                let box = document.getElementById(`cust_address_box_${pPhone}`);
+                                if(box) { 
+                                    box.innerHTML = `📍 ${addr}`; 
+                                    box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; 
+                                }
+                            });
+                        });
+                        customerMarkers[pPhone] = marker;
                     }
                 });
             }
@@ -404,6 +490,45 @@
                 </tr>`;
             });
             document.getElementById('tableLocations').innerHTML = html;
+        }
+
+        function renderCustomerLocationsTable() {
+            let html = '';
+            Object.values(allCustomers).forEach(c => {
+                let lat = c.lat;
+                let lng = c.lng;
+                let address = c.address;
+                
+                if (!lat || !lng) {
+                    const custOrder = allOrders.find(o => o.customer_phone === c.phone && o.lat && o.lng);
+                    if (custOrder) {
+                        lat = custOrder.lat;
+                        lng = custOrder.lng;
+                        address = custOrder.address || address;
+                    } else {
+                        const custOrderWithAddress = allOrders.find(o => o.customer_phone === c.phone && o.address);
+                        if(custOrderWithAddress) address = custOrderWithAddress.address;
+                    }
+                }
+                
+                const hasLocation = lat && lng;
+                
+                html += `
+                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                    <td class="p-3 font-black text-slate-800">${c.name}</td>
+                    <td class="p-3 text-slate-600 font-bold" dir="ltr">${c.phone}</td>
+                    <td class="p-3 text-xs text-slate-500">${address || 'بدون عنوان'}</td>
+                    <td class="p-3 text-center">
+                        ${hasLocation ? `
+                        <div class="flex justify-center gap-2">
+                            <button onclick="window.focusCustomerOnMap('${c.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 hover:bg-indigo-100 shadow-sm transition active:scale-95">🗺️ الخريطة</button>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200 hover:bg-blue-100 shadow-sm transition inline-block">📍 جوجل</a>
+                        </div>
+                        ` : '<span class="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">لا توجد إحداثيات</span>'}
+                    </td>
+                </tr>`;
+            });
+            document.getElementById('tableCustomerLocations').innerHTML = html;
         }
 
         function renderMerchantsTable() {
@@ -551,6 +676,7 @@
             }
             updateDashboard();
             renderCustomersTable();
+            renderCustomerLocationsTable();
         });
 
         onValue(ref(db, 'eqbad_orders'), snap => {
@@ -563,6 +689,7 @@
             updateDashboard();
             renderMerchantsTable(); 
             renderCustomersTable(); 
+            renderCustomerLocationsTable();
             renderOrdersTable();
         });
 
