@@ -1,8 +1,5 @@
 const admin = require("firebase-admin");
-const express = require("express"); // إضافة مكتبة إكسبريس
 const serviceAccount = require("./serviceAccountKey.json");
-
-const app = express(); // تشغيل إكسبريس
 
 // تهيئة الاتصال بقاعدة بيانات فايربيز الخاصة بتطبيقك
 admin.initializeApp({
@@ -10,7 +7,7 @@ admin.initializeApp({
   databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com"
 });
 
-console.log("✅ اتصال فايربيز جاهز ويراقب الطلبات...");
+console.log("✅ السيرفر يعمل بنجاح ويراقب الطلبات الجديدة...");
 
 const db = admin.database();
 const ordersRef = db.ref('eqbad_orders');
@@ -20,8 +17,10 @@ ordersRef.on('child_added', async (snapshot) => {
     const orderData = snapshot.val();
     const targetMerchant = orderData.target_merchant;
 
+    // التأكد من وجود تاجر وأن الطلب جديد (معلق)
     if (!targetMerchant || orderData.status !== 'pending') return;
 
+    // جلب التوكن الخاص بهاتف التاجر
     const merchantRef = db.ref(`eqbad_merchants/merchant_${targetMerchant}`);
     const merchantSnap = await merchantRef.once('value');
     
@@ -32,23 +31,26 @@ ordersRef.on('child_added', async (snapshot) => {
     const title = isCashOut ? "طلب سيولة كاش 💵" : "طلب تحويل رصيد 📱";
     const body = `يطلب ${orderData.customer_name || 'عميل'} مبلغ ${orderData.amount || 0} ج.م، افتح التطبيق للموافقة.`;
 
+    // إرسال الإشعار لهاتف التاجر
     try {
         await admin.messaging().send({
+            token: fcmToken,
             notification: { title, body },
-            token: fcmToken
+            android: {
+                priority: 'high',
+                notification: {
+                    sound: 'default',
+                    defaultVibrateTimings: true
+                }
+            },
+            webpush: {
+                headers: {
+                    Urgency: 'high'
+                }
+            }
         });
         console.log("تم إرسال الإشعار بنجاح للتاجر:", targetMerchant);
     } catch (error) {
         console.error("حدث خطأ أثناء إرسال الإشعار:", error);
     }
-});
-
-// إعداد خادم الويب ليفتح المنفذ ويقبل النشر على Render
-const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => {
-    res.send("🚀 سيرفر الإشعارات يعمل بنجاح!");
-});
-
-app.listen(PORT, () => {
-    console.log(`✅ Web server is running on port ${PORT}`);
 });
