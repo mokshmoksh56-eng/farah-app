@@ -19,7 +19,6 @@
   --ok:#059669; --ok-bg:#ECFDF5; --ok-line:#A7F3D0;
   --warn:#B45309; --warn-bg:#FFFBEB; --warn-line:#FDE68A;
   --bad:#BE123C; --bad-bg:#FFF1F2; --bad-line:#FECDD3;
-  /* ألوان الطرق: فودافون = أحمر / إنستاباي = بنفسجي */
   --vf:#DC2626; --vf-dark:#991B1B; --vf-bg:#FEF2F2; --vf-line:#FECACA; --vf-text:#991B1B;
   --ip:#6D28D9; --ip-dark:#4C1D95; --ip-bg:#F5F3FF; --ip-line:#DDD6FE; --ip-text:#5B21B6;
 }
@@ -189,7 +188,6 @@ body{
 .provide-cash-on .pc-badge{ background:#A7F3D0; color:#065F46; }
 .provide-cash-off{ opacity:.72; filter:grayscale(.9); }
 .provide-cash-off .pc-badge{ background:#E2E8F0; color:#64748B; }
-/* تم توحيد ألوان خزنة تحويل الرصيد مع خزنة الكاش (أخضر) */
 .provide-transfer-on{ border-color:#10B981; background:#ECFDF5; color:#065F46; box-shadow:0 10px 20px -14px rgba(16,185,129,1); }
 .provide-transfer-on .pc-badge{ background:#A7F3D0; color:#065F46; }
 .provide-transfer-off{ opacity:.72; filter:grayscale(.9); }
@@ -255,7 +253,6 @@ body{
 .mc-btn-main{ font-size:13.5px; }
 .mc-btn-main b{ color:#FDE68A; font-size:16px; }
 
-/* بطاقة الطلب عند التاجر */
 .order-card{ background:#fff; padding:14px; border-radius:16px; border:2px solid var(--line); box-shadow:0 4px 12px -8px rgba(15,23,42,.2); }
 .order-card-vf{ border-color:var(--vf); background:linear-gradient(180deg,#FFF7F7 0%, #FFFFFF 40%); }
 .order-card-ip{ border-color:var(--ip); background:linear-gradient(180deg,#F9F5FF 0%, #FFFFFF 40%); }
@@ -770,7 +767,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     };
     window.fmtNum = function(num) { return `<span class="en-num">${window.numEN(num)}</span>`; };
 
-    /* ============ اسم وطريقة: نفس الطريقة في كل مكان ============ */
     window.getMethodArabicName = function(method) {
         return (method === 'vodafone') ? 'فودافون كاش' : 'إنستاباي';
     };
@@ -986,11 +982,19 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     }
     window.searchOnMap = searchOnMap;
 
+    /* ✅ معدلة: مزامنة موقع العميل لحظيًا مع لوحة الإدارة */
     function confirmMapSelection() {
         if(!window.tempLat) return alert("الرجاء تحديد النقطة على الخريطة أولاً.");
         if(window.activeMapMode === 'customer') {
-            window.finalCustLat = window.tempLat; window.finalCustLng = window.tempLng; window.finalCustAddress = window.tempAddress;
+            window.finalCustLat = window.tempLat;
+            window.finalCustLng = window.tempLng;
+            window.finalCustAddress = window.tempAddress;
             document.getElementById('custAddressDisplay').value = window.tempAddress;
+
+            // ⬇️ مزامنة فورية مع Firebase لتظهر في لوحة الإدارة لحظيًا
+            if (window.saveCustomerLocation) {
+                window.saveCustomerLocation(window.tempLat, window.tempLng, window.tempAddress);
+            }
         } else if(window.activeMapMode === 'merchant') {
             window.finalMerchLat = window.tempLat; window.finalMerchLng = window.tempLng; window.finalMerchAddress = window.tempAddress;
             document.getElementById('merchantAddressDisplay').value = window.tempAddress;
@@ -1154,6 +1158,25 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window._merchantDataUnsub = null;
     window._customerPendingUnsub = null;
     window._authReady = false;
+
+    /* ✅ دالة جديدة: حفظ موقع العميل في قاعدة البيانات لحظيًا */
+    window.saveCustomerLocation = function(lat, lng, address) {
+        const phone = window.normalizePhone(
+            window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone')
+        );
+        if (!phone) {
+            console.warn('لا يوجد رقم عميل مسجل لحفظ الموقع');
+            return;
+        }
+        update(ref(db, 'eqbad_customers/customer_' + phone), {
+            lat: lat,
+            lng: lng,
+            address: address || '',
+            locationUpdatedAt: Date.now()
+        })
+        .then(() => console.log('✅ تم مزامنة موقع العميل مع الإدارة'))
+        .catch(err => console.error('خطأ حفظ موقع العميل:', err));
+    };
 
     window.requestPushPermissions = async function(userType, phone) {
         try {
@@ -1468,7 +1491,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }
     };
 
-    /* ====== تأكيد التسليم — الطريقة زي ما العميل اختار (نفس الطريقة) ====== */
     window.confirmDeliveredCash = function(reqKey, amount, customerMethod, txType, totalAmount) {
         const numAmount = parseFloat(amount) || 0;
         const numTotal = parseFloat(totalAmount) || numAmount;
@@ -1503,7 +1525,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         });
     };
 
-    /* ====== المستمع الرئيسي لطلبات التاجر ====== */
     window.listenToOrders = function() {
         const myPhone = window.normalizePhone(window.currentMerchantPhone || localStorage.getItem('eqbad_merchant_phone'));
         let mKey = window.currentMerchantKey || ('merchant_' + myPhone);
@@ -1550,7 +1571,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                         if(dbTargetMerchant === myPhone && (req.status === 'pending' || req.status === 'accepted')) {
                             activeCount++;
 
-                            /* نفس طريقة العميل في كل مكان */
                             const method = req.method || 'vodafone';
                             const methodName = window.getMethodArabicName(method);
                             const methodIcon = window.getMethodIcon(method);
@@ -1565,7 +1585,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                             const cardClass = window.getOrderCardClass(method);
                             const orderMethodClass = window.getOrderMethodClass(method);
 
-                            /* صندوق الفلو — الطريقة زي ما هي */
                             const flowHtml = isCashOut
                                 ? `<div class="flow-box">
                                        <div class="flow-row">
@@ -1641,7 +1660,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }, (err) => { console.error("orders onValue error:", err); });
     };
 
-    /* ============ تقارير التاجر ============ */
     window.cancelMerchantReport = function(reqKey) {
         if(confirm("هل أنت متأكد من مسح هذه العملية من سجلك الخاص بشكل نهائي؟")) {
             update(ref(db, 'eqbad_orders/' + reqKey), { status: 'deleted_by_merchant', deletedAt: Date.now() })
@@ -1692,7 +1710,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 const dateStr = dateObj.toLocaleDateString('en-GB');
                 const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-                /* بلون طريقة العميل */
                 const method = ord.method || 'vodafone';
                 const methodName = window.getMethodArabicName(method);
 
@@ -1720,7 +1737,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         });
     };
 
-    /* ============ تقارير العميل ============ */
     window.fetchCustomerReports = function() {
         showView('customerReportsView');
         const container = document.getElementById('custReportsListContainer');
@@ -1809,7 +1825,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }
     };
 
-    /* ============ الطلبات المعلقة للعميل ============ */
     window.fetchCustomerPendingOrders = function() {
         showView('customerPendingView');
         const container = document.getElementById('custPendingListContainer');
@@ -1919,7 +1934,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }
     };
 
-    /* ============ البحث عن تجار — نفس الطريقة (بدون معاكسة) ============ */
     window.searchMerchants = function(e) {
         if(e) e.preventDefault();
         const amount = parseFloat(document.getElementById('customerAmount').value);
@@ -1935,7 +1949,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         const btn = document.getElementById('btnCustomerSearch');
         if(btn) { btn.innerHTML = "⏳ جاري البحث..."; btn.disabled = true; }
 
-        /* نفس الطريقة — فلترة على الطريقة اللي العميل اختارها */
         const methodName = window.getMethodArabicName(customerMethod);
         const isVf = customerMethod === 'vodafone';
         const enableField = isVf ? 'enable_vodafone' : 'enable_instapay';
@@ -2043,7 +2056,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         });
     };
 
-    /* ============ إرسال طلب للتاجر ============ */
     window.sendTargetedOrder = async function(merchantPhone, merchantName, merchLat, merchLng, btnElement, commRate, reqAmount) {
         if(btnElement && btnElement.disabled) return;
 
