@@ -147,7 +147,7 @@ body{
 .badge-offline{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:900; color:var(--muted); background:var(--surface-3); padding:8px 12px; border-radius:12px; border:1px solid var(--line); flex-shrink:0; }
 .dot{ display:inline-block; width:8px; height:8px; border-radius:999px; flex-shrink:0; position:relative; }
 .dot-live{ background:#10B981; }
-.dot-live::after{ content:''; position:absolute; inset:0; border-radius:999px; background:#10B981; animation:pulseRing 1.7s cubic-bezier(0,0,.2,1) infinite; }
+.dot-live::after{ content:'Piece'; position:absolute; inset:0; border-radius:999px; background:#10B981; animation:pulseRing 1.7s cubic-bezier(0,0,.2,1) infinite; }
 .dot-off{ background:#94A3B8; }
 @keyframes pulseRing{ 75%,100%{ transform:scale(2.3); opacity:0; } }
 
@@ -573,9 +573,9 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 <span id="merchantOnlineBadge" class="badge-online"><span class="dot dot-live"></span> ظاهر</span>
             </div>
 
-            <div class="panel-soft p-3 mb-4 flex items-center justify-between shadow-xs">
-                <div id="merchantVisibilityText" class="vis-status">⏳ جاري الفحص...</div>
-                <button type="button" id="btnToggleVisibility" onclick="window.toggleMerchantVisibility()" class="btn-vis btn-vis-hide mr-2">تحميل...</button>
+            <!-- لافتة الحالة الآلية -->
+            <div id="autoStatusBanner" class="mb-4 p-3 rounded-2xl border-2 flex items-center justify-center transition-all duration-300">
+                <div id="merchantVisibilityText" class="text-[13.5px] font-black flex items-center gap-2">⏳ جاري فحص حالة المتجر...</div>
             </div>
 
             <div class="panel-soft p-4 mb-4">
@@ -1052,17 +1052,18 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     };
 
     window.updateVisibilityUI = function(status) {
-        const btn = document.getElementById('btnToggleVisibility');
         const badge = document.getElementById('merchantOnlineBadge');
         const statusText = document.getElementById('merchantVisibilityText');
-        if(!btn || !badge) return;
+        const banner = document.getElementById('autoStatusBanner');
+        if(!badge) return;
+        
         if(status === 'active') {
-            btn.className = "btn-vis btn-vis-hide"; btn.innerHTML = "إخفاء المتجر ❌";
-            if(statusText) { statusText.className = "vis-status vis-status-on"; statusText.innerHTML = `<span class="dot dot-live"></span> <span class="truncate">متجرك الآن: ظاهر (مفتوح)</span>`; }
+            if(banner) { banner.className = "mb-4 p-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 text-emerald-800 flex items-center justify-center transition-all duration-300 shadow-sm"; }
+            if(statusText) { statusText.innerHTML = `<span class="text-lg">✨</span> <span>متجرك الآن: ظاهر للعملاء (جاهز لاستقبال الطلبات)</span>`; }
             badge.className = "badge-online"; badge.innerHTML = `<span class="dot dot-live"></span> ظاهر`;
         } else {
-            btn.className = "btn-vis btn-vis-show"; btn.innerHTML = "إظهار المتجر ✔️";
-            if(statusText) { statusText.className = "vis-status vis-status-off"; statusText.innerHTML = `<span class="dot dot-off"></span> <span class="truncate">متجرك الآن: غير ظاهر (مغلق)</span>`; }
+            if(banner) { banner.className = "mb-4 p-3 rounded-2xl border-2 border-rose-200 bg-rose-50 text-rose-800 flex items-center justify-center transition-all duration-300 shadow-sm"; }
+            if(statusText) { statusText.innerHTML = `<span class="text-lg">💤</span> <span>متجرك الآن: غير ظاهر (قمت بإغلاق جميع الخدمات)</span>`; }
             badge.className = "badge-offline"; badge.innerHTML = `<span class="dot dot-off"></span> غير ظاهر`;
         }
     };
@@ -1216,7 +1217,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         update(ref(db, 'eqbad_merchants/' + mKey), { lat: lat, lng: lng })
         .then(() => {
             alert("✅ تم تحديث مكان المتجر بنجاح!");
-            document.getElementById('merchantVisibilityText').innerHTML = `<span class="dot dot-live"></span> <span class="truncate">تم التحديث ✔️</span>`;
+            const bannerText = document.getElementById('merchantVisibilityText');
+            if (bannerText) bannerText.innerHTML = `<span class="text-lg">✔️</span> <span>تم تحديث الموقع بنجاح!</span>`;
             setTimeout(() => { if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status); }, 2500);
         })
         .catch(err => alert("خطأ: " + err.message));
@@ -1465,39 +1467,28 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window.toggleProvideService = function(type) {
         if(!window.currentMerchantPhone) return;
         let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+        
         get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
             if(!snap.exists()) return;
             const m = snap.val();
+            
             const field = (type === 'cash') ? 'provide_cash' : 'provide_transfer';
+            const otherField = (type === 'cash') ? 'provide_transfer' : 'provide_cash';
+            
             const currentVal = m[field];
             const newVal = (currentVal === undefined) ? false : !currentVal;
-            let updates = { [field]: newVal };
-            const otherField = (type === 'cash') ? 'provide_transfer' : 'provide_cash';
             const otherVal = (m[otherField] === undefined) ? true : m[otherField];
+            
+            let updates = { [field]: newVal };
+            
             if (newVal === false && otherVal === false) {
                 updates['status'] = 'offline';
-                alert("⚠️ تم إخفاء متجرك تلقائياً لأنك أغلقت جميع الخدمات.");
+            } else if (newVal === true || otherVal === true) {
+                updates['status'] = 'active';
             }
+            
             update(ref(window.dbRef, 'eqbad_merchants/' + mKey), updates);
         }).catch(err => alert("خطأ: " + err.message));
-    };
-
-    window.toggleMerchantVisibility = function() {
-        if(!window.currentMerchantPhone) return;
-        let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-        const btn = document.getElementById('btnToggleVisibility');
-        btn.innerHTML = "⏳ جاري التحديث..."; btn.disabled = true;
-        get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
-            if(!snap.exists()) return;
-            const m = snap.val();
-            const currentStatus = m.status || 'active';
-            const newStatus = (currentStatus === 'active') ? 'offline' : 'active';
-            if (newStatus === 'active' && m.provide_cash === false && m.provide_transfer === false) {
-                alert("لا يمكنك إظهار المتجر بينما الخدمتين مغلقتين.");
-                btn.disabled = false; window.updateVisibilityUI(currentStatus); return;
-            }
-            update(ref(window.dbRef, 'eqbad_merchants/' + mKey), { status: newStatus }).finally(() => { btn.disabled = false; });
-        }).catch(err => { alert("خطأ: " + err.message); btn.disabled = false; });
     };
 
     window.acceptOrder = function(reqKey) {
