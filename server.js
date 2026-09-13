@@ -34,23 +34,8 @@ ordersRef.on('child_added', async (snapshot) => {
     // إرسال الإشعار لهاتف التاجر
     try {
         await admin.messaging().send({
-            token: fcmToken,
             notification: { title, body },
-            // إضافة إعدادات الأندرويد لضمان ظهوره كإشعار نظام منبثق
-            android: {
-                priority: 'high',
-                notification: {
-                    sound: 'default',
-                    defaultVibrateTimings: true,
-                    notificationCount: 1
-                }
-            },
-            // إضافة إعدادات الويب
-            webpush: {
-                headers: {
-                    Urgency: 'high'
-                }
-            }
+            token: fcmToken
         });
         console.log("تم إرسال الإشعار بنجاح للتاجر:", targetMerchant);
     } catch (error) {
