@@ -280,18 +280,14 @@
                     <label class="block text-sm font-black text-slate-900 mb-1">اسم المتجر / المحل</label>
                     <input type="text" id="regStoreName" required placeholder="مثال: سنتر الأمانة" class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none font-bold text-slate-950 text-base shadow-xs">
                 </div>
-                <div>
-                    <label class="block text-sm font-black text-slate-900 mb-1">رقم الهاتف</label>
-                    <input type="tel" id="regPhone" lang="en" inputmode="numeric" pattern="[0-9]*" required placeholder="01xxxxxxxx" class="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none font-black tracking-widest text-left text-base text-slate-950 shadow-xs" dir="ltr">
-                </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-black text-slate-900 mb-1">الرقم السري (4 أرقام)</label>
-                        <input type="password" id="regPin" lang="en" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required placeholder="****" class="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none text-center font-black tracking-widest text-base text-slate-950 shadow-xs" dir="ltr">
+                        <label class="block text-sm font-black text-slate-900 mb-1">رقم الهاتف</label>
+                        <input type="tel" id="regPhone" lang="en" inputmode="numeric" pattern="[0-9]*" required placeholder="01xxxxxxxx" class="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none font-black tracking-widest text-left text-base text-slate-950 shadow-xs" dir="ltr">
                     </div>
                     <div>
-                        <label class="block text-sm font-black text-slate-900 mb-1">تأكيد الرقم السري</label>
-                        <input type="password" id="regPinConfirm" lang="en" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required placeholder="****" class="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none text-center font-black tracking-widest text-base text-slate-950 shadow-xs" dir="ltr">
+                        <label class="block text-sm font-black text-slate-900 mb-1">الرقم السري (PIN)</label>
+                        <input type="password" id="regPin" lang="en" inputmode="numeric" pattern="[0-9]*" required placeholder="****" maxlength="6" class="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-[#7e122f] rounded-xl outline-none text-center font-black tracking-widest text-base text-slate-950 shadow-xs" dir="ltr">
                     </div>
                 </div>
                 <input type="checkbox" id="regEnableVodafone" checked class="hidden">
@@ -321,7 +317,7 @@
                 </span>
             </div>
 
-            <!-- زر التحكم الرئيسي في الظهور -->
+            <!-- زر التحكم الرئيسي في الظهور للعملاء -->
             <div class="bg-slate-50 border-2 border-slate-200 p-2 sm:p-3 rounded-2xl mb-4 flex items-center justify-between shadow-xs">
                 <div id="merchantVisibilityText" class="text-xs sm:text-sm font-black text-slate-700 flex-1 flex items-center gap-1.5 pr-1">
                     ⏳ جاري الفحص...
@@ -384,7 +380,7 @@
                 </div>
             </div>
 
-            <!-- إعدادات فودافون -->
+            <!-- لوحات الإعدادات المخفية -->
             <div id="vfSettingsPanel" class="hidden bg-red-600 border-2 border-red-700 p-4 rounded-2xl shadow-inner flex-col gap-4 mb-4 mt-2">
                 <div>
                     <p class="text-sm font-black text-white mb-2">حدود الاستقبال (من - إلى):</p>
@@ -401,7 +397,6 @@
                 </div>
             </div>
 
-            <!-- إعدادات إنستاباي -->
             <div id="ipSettingsPanel" class="hidden bg-purple-600 border-2 border-purple-700 p-4 rounded-2xl shadow-inner flex-col gap-4 mb-4 mt-2">
                 <div>
                     <p class="text-sm font-black text-white mb-2">حدود الاستقبال (من - إلى):</p>
@@ -1052,7 +1047,13 @@
         const db = getDatabase(app); 
         const auth = getAuth(app);
         const analytics = getAnalytics(app);
-        const messaging = getMessaging(app);
+        let messaging = null;
+
+        try {
+            messaging = getMessaging(app);
+        } catch(e) {
+            console.log("Messaging initialization skipped:", e);
+        }
 
         window.dbRef = db; 
 
@@ -1063,7 +1064,7 @@
 
         window.requestPushPermissions = async function(userType, phone) {
             try {
-                if (typeof window === 'undefined' || !('Notification' in window)) {
+                if (typeof window === 'undefined' || !('Notification' in window) || !messaging) {
                     console.log('المتصفح لا يدعم الإشعارات');
                     return;
                 }
@@ -1094,27 +1095,25 @@
                             : `eqbad_customers/customer_${phone}`;
                         await update(ref(db, path), { fcmToken: currentToken });
                         console.log("✅ تم استخراج وحفظ توكن الإشعارات بنجاح:", currentToken);
-                    } else {
-                        console.log("⚠️ لم يتمكن المتصفح من استخراج توكن الإشعارات.");
                     }
-                } else {
-                    console.log("❌ لم يتم منح صلاحية الإشعارات.");
                 }
             } catch (error) {
                 console.error('حدث خطأ تقني في الإشعارات: ', error);
             }
         };
 
-        onMessage(messaging, (payload) => {
-            window.playLoudNotification();
-            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === "granted") {
-                new Notification(payload.notification.title || "إشعار جديد", {
-                    body: payload.notification.body,
-                    icon: 'icon.png',
-                    dir: 'rtl'
-                });
-            }
-        });
+        if (messaging) {
+            onMessage(messaging, (payload) => {
+                window.playLoudNotification();
+                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === "granted") {
+                    new Notification(payload.notification?.title || "إشعار جديد", {
+                        body: payload.notification?.body || "",
+                        icon: 'icon.png',
+                        dir: 'rtl'
+                    });
+                }
+            });
+        }
 
         window.updateMerchantLocationToDB = function(lat, lng) {
             let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
@@ -1122,150 +1121,79 @@
             update(ref(db, 'eqbad_merchants/' + mKey), { lat: lat, lng: lng })
             .then(() => {
                 alert("✅ تم تحديث مكان المتجر بنجاح على الخريطة للعملاء!");
-                document.getElementById('merchantVisibilityText').innerHTML = `<span class="relative flex h-2.5 w-2.5 shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span> <span class="truncate">تم التحديث ✔️</span>`;
-                setTimeout(() => {
-                    if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status);
-                }, 2500);
-            })
-            .catch(err => alert("حدث خطأ أثناء تحديث الموقع: " + err.message));
+                if (document.getElementById('merchantVisibilityText')) {
+                    document.getElementById('merchantVisibilityText').innerHTML = `<span class="relative flex h-2.5 w-2.5 shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span> <span class="truncate">متجرك الآن: ظاهر (مفتوح)</span>`;
+                }
+            }).catch(err => {
+                alert("تعذر تحديث الموقع: " + err.message);
+            });
         };
 
-        window.updateSpecificSettings = function(type) {
-            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-            
-            if (type === 'vodafone') {
-                const minVf = parseFloat(document.getElementById('settingMinVf').value.replace(/,/g, '')) || 0;
-                const maxVf = parseFloat(document.getElementById('settingMaxVf').value.replace(/,/g, '')) || 0;
-                const commVf = parseFloat(document.getElementById('settingCommVf').value.replace(/,/g, '')) || 0;
-                
-                if(minVf < 0 || maxVf <= minVf) {
-                    return alert("يرجى إدخال حدود صحيحة (الحد الأقصى يجب أن يكون أكبر من الحد الأدنى).");
-                }
-                
-                update(ref(db, 'eqbad_merchants/' + mKey), { 
-                    min_amount_vf: minVf, 
-                    max_amount_vf: maxVf,
-                    balance_vodafone: maxVf, 
-                    commission_rate: commVf
-                }).then(() => {
-                    alert("✅ تم حفظ إعدادات فودافون كاش وتحديث الرصيد.");
-                    if(document.getElementById('settingCommIp')) document.getElementById('settingCommIp').value = commVf; 
-                    document.getElementById('vfSettingsPanel').classList.add('hidden');
-                }).catch(err => alert("حدث خطأ أثناء الحفظ: " + err.message));
-                
-            } else {
-                const minIp = parseFloat(document.getElementById('settingMinIp').value.replace(/,/g, '')) || 0;
-                const maxIp = parseFloat(document.getElementById('settingMaxIp').value.replace(/,/g, '')) || 0;
-                const commIp = parseFloat(document.getElementById('settingCommIp').value.replace(/,/g, '')) || 0;
-                
-                if(minIp < 0 || maxIp <= minIp) {
-                    return alert("يرجى إدخال حدود صحيحة (الحد الأقصى يجب أن يكون أكبر من الحد الأدنى).");
-                }
-                
-                update(ref(db, 'eqbad_merchants/' + mKey), { 
-                    min_amount_ip: minIp, 
-                    max_amount_ip: maxIp,
-                    balance_instapay: maxIp, 
-                    commission_rate: commIp
-                }).then(() => {
-                    alert("✅ تم حفظ إعدادات إنستاباي وتحديث الرصيد.");
-                    if(document.getElementById('settingCommVf')) document.getElementById('settingCommVf').value = commIp; 
-                    document.getElementById('ipSettingsPanel').classList.add('hidden');
-                }).catch(err => alert("حدث خطأ أثناء الحفظ: " + err.message));
-            }
-        };
-
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) return;
-            if (window._authReady) return;
+        signInAnonymously(auth).then(() => {
             window._authReady = true;
+            checkSavedSession();
+        }).catch(err => console.error("Auth error:", err));
 
-            const savedMerchantPhone = localStorage.getItem('eqbad_merchant_phone');
-            const savedMerchantKey   = localStorage.getItem('eqbad_merchant_key');
-            const savedCustomerPhone = localStorage.getItem('eqbad_customer_phone');
-            const savedCustomerName  = localStorage.getItem('eqbad_customer_name');
+        function checkSavedSession() {
+            const savedRole = localStorage.getItem('eqbad_user_role');
+            const savedPhone = localStorage.getItem('eqbad_user_phone');
+            const savedKey = localStorage.getItem('eqbad_user_key');
 
-            if (savedMerchantPhone) {
-                let mKey = savedMerchantKey || ('merchant_' + window.normalizePhone(savedMerchantPhone));
-                try {
-                    let snap = await get(ref(db, 'eqbad_merchants/' + mKey));
-                    if (!snap.exists() && !savedMerchantKey) {
-                        mKey = window.normalizePhone(savedMerchantPhone); 
-                        snap = await get(ref(db, 'eqbad_merchants/' + mKey));
-                    }
-                    if (snap.exists()) {
-                        window.currentMerchantPhone = window.normalizePhone(savedMerchantPhone);
-                        window.currentMerchantKey = mKey;
-                        window.requestPushPermissions('merchant', window.currentMerchantPhone);
-                        window.renderMerchantDashboard(snap.val());
-                        window.listenToOrders();
-                    } else {
-                        localStorage.removeItem('eqbad_merchant_phone');
-                        localStorage.removeItem('eqbad_merchant_key');
-                        showView('roleView');
-                    }
-                } catch(e) { 
-                    showView('roleView'); 
-                }
-            } else if (savedCustomerPhone) {
-                window.currentCustomerPhone = window.normalizePhone(savedCustomerPhone);
-                window.currentCustomerName = savedCustomerName || "عميل مسجل";
-                window.requestPushPermissions('customer', window.currentCustomerPhone);
-                document.getElementById('custProfileName').innerText = window.currentCustomerName;
-                document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
-                showView('customerView');
+            if (savedRole === 'merchant' && (savedPhone || savedKey)) {
+                window.currentMerchantPhone = savedPhone || "";
+                window.currentMerchantKey = savedKey || ('merchant_' + savedPhone);
+                initMerchantSession();
+            } else if (savedRole === 'customer' && savedPhone) {
+                window.currentCustomerPhone = savedPhone;
+                window.currentCustomerName = localStorage.getItem('eqbad_user_name') || "عميل";
+                initCustomerSession();
             } else {
-                showView('roleView');
+                const lastView = localStorage.getItem('eqbad_active_view') || 'roleView';
+                window.showView(lastView);
             }
-        });
+        }
 
+        // تسجيل وإدارة حسابات العملاء
         window.registerCustomer = async function(e) {
             e.preventDefault();
             const name = document.getElementById('regCustName').value.trim();
             const phone = window.normalizePhone(document.getElementById('regCustPhone').value);
             const pin = document.getElementById('regCustPin').value.trim();
             const confirmPin = document.getElementById('regCustConfirmPin').value.trim();
-            const btn = document.getElementById('btnRegCustomer');
 
-            if (!phone) return alert("رقم الهاتف غير صحيح.");
-            if (pin !== confirmPin) return alert("الرقم السري وتأكيد الرقم السري غير متطابقين!");
-            
-            btn.innerHTML = "⏳ جاري الفحص...";
-            btn.disabled = true;
+            if (!phone || phone.length < 10) return alert("الرجاء إدخال رقم هاتف صحيح.");
+            if (pin !== confirmPin) return alert("عفواً، الرقم السري وتأكيده غير متطابقين.");
+
+            const btn = document.getElementById('btnRegCustomer');
+            btn.disabled = true; btn.innerText = "جاري الحفظ...";
 
             try {
-                let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
-                let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
-                let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone)); 
-
-                if(custSnap.exists() || merchSnap.exists() || merchSnap2.exists()) {
-                    btn.innerHTML = "إنشاء الحساب ✔️";
-                    btn.disabled = false;
-                    return alert("هذا الرقم مسجل بالفعل في التطبيق! برجاء تسجيل الدخول.");
+                const custRef = ref(db, `eqbad_customers/customer_${phone}`);
+                const snap = await get(custRef);
+                if (snap.exists()) {
+                    btn.disabled = false; btn.innerText = "إنشاء الحساب ✔️";
+                    return alert("هذا الرقم مسجل بالفعل، يمكنك تسجيل الدخول مباشرة.");
                 }
 
-                await set(ref(db, 'eqbad_customers/customer_' + phone), {
-                    name: name, phone: phone, pin: pin, createdAt: Date.now()
+                await set(custRef, {
+                    name: name,
+                    phone: phone,
+                    pin: pin,
+                    createdAt: Date.now()
                 });
+
+                localStorage.setItem('eqbad_user_role', 'customer');
+                localStorage.setItem('eqbad_user_phone', phone);
+                localStorage.setItem('eqbad_user_name', name);
 
                 window.currentCustomerPhone = phone;
                 window.currentCustomerName = name;
-                localStorage.setItem('eqbad_customer_phone', phone);
-                localStorage.setItem('eqbad_customer_name', name);
-                
-                window.requestPushPermissions('customer', phone);
-                
-                document.getElementById('custProfileName').innerText = name;
-                document.getElementById('custProfilePhone').innerText = phone;
-                
-                btn.innerHTML = "إنشاء الحساب ✔️";
-                btn.disabled = false;
-                showView('customerView');
 
+                initCustomerSession();
             } catch (err) {
-                btn.innerHTML = "إنشاء الحساب ✔️";
-                btn.disabled = false;
-                alert("خطأ في الاتصال بقاعدة البيانات: " + err.message);
+                alert("حدث خطأ أثناء التسجيل: " + err.message);
+            } finally {
+                btn.disabled = false; btn.innerText = "إنشاء الحساب ✔️";
             }
         };
 
@@ -1273,112 +1201,115 @@
             e.preventDefault();
             const phone = window.normalizePhone(document.getElementById('loginCustPhone').value);
             const pin = document.getElementById('loginCustPin').value.trim();
+
             const btn = document.getElementById('btnLoginCustomer');
-            
-            btn.innerHTML = "⏳ جاري التحقق...";
-            btn.disabled = true;
+            btn.disabled = true; btn.innerText = "جاري التحقق...";
 
             try {
-                let snap = await get(ref(db, 'eqbad_customers/customer_' + phone));
-                btn.innerHTML = "تسجيل الدخول 🏃‍♂️";
-                btn.disabled = false;
-
-                if(snap.exists() && String(snap.val().pin) === String(pin)) {
-                    window.currentCustomerPhone = phone;
-                    window.currentCustomerName = snap.val().name;
-                    localStorage.setItem('eqbad_customer_phone', phone);
-                    localStorage.setItem('eqbad_customer_name', window.currentCustomerName);
-                    
-                    window.requestPushPermissions('customer', phone);
-                    
-                    document.getElementById('custProfileName').innerText = window.currentCustomerName;
-                    document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
-                    showView('customerView');
-                } else {
-                    alert("عفواً، رقم الهاتف أو الرقم السري غير صحيح.");
+                const custRef = ref(db, `eqbad_customers/customer_${phone}`);
+                const snap = await get(custRef);
+                if (!snap.exists()) {
+                    return alert("رقم الهاتف غير مسجل لدينا. يرجى إنشاء حساب جديد.");
                 }
+
+                const data = snap.val();
+                if (data.pin !== pin) {
+                    return alert("الرقم السري غير صحيح.");
+                }
+
+                localStorage.setItem('eqbad_user_role', 'customer');
+                localStorage.setItem('eqbad_user_phone', phone);
+                localStorage.setItem('eqbad_user_name', data.name || "عميل");
+
+                window.currentCustomerPhone = phone;
+                window.currentCustomerName = data.name || "عميل";
+
+                initCustomerSession();
             } catch (err) {
-                btn.innerHTML = "تسجيل الدخول 🏃‍♂️";
-                btn.disabled = false;
-                alert("حدث خطأ أثناء تسجيل الدخول: " + err.message);
+                alert("حدث خطأ في الدخول: " + err.message);
+            } finally {
+                btn.disabled = false; btn.innerText = "تسجيل الدخول 🏃‍♂️";
             }
         };
 
         window.logoutCustomer = function() {
-            if (window._customerPendingUnsub) { try { window._customerPendingUnsub(); } catch(e){} window._customerPendingUnsub = null; }
-            localStorage.removeItem('eqbad_customer_phone');
-            localStorage.removeItem('eqbad_customer_name');
+            localStorage.removeItem('eqbad_user_role');
+            localStorage.removeItem('eqbad_user_phone');
+            localStorage.removeItem('eqbad_user_name');
+            localStorage.removeItem('eqbad_active_view');
             window.currentCustomerPhone = "";
             window.currentCustomerName = "";
-            viewHistory = [];
-            currentHistoryIndex = -1;
-            showView('roleView');
+            window.showView('roleView');
         };
 
-        // ========== تسجيل التاجر (مُعدل: 4 أرقام + تأكيد الرقم السري) ==========
+        function initCustomerSession() {
+            document.getElementById('custProfileName').innerText = window.currentCustomerName || "مرحباً بك";
+            document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone || "";
+            window.requestPushPermissions('customer', window.currentCustomerPhone);
+            window.showView('customerView');
+        }
+
+        // تسجيل وإدارة حسابات التجار
         window.registerMerchant = async function(e) {
             e.preventDefault();
             const storeName = document.getElementById('regStoreName').value.trim();
             const phone = window.normalizePhone(document.getElementById('regPhone').value);
             const pin = document.getElementById('regPin').value.trim();
-            const confirmPin = document.getElementById('regPinConfirm').value.trim();
-            const enableVf = document.getElementById('regEnableVodafone').checked;
-            const enableIp = document.getElementById('regEnableInstapay').checked;
-            const commRate = 0; // نسبة افتراضية، يقدر التاجر يعدلها من الإعدادات بعد الدخول
 
-            if (!storeName) return alert("يرجى إدخال اسم المتجر.");
-            if (!phone) return alert("رقم الهاتف غير صحيح.");
-            if (!/^\d{4}$/.test(pin)) return alert("الرقم السري يجب أن يكون 4 أرقام فقط.");
-            if (pin !== confirmPin) return alert("الرقم السري وتأكيد الرقم السري غير متطابقين!");
-            if (!window.finalMerchLat) return alert("يرجى تحديد موقع المتجر من الخريطة أولاً.");
+            if (!phone || phone.length < 10) return alert("يرجى إدخال رقم هاتف صحيح للمتجر.");
+            if (!window.finalMerchLat || !window.finalMerchLng) {
+                return alert("يرجى تحديد موقع المحل الجغرافي من الخريطة أولاً.");
+            }
 
             const btn = document.getElementById('btnRegMerchant');
-            btn.innerHTML = "⏳ جاري الفحص...";
-            btn.disabled = true;
+            btn.disabled = true; btn.innerText = "جاري إنشاء الحساب...";
+
+            const merchantKey = `merchant_${phone}`;
 
             try {
-                let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
-                let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
-                let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone));
-
-                if (custSnap.exists() || merchSnap.exists() || merchSnap2.exists()) {
-                    btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
-                    btn.disabled = false;
-                    return alert("هذا الرقم مسجل بالفعل في التطبيق! استخدم رقم آخر للتاجر.");
+                const mRef = ref(db, `eqbad_merchants/${merchantKey}`);
+                const snap = await get(mRef);
+                if (snap.exists()) {
+                    btn.disabled = false; btn.innerText = "تأكيد وتفعيل الحساب ✔️";
+                    return alert("هذا الهاتف مسجل لمتجر بالفعل، يمكنك تسجيل الدخول.");
                 }
 
-                const merchantData = {
-                    name: storeName, phone: phone, pin: pin,
-                    commission_rate: commRate,
-                    enable_vodafone: enableVf, enable_instapay: enableIp,
-                    provide_cash: true, provide_transfer: true,
-                    min_amount_vf: 50, max_amount_vf: 30000,
-                    min_amount_ip: 50, max_amount_ip: 30000,
-                    balance_vodafone: 30000, balance_instapay: 30000,
-                    lat: window.finalMerchLat, lng: window.finalMerchLng,
-                    address: window.finalMerchAddress || "موقع محدد عبر الخريطة",
-                    status: 'active', createdAt: Date.now()
+                const newMerchData = {
+                    name: storeName,
+                    phone: phone,
+                    pin: pin,
+                    lat: window.finalMerchLat,
+                    lng: window.finalMerchLng,
+                    address: window.finalMerchAddress || "الموقع المSelected",
+                    status: "active",
+                    provide_cash: true,
+                    provide_transfer: true,
+                    enable_vodafone: true,
+                    enable_instapay: true,
+                    balance_vodafone: 0,
+                    balance_instapay: 0,
+                    min_amount_vf: 50,
+                    max_amount_vf: 30000,
+                    min_amount_ip: 50,
+                    max_amount_ip: 30000,
+                    commission_rate: 1.0,
+                    createdAt: Date.now()
                 };
 
-                let mKey = 'merchant_' + phone;
-                await set(ref(db, 'eqbad_merchants/' + mKey), merchantData);
+                await set(mRef, newMerchData);
+
+                localStorage.setItem('eqbad_user_role', 'merchant');
+                localStorage.setItem('eqbad_user_phone', phone);
+                localStorage.setItem('eqbad_user_key', merchantKey);
 
                 window.currentMerchantPhone = phone;
-                window.currentMerchantKey = mKey;
-                localStorage.setItem('eqbad_merchant_phone', phone);
-                localStorage.setItem('eqbad_merchant_key', mKey);
+                window.currentMerchantKey = merchantKey;
 
-                window.requestPushPermissions('merchant', phone);
-
-                btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
-                btn.disabled = false;
-                window.renderMerchantDashboard(merchantData);
-                window.listenToOrders();
-
+                initMerchantSession();
             } catch (err) {
-                btn.innerHTML = "تأكيد وتفعيل الحساب ✔️";
-                btn.disabled = false;
-                alert("خطأ في الاتصال بقاعدة البيانات: " + err.message);
+                alert("حدث خطأ أثناء تسجيل المتجر: " + err.message);
+            } finally {
+                btn.disabled = false; btn.innerText = "تأكيد وتفعيل الحساب ✔️";
             }
         };
 
@@ -1386,798 +1317,481 @@
             e.preventDefault();
             const phone = window.normalizePhone(document.getElementById('loginPhone').value);
             const pin = document.getElementById('loginPin').value.trim();
-            const btn = document.getElementById('btnLoginMerchant');
 
-            btn.innerHTML = "⏳ جاري التحقق...";
-            btn.disabled = true;
+            const btn = document.getElementById('btnLoginMerchant');
+            btn.disabled = true; btn.innerText = "جاري الدخول...";
+
+            const merchantKey = `merchant_${phone}`;
 
             try {
-                let actualKey = 'merchant_' + phone;
-                let snap = await get(ref(db, 'eqbad_merchants/' + actualKey));
-                
+                const mRef = ref(db, `eqbad_merchants/${merchantKey}`);
+                const snap = await get(mRef);
                 if (!snap.exists()) {
-                    actualKey = phone; 
-                    snap = await get(ref(db, 'eqbad_merchants/' + actualKey));
+                    return alert("رقم المحل غير مسجل. يرجى إنشاء حساب تاجر جديد.");
                 }
 
-                btn.innerHTML = "دخول لصفحة المتجر 🏪";
-                btn.disabled = false;
-
-                if(snap.exists() && String(snap.val().pin) === String(pin)) {
-                    window.currentMerchantPhone = phone;
-                    window.currentMerchantKey = actualKey;
-                    localStorage.setItem('eqbad_merchant_phone', phone);
-                    localStorage.setItem('eqbad_merchant_key', actualKey);
-                    
-                    window.requestPushPermissions('merchant', phone);
-                    
-                    window.renderMerchantDashboard(snap.val());
-                    window.listenToOrders();
-                } else {
-                    alert("عفواً، رقم الهاتف أو الرقم السري غير صحيح.");
+                const data = snap.val();
+                if (data.pin !== pin) {
+                    return alert("الرقم السري خاطئ.");
                 }
+
+                localStorage.setItem('eqbad_user_role', 'merchant');
+                localStorage.setItem('eqbad_user_phone', phone);
+                localStorage.setItem('eqbad_user_key', merchantKey);
+
+                window.currentMerchantPhone = phone;
+                window.currentMerchantKey = merchantKey;
+
+                initMerchantSession();
             } catch (err) {
-                btn.innerHTML = "دخول لصفحة المتجر 🏪";
-                btn.disabled = false;
-                alert("حدث خطأ أثناء تسجيل الدخول: " + err.message);
+                alert("تعذر تسجيل الدخول: " + err.message);
+            } finally {
+                btn.disabled = false; btn.innerText = "دخول لصفحة المتجر 🏪";
             }
         };
 
         window.logoutMerchant = function() {
-            if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
-            if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
+            if (window._merchantDataUnsub) off(ref(db, `eqbad_merchants/${window.currentMerchantKey}`));
+            if (window._orderUnsub) off(ref(db, 'eqbad_orders'));
 
-            localStorage.removeItem('eqbad_merchant_phone');
-            localStorage.removeItem('eqbad_merchant_key');
+            localStorage.removeItem('eqbad_user_role');
+            localStorage.removeItem('eqbad_user_phone');
+            localStorage.removeItem('eqbad_user_key');
+            localStorage.removeItem('eqbad_active_view');
+
             window.currentMerchantPhone = "";
             window.currentMerchantKey = "";
-            window.currentActiveMerchantData = null;
-            window.notifiedOrders.clear();
-            viewHistory = [];
-            currentHistoryIndex = -1;
-            showView('roleView');
+            window.showView('roleView');
         };
 
-        window.toggleServiceStatus = function(type) {
-            if(!window.currentMerchantPhone) return;
-            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-            get(ref(db, 'eqbad_merchants/' + mKey)).then(snap => {
-                if(!snap.exists()) return;
-                const field = (type === 'vodafone') ? 'enable_vodafone' : 'enable_instapay';
-                update(ref(db, 'eqbad_merchants/' + mKey), { [field]: !(snap.val()[field] !== false) });
-            }).catch(err => alert("خطأ: " + err.message));
-        };
+        function initMerchantSession() {
+            const mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+            const mRef = ref(db, `eqbad_merchants/${mKey}`);
 
-        window.toggleProvideService = function(type) {
-            if(!window.currentMerchantPhone) return;
-            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-            get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
-                if(!snap.exists()) return;
-                const m = snap.val();
-                const field = (type === 'cash') ? 'provide_cash' : 'provide_transfer';
-                const currentVal = m[field];
-                const newVal = (currentVal === undefined) ? false : !currentVal;
-                
-                let updates = { [field]: newVal };
-                
-                const otherField = (type === 'cash') ? 'provide_transfer' : 'provide_cash';
-                const otherVal = (m[otherField] === undefined) ? true : m[otherField];
-                
-                if (newVal === false && otherVal === false) {
-                    updates['status'] = 'offline';
-                    alert("⚠️ تم إخفاء متجرك تلقائياً لأنك أغلقت جميع الخدمات.");
+            onValue(mRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    window.renderMerchantDashboard(data);
                 }
-                
-                update(ref(window.dbRef, 'eqbad_merchants/' + mKey), updates);
-            }).catch(err => alert("خطأ: " + err.message));
-        };
+            });
 
-        window.toggleMerchantVisibility = function() {
-            if(!window.currentMerchantPhone) return;
-            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-            
-            const btn = document.getElementById('btnToggleVisibility');
-            btn.innerHTML = "⏳ جاري التحديث...";
-            btn.disabled = true;
+            // الاستماع للطلبات الواردة
+            const ordersRef = ref(db, 'eqbad_orders');
+            onValue(ordersRef, (snapshot) => {
+                const container = document.getElementById('liveRequestsContainer');
+                const badge = document.getElementById('ordersCountBadge');
+                if (!container) return;
 
-            get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
-                if(!snap.exists()) return;
-                const m = snap.val();
-                const currentStatus = m.status || 'active';
-                const newStatus = (currentStatus === 'active') ? 'offline' : 'active';
-                
-                if (newStatus === 'active' && m.provide_cash === false && m.provide_transfer === false) {
-                    alert("لا يمكنك إظهار المتجر للعملاء بينما (خزنة الكاش) و (رصيد التحويل) مغلقين. يرجى تفعيل أحدهما أولاً.");
-                    btn.disabled = false;
-                    window.updateVisibilityUI(currentStatus); 
+                if (!snapshot.exists()) {
+                    container.innerHTML = `<div class="text-center py-5 text-slate-500 text-sm font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
+                    if (badge) badge.innerHTML = `<span class="en-num">0</span> طلب`;
                     return;
                 }
 
-                update(ref(window.dbRef, 'eqbad_merchants/' + mKey), { status: newStatus }).finally(() => {
-                    btn.disabled = false;
+                let orders = [];
+                snapshot.forEach((child) => {
+                    const o = child.val();
+                    o.id = child.key;
+                    if (o.merchantKey === mKey && (o.status === 'pending' || o.status === 'accepted')) {
+                        orders.push(o);
+                    }
                 });
-            }).catch(err => {
-                alert("خطأ: " + err.message);
-                btn.disabled = false;
-            });
-        };
 
-        // ================= ORDERS LOGIC =================
-        window.acceptOrder = function(reqKey) {
-            update(ref(db, 'eqbad_orders/' + reqKey), { status: 'accepted', acceptedAt: Date.now() });
-        };
+                if (badge) badge.innerHTML = `<span class="en-num">${orders.length}</span> طلب`;
 
-        window.rejectOrder = function(reqKey) {
-            if(confirm("هل أنت متأكد من رفض هذه العملية؟ لن يتمكن العميل من التواصل معك.")) {
-                update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() });
-            }
-        };
-
-        window.confirmDeliveredCash = function(reqKey, amount, method, txType, totalAmount) {
-            const numAmount = parseFloat(amount) || 0;
-            const numTotal = parseFloat(totalAmount) || numAmount;
-            let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-            
-            get(ref(db, 'eqbad_merchants/' + mKey)).then(snap => {
-                const m = snap.val();
-                const field = (method === 'vodafone') ? 'balance_vodafone' : 'balance_instapay';
-                const currentBalance = parseFloat(m[field]) || 0;
-
-                const isCashIn = (txType === 'cash_in');
-
-                if(isCashIn && numAmount > currentBalance) return alert(`رصيدك الرقمي لا يكفي لتحويل هذا المبلغ للعميل.`);
-                
-                let confirmMsg = isCashIn 
-                    ? `تأكيد استلامك الكاش وتحويل ${window.numEN(numAmount)} ج.م انستاباى للعميل (سيتم خصمها من رصيدك)؟`
-                    : `تأكيد استلامك تحويل العميل وتسليمه ${window.numEN(numAmount)} ج.م كاش (سيتم إضافتها لرصيدك الرقمي)؟`;
-
-                if(confirm(confirmMsg)) {
-                    let newBalance = isCashIn ? (currentBalance - numAmount) : (currentBalance + numTotal);
-
-                    let updates = { [field]: newBalance };
-                    if (method === 'vodafone') updates['max_amount_vf'] = newBalance;
-                    if (method === 'instapay') updates['max_amount_ip'] = newBalance;
-
-                    update(ref(db, 'eqbad_orders/' + reqKey), { status: 'completed', completedAt: Date.now() })
-                    .then(() => update(ref(db, 'eqbad_merchants/' + mKey), updates))
-                    .then(() => alert(`🎉 تم تأكيد العملية وتحديث رصيدك بنجاح!`));
+                if (orders.length === 0) {
+                    container.innerHTML = `<div class="text-center py-5 text-slate-500 text-sm font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
+                    return;
                 }
-            });
-        };
 
-        // ======== المستمع الرئيسي للطلبات للتاجر ========
-        window.listenToOrders = function() {
-            const myPhone = window.normalizePhone(
-                window.currentMerchantPhone || localStorage.getItem('eqbad_merchant_phone')
-            );
-            let mKey = window.currentMerchantKey || ('merchant_' + myPhone);
-
-            if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
-            if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
-
-            window._merchantDataUnsub = onValue(ref(db, 'eqbad_merchants/' + mKey), (snap) => {
-                try {
-                    if(snap.exists()) {
-                        const m = snap.val();
-                        if(document.getElementById('merchantVodafoneDisplay')) document.getElementById('merchantVodafoneDisplay').innerHTML = window.fmtNum(m.balance_vodafone || 0) + " ج.م";
-                        if(document.getElementById('merchantInstapayDisplay')) document.getElementById('merchantInstapayDisplay').innerHTML = window.fmtNum(m.balance_instapay || 0) + " ج.م";
-                        
-                        if(document.getElementById('settingMinVf')) document.getElementById('settingMinVf').value = (parseFloat(m.min_amount_vf) || parseFloat(m.min_amount) || 50).toLocaleString('en-US');
-                        if(document.getElementById('settingMaxVf')) document.getElementById('settingMaxVf').value = (parseFloat(m.max_amount_vf) || parseFloat(m.max_amount) || 30000).toLocaleString('en-US');
-                        if(document.getElementById('settingCommVf')) document.getElementById('settingCommVf').value = parseFloat(m.commission_rate) || 0;
-
-                        if(document.getElementById('settingMinIp')) document.getElementById('settingMinIp').value = (parseFloat(m.min_amount_ip) || parseFloat(m.min_amount) || 50).toLocaleString('en-US');
-                        if(document.getElementById('settingMaxIp')) document.getElementById('settingMaxIp').value = (parseFloat(m.max_amount_ip) || parseFloat(m.max_amount) || 30000).toLocaleString('en-US');
-                        if(document.getElementById('settingCommIp')) document.getElementById('settingCommIp').value = parseFloat(m.commission_rate) || 0;
-
-                        window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
-                        window.updateProvideServicesUI(m.provide_cash, m.provide_transfer);
-                        window.updateVisibilityUI(m.status);
-                    }
-                } catch(err) { console.error("merchant data listener error:", err); }
-            }, (err) => console.error("merchant data onValue error:", err));
-
-            window._orderUnsub = onValue(ref(db, 'eqbad_orders'), (snapshot) => {
-                try {
-                    const activeContainer = document.getElementById('liveRequestsContainer');
-                    const badge = document.getElementById('ordersCountBadge');
-                    if (!activeContainer || !badge) return;
-
-                    let activeCount = 0; 
-                    let activeHtml = "";
-                    let isNewOrderArrived = false;
-
-                    if(snapshot.exists()) {
-                        let requests = [];
-                        snapshot.forEach(child => { 
-                            requests.push({key: child.key, val: child.val()}); 
-                        });
-                        
-                        requests.reverse().forEach(reqObj => {
-                            const req = reqObj.val, reqKey = reqObj.key;
-                            const dbTargetMerchant = window.normalizePhone(req.target_merchant);
-
-                            if(dbTargetMerchant === myPhone && (req.status === 'pending' || req.status === 'accepted')) {
-                                activeCount++;
-
-                                const isVf = req.method === 'vodafone';
-                                const badgeStyle = isVf ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-800 border-purple-200';
-                                const totalTransfer = req.total_amount || req.amount;
-                                const isCashOut = req.transaction_type === 'cash_out' || !req.transaction_type; 
-
-                                if(req.status === 'pending' && !window.notifiedOrders.has(reqKey)) {
-                                    window.notifiedOrders.add(reqKey);
-                                    isNewOrderArrived = true;
-                                }
-
-                                const typeHtml = isCashOut 
-                                    ? `<div class="bg-emerald-50 text-emerald-900 border-2 border-emerald-400 p-2.5 rounded-xl font-black text-center mb-2 shadow-sm">
-                                           <div class="text-sm mb-2">💵 العميل يطلب سيولة كاش</div>
-                                           <div class="flex flex-col gap-1.5 text-xs">
-                                               <div class="bg-slate-50 px-2 py-1.5 rounded-lg border border-emerald-200">العميل سيُحول لك انستاباى: <span class="text-emerald-700 text-sm">${window.fmtNum(totalTransfer)} ج</span></div>
-                                               <div class="text-emerald-600 font-extrabold">⬇️ إذن مطلوب منك ⬇️</div>
-                                               <div class="bg-emerald-600 text-white px-2 py-2 rounded-lg text-sm">تسليم العميل كاش: <span class="text-yellow-300 text-lg">${window.fmtNum(req.amount)} ج</span></div>
-                                           </div>
-                                       </div>`
-                                    : `<div class="bg-blue-50 text-blue-900 border-2 border-blue-400 p-2.5 rounded-xl font-black text-center mb-2 shadow-sm">
-                                           <div class="text-sm mb-2">📱 العميل يطلب تحويل رصيد</div>
-                                           <div class="flex flex-col gap-1.5 text-xs">
-                                               <div class="bg-slate-50 px-2 py-1.5 rounded-lg border border-blue-200">العميل سيَدفع لك كاش: <span class="text-blue-700 text-sm">${window.fmtNum(totalTransfer)} ج</span></div>
-                                               <div class="text-blue-600 font-extrabold">⬇️ إذن مطلوب منك ⬇️</div>
-                                               <div class="bg-blue-600 text-white px-2 py-2 rounded-lg text-sm">تحويل رصيد للعميل: <span class="text-yellow-300 text-lg">${window.fmtNum(req.amount)} ج</span></div>
-                                           </div>
-                                       </div>`;
-
-                                activeHtml += `
-                                <div class="bg-slate-50 border-2 ${isVf ? 'border-red-600' : 'border-purple-600'} p-3.5 rounded-2xl shadow-xs space-y-2.5">
-                                    ${typeHtml}
-                                    <div class="flex justify-between items-center text-xs text-slate-600 pt-1 border-t border-slate-200 mt-2">
-                                        <div>
-                                            <span>العميل: </span>
-                                            ${req.customer_name ? `<span class="font-black text-slate-800">${req.customer_name}</span>` : ''}
-                                            <b class="text-slate-900 en-num" dir="ltr">${req.customer_phone}</b>
-                                        </div>
-                                        <span class="${badgeStyle} px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1.5">
-                                            ${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${isVf ? 'فودافون' : 'إنستاباي'}
-                                        </span>
-                                    </div>
-                                    <p class="text-xs text-slate-600 truncate bg-slate-100 p-2 rounded-xl border border-slate-300">📍 ${req.address}</p>
-                                    
-                                    <div class="pt-1">
-                                        ${req.status === 'pending' ? `
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <button onclick="window.acceptOrder('${reqKey}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex justify-center gap-1">✔️ قبول</button>
-                                                <button onclick="window.rejectOrder('${reqKey}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-rose-200 font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex justify-center gap-1">❌ رفض</button>
-                                            </div>
-                                        ` : `
-                                            <div class="bg-emerald-50 text-emerald-800 text-xs font-black py-2 rounded-xl border border-emerald-300 text-center mb-2">✅ مقبول! بانتظار العميل</div>
-                                            <button onclick="window.confirmDeliveredCash('${reqKey}', '${req.amount}', '${req.method}', '${req.transaction_type || 'cash_out'}', '${req.total_amount || req.amount}')" class="w-full ${isVf ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-700 hover:bg-purple-800'} text-white font-black py-2.5 rounded-xl active:scale-95 text-sm shadow-xs flex flex-col justify-center gap-0.5 leading-tight">
-                                                <span class="flex justify-center items-center gap-1.5">${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${isCashOut ? 'تأكيد استلام التحويل وتسليم الكاش' : 'تأكيد استلام الكاش وتحويل الرصيد'}</span>
-                                            </button>
-                                        `}
-                                    </div>
-                                </div>`;
-                            }
-                        });
-                    }
-                    
-                    if (isNewOrderArrived) {
+                // تنبيه نغمة عند وجود طلب جديد
+                orders.forEach(o => {
+                    if (o.status === 'pending' && !window.notifiedOrders.has(o.id)) {
                         window.playLoudNotification();
+                        window.notifiedOrders.add(o.id);
                     }
-
-                    badge.innerHTML = `<span class="en-num">${window.numEN(activeCount)}</span> طلب`;
-                    activeContainer.innerHTML = activeCount > 0 ? activeHtml : `<div class="text-center py-5 text-slate-400 text-sm font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
-                } catch(err) {
-                    console.error("orders listener error:", err);
-                }
-            }, (err) => {
-                console.error("orders onValue error:", err);
-            });
-        };
-
-        window.cancelMerchantReport = function(reqKey) {
-            if(confirm("هل أنت متأكد من مسح هذه العملية من سجلك الخاص بشكل نهائي؟")) {
-                update(ref(db, 'eqbad_orders/' + reqKey), { status: 'deleted_by_merchant', deletedAt: Date.now() })
-                .then(() => {
-                    alert("تم إخفاء العملية من سجلك بنجاح.");
-                    window.loadMerchantReports(); 
-                })
-                .catch(err => alert("حدث خطأ: " + err.message));
-            }
-        };
-
-        window.loadMerchantReports = function() {
-            showView('merchantReportsView');
-            const container = document.getElementById('reportsListContainer');
-            container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">⏳ جاري التحميل...</div>`;
-            const myPhone = window.normalizePhone(window.currentMerchantPhone);
-            
-            get(ref(db, 'eqbad_orders')).then(snapshot => {
-                let records = [], totalAmount = 0, totalComm = 0;
-                if(snapshot.exists()) {
-                    snapshot.forEach(child => {
-                        let req = child.val();
-                        if(window.normalizePhone(req.target_merchant) === myPhone && req.status === 'completed') {
-                            records.push({key: child.key, ...req});
-                            totalAmount += parseFloat(req.amount) || 0;
-                            totalComm += parseFloat(req.commission_amount) || 0;
-                        }
-                    });
-                }
-                records.sort((a, b) => (b.completedAt || b.timestamp) - (a.completedAt || a.timestamp));
-                document.getElementById('reportTotalAmount').innerHTML = window.fmtNum(totalAmount) + ' ج.م';
-                document.getElementById('reportTotalCommission').innerHTML = window.fmtNum(totalComm) + ' ج.م';
-                document.getElementById('reportTotalCountBadge').innerHTML = window.fmtNum(records.length) + ' عملية';
-                
-                if(records.length === 0) return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">لا توجد عمليات سابقة.</div>`;
-                
-                container.innerHTML = records.map(ord => {
-                    const dateObj = new Date(ord.completedAt || ord.timestamp);
-                    const dayName = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
-                    const dateStr = dateObj.toLocaleDateString('en-GB'); 
-                    const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                    
-                    return `
-                    <div class="bg-slate-50 border-2 border-slate-200 p-3.5 rounded-2xl relative shadow-sm text-right mb-3">
-                        <div class="absolute right-0 top-0 bottom-0 w-1.5 ${ord.method==='vodafone'?'bg-red-500':'bg-purple-600'} rounded-r-2xl"></div>
-                        
-                        <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-2 pr-3">
-                            <span class="text-[11px] sm:text-xs text-slate-500 font-bold">📅 ${dayName} - <span class="en-num">${dateStr}</span> (<span class="en-num">${timeStr}</span>)</span>
-                            <button onclick="window.cancelMerchantReport('${ord.key}')" class="text-[10px] bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-300 px-2.5 py-1 rounded-lg font-black active:scale-95 transition-all flex items-center gap-1">حذف 🗑️</button>
-                        </div>
-                        
-                        <div class="flex justify-between items-center pr-3">
-                            <div>
-                                <p class="text-sm sm:text-base font-black text-slate-900 mb-0.5">👤 ${ord.customer_name || 'عميل'}</p>
-                                <p class="text-xs font-bold text-slate-500 en-num" dir="ltr">📞 ${ord.customer_phone}</p>
-                            </div>
-                            <div class="text-left bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">
-                                <p class="text-lg font-black ${ord.method==='vodafone'?'text-red-600':'text-purple-700'}">${window.fmtNum(ord.amount)} ج.م</p>
-                                <p class="text-[10px] font-bold text-emerald-600 mt-1">+ ${window.fmtNum(ord.commission_amount || 0)} ج عمولة</p>
-                            </div>
-                        </div>
-                    </div>`;
-                }).join('');
-            });
-        };
-
-        window.fetchCustomerReports = function() {
-            showView('customerReportsView');
-            const container = document.getElementById('custReportsListContainer');
-            container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">⏳ جاري تحميل السجل...</div>`;
-            const myPhone = window.normalizePhone(window.currentCustomerPhone);
-
-            get(ref(db, 'eqbad_orders')).then(snapshot => {
-                let records = [], totalCash = 0, totalComm = 0;
-                if(snapshot.exists()) {
-                    snapshot.forEach(child => {
-                        let req = child.val();
-                        let reqKey = child.key;
-                        if(window.normalizePhone(req.customer_phone) === myPhone) {
-                            records.push({key: reqKey, ...req});
-                            if (req.status === 'completed' || req.status === 'deleted_by_merchant') {
-                                totalCash += parseFloat(req.amount) || 0;
-                                totalComm += parseFloat(req.commission_amount) || 0;
-                            }
-                        }
-                    });
-                }
-                records.sort((a, b) => (b.completedAt || b.timestamp) - (a.completedAt || a.timestamp));
-                document.getElementById('custReportTotalCash').innerHTML = window.fmtNum(totalCash) + ' ج.م';
-                document.getElementById('custReportTotalComm').innerHTML = window.fmtNum(totalComm) + ' ج.م';
-                
-                if(records.length === 0) {
-                    return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد عمليات سابقة.</div>`;
-                }
-                
-                let tableHtml = `
-                <div class="overflow-x-auto w-full">
-                    <table class="w-full text-right border-collapse text-xs sm:text-sm">
-                        <thead>
-                            <tr class="border-b-2 border-slate-200 text-slate-700 bg-slate-100 font-black whitespace-nowrap">
-                                <th class="p-2.5">الوقت والتاريخ</th>
-                                <th class="p-2.5">بيانات التاجر والمكان</th>
-                                <th class="p-2.5 text-center">المبلغ</th>
-                                <th class="p-2.5 text-center">الإجراء / الحالة</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-200 font-bold text-slate-800">
-                `;
-
-                records.forEach(ord => {
-                    const dateObj = new Date(ord.completedAt || ord.timestamp);
-                    const dateStr = dateObj.toLocaleDateString('en-GB');
-                    const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                    const isVf = ord.method === 'vodafone';
-                    const methodColor = isVf ? 'text-red-600' : 'text-purple-700';
-                    const methodBadge = isVf 
-                        ? `<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-200 text-[10px] font-black">${VODAFONE_LOGO_ICON} فودافون</span>`
-                        : `<span class="inline-flex items-center gap-1 text-purple-800 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200 text-[10px] font-black">${INSTAPAY_LOGO_ICON} إنستاباي</span>`;
-
-                    let statusHtml = '';
-                    if (ord.status === 'completed' || ord.status === 'deleted_by_merchant') {
-                        statusHtml = `<span class="text-emerald-600 font-black bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 block text-center">مكتمل ✔️</span>`;
-                    } else if (ord.status === 'rejected') {
-                        statusHtml = `<span class="text-rose-600 font-black bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 block text-center">ملغي ❌</span>`;
-                    } else if (ord.status === 'pending') {
-                        statusHtml = `<button onclick="window.cancelCustomerOrderReport('${ord.key}')" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black py-1.5 rounded-xl text-xs active:scale-95 shadow-xs whitespace-nowrap">إلغاء الطلب ❌</button>`;
-                    } else if (ord.status === 'accepted') {
-                        statusHtml = `<span class="text-amber-600 font-black bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 block text-center whitespace-nowrap">قيد التنفيذ ⏳</span>`;
-                    }
-
-                    tableHtml += `
-                        <tr class="hover:bg-slate-100 transition-colors">
-                            <td class="p-2.5 whitespace-nowrap align-top text-slate-500 font-semibold leading-tight"><span class="en-num">${dateStr}</span><br><span class="text-[10px] en-num">${timeStr}</span></td>
-                            <td class="p-2.5 align-top">
-                                <div class="font-black text-slate-900">${ord.merchant_name || 'تاجر معتمد'}</div>
-                                <div class="text-[10px] text-slate-500 mb-1 en-num" dir="ltr">${ord.target_merchant}</div>
-                                <div class="text-[9px] text-slate-400 truncate max-w-[120px] bg-slate-50 p-1 rounded border border-slate-200" title="${ord.address}">📍 ${ord.address}</div>
-                            </td>
-                            <td class="p-2.5 align-top text-center">
-                                <div class="font-black ${methodColor}">${window.fmtNum(ord.amount)} ج.م</div>
-                                <div class="mt-1">${methodBadge}</div>
-                            </td>
-                            <td class="p-2.5 align-middle w-24">
-                                ${statusHtml}
-                            </td>
-                        </tr>
-                    `;
                 });
 
-                tableHtml += `
-                        </tbody>
-                    </table>
-                </div>
-                `;
-
-                container.innerHTML = tableHtml;
-            });
-        };
-
-        window.cancelCustomerOrderReport = function(reqKey) {
-            if(confirm("هل أنت متأكد من إلغاء هذا الطلب؟")) {
-                update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() })
-                .then(() => {
-                    alert("تم إلغاء الطلب بنجاح.");
-                    window.fetchCustomerReports();
-                })
-                .catch(err => alert("خطأ: " + err.message));
-            }
-        };
-
-        window.fetchCustomerPendingOrders = function() {
-            showView('customerPendingView');
-            const container = document.getElementById('custPendingListContainer');
-            container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">⏳ جاري جلب الطلبات المعلقة والنشطة...</div>`;
-            const myPhone = window.normalizePhone(window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone'));
-
-            if (window._customerPendingUnsub) { 
-                try { window._customerPendingUnsub(); } catch(e){} 
-                window._customerPendingUnsub = null; 
-            }
-
-            window._customerPendingUnsub = onValue(ref(db, 'eqbad_orders'), (snapshot) => {
-                let records = [];
-                if(snapshot.exists()) {
-                    snapshot.forEach(child => {
-                        let req = child.val();
-                        let reqKey = child.key;
-                        if(window.normalizePhone(req.customer_phone) === myPhone && (req.status === 'pending' || req.status === 'accepted')) {
-                            records.push({key: reqKey, ...req});
-                        }
-                    });
-                }
-                records.sort((a, b) => b.timestamp - a.timestamp);
-                
-                if(records.length === 0) {
-                    return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد طلبات معلقة أو نشطة حالياً.</div>`;
-                }
-
-                container.innerHTML = records.map(ord => {
-                    const isVf = ord.method === 'vodafone';
-                    const isPending = ord.status === 'pending';
-                    const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
-
-                    const statusBadge = isPending 
-                        ? `<span class="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full font-black text-xs">⏳ بانتظار موافقة التاجر</span>`
-                        : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black text-xs">✔️ مقبول من التاجر</span>`;
-
-                    let actionHtml = '';
-                    if (isPending) {
-                        actionHtml = `<button onclick="window.cancelCustomerOrder('${ord.key}')" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black py-2 rounded-xl text-xs active:scale-95 shadow-xs">إلغاء الطلب ❌</button>`;
-                    } else {
-                        const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
-                        const waMsg = encodeURIComponent(
-                            isCashOut 
-                            ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك انستاباى، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)`
-                            : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي انستاباى. (تطبيق وصلني كاش)`
-                        );
-                        actionHtml = `
-                        <div class="space-y-1.5 pt-1 border-t border-slate-200 mt-2">
-                            <div class="text-[11px] font-black text-emerald-700 text-center">التاجر وافق! تواصل معه أو توجه للفرع:</div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a>
-                                <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتساب</a>
-                            </div>
-                        </div>`;
-                    }
-
-                    const amountDetailsHtml = isCashOut
-                        ? `<div class="bg-slate-100 border border-slate-200 p-2 rounded-xl text-center text-xs font-black mt-2 mb-2">
-                               سأُحول للتاجر: <span class="text-rose-600">${window.fmtNum(ord.total_amount || ord.amount)} ج</span> ➔ أستلم كاش: <span class="text-emerald-600">${window.fmtNum(ord.amount)} ج</span>
-                           </div>`
-                        : `<div class="bg-slate-100 border border-slate-200 p-2 rounded-xl text-center text-xs font-black mt-2 mb-2">
-                               سأدفع للتاجر كاش: <span class="text-emerald-600">${window.fmtNum(ord.total_amount || ord.amount)} ج</span> ➔ يُحول لي رصيد: <span class="text-rose-600">${window.fmtNum(ord.amount)} ج</span>
-                           </div>`;
-
-                    return `
-                    <div class="bg-slate-50 border-2 ${isVf ? 'border-red-600' : 'border-purple-600'} p-3.5 rounded-2xl relative shadow-sm space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm font-black text-slate-900">الطلب: <span class="${isVf ? 'text-red-600' : 'text-purple-700'} font-black">${window.fmtNum(ord.amount)} ج.م</span></span>
-                            ${statusBadge}
+                container.innerHTML = orders.map(o => `
+                    <div class="bg-white border-2 ${o.status === 'pending' ? 'border-amber-400 bg-amber-50/30' : 'border-emerald-400 bg-emerald-50/30'} p-3.5 rounded-2xl shadow-sm space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-black text-slate-900">${o.customerName || 'عميل'} (${o.customerPhone})</span>
+                            <span class="text-xs px-2.5 py-1 rounded-lg font-black ${o.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                                ${o.status === 'pending' ? 'بانتظار موافقتك ⏳' : 'طلب مقبول 🤝'}
+                            </span>
                         </div>
-                        ${amountDetailsHtml}
-                        <div class="text-xs text-slate-600 flex justify-between items-center">
-                            <span>رقم التاجر: <b class="text-slate-900 en-num" dir="ltr">${ord.target_merchant}</b></span>
+                        <div class="text-xs text-slate-600 font-bold flex justify-between items-center bg-slate-50 p-2 rounded-xl">
+                            <span>الخدمة: ${o.transactionType === 'cash_out' ? 'تسليم كاش 💵' : 'تحويل رصيد 📱'}</span>
+                            <span>المبلغ: <b class="text-red-600 font-black text-sm en-num">${o.amount}</b> ج.م</span>
                         </div>
-                        <div class="text-[11px] text-slate-500 bg-slate-100 p-2 rounded-xl border border-slate-200">📍 ${ord.address}</div>
-                        ${actionHtml}
-                    </div>`;
-                }).join('');
-            }, (err) => {
-                container.innerHTML = `<div class="text-center py-10 text-rose-500 font-black">حدث خطأ أثناء جلب الطلبات: ${err.message}</div>`;
+                        <div class="flex gap-2 pt-1">
+                            ${o.status === 'pending' ? `
+                                <button onclick="window.acceptOrder('${o.id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-2 rounded-xl active:scale-95 shadow-xs">قبول الطلب ✔️</button>
+                                <button onclick="window.rejectOrder('${o.id}')" class="bg-rose-100 text-rose-700 border border-rose-300 text-xs font-black px-3 py-2 rounded-xl active:scale-95">رفض ❌</button>
+                            ` : `
+                                <button onclick="window.completeOrder('${o.id}')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black py-2 rounded-xl active:scale-95 shadow-xs">إتمام وتسليم ✅</button>
+                                <button onclick="window.cancelOrder('${o.id}')" class="bg-slate-200 text-slate-700 text-xs font-black px-3 py-2 rounded-xl active:scale-95">إلغاء</button>
+                            `}
+                        </div>
+                    </div>
+                `).join('');
             });
+
+            window.requestPushPermissions('merchant', window.currentMerchantPhone);
+        }
+
+        // تحكم التاجر بالحالة والخدمات
+        window.toggleMerchantVisibility = async function() {
+            const mKey = window.currentMerchantKey;
+            if (!mKey || !window.currentActiveMerchantData) return;
+            const newStatus = window.currentActiveMerchantData.status === 'active' ? 'inactive' : 'active';
+            await update(ref(db, `eqbad_merchants/${mKey}`), { status: newStatus });
         };
 
-        window.cancelCustomerOrder = function(reqKey) {
-            if(confirm("هل أنت متأكد من إلغاء هذا الطلب المعلق؟")) {
-                update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() })
-                .then(() => {
-                    alert("تم إلغاء الطلب بنجاح.");
-                })
-                .catch(err => alert("خطأ: " + err.message));
+        window.toggleProvideService = async function(service) {
+            const mKey = window.currentMerchantKey;
+            if (!mKey || !window.currentActiveMerchantData) return;
+            if (service === 'cash') {
+                const current = window.currentActiveMerchantData.provide_cash !== false;
+                await update(ref(db, `eqbad_merchants/${mKey}`), { provide_cash: !current });
+            } else if (service === 'transfer') {
+                const current = window.currentActiveMerchantData.provide_transfer !== false;
+                await update(ref(db, `eqbad_merchants/${mKey}`), { provide_transfer: !current });
             }
         };
 
-        window.cancelActiveOrder = function(reqKey, targetMerchantPhone) {
-            if(confirm("هل أنت متأكد من إلغاء هذا الطلب قبل موافقة التاجر؟")) {
-                update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() })
-                .then(() => {
-                    const actionDiv = document.getElementById('merchant-action-' + targetMerchantPhone);
-                    const statusBox = document.getElementById('customerStatusMsg');
-                    if(actionDiv) {
-                        actionDiv.className = "bg-slate-100 p-2 border-t border-slate-200 mt-auto";
-                        actionDiv.innerHTML = `<button onclick="window.searchMerchants(event)" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-xs py-2.5 rounded-xl shadow-xs">تم الإلغاء ❌ (ابحث مجدداً)</button>`;
-                    }
-                    if(statusBox) {
-                        statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-3 text-sm font-black shadow-xs";
-                        statusBox.innerHTML = "❌ تم إلغاء الطلب بنجاح.";
-                    }
-                })
-                .catch(err => alert("خطأ: " + err.message));
+        window.toggleServiceStatus = async function(service) {
+            const mKey = window.currentMerchantKey;
+            if (!mKey || !window.currentActiveMerchantData) return;
+            if (service === 'vodafone') {
+                const current = window.currentActiveMerchantData.enable_vodafone !== false;
+                await update(ref(db, `eqbad_merchants/${mKey}`), { enable_vodafone: !current });
+            } else if (service === 'instapay') {
+                const current = window.currentActiveMerchantData.enable_instapay !== false;
+                await update(ref(db, `eqbad_merchants/${mKey}`), { enable_instapay: !current });
             }
         };
 
-        // ================= SEARCH & ORDER =================
-        window.searchMerchants = function(e) {
-            if(e) e.preventDefault();
+        window.updateSpecificSettings = async function(service) {
+            const mKey = window.currentMerchantKey;
+            if (!mKey) return;
+
+            if (service === 'vodafone') {
+                const minVal = parseFloat(document.getElementById('settingMinVf').value.replace(/,/g, '')) || 50;
+                const maxVal = parseFloat(document.getElementById('settingMaxVf').value.replace(/,/g, '')) || 30000;
+                const comm = parseFloat(document.getElementById('settingCommVf').value) || 0;
+                await update(ref(db, `eqbad_merchants/${mKey}`), {
+                    min_amount_vf: minVal,
+                    max_amount_vf: maxVal,
+                    commission_rate: comm
+                });
+                alert("✅ تم حفظ إعدادات فودافون كاش بنجاح!");
+                document.getElementById('vfSettingsPanel').classList.add('hidden');
+            } else {
+                const minVal = parseFloat(document.getElementById('settingMinIp').value.replace(/,/g, '')) || 50;
+                const maxVal = parseFloat(document.getElementById('settingMaxIp').value.replace(/,/g, '')) || 30000;
+                const comm = parseFloat(document.getElementById('settingCommIp').value) || 0;
+                await update(ref(db, `eqbad_merchants/${mKey}`), {
+                    min_amount_ip: minVal,
+                    max_amount_ip: maxVal,
+                    commission_rate: comm
+                });
+                alert("✅ تم حفظ إعدادات إنستاباي بنجاح!");
+                document.getElementById('ipSettingsPanel').classList.add('hidden');
+            }
+        };
+
+        // بحث العميل عن أفضل التجار
+        window.searchMerchants = async function(e) {
+            e.preventDefault();
             const amount = parseFloat(document.getElementById('customerAmount').value);
-            const method = document.querySelector('input[name="serviceMethod"]:checked').value;
-            const txTypeElement = document.querySelector('input[name="transactionType"]:checked');
-            const txType = txTypeElement ? txTypeElement.value : 'cash_out';
+            if (!amount || amount <= 0) return alert("الرجاء إدخال مبلغ صحيح.");
 
-            window.currentCustomerMethod = method;
+            if (!window.finalCustLat || !window.finalCustLng) {
+                return alert("يرجى تحديد موقعك من الخريطة أولاً لنتعامل بأقرب تجار لك.");
+            }
+
+            const method = window.currentCustomerMethod;
+            const txType = document.querySelector('input[name="transactionType"]:checked').value;
             window.currentTransactionType = txType;
 
-            if(!window.finalCustLat) return alert("الرجاء تحديد موقعك من الخريطة أولاً.");
+            const statusMsg = document.getElementById('customerStatusMsg');
+            statusMsg.innerText = "⏳ جاري فحص التجار المتوفرين وتحديد المسافات...";
 
-            const btn = document.getElementById('btnCustomerSearch');
-            if(btn) { btn.innerHTML = "⏳ جاري البحث..."; btn.disabled = true; }
-            
-            get(ref(db, 'eqbad_merchants')).then(snap => {
-                let merchants = [];
-                const balField = (method === 'vodafone') ? 'balance_vodafone' : 'balance_instapay';
-                const enableField = (method === 'vodafone') ? 'enable_vodafone' : 'enable_instapay';
+            window.showView('customerResultsView');
 
-                if(snap.exists()) {
-                    snap.forEach(child => {
-                        let m = child.val();
-                        let isServiceProvided = true;
-
-                        if(txType === 'cash_in') { 
-                            isServiceProvided = (m.provide_transfer !== false);
-                        } else if (txType === 'cash_out') { 
-                            isServiceProvided = (m.provide_cash !== false);
-                        }
-
-                        let minAmt = 0;
-                        let maxAmt = Infinity;
-                        if (method === 'vodafone') {
-                            minAmt = parseFloat(m.min_amount_vf) || parseFloat(m.min_amount) || 0;
-                            maxAmt = parseFloat(m.max_amount_vf) || parseFloat(m.max_amount) || Infinity;
-                        } else {
-                            minAmt = parseFloat(m.min_amount_ip) || parseFloat(m.min_amount) || 0;
-                            maxAmt = parseFloat(m.max_amount_ip) || parseFloat(m.max_amount) || Infinity;
-                        }
-                        let isWithinLimits = (amount >= minAmt && amount <= maxAmt);
-
-                        if(m.status === 'active' && m[enableField] !== false && isServiceProvided && isWithinLimits) {
-                            m.distance = getDistance(window.finalCustLat, window.finalCustLng, m.lat, m.lng);
-                            merchants.push(m);
-                        }
-                    });
-                }
-                merchants.sort((a,b) => a.distance === b.distance ? (a.commission_rate||0) - (b.commission_rate||0) : a.distance - b.distance);
-                showView('customerResultsView');
-                if(btn) { 
-                    btn.innerHTML = "بحث عن أقرب تجار 🔍"; 
-                    btn.disabled = false; 
-                }
-
-                setTimeout(() => {
-                    if(!liveMerchantsMapInstance) {
-                        liveMerchantsMapInstance = L.map('liveMerchantsMap').setView([window.finalCustLat, window.finalCustLng], 14);
-                        L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(liveMerchantsMapInstance);
-                    } else {
-                        liveMerchantsMapInstance.setView([window.finalCustLat, window.finalCustLng], 14);
-                        liveMerchantsMapInstance.eachLayer(layer => { if (layer instanceof L.Marker) liveMerchantsMapInstance.removeLayer(layer); });
-                    }
-
-                    customerLiveMarker = L.marker([window.finalCustLat, window.finalCustLng], { icon: L.divIcon({ html: '<span style="font-size: 26px;">🏃‍♂️</span>', className: 'text-2xl', iconSize: [28, 28] }) }).addTo(liveMerchantsMapInstance);
-                    const merchIcon = L.divIcon({ html: '<span style="font-size: 26px;">🏪</span>', className: 'text-2xl', iconSize: [28, 28] });
-                    const isVf = method === 'vodafone';
-                    
-                    if(merchants.length === 0) {
-                        document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-rose-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs";
-                        document.getElementById('customerStatusMsg').innerHTML = `❌ لم يتم العثور على تجار بهذه الشروط (تأكد من اختيار نوع الخدمة الصحيح).`;
-                        document.getElementById('merchantsListContainer').innerHTML = "";
-                    } else {
-                        document.getElementById('customerStatusMsg').className = "text-center p-3 rounded-2xl bg-white border-2 border-emerald-200 mb-3 text-sm font-black text-[#4a0718] shadow-xs";
-                        document.getElementById('customerStatusMsg').innerHTML = `✅ تم العثور على (${window.fmtNum(merchants.length)}) تجار يوفرون طلبك!`;
-                        
-                        window.merchantMarkers = {};
-                        
-                        let listHTML = `<div class="space-y-3 pb-2 px-1">`;
-                        merchants.forEach((m, index) => {
-                            const cardBgColor = index % 2 === 0 ? 'bg-white' : 'bg-slate-50';
-
-                            let marker = L.marker([m.lat, m.lng], { icon: merchIcon })
-                                          .addTo(liveMerchantsMapInstance)
-                                          .bindPopup(`<b>${m.name}</b>`);
-                                          
-                            window.merchantMarkers[m.phone] = marker;
-
-                            marker.on('click', function() {
-                                window.focusMerchantOnMap(m.phone);
-                            });
-
-                            const commRate = parseFloat(m.commission_rate || 0);
-                            const totalToTransfer = amount + ((amount * commRate) / 100);
-                            const btnThemeClass = isVf ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-700 hover:bg-purple-800';
-                            
-                            const actionBtnText = txType === 'cash_out' 
-                                ? `<div class="flex flex-col items-center w-full">
-                                     <span class="text-[11px] sm:text-xs text-white/90 mb-0.5 font-bold">سأُحول لك ${window.fmtNum(totalToTransfer)} ج (انستاباى)</span>
-                                     <span class="text-sm sm:text-base font-black">➔ وتعطيني <span class="text-yellow-300 text-lg">${window.fmtNum(amount)} ج</span> (كاش)</span>
-                                   </div>`
-                                : `<div class="flex flex-col items-center w-full">
-                                     <span class="text-[11px] sm:text-xs text-white/90 mb-0.5 font-bold">سأدفع لك ${window.fmtNum(totalToTransfer)} ج (كاش)</span>
-                                     <span class="text-sm sm:text-base font-black">➔ وتُحول لي <span class="text-yellow-300 text-lg">${window.fmtNum(amount)} ج</span> (انستاباى)</span>
-                                   </div>`;
-
-                            listHTML += `
-                            <div id="merchant-card-${m.phone}" data-bg="${cardBgColor}" class="merchant-card-item ${cardBgColor} border-2 border-slate-200 rounded-2xl overflow-hidden shadow-md flex flex-col mb-2 transition-all duration-300">
-                                <div onclick="window.focusMerchantOnMap('${m.phone}')" class="p-3.5 flex justify-between items-start bg-transparent cursor-pointer hover:bg-slate-100 transition-colors" title="اضغط لرؤية موقع التاجر على الخريطة">
-                                    <div class="flex-1">
-                                        <div class="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">${isVf ? VODAFONE_LOGO_ICON : INSTAPAY_LOGO_ICON} ${m.name}</div>
-                                        <div class="text-xs sm:text-sm text-slate-500 font-bold mt-1.5 line-clamp-1">📍 ${m.address}</div>
-                                        <div class="mt-3 flex flex-wrap items-center gap-2">
-                                            <span class="text-sm sm:text-base font-black text-slate-700">نسبة العمولة:</span>
-                                            <span class="text-lg sm:text-xl font-black text-[#7e122f] bg-rose-50 border-2 border-[#7e122f] px-3 py-0.5 rounded-xl shadow-sm">${window.fmtNum(commRate)}%</span>
-                                            <span class="mr-auto text-[10px] sm:text-xs font-black text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-                                                <span>⚠️</span> للأمان: تعامل مع المحلات فقط وليس الأشخاص
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="text-left shrink-0 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl flex flex-col items-center shadow-sm">
-                                        <span class="text-sm sm:text-base font-black text-[#7e122f]">${window.fmtNum(m.distance.toFixed(1))} كم</span>
-                                    </div>
-                                </div>
-                                
-                                <div id="merchant-action-${m.phone}" class="bg-slate-100 p-2 border-t-2 border-slate-200 mt-auto">
-                                    <button onclick="window.sendTargetedOrder('${m.phone}', '${m.name}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="${btnThemeClass} text-white w-full px-2 py-2 rounded-xl shadow-md active:scale-95 transition-all">${actionBtnText}</button>
-                                </div>
-                            </div>`;
-                        });
-                        document.getElementById('merchantsListContainer').innerHTML = listHTML + `</div>`;
-                    }
-                    liveMerchantsMapInstance.invalidateSize();
-                }, 350);
-            });
-        };
-
-        window.sendTargetedOrder = async function(merchantPhone, merchantName, merchLat, merchLng, btnElement, commRate, reqAmount) {
-            if(btnElement && btnElement.disabled) return; 
-
-            const commAmount = (reqAmount * commRate) / 100;
-            const statusBox = document.getElementById('customerStatusMsg');
-            
-            const safeCustName = String(window.currentCustomerName || "عميل").trim();
-            const safeCustPhone = window.normalizePhone(window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone'));
-            const safeCustAddress = String(window.finalCustAddress || "موقع محدد عبر الخريطة").trim();
-            const safeTargetMerchant = window.normalizePhone(merchantPhone);
-            
-            const newReqRef = push(ref(db, 'eqbad_orders'));
             try {
-                await set(newReqRef, {
-                    target_merchant: safeTargetMerchant,
-                    merchant_name: merchantName,
-                    customer_phone: safeCustPhone,
-                    customer_name: safeCustName,
-                    amount: reqAmount,
-                    commission_rate: commRate,
-                    commission_amount: commAmount,
-                    total_amount: reqAmount + commAmount,
-                    method: window.currentCustomerMethod || "vodafone",
-                    transaction_type: window.currentTransactionType || "cash_out",
-                    address: safeCustAddress,
-                    lat: window.finalCustLat,
-                    lng: window.finalCustLng,
-                    status: 'pending',
-                    timestamp: Date.now()
+                const snap = await get(ref(db, 'eqbad_merchants'));
+                const container = document.getElementById('merchantsListContainer');
+                container.innerHTML = "";
+
+                if (!snap.exists()) {
+                    statusMsg.innerText = "❌ لا يوجد تجار مسجلين حالياً.";
+                    return;
+                }
+
+                let availableMerchants = [];
+                snap.forEach((child) => {
+                    const m = child.val();
+                    m.key = child.key;
+
+                    if (m.status !== 'active') return;
+
+                    if (method === 'vodafone' && m.enable_vodafone === false) return;
+                    if (method === 'instapay' && m.enable_instapay === false) return;
+
+                    if (txType === 'cash_out' && m.provide_cash === false) return;
+                    if (txType === 'cash_in' && m.provide_transfer === false) return;
+
+                    const minLimit = method === 'vodafone' ? (m.min_amount_vf || 50) : (m.min_amount_ip || 50);
+                    const maxLimit = method === 'vodafone' ? (m.max_amount_vf || 30000) : (m.max_amount_ip || 30000);
+
+                    if (amount < minLimit || amount > maxLimit) return;
+
+                    m.distance = getDistance(window.finalCustLat, window.finalCustLng, m.lat, m.lng);
+                    availableMerchants.push(m);
                 });
 
-                const actionDiv = document.getElementById('merchant-action-' + safeTargetMerchant);
-                if(actionDiv) {
-                    actionDiv.innerHTML = `
-                        <div class="space-y-1.5">
-                            <button disabled class="w-full bg-amber-500 text-white font-black text-[11px] sm:text-xs px-3 py-2 rounded-xl shadow-xs">بانتظار موافقة التاجر ⏳</button>
-                            <button onclick="window.cancelActiveOrder('${newReqRef.key}', '${safeTargetMerchant}')" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-[11px] sm:text-xs px-3 py-1.5 rounded-xl active:scale-95 shadow-xs">إلغاء الطلب ❌</button>
+                // ترتيب التجار حسب القرب ثم الأرخص عمولة
+                availableMerchants.sort((a, b) => a.distance - b.distance || (a.commission_rate || 0) - (b.commission_rate || 0));
+
+                if (availableMerchants.length === 0) {
+                    statusMsg.innerText = "⚠️ لا يوجد تجار متاحون يناسبون هذا المبلغ أو الخيارات الآن.";
+                    return;
+                }
+
+                statusMsg.innerText = `✔️ تم العثور على (${availableMerchants.length}) تاجر قاطنين بقربك!`;
+
+                // تجهيز خريطة التفاعلات المباشرة
+                if (!liveMerchantsMapInstance) {
+                    liveMerchantsMapInstance = L.map('liveMerchantsMap').setView([window.finalCustLat, window.finalCustLng], 13);
+                    L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18 }).addTo(liveMerchantsMapInstance);
+                } else {
+                    liveMerchantsMapInstance.setView([window.finalCustLat, window.finalCustLng], 13);
+                }
+
+                window.merchantMarkers = {};
+
+                // وضع علامتك
+                if (customerLiveMarker) customerLiveMarker.remove();
+                const userIcon = L.divIcon({ html: '<span style="font-size: 26px;">🏃‍♂️</span>', className: 'text-2xl', iconSize: [28, 28] });
+                customerLiveMarker = L.marker([window.finalCustLat, window.finalCustLng], { icon: userIcon }).addTo(liveMerchantsMapInstance).bindPopup("<b>موقعك الحرفي 📍</b>");
+
+                container.innerHTML = availableMerchants.map((m, idx) => {
+                    const distTxt = m.distance === Infinity ? 'غير معروف' : `${m.distance.toFixed(2)} كم`;
+                    const commVal = ((amount * (m.commission_rate || 1)) / 100).toFixed(1);
+
+                    // إضافة ماركر للتاجر
+                    const mIcon = L.divIcon({ html: '<span style="font-size: 24px;">🏪</span>', className: 'text-2xl', iconSize: [26, 26] });
+                    const marker = L.marker([m.lat, m.lng], { icon: mIcon }).addTo(liveMerchantsMapInstance)
+                        .bindPopup(`<b>${m.name}</b><br>المسافة: ${distTxt}`);
+                    window.merchantMarkers[m.phone] = marker;
+
+                    return `
+                        <div id="merchant-card-${m.phone}" data-bg="bg-white" class="merchant-card-item bg-white border-2 border-slate-200 p-3.5 rounded-2xl mb-2.5 transition-all shadow-xs hover:border-[#7e122f]">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-2xl">🏪</span>
+                                    <div>
+                                        <h4 class="font-black text-slate-900 text-sm sm:text-base leading-tight">${m.name}</h4>
+                                        <p class="text-[11px] text-slate-500 font-bold">📍 تبعد حوالي <span class="en-num font-black text-slate-800">${distTxt}</span></p>
+                                    </div>
+                                </div>
+                                <span class="text-xs bg-rose-50 text-[#7e122f] px-2.5 py-1 rounded-xl border border-rose-200 font-black">العمولة: ${m.commission_rate || 1}%</span>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-2.5 mt-2">
+                                <button type="button" onclick="window.focusMerchantOnMap('${m.phone}')" class="text-xs text-[#7e122f] font-black underline flex items-center gap-1">🗺️ تكبير الخريطة</button>
+                                <button type="button" onclick='window.sendOrderRequest("${m.key}", ${JSON.stringify(m)})' class="btn-burgundy px-4 py-2 rounded-xl text-xs font-black shadow-xs active:scale-95">طلب الخدمة من التاجر 🚀</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                setTimeout(() => liveMerchantsMapInstance.invalidateSize(), 300);
+
+            } catch (err) {
+                statusMsg.innerText = "حدث خطأ أثناء جلب التجار: " + err.message;
+            }
+        };
+
+        window.sendOrderRequest = async function(merchantKey, mData) {
+            if (!confirm(`هل أنت متأكد من طلب العملية من (${mData.name})؟`)) return;
+
+            const amount = parseFloat(document.getElementById('customerAmount').value);
+            const commRate = mData.commission_rate || 1;
+            const commVal = (amount * commRate) / 100;
+
+            const orderData = {
+                merchantKey: merchantKey,
+                merchantName: mData.name,
+                merchantPhone: mData.phone,
+                customerName: window.currentCustomerName,
+                customerPhone: window.currentCustomerPhone,
+                custLat: window.finalCustLat,
+                custLng: window.finalCustLng,
+                custAddress: window.finalCustAddress || "موقع محدد",
+                amount: amount,
+                serviceMethod: window.currentCustomerMethod,
+                transactionType: window.currentTransactionType,
+                commission: commVal,
+                status: "pending",
+                timestamp: Date.now()
+            };
+
+            try {
+                await push(ref(db, 'eqbad_orders'), orderData);
+                alert("✅ تم إرسال طلبك للتاجر بنجاح! تابع حالته من شاشة الطلبات النشطة.");
+                window.fetchCustomerPendingOrders();
+            } catch (err) {
+                alert("فشل إرسال الطلب: " + err.message);
+            }
+        };
+
+        // إجراءات العمليات والتحديثات
+        window.acceptOrder = async function(orderId) {
+            await update(ref(db, `eqbad_orders/${orderId}`), { status: 'accepted' });
+        };
+
+        window.rejectOrder = async function(orderId) {
+            await update(ref(db, `eqbad_orders/${orderId}`), { status: 'rejected' });
+        };
+
+        window.cancelOrder = async function(orderId) {
+            await update(ref(db, `eqbad_orders/${orderId}`), { status: 'cancelled' });
+        };
+
+        window.completeOrder = async function(orderId) {
+            if (!confirm("تأكيد إتمام العملية واستلام/تسليم المبالغ النقدية؟")) return;
+            await update(ref(db, `eqbad_orders/${orderId}`), { status: 'completed', completedAt: Date.now() });
+            alert("🎉 تم تسجيل العملية كمكتملة وخصمها/إضافتها للتقارير بنجاح!");
+        };
+
+        // تقارير وسجلات العميل والتاجر
+        window.fetchCustomerPendingOrders = async function() {
+            window.showView('customerPendingView');
+            const container = document.getElementById('custPendingListContainer');
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm font-black">جاري الاستعلام...</div>`;
+
+            const snap = await get(ref(db, 'eqbad_orders'));
+            if (!snap.exists()) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm font-black">لا توجد طلبات جارية.</div>`;
+                return;
+            }
+
+            let pendingList = [];
+            snap.forEach(child => {
+                const o = child.val();
+                if (o.customerPhone === window.currentCustomerPhone && (o.status === 'pending' || o.status === 'accepted')) {
+                    pendingList.push(o);
+                }
+            });
+
+            if (pendingList.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm font-black">لا توجد لديك طلبات معلقة أو جارية الآن.</div>`;
+                return;
+            }
+
+            container.innerHTML = pendingList.map(o => `
+                <div class="bg-white border-2 border-slate-200 p-3.5 rounded-2xl shadow-xs space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="font-black text-slate-900 text-sm">متجر: ${o.merchantName}</span>
+                        <span class="text-xs px-2.5 py-0.5 rounded-md font-black ${o.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                            ${o.status === 'accepted' ? 'وافق التاجر (في الطريق/جاهز) 🤝' : 'بانتظار الموافقة ⏳'}
+                        </span>
+                    </div>
+                    <div class="text-xs font-bold text-slate-600 flex justify-between bg-slate-50 p-2 rounded-xl">
+                        <span>المبلغ المطلوب: <b class="text-red-600 en-num">${o.amount}</b> ج.م</span>
+                        <span>العمولة: <b class="en-num">${o.commission}</b> ج.م</span>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.fetchCustomerReports = async function() {
+            window.showView('customerReportsView');
+            const container = document.getElementById('custReportsListContainer');
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm font-black">جاري التحميل...</div>`;
+
+            const snap = await get(ref(db, 'eqbad_orders'));
+            if (!snap.exists()) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm font-black">لا توجد عمليات سابقة.</div>`;
+                return;
+            }
+
+            let totalCash = 0, totalComm = 0, count = 0;
+            let listHtml = "";
+
+            snap.forEach(child => {
+                const o = child.val();
+                if (o.customerPhone === window.currentCustomerPhone && o.status === 'completed') {
+                    totalCash += parseFloat(o.amount || 0);
+                    totalComm += parseFloat(o.commission || 0);
+                    count++;
+
+                    listHtml += `
+                        <div class="p-3 border-b border-slate-200 flex justify-between items-center text-xs">
+                            <div>
+                                <p class="font-black text-slate-900">المتجر: ${o.merchantName}</p>
+                                <p class="text-[10px] text-slate-500 font-bold">${new Date(o.completedAt || o.timestamp).toLocaleString('ar-EG')}</p>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-black text-emerald-700 text-sm en-num">${o.amount} ج.م</p>
+                                <p class="text-[10px] text-slate-500 font-bold">عمولة: ${o.commission} ج.م</p>
+                            </div>
                         </div>
                     `;
                 }
-                
-                statusBox.className = "text-center p-3 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 mb-3 text-sm font-black shadow-xs transition-colors duration-300";
-                statusBox.innerHTML = "⏳ تم إرسال الطلب بنجاح، بانتظار موافقة التاجر...";
-                
-                onValue(ref(db, 'eqbad_orders/' + newReqRef.key), (snap) => {
-                    try {
-                        if(snap.exists()) {
-                            const ord = snap.val();
-                            const actionDivTarget = document.getElementById('merchant-action-' + safeTargetMerchant);
-                            
-                            if(ord.status === 'accepted') {
-                                statusBox.className = "text-center p-3 rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 mb-2 text-sm font-black shadow-md";
-                                statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
-                                if(actionDivTarget) {
-                                    const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
-                                    const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
-                                    const waMsg = encodeURIComponent(
-                                        isCashOut 
-                                        ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك انستاباى، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)`
-                                        : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي انستاباى. (تطبيق وصلني كاش)`
-                                    );
-                                    actionDivTarget.className = "bg-emerald-50 p-2 border-t border-emerald-200 mt-auto";
-                                    actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
-                                }
-                            } else if(ord.status === 'rejected') {
-                                if(actionDivTarget && !actionDivTarget.innerHTML.includes("تم الإلغاء")) {
-                                    statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm";
-                                    statusBox.innerHTML = "❌ تم إلغاء أو رفض الطلب.";
-                                    actionDivTarget.innerHTML = `<div class="text-center text-rose-600 font-bold text-xs py-1">ملغي / مرفوض ❌</div>`;
-                                }
-                            } else if(ord.status === 'completed') {
-                                statusBox.className = "text-center p-3.5 rounded-2xl btn-burgundy mb-2 text-sm font-black shadow-md";
-                                statusBox.innerHTML = "✨ تم إتمام العملية بنجاح! شكراً لك.";
-                                if(actionDivTarget) actionDivTarget.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">عملية مكتملة ✔️</div>`;
-                            }
-                        }
-                    } catch(err) { console.error("customer order watch error:", err); }
-                });
-            } catch(err) {
-                alert("تعذر إرسال الطلب: " + err.message);
+            });
+
+            document.getElementById('custReportTotalCash').innerHTML = window.fmtNum(totalCash) + " ج.م";
+            document.getElementById('custReportTotalComm').innerHTML = window.fmtNum(totalComm) + " ج.م";
+
+            container.innerHTML = listHtml || `<div class="text-center py-10 text-slate-500 text-sm font-black">لا توجد عمليات مكتملة بالسجل.</div>`;
+        };
+
+        window.loadMerchantReports = async function() {
+            window.showView('merchantReportsView');
+            const container = document.getElementById('reportsListContainer');
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm font-black">جاري التحميل...</div>`;
+
+            const mKey = window.currentMerchantKey;
+            const snap = await get(ref(db, 'eqbad_orders'));
+
+            if (!snap.exists()) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm font-black">لا توجد تقارير حالياً.</div>`;
+                return;
             }
+
+            let totalAmt = 0, totalComm = 0, count = 0;
+            let listHtml = "";
+
+            snap.forEach(child => {
+                const o = child.val();
+                if (o.merchantKey === mKey && o.status === 'completed') {
+                    totalAmt += parseFloat(o.amount || 0);
+                    totalComm += parseFloat(o.commission || 0);
+                    count++;
+
+                    listHtml += `
+                        <div class="p-3 border-b border-slate-200 flex justify-between items-center text-xs bg-white rounded-xl mb-1.5 shadow-xs">
+                            <div>
+                                <p class="font-black text-slate-900">العميل: ${o.customerName || 'عميل'} (${o.customerPhone})</p>
+                                <p class="text-[10px] text-slate-500 font-bold">${new Date(o.completedAt || o.timestamp).toLocaleString('ar-EG')}</p>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-black text-emerald-700 text-sm en-num">${o.amount} ج.م</p>
+                                <p class="text-[10px] text-amber-700 font-black">ربح العمولة: +${o.commission} ج.م</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            document.getElementById('reportTotalAmount').innerHTML = window.fmtNum(totalAmt) + " ج.م";
+            document.getElementById('reportTotalCommission').innerHTML = window.fmtNum(totalComm) + " ج.م";
+            document.getElementById('reportTotalCountBadge').innerHTML = `<span class="en-num">${count}</span> عملية`;
+
+            container.innerHTML = listHtml || `<div class="text-center py-10 text-slate-500 text-sm font-black">لا توجد عمليات مكتملة حتى الآن.</div>`;
         };
     </script>
 </body>
