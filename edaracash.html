@@ -102,7 +102,10 @@
                     </span>
                 </button>
                 <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="tab-btn active">نظرة عامة</button>
-                <button onclick="switchTab('merchants')" id="btnTabMerchants" class="tab-btn">المتاجر</button>
+                <button onclick="switchTab('merchants')" id="btnTabMerchants" class="tab-btn">
+                    المتاجر
+                    <span id="locUpdateBadge" class="hidden bg-emerald-500 text-white text-[10px] font-black rounded-full px-2 py-0.5 min-w-[22px] text-center ml-1">0</span>
+                </button>
                 <button onclick="switchTab('customers')" id="btnTabCustomers" class="tab-btn">العملاء</button>
                 <button onclick="switchTab('orders')" id="btnTabOrders" class="tab-btn">السجل</button>
             </div>
@@ -414,6 +417,30 @@
         let activityLog = JSON.parse(localStorage.getItem('eqbad_activity_log') || '[]');
         let currentOTP = null, currentOTPOrder = null;
 
+        /* ✅ جديد: دالة الإشعارات المنبثقة (Toast) */
+        function showToast(html, type = 'info', duration = 5000) {
+            const c = document.getElementById('toastContainer');
+            if(!c) return;
+            const colors = {
+                info:    'bg-blue-600 border-blue-300',
+                success: 'bg-emerald-600 border-emerald-300',
+                warn:    'bg-amber-600 border-amber-300',
+                danger:  'bg-rose-600 border-rose-300'
+            };
+            const el = document.createElement('div');
+            el.className = `${colors[type]} text-white font-black text-sm px-4 py-3 rounded-2xl shadow-2xl border-2 max-w-xs pointer-events-auto`;
+            el.style.animation = 'slideIn 0.35s ease';
+            el.innerHTML = html;
+            c.appendChild(el);
+            setTimeout(() => {
+                el.style.transition = 'opacity 0.4s, transform 0.4s';
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(20px)';
+                setTimeout(() => el.remove(), 450);
+            }, duration);
+        }
+        window.showToast = showToast;
+
         window.toggleLiveSound = function() {
             liveSoundEnabled = !liveSoundEnabled;
             localStorage.setItem('eqbad_admin_sound', liveSoundEnabled ? 'on' : 'off');
@@ -495,6 +522,14 @@
 
             if(tabName === 'dashboard') { if(map) setTimeout(() => map.invalidateSize(), 100); if(customerMap) setTimeout(() => customerMap.invalidateSize(), 100); }
             if(tabName === 'security') { if(securityMap) setTimeout(() => securityMap.invalidateSize(), 200); renderSecurityCenter(); }
+
+            /* ✅ جديد: تصفير عدّاد تحديثات المواقع عند فتح تاب المتاجر */
+            if(tabName === 'merchants') {
+                const b = document.getElementById('locUpdateBadge');
+                if(b) { b.classList.add('hidden'); b.innerText = '0'; }
+                _locUpdatesCount = 0;
+            }
+
             localStorage.setItem('activeEqbadAdminTab', tabName);
         };
 
@@ -542,7 +577,7 @@
         
         function calculateAdvancedRisk(order) {
             const factors = [];
-            let score = 0; // كل ما زاد = أخطر
+            let score = 0;
 
             const custPhone = order.customer_phone;
             const merchPhone = order.target_merchant;
@@ -552,14 +587,12 @@
             if(!cust) { score += 50; factors.push({ t: 'danger', i: '⚠️', m: 'عميل غير مسجل في النظام' }); }
             if(!merch) { score += 30; factors.push({ t: 'warn', i: '⚠️', m: 'تاجر غير مسجل' }); }
 
-            // 1. حساب جديد
             if(cust?.createdAt) {
                 const ageHours = (Date.now() - cust.createdAt) / 3600000;
                 if(ageHours < 1) { score += 25; factors.push({ t: 'danger', i: '🆕', m: 'حساب العميل عمره أقل من ساعة' }); }
                 else if(ageHours < 24) { score += 15; factors.push({ t: 'warn', i: '⏱️', m: 'حساب العميل عمره أقل من 24 ساعة' }); }
             }
 
-            // 2. سجل العميل
             const custOrders = allOrders.filter(o => o.customer_phone === custPhone);
             const completed = custOrders.filter(o => o.status === 'completed').length;
             const rejected = custOrders.filter(o => o.status === 'rejected').length;
@@ -569,20 +602,16 @@
             if(rejected >= 3) { score += 25; factors.push({ t: 'danger', i: '❌', m: `لديه ${rejected} عمليات ملغاة سابقة` }); }
             else if(rejected >= 1) { score += 10; factors.push({ t: 'warn', i: '⚠️', m: `لديه ${rejected} عملية ملغاة` }); }
 
-            // 3. طلبات متزامنة (نمط نصب)
             if(pending >= 3) { score += 30; factors.push({ t: 'danger', i: '📛', m: `${pending} طلبات معلقة متزامنة (نمط نصب)` }); }
             else if(pending >= 2) { score += 15; factors.push({ t: 'warn', i: '⏳', m: `${pending} طلبات معلقة حالياً` }); }
 
-            // 4. مبلغ كبير من حساب جديد
             const amount = parseFloat(order.amount) || 0;
             if(amount >= 5000 && completed === 0) { score += 25; factors.push({ t: 'danger', i: '💰', m: `مبلغ كبير (${amount.toLocaleString()} ج) من حساب بدون سجل` }); }
             else if(amount >= 3000 && completed < 2) { score += 10; factors.push({ t: 'warn', i: '💰', m: `مبلغ كبير نسبياً (${amount.toLocaleString()} ج)` }); }
 
-            // 5. طلب في وقت غير عادي (12ص - 5ص)
             const hour = new Date(order.timestamp).getHours();
             if(hour >= 0 && hour <= 5) { score += 15; factors.push({ t: 'warn', i: '🌙', m: `طلب في وقت متأخر (${hour}:00 صباحاً)` }); }
 
-            // 6. تكرار الطلب على نفس التاجر عدة مرات في وقت قصير
             const last24h = allOrders.filter(o => 
                 o.customer_phone === custPhone && 
                 o.target_merchant === merchPhone &&
@@ -590,27 +619,17 @@
             );
             if(last24h.length >= 3) { score += 20; factors.push({ t: 'danger', i: '🔁', m: `3+ طلبات لنفس التاجر خلال 24 ساعة` }); }
 
-            // 7. العميل محظور
             if(cust?.status === 'blocked') { score += 100; factors.push({ t: 'danger', i: '🚷', m: 'العميل محظور حالياً' }); }
             if(merch?.status === 'blocked') { score += 50; factors.push({ t: 'danger', i: '🚷', m: 'التاجر محظور' }); }
 
-            // 8. نفس الجهاز (fingerprint)
-            const sameDevice = allOrders.filter(o => 
-                o.customer_device && 
-                cust?.device && 
-                o.customer_device === cust.device && 
-                o.customer_phone !== custPhone
-            );
             if(cust?.device) {
                 const otherAccounts = Object.values(allCustomers).filter(c => c.device === cust.device && c.phone !== custPhone);
                 if(otherAccounts.length > 0) { score += 35; factors.push({ t: 'danger', i: '📱', m: `${otherAccounts.length} حساب آخر على نفس الجهاز` }); }
             }
 
-            // 9. المسافة بين العميل والتاجر
             const orderDist = getDistance(order.lat, order.lng, merch?.lat, merch?.lng);
             if(orderDist !== null && orderDist > 15) { score += 15; factors.push({ t: 'warn', i: '📏', m: `المسافة بعيدة (${orderDist.toFixed(1)} كم)` }); }
 
-            // 10. ماركات إيجابية (تخفيف)
             if(completed >= 5 && rejected === 0) { score -= 30; factors.push({ t: 'ok', i: '✅', m: `${completed} عملية ناجحة بدون إلغاء` }); }
             if(completed >= 10) { score -= 20; factors.push({ t: 'ok', i: '👑', m: `عميل ذو سجل ممتاز (${completed} عملية)` }); }
 
@@ -624,7 +643,6 @@
             return { score, level, color, label, factors };
         }
 
-        // ============ تحليل الأجهزة (كشف الحسابات المتعددة) ============
         function analyzeDevices() {
             const deviceMap = {};
             Object.values(allCustomers).forEach(c => {
@@ -637,11 +655,9 @@
             return { deviceMap, multipleDevices };
         }
 
-        // ============ تحليل الأنماط المشبوهة العامة ============
         function detectSuspiciousPatterns() {
             const patterns = [];
 
-            // نمط 1: عميل يطلب من 3+ تجار في نفس الوقت
             const customerPending = {};
             allOrders.filter(o => o.status === 'pending').forEach(o => {
                 if(!customerPending[o.customer_phone]) customerPending[o.customer_phone] = new Set();
@@ -654,7 +670,6 @@
                 }
             });
 
-            // نمط 2: عمليات سريعة جداً (6 عمليات في ساعة)
             const now = Date.now();
             const recentByCustomer = {};
             allOrders.filter(o => (now - o.timestamp) < 3600000).forEach(o => {
@@ -668,14 +683,12 @@
                 }
             });
 
-            // نمط 3: نفس الجهاز بحسابات مختلفة
             const { multipleDevices } = analyzeDevices();
             multipleDevices.forEach(arr => {
                 const names = arr.map(c => c.name).join('، ');
                 patterns.push({ type: 'danger', icon: '📱', title: 'حسابات متعددة على نفس الجهاز', desc: `${arr.length} حسابات: ${names}`, phones: arr.map(c => c.phone) });
             });
 
-            // نمط 4: عميل مبلغ كبير بدون سجل
             allOrders.filter(o => o.status === 'pending' && (parseFloat(o.amount) || 0) >= 5000).forEach(o => {
                 const custOrders = allOrders.filter(x => x.customer_phone === o.customer_phone && x.status === 'completed').length;
                 if(custOrders === 0) {
@@ -694,7 +707,6 @@
         function renderSecurityMap() {
             if(!securityMap) return;
 
-            // مسح الماركرات والخطوط القديمة
             Object.values(securityMarkers).forEach(m => securityMap.removeLayer(m));
             Object.values(securityLines).forEach(l => securityMap.removeLayer(l));
             securityMarkers = {}; securityLines = {};
@@ -713,7 +725,6 @@
                 const custPhone = o.customer_phone;
                 const merchPhone = o.target_merchant;
                 
-                // جيب أحدث موقع للعميل من جدول العملاء أو من الطلب
                 const cust = Object.values(allCustomers).find(c => c.phone === custPhone);
                 const custLat = cust?.lat || o.lat;
                 const custLng = cust?.lng || o.lng;
@@ -725,7 +736,6 @@
                 const risk = calculateAdvancedRisk(o);
                 const isDanger = risk.level === 'danger';
 
-                // ماركر العميل
                 if(custLat && custLng) {
                     const custIcon = L.divIcon({
                         html: `<div class="track-line-pin ${isDanger ? 'pin-suspect' : 'pin-customer'}">🏃</div>`,
@@ -743,7 +753,6 @@
                     allPoints.push([custLat, custLng]);
                 }
 
-                // ماركر التاجر
                 if(merchLat && merchLng) {
                     const merchIcon = L.divIcon({
                         html: `<div class="track-line-pin pin-merchant">🏪</div>`,
@@ -760,7 +769,6 @@
                     allPoints.push([merchLat, merchLng]);
                 }
 
-                // خط الربط + حساب المسافة
                 if(custLat && custLng && merchLat && merchLng) {
                     const dist = getDistance(custLat, custLng, merchLat, merchLng);
                     if(dist !== null) {
@@ -773,7 +781,6 @@
                         }).addTo(securityMap);
                         securityLines['line_' + o.key] = line;
 
-                        // علامة المسافة في المنتصف
                         const midLat = (custLat + merchLat) / 2;
                         const midLng = (custLng + merchLng) / 2;
                         const distIcon = L.divIcon({
@@ -785,7 +792,6 @@
                 }
             });
 
-            // ضبط الحدود على كل النقاط
             if(allPoints.length > 0) {
                 try {
                     const bounds = L.latLngBounds(allPoints);
@@ -793,7 +799,6 @@
                 } catch(e) {}
             }
 
-            // تحديث الـ metrics
             document.getElementById('tmActiveOrders').innerText = activeOrders.length;
             document.getElementById('tmNearestDistance').innerText = nearest === Infinity ? '—' : nearest.toFixed(1) + ' كم';
             document.getElementById('tmFarthestDistance').innerText = farthest === 0 ? '—' : farthest.toFixed(1) + ' كم';
@@ -825,7 +830,6 @@
 
             const activeOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted');
             
-            // إحصائيات
             let dangerCount = 0, warnCount = 0, safeCount = 0;
             const ordersWithRisk = activeOrders.map(o => ({ order: o, risk: calculateAdvancedRisk(o) }));
             ordersWithRisk.forEach(({risk}) => {
@@ -852,7 +856,6 @@
                 document.getElementById('secTopAlert').classList.add('hidden');
             }
 
-            // قائمة العمليات المشبوهة
             const suspicious = ordersWithRisk
                 .filter(x => x.risk.level === 'danger' || x.risk.level === 'warn')
                 .sort((a, b) => b.risk.score - a.risk.score);
@@ -898,7 +901,6 @@
                 }).join('');
             }
 
-            // تحليل الأجهزة
             const { multipleDevices, deviceMap } = analyzeDevices();
             const devContainer = document.getElementById('deviceAnalysisContainer');
             
@@ -953,7 +955,6 @@
             currentOTP = code;
             currentOTPOrder = orderKey;
             
-            // نخزن في Firebase
             update(ref(db, 'eqbad_orders/' + orderKey), {
                 otp_code: code,
                 otp_created_at: Date.now(),
@@ -962,7 +963,6 @@
                 logActivity('otp', '🔐', `تم توليد OTP للعملية #${orderKey.substring(0,8)}`, 'success');
             }).catch(err => console.error(err));
 
-            // عرض modal
             const cust = Object.values(allCustomers).find(c => c.phone === order.customer_phone);
             document.getElementById('otpOrderInfo').innerHTML = `
                 <b>${cust?.name || order.customer_name}</b> → <b>${order.merchant_name || 'التاجر'}</b>
@@ -1021,7 +1021,6 @@
             if(completed >= 3 && rejected === 0) flags.push({ type:'ok', icon:'✅', text:`${completed} عملية ناجحة بدون إلغاء` });
             if(customer?.status === 'blocked') flags.push({ type:'danger', icon:'🚷', text:'العميل محظور' });
             
-            // فحص الجهاز
             if(customer?.device) {
                 const others = Object.values(allCustomers).filter(c => c.device === customer.device && c.phone !== phone);
                 if(others.length > 0) flags.push({ type:'danger', icon:'📱', text:`${others.length} حساب آخر على نفس الجهاز` });
@@ -1246,7 +1245,6 @@
                 const address = o.address || 'بدون عنوان';
                 const hasLocation = o.lat && o.lng;
 
-                // بيانات المسافة اللحظية
                 const cust = Object.values(allCustomers).find(c => c.phone === customerPhone);
                 const merch = Object.values(allMerchants).find(m => m.phone === merchantPhone);
                 const custLat = cust?.lat || o.lat, custLng = cust?.lng || o.lng;
@@ -1490,10 +1488,85 @@
         initMaps();
 
         // ============ Firebase Listeners ============
+
+        /* ========================================================= */
+        /* ✅ جديد: تتبع لحظي لتحديثات مواقع المتاجر من "أين مكاني" */
+        /* ========================================================= */
+        let _prevMerchantLocations = {};
+        let _initialMerchantsLoaded = false;
+        let _locUpdatesCount = 0;
+
         onValue(ref(db, 'eqbad_merchants'), snap => {
+            const oldLocs = { ..._prevMerchantLocations };
             allMerchants = {};
-            if(snap.exists()) snap.forEach(c => { allMerchants[c.key] = { fb_key: c.key, ...c.val() }; });
-            updateDashboard(); renderLocationsTable(); renderMerchantsTable(); renderOrdersTable(); renderLiveOperations();
+
+            if(snap.exists()) snap.forEach(c => {
+                const val = c.val();
+                allMerchants[c.key] = { fb_key: c.key, ...val };
+                if (val.lat && val.lng) {
+                    _prevMerchantLocations[val.phone] = { lat: val.lat, lng: val.lng };
+                }
+            });
+
+            // ⬇️ كشف تحديثات الموقع اللحظي
+            if (_initialMerchantsLoaded) {
+                Object.values(allMerchants).forEach(m => {
+                    const prev = oldLocs[m.phone];
+                    if (prev && (Math.abs(prev.lat - m.lat) > 0.00005 || Math.abs(prev.lng - m.lng) > 0.00005)) {
+
+                        // 1) سجل النشاط
+                        logActivity('loc_update', '📡',
+                            `قام "${m.name}" بتحديث موقعه اللحظي (أين مكاني)`,
+                            'success');
+
+                        // 2) صوت خفيف
+                        playSound('https://actions.google.com/sounds/v1/alarms/beep_short.ogg', [200, 100, 200]);
+
+                        // 3) تنبيه Toast
+                        showToast(
+                            `<div class="flex items-center gap-2">
+                                <span class="text-2xl">📡</span>
+                                <div>
+                                    <div class="text-[11px] opacity-90">تحديث موقع لحظي</div>
+                                    <div class="text-sm">🏪 ${m.name} ظهر الآن على الخريطة</div>
+                                </div>
+                            </div>`,
+                            'success', 6000
+                        );
+
+                        // 4) عمل Ping على الماركر (لو الأدمن فاتح تاب نظرة عامة)
+                        if (map && merchantMarkers[m.phone]) {
+                            const marker = merchantMarkers[m.phone];
+                            map.flyTo(marker.getLatLng(), 16, { animate: true, duration: 1.2 });
+                            setTimeout(() => marker.openPopup(), 400);
+
+                            // هالة وامضة حول الماركر
+                            const halos = [1, 2, 3].map(i => L.circleMarker(marker.getLatLng(), {
+                                radius: 10 * i, color: '#10B981', fillColor: '#10B981',
+                                fillOpacity: 0.25 / i, weight: 2, opacity: 0.8 / i
+                            }).addTo(map));
+                            setTimeout(() => halos.forEach(h => { try { map.removeLayer(h); } catch(e){} }), 2500);
+                        }
+
+                        // 5) زوّد عدّاد الـ Badge
+                        _locUpdatesCount++;
+                        const badge = document.getElementById('locUpdateBadge');
+                        if (badge) {
+                            badge.innerText = _locUpdatesCount;
+                            badge.classList.remove('hidden');
+                            badge.classList.add('animate-pulse');
+                            setTimeout(() => badge.classList.remove('animate-pulse'), 5000);
+                        }
+                    }
+                });
+            }
+            _initialMerchantsLoaded = true;
+
+            updateDashboard();
+            renderLocationsTable();
+            renderMerchantsTable();
+            renderOrdersTable();
+            renderLiveOperations();
             if(!document.getElementById('tab-security').classList.contains('hidden')) renderSecurityCenter();
         });
 
@@ -1516,14 +1589,12 @@
                 const liveBtn = document.getElementById('btnTabLive');
                 if(liveBtn && !liveBtn.classList.contains('active')) { liveBtn.classList.add('animate-pulse'); setTimeout(() => liveBtn.classList.remove('animate-pulse'), 5000); }
                 
-                // كشف العملية الجديدة + تحليل المخاطر
                 const newest = allOrders.sort((a,b) => b.timestamp - a.timestamp)[0];
                 if(newest) {
                     const risk = calculateAdvancedRisk(newest);
                     const cust = Object.values(allCustomers).find(c => c.phone === newest.customer_phone);
                     logActivity('new_order', risk.level === 'danger' ? '🚨' : '🆕', `طلب جديد: ${cust?.name || newest.customer_name || 'عميل'} بمبلغ ${(parseFloat(newest.amount)||0).toLocaleString()} ج — مخاطرة: ${risk.label}`, risk.level === 'danger' ? 'danger' : risk.level === 'warn' ? 'warn' : 'info');
                     
-                    // إشعار لو خطير
                     if(risk.level === 'danger') {
                         setTimeout(() => playSound('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', [800, 200, 800, 200, 800]), 500);
                     }
@@ -1551,5 +1622,9 @@
         document.addEventListener('touchend', () => { if(window.scrollY === 0 && ptrY > 0) { const d = ptrCY - ptrY; if(d > 120) { ptrEl.style.height = '50px'; document.getElementById('ptr-icon').innerText = '⏳'; document.getElementById('ptr-text').innerText = 'جاري التحديث...'; setTimeout(() => window.location.reload(), 400); } else ptrEl.style.height = '0px'; } ptrY = 0; ptrCY = 0; });
 
     </script>
+
+    <!-- ✅ جديد: مكان الإشعارات المنبثقة (Toast) -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-[999999] space-y-2 pointer-events-none"></div>
+
 </body>
 </html>
