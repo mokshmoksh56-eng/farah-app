@@ -21,32 +21,57 @@
         .tab-btn.active { background-color: #7e122f; color: white; }
         .tab-btn:not(.active) { background-color: white; color: #64748b; border: 2px solid #e2e8f0; }
         
-        /* شريط النبض للعمليات المباشرة */
-        @keyframes pulse-ring {
-            0% { transform: scale(0.9); opacity: 0.8; }
-            100% { transform: scale(2); opacity: 0; }
-        }
+        @keyframes pulse-ring { 0% { transform: scale(0.9); opacity: 0.8; } 100% { transform: scale(2); opacity: 0; } }
         .live-ping { position: relative; display: inline-flex; }
-        .live-ping::before {
-            content: ''; position: absolute; inset: 0; border-radius: 999px;
-            background: #f43f5e; animation: pulse-ring 1.5s cubic-bezier(0,0,.2,1) infinite;
-        }
+        .live-ping::before { content: ''; position: absolute; inset: 0; border-radius: 999px; background: #f43f5e; animation: pulse-ring 1.5s cubic-bezier(0,0,.2,1) infinite; }
         
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .live-card { animation: slideIn 0.4s ease; }
-        
-        @keyframes shimmerTop {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+        @keyframes shimmerTop { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .shimmer-top { background: linear-gradient(90deg, #f59e0b 0%, #f43f5e 25%, #f59e0b 50%, #f43f5e 75%, #f59e0b 100%); background-size: 200% 100%; animation: shimmerTop 2.5s linear infinite; }
+        @keyframes alertFlash { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.7); } 50% { box-shadow: 0 0 0 15px rgba(244,63,94,0); } }
+        .alert-pulse { animation: alertFlash 2s infinite; }
+
+        .trust-gauge { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; font-weight: 900; }
+        .trust-gauge::before { content: ''; position: absolute; inset: 6px; background: white; border-radius: 50%; }
+        .trust-gauge > * { position: relative; z-index: 1; }
+
+        @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-overlay { animation: modalFadeIn 0.25s ease; }
+        .modal-box { animation: modalSlideUp 0.35s ease; }
+
+        .flag-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 800; margin-bottom: 6px; border: 1.5px solid; }
+        .flag-danger { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
+        .flag-warn { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
+        .flag-ok { background: #ECFDF5; color: #065F46; border-color: #A7F3D0; }
+        .flag-info { background: #EFF6FF; color: #1E40AF; border-color: #BFDBFE; }
+
+        /* Security Center */
+        .sec-tab { padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 900; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; background: #F1F5F9; color: #475569; }
+        .sec-tab.active { background: #0A1F3C; color: white; border-color: #0A1F3C; }
+        .sec-tab:not(.active):hover { background: #E2E8F0; }
+
+        .pulse-dot { position: relative; width: 14px; height: 14px; }
+        .pulse-dot::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: currentColor; opacity: 0.35; animation: pulse-ring 1.5s cubic-bezier(0,0,.2,1) infinite; }
+        .pulse-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; }
+
+        @keyframes scrollLog { 0% { opacity: 0; transform: translateX(-10px); } 100% { opacity: 1; transform: translateX(0); } }
+        .log-item { animation: scrollLog 0.3s ease; }
+
+        .risk-bar { height: 8px; border-radius: 99px; background: #E2E8F0; overflow: hidden; }
+        .risk-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+
+        .track-line-pin {
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 16px;
         }
-        .shimmer-top {
-            background: linear-gradient(90deg, #f59e0b 0%, #f43f5e 25%, #f59e0b 50%, #f43f5e 75%, #f59e0b 100%);
-            background-size: 200% 100%;
-            animation: shimmerTop 2.5s linear infinite;
-        }
+        .pin-customer { background: linear-gradient(135deg, #3B82F6, #1E40AF); }
+        .pin-merchant { background: linear-gradient(135deg, #10B981, #065F46); }
+        .pin-suspect { background: linear-gradient(135deg, #EF4444, #991B1B); animation: alertFlash 1.5s infinite; }
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -63,11 +88,15 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-xl">
+                <button onclick="switchTab('security')" id="btnTabSecurity" class="tab-btn">
+                    <span class="inline-flex items-center gap-2">
+                        🛡️ مركز الأمان
+                        <span id="secAlertBadge" class="bg-rose-500 text-white text-[10px] font-black rounded-full px-2 py-0.5 min-w-[22px] text-center hidden">0</span>
+                    </span>
+                </button>
                 <button onclick="switchTab('live')" id="btnTabLive" class="tab-btn">
                     <span class="inline-flex items-center gap-2">
-                        <span class="live-ping" id="livePulse">
-                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                        </span>
+                        <span class="live-ping" id="livePulse"><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span></span>
                         العمليات المباشرة
                         <span id="liveCountBadge" class="bg-rose-500 text-white text-[10px] font-black rounded-full px-2 py-0.5 min-w-[22px] text-center">0</span>
                     </span>
@@ -75,14 +104,144 @@
                 <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="tab-btn active">نظرة عامة</button>
                 <button onclick="switchTab('merchants')" id="btnTabMerchants" class="tab-btn">المتاجر</button>
                 <button onclick="switchTab('customers')" id="btnTabCustomers" class="tab-btn">العملاء</button>
-                <button onclick="switchTab('orders')" id="btnTabOrders" class="tab-btn">سجل العمليات</button>
+                <button onclick="switchTab('orders')" id="btnTabOrders" class="tab-btn">السجل</button>
             </div>
+        </div>
+
+        <!-- ================== SECURITY CENTER TAB ================== -->
+        <div id="tab-security" class="hidden fade-enter space-y-4">
+            
+            <!-- Top alert bar -->
+            <div id="secTopAlert" class="hidden bg-gradient-to-r from-rose-600 to-red-700 text-white rounded-2xl p-4 shadow-lg alert-pulse">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🚨</div>
+                    <div class="flex-1">
+                        <p class="font-black text-base" id="secAlertTitle">تنبيه أمني</p>
+                        <p class="text-xs font-bold opacity-90" id="secAlertMessage">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-white border-2 border-rose-200 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="pulse-dot text-rose-500"></span>
+                        <p class="text-[11px] font-black text-rose-700">تهديدات محتملة</p>
+                    </div>
+                    <p id="secThreatsCount" class="text-3xl font-black text-rose-700">0</p>
+                </div>
+                <div class="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="pulse-dot text-amber-500"></span>
+                        <p class="text-[11px] font-black text-amber-700">قيد المتابعة</p>
+                    </div>
+                    <p id="secMonitorCount" class="text-3xl font-black text-amber-700">0</p>
+                </div>
+                <div class="bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="pulse-dot text-emerald-500"></span>
+                        <p class="text-[11px] font-black text-emerald-700">عمليات آمنة</p>
+                    </div>
+                    <p id="secSafeCount" class="text-3xl font-black text-emerald-700">0</p>
+                </div>
+                <div class="bg-white border-2 border-indigo-200 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="pulse-dot text-indigo-500"></span>
+                        <p class="text-[11px] font-black text-indigo-700">تتبع لحظي نشط</p>
+                    </div>
+                    <p id="secTrackingCount" class="text-3xl font-black text-indigo-700">0</p>
+                </div>
+            </div>
+
+            <!-- Live Tracking Map -->
+            <div class="bg-white rounded-2xl shadow-sm border-2 border-indigo-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-50 to-blue-50 px-5 py-3 border-b-2 border-indigo-100 flex justify-between items-center flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl text-white shadow">🗺️</div>
+                        <div>
+                            <h3 class="font-black text-slate-800 text-base leading-tight">خريطة التتبع اللحظي</h3>
+                            <p class="text-[11px] text-slate-600 font-bold">مواقع العميل والتاجر لحظة بلحظة</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 items-center text-[11px] font-black">
+                        <span class="flex items-center gap-1.5 bg-white border-2 border-blue-300 rounded-lg px-2 py-1"><span class="w-3 h-3 rounded-full bg-blue-600"></span> عميل</span>
+                        <span class="flex items-center gap-1.5 bg-white border-2 border-emerald-300 rounded-lg px-2 py-1"><span class="w-3 h-3 rounded-full bg-emerald-600"></span> تاجر</span>
+                        <button onclick="window.centerAllTracking()" class="bg-indigo-600 text-white border-2 border-indigo-700 rounded-lg px-3 py-1 hover:bg-indigo-700 active:scale-95 transition-all">🎯 توسيط</button>
+                    </div>
+                </div>
+                <div id="securityTrackMap" class="map-container" style="height:450px; border-radius:0;"></div>
+                <!-- Live metrics bar -->
+                <div id="trackingMetrics" class="p-3 bg-slate-50 border-t border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                    <div><p class="text-[10px] font-black text-slate-500">عمليات نشطة</p><p class="text-lg font-black text-slate-800" id="tmActiveOrders">0</p></div>
+                    <div><p class="text-[10px] font-black text-slate-500">أقرب مسافة</p><p class="text-lg font-black text-emerald-700" id="tmNearestDistance">—</p></div>
+                    <div><p class="text-[10px] font-black text-slate-500">أبعد مسافة</p><p class="text-lg font-black text-amber-700" id="tmFarthestDistance">—</p></div>
+                    <div><p class="text-[10px] font-black text-slate-500">آخر تحديث</p><p class="text-lg font-black text-slate-700" id="tmLastUpdate">—</p></div>
+                </div>
+            </div>
+
+            <!-- Two Column: Suspicious Orders + Activity Log -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                
+                <!-- Suspicious Orders -->
+                <div class="bg-white rounded-2xl shadow-sm border-2 border-rose-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-rose-50 to-red-50 px-5 py-3 border-b-2 border-rose-100 flex justify-between items-center">
+                        <h3 class="font-black text-slate-800 text-base flex items-center gap-2">🚨 عمليات مشبوهة</h3>
+                        <span id="secSuspiciousBadge" class="bg-rose-500 text-white text-[10px] font-black rounded-full px-2.5 py-1">0</span>
+                    </div>
+                    <div id="suspiciousOrdersList" class="p-3 space-y-2 max-h-[400px] overflow-y-auto bg-slate-50">
+                        <!-- JS -->
+                    </div>
+                </div>
+
+                <!-- Activity Log -->
+                <div class="bg-white rounded-2xl shadow-sm border-2 border-slate-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-5 py-3 border-b-2 border-slate-200 flex justify-between items-center">
+                        <h3 class="font-black text-slate-800 text-base flex items-center gap-2">📋 سجل النشاط الأمني</h3>
+                        <button onclick="window.clearActivityLog()" class="text-[10px] font-black text-slate-600 bg-white border border-slate-300 rounded-lg px-2 py-1 hover:bg-slate-100 active:scale-95">🗑️ تفريغ</button>
+                    </div>
+                    <div id="activityLogContainer" class="p-3 space-y-1.5 max-h-[400px] overflow-y-auto bg-slate-50">
+                        <p class="text-center text-slate-400 text-xs font-black py-8">لا يوجد نشاط بعد</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Fingerprints Panel -->
+            <div class="bg-white rounded-2xl shadow-sm border-2 border-purple-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-purple-50 to-fuchsia-50 px-5 py-3 border-b-2 border-purple-100 flex justify-between items-center">
+                    <h3 class="font-black text-slate-800 text-base flex items-center gap-2">🔍 تحليل البصمات والأجهزة</h3>
+                    <span class="text-[10px] font-bold text-purple-700 bg-purple-100 border border-purple-300 rounded-lg px-2 py-1">كشف الحسابات المتعددة</span>
+                </div>
+                <div id="deviceAnalysisContainer" class="p-3 bg-slate-50">
+                    <!-- JS -->
+                </div>
+            </div>
+
         </div>
 
         <!-- ================== Live Operations Tab ================== -->
         <div id="tab-live" class="hidden fade-enter space-y-4">
             
-            <!-- Live Stats Bar -->
+            <!-- Search Panel -->
+            <div class="bg-white rounded-2xl shadow-sm border-2 border-indigo-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-50 to-blue-50 px-5 py-4 border-b-2 border-indigo-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-700 rounded-xl flex items-center justify-center text-2xl text-white shadow-lg">🛡️</div>
+                        <div class="flex-1">
+                            <h3 class="font-black text-slate-800 text-lg leading-tight">مركز التحقق الأمني</h3>
+                            <p class="text-[11px] text-slate-600 font-bold mt-0.5">ابحث عن عميل/تاجر لفحص سمعة التعامل قبل تنفيذ العملية</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-5">
+                    <div class="relative">
+                        <input type="text" id="liveSearchInput" placeholder="🔎 ابحث برقم التليفون، اسم العميل، اسم التاجر، أو رقم العملية..." class="w-full p-4 pr-12 border-2 border-slate-300 rounded-2xl font-bold text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all" oninput="window.handleLiveSearch(this.value)">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl pointer-events-none">🔍</span>
+                    </div>
+                    <div id="liveSearchResults" class="mt-4 hidden"></div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-3 gap-3">
                 <div class="bg-gradient-to-br from-amber-400 to-amber-600 text-white rounded-2xl p-4 shadow-lg border-2 border-amber-500 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 opacity-20 text-7xl">⏳</div>
@@ -91,7 +250,7 @@
                 </div>
                 <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white rounded-2xl p-4 shadow-lg border-2 border-emerald-500 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 opacity-20 text-7xl">✔️</div>
-                    <p class="text-xs font-bold opacity-90 mb-1">مقبولة (جاري التنفيذ)</p>
+                    <p class="text-xs font-bold opacity-90 mb-1">مقبولة</p>
                     <p id="liveAcceptedCount" class="text-3xl font-black">0</p>
                 </div>
                 <div class="bg-gradient-to-br from-[#17477E] to-[#0A1F3C] text-white rounded-2xl p-4 shadow-lg border-2 border-blue-500 relative overflow-hidden">
@@ -101,7 +260,6 @@
                 </div>
             </div>
 
-            <!-- Header of live section -->
             <div class="flex justify-between items-center bg-white rounded-2xl px-5 py-3 shadow-sm border border-slate-200">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-xl border-2 border-rose-300">📡</div>
@@ -110,87 +268,38 @@
                         <p class="text-[11px] font-bold text-slate-500">تحديث تلقائي لحظي من Firebase</p>
                     </div>
                 </div>
-                <button onclick="window.toggleLiveSound()" id="btnLiveSound" class="bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-emerald-100 active:scale-95 transition-all">
-                    🔊 الصوت مفتوح
-                </button>
+                <button onclick="window.toggleLiveSound()" id="btnLiveSound" class="bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-emerald-100 active:scale-95 transition-all">🔊 الصوت مفتوح</button>
             </div>
 
-            <!-- Live operations grid -->
-            <div id="liveOpsContainer" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                <!-- Filled by JS -->
-            </div>
-
+            <div id="liveOpsContainer" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4"></div>
         </div>
 
         <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="fade-enter-active space-y-6">
-            <!-- Stats -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div class="stat-card border-t-4 border-t-blue-500">
-                    <p class="text-sm font-bold text-slate-500 mb-1">إجمالي المتاجر</p>
-                    <p id="statMerchants" class="text-3xl font-black text-slate-900">0</p>
-                </div>
-                <div class="stat-card border-t-4 border-t-emerald-500">
-                    <p class="text-sm font-bold text-slate-500 mb-1">العملاء المسجلين</p>
-                    <p id="statCustomers" class="text-3xl font-black text-slate-900">0</p>
-                </div>
-                <div class="stat-card border-t-4 border-t-slate-800">
-                    <p class="text-sm font-bold text-slate-500 mb-1">إجمالي العمليات</p>
-                    <p id="statOrders" class="text-3xl font-black text-slate-900">0</p>
-                </div>
-                <div class="stat-card border-t-4 border-t-red-500 bg-red-50">
-                    <p class="text-sm font-bold text-red-600 mb-1">سيولة فودافون</p>
-                    <p id="statVodaLiquidity" class="text-2xl font-black text-red-700">0 ج.م</p>
-                </div>
-                <div class="stat-card border-t-4 border-t-purple-500 bg-purple-50">
-                    <p class="text-sm font-bold text-purple-600 mb-1">سيولة إنستاباي</p>
-                    <p id="statInstaLiquidity" class="text-2xl font-black text-purple-700">0 ج.م</p>
-                </div>
+                <div class="stat-card border-t-4 border-t-blue-500"><p class="text-sm font-bold text-slate-500 mb-1">إجمالي المتاجر</p><p id="statMerchants" class="text-3xl font-black text-slate-900">0</p></div>
+                <div class="stat-card border-t-4 border-t-emerald-500"><p class="text-sm font-bold text-slate-500 mb-1">العملاء المسجلين</p><p id="statCustomers" class="text-3xl font-black text-slate-900">0</p></div>
+                <div class="stat-card border-t-4 border-t-slate-800"><p class="text-sm font-bold text-slate-500 mb-1">إجمالي العمليات</p><p id="statOrders" class="text-3xl font-black text-slate-900">0</p></div>
+                <div class="stat-card border-t-4 border-t-red-500 bg-red-50"><p class="text-sm font-bold text-red-600 mb-1">سيولة فودافون</p><p id="statVodaLiquidity" class="text-2xl font-black text-red-700">0 ج.م</p></div>
+                <div class="stat-card border-t-4 border-t-purple-500 bg-purple-50"><p class="text-sm font-bold text-purple-600 mb-1">سيولة إنستاباي</p><p id="statInstaLiquidity" class="text-2xl font-black text-purple-700">0 ج.م</p></div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3>
-                    <div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div>
-                </div>
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار العملاء</h3>
-                    <div id="customerAdminMap" class="map-container border-2 border-slate-200 shadow-inner"></div>
-                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3><div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار العملاء</h3><div id="customerAdminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                     <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن المتاجر</h3>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm">
-                            <thead class="bg-slate-50 text-slate-500">
-                                <tr>
-                                    <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
-                                    <th class="p-3 font-black">رقم الهاتف</th>
-                                    <th class="p-3 font-black">العنوان</th>
-                                    <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableLocations" class="divide-y divide-slate-100"></tbody>
-                        </table>
+                        <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">اسم المتجر</th><th class="p-3 font-black">رقم الهاتف</th><th class="p-3 font-black">العنوان</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableLocations" class="divide-y divide-slate-100"></tbody></table>
                     </div>
                 </div>
-
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                     <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن العملاء</h3>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm">
-                            <thead class="bg-slate-50 text-slate-500">
-                                <tr>
-                                    <th class="p-3 rounded-tr-xl font-black">اسم العميل</th>
-                                    <th class="p-3 font-black">رقم الهاتف</th>
-                                    <th class="p-3 font-black">العنوان (آخر طلب)</th>
-                                    <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableCustomerLocations" class="divide-y divide-slate-100"></tbody>
-                        </table>
+                        <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">اسم العميل</th><th class="p-3 font-black">رقم الهاتف</th><th class="p-3 font-black">العنوان</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableCustomerLocations" class="divide-y divide-slate-100"></tbody></table>
                     </div>
                 </div>
             </div>
@@ -201,19 +310,7 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 class="text-xl font-black text-slate-800 mb-4">قائمة المتاجر المسجلة</h3>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
-                        <thead class="bg-slate-50 text-slate-500">
-                            <tr>
-                                <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
-                                <th class="p-3 font-black">رقم الهاتف / السرّي</th>
-                                <th class="p-3 font-black">سيولة المتجر</th>
-                                <th class="p-3 font-black">العمولة</th>
-                                <th class="p-3 font-black text-center">العمليات</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات (حظر / حذف)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableMerchants" class="divide-y divide-slate-100"></tbody>
-                    </table>
+                    <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">اسم المتجر</th><th class="p-3 font-black">رقم الهاتف / السرّي</th><th class="p-3 font-black">سيولة المتجر</th><th class="p-3 font-black">العمولة</th><th class="p-3 font-black text-center">العمليات</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableMerchants" class="divide-y divide-slate-100"></tbody></table>
                 </div>
             </div>
         </div>
@@ -223,18 +320,7 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 class="text-xl font-black text-slate-800 mb-4">قائمة العملاء المسجلين</h3>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
-                        <thead class="bg-slate-50 text-slate-500">
-                            <tr>
-                                <th class="p-3 rounded-tr-xl font-black">اسم العميل</th>
-                                <th class="p-3 font-black">رقم الهاتف / السرّي</th>
-                                <th class="p-3 font-black">تاريخ التسجيل</th>
-                                <th class="p-3 font-black text-center">العمليات الناجحة</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات (حظر / حذف)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableCustomers" class="divide-y divide-slate-100"></tbody>
-                    </table>
+                    <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">اسم العميل</th><th class="p-3 font-black">رقم الهاتف / السرّي</th><th class="p-3 font-black">تاريخ التسجيل</th><th class="p-3 font-black text-center">العمليات الناجحة</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableCustomers" class="divide-y divide-slate-100"></tbody></table>
                 </div>
             </div>
         </div>
@@ -251,64 +337,82 @@
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
-                        <thead class="bg-slate-50 text-slate-500">
-                            <tr>
-                                <th class="p-3 rounded-tr-xl font-black">التاريخ والوقت</th>
-                                <th class="p-3 font-black">العميل</th>
-                                <th class="p-3 font-black">التاجر المستهدف</th>
-                                <th class="p-3 font-black">المبلغ + العمولة</th>
-                                <th class="p-3 font-black">الطريقة</th>
-                                <th class="p-3 font-black text-center">الحالة</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableOrders" class="divide-y divide-slate-100"></tbody>
-                    </table>
+                    <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">التاريخ والوقت</th><th class="p-3 font-black">العميل</th><th class="p-3 font-black">التاجر</th><th class="p-3 font-black">المبلغ</th><th class="p-3 font-black">الطريقة</th><th class="p-3 font-black text-center">الحالة</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableOrders" class="divide-y divide-slate-100"></tbody></table>
                 </div>
             </div>
         </div>
 
     </div>
 
-    <!-- Firebase & Mapbox Logic -->
+    <!-- Verification Modal -->
+    <div id="verifyModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[99999] modal-overlay flex justify-center items-center p-3">
+        <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border-2 border-slate-200 modal-box flex flex-col">
+            <div id="verifyModalHeader" class="bg-gradient-to-r from-indigo-600 to-blue-700 text-white p-5 relative">
+                <button onclick="window.closeVerifyModal()" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-2xl font-black transition-all active:scale-95">×</button>
+                <div class="flex items-center gap-3">
+                    <div id="verifyAvatar" class="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center text-3xl flex-shrink-0">👤</div>
+                    <div class="flex-1 min-w-0">
+                        <h3 id="verifyName" class="text-xl font-black truncate">—</h3>
+                        <p id="verifyPhone" class="text-sm font-bold opacity-90 en-num" dir="ltr">—</p>
+                        <p id="verifySubtitle" class="text-[11px] font-bold opacity-80 mt-1">—</p>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-y-auto flex-1 p-5 space-y-4" id="verifyModalBody"></div>
+        </div>
+    </div>
+
+    <!-- OTP Modal -->
+    <div id="otpModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[99999] modal-overlay flex justify-center items-center p-3">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl border-2 border-emerald-300 modal-box">
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-5 rounded-t-3xl relative">
+                <button onclick="document.getElementById('otpModal').classList.add('hidden')" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-2xl font-black">×</button>
+                <div class="flex items-center gap-3">
+                    <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-3xl">🔐</div>
+                    <div>
+                        <h3 class="text-xl font-black">رمز التحقق OTP</h3>
+                        <p class="text-xs opacity-90 font-bold">أظهر هذا الرمز للتاجر للتأكد</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 text-center">
+                <p id="otpOrderInfo" class="text-xs font-bold text-slate-500 mb-4">—</p>
+                <div id="otpCode" class="bg-slate-900 text-white font-black text-5xl tracking-[0.3em] py-6 rounded-2xl mb-4 en-num" style="font-family:'Segoe UI',monospace;">------</div>
+                <div class="flex gap-2">
+                    <button onclick="window.copyOTP()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black py-3 rounded-xl text-sm active:scale-95 transition-all">📋 نسخ</button>
+                    <button onclick="window.regenerateOTP()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 transition-all">🔄 توليد جديد</button>
+                </div>
+                <p class="text-[10px] font-bold text-slate-400 mt-3">⏱️ الرمز صالح لمدة 10 دقائق</p>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, remove, update, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A";
 
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", 
-            authDomain: "azemaa-proo.firebaseapp.com", 
-            databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", 
-            projectId: "azemaa-proo", 
-            storageBucket: "azemaa-proo.firebasestorage.app", 
-            messagingSenderId: "787350492977", 
-            appId: "1:787350492977:web:84061dcf31622fcb07c210" 
-        };
+        const firebaseConfig = { apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU", authDomain: "azemaa-proo.firebaseapp.com", databaseURL: "https://azemaa-proo-default-rtdb.firebaseio.com", projectId: "azemaa-proo", storageBucket: "azemaa-proo.firebasestorage.app", messagingSenderId: "787350492977", appId: "1:787350492977:web:84061dcf31622fcb07c210" };
         
         const app = initializeApp(firebaseConfig); 
         const db = getDatabase(app); 
         const auth = getAuth(app);
-
         signInAnonymously(auth).catch(console.error);
 
-        let map = null;
-        let customerMap = null; 
-        let merchantMarkers = {};
-        let customerMarkers = {}; 
+        let map = null, customerMap = null, securityMap = null;
+        let merchantMarkers = {}, customerMarkers = {}; 
+        let securityMarkers = {}, securityLines = {};
         let addressCache = {};
-        
-        let allMerchants = {};
-        let allCustomers = {};
-        let allOrders = [];
+        let allMerchants = {}, allCustomers = {}, allOrders = [];
 
-        // ============== نظام الإشعار الصوتي للطلبات الجديدة ==============
+        // ============ نظام الصوت والإشعارات ============
         let liveSoundEnabled = localStorage.getItem('eqbad_admin_sound') !== 'off';
         let _initialOrdersLoaded = false;
         let _knownOrderKeys = new Set();
+        let activityLog = JSON.parse(localStorage.getItem('eqbad_activity_log') || '[]');
+        let currentOTP = null, currentOTPOrder = null;
 
         window.toggleLiveSound = function() {
             liveSoundEnabled = !liveSoundEnabled;
@@ -317,7 +421,6 @@
             if(liveSoundEnabled) {
                 btn.className = "bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-emerald-100 active:scale-95 transition-all";
                 btn.innerHTML = "🔊 الصوت مفتوح";
-                // نُشغّل نغمة قصيرة للتأكيد
                 try { new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(()=>{}); } catch(e){}
             } else {
                 btn.className = "bg-slate-100 text-slate-500 border-2 border-slate-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-slate-200 active:scale-95 transition-all";
@@ -325,59 +428,73 @@
             }
         };
 
-        function playNewOrderSound() {
+        (function(){
+            const btn = document.getElementById('btnLiveSound');
+            if(btn && !liveSoundEnabled) { btn.className = "bg-slate-100 text-slate-500 border-2 border-slate-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-slate-200 active:scale-95 transition-all"; btn.innerHTML = "🔇 الصوت مقفول"; }
+        })();
+
+        function playSound(url = 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', vibrate = [500, 250, 500]) {
             if(!liveSoundEnabled) return;
-            try {
-                const audio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
-                audio.volume = 1.0;
-                audio.play().catch(() => {});
-                if(navigator.vibrate) navigator.vibrate([500, 250, 500, 250, 500]);
-            } catch(e) {}
+            try { const audio = new Audio(url); audio.volume = 1.0; audio.play().catch(()=>{}); if(navigator.vibrate) navigator.vibrate(vibrate); } catch(e) {}
         }
 
-        function detectNewOrders(currentOrders) {
-            const pendingKeys = currentOrders
-                .filter(o => o.status === 'pending')
-                .map(o => o.key);
-            
-            if(!_initialOrdersLoaded) {
-                pendingKeys.forEach(k => _knownOrderKeys.add(k));
-                _initialOrdersLoaded = true;
-                return false;
-            }
+        // ============ سجل النشاط ============
+        function logActivity(type, icon, message, level = 'info') {
+            const entry = { ts: Date.now(), type, icon, message, level };
+            activityLog.unshift(entry);
+            if(activityLog.length > 200) activityLog = activityLog.slice(0, 200);
+            localStorage.setItem('eqbad_activity_log', JSON.stringify(activityLog));
+            renderActivityLog();
+        }
 
+        function renderActivityLog() {
+            const c = document.getElementById('activityLogContainer');
+            if(!c) return;
+            if(activityLog.length === 0) { c.innerHTML = '<p class="text-center text-slate-400 text-xs font-black py-8">لا يوجد نشاط بعد</p>'; return; }
+            c.innerHTML = activityLog.slice(0, 50).map(a => {
+                const colorClass = a.level === 'danger' ? 'border-rose-300 bg-rose-50' : a.level === 'warn' ? 'border-amber-300 bg-amber-50' : a.level === 'success' ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white';
+                const time = new Date(a.ts).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+                return `<div class="log-item ${colorClass} border-2 rounded-xl p-2.5 flex items-start gap-2">
+                    <span class="text-lg flex-shrink-0">${a.icon}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[11px] font-black text-slate-800 leading-tight">${a.message}</p>
+                        <p class="text-[9px] font-bold text-slate-400 mt-0.5">${time}</p>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.clearActivityLog = function() {
+            if(confirm('هل تريد تفريغ سجل النشاط؟')) {
+                activityLog = [];
+                localStorage.removeItem('eqbad_activity_log');
+                renderActivityLog();
+            }
+        };
+
+        function detectNewOrders(currentOrders) {
+            const pendingKeys = currentOrders.filter(o => o.status === 'pending').map(o => o.key);
+            if(!_initialOrdersLoaded) { pendingKeys.forEach(k => _knownOrderKeys.add(k)); _initialOrdersLoaded = true; return false; }
             let hasNew = false;
-            pendingKeys.forEach(k => {
-                if(!_knownOrderKeys.has(k)) {
-                    _knownOrderKeys.add(k);
-                    hasNew = true;
-                }
-            });
+            pendingKeys.forEach(k => { if(!_knownOrderKeys.has(k)) { _knownOrderKeys.add(k); hasNew = true; } });
             return hasNew;
         }
 
-        // ============== Tab Switching ==============
+        // ============ Tab Switching ============
         window.switchTab = function(tabName) {
-            ['live', 'dashboard', 'merchants', 'customers', 'orders'].forEach(t => {
+            ['security', 'live', 'dashboard', 'merchants', 'customers', 'orders'].forEach(t => {
                 const el = document.getElementById('tab-' + t);
                 const btn = document.getElementById('btnTab' + t.charAt(0).toUpperCase() + t.slice(1));
                 if(el) { el.classList.add('hidden'); el.classList.remove('fade-enter-active'); }
                 if(btn) btn.classList.remove('active');
             });
-            
             const activeTab = document.getElementById('tab-' + tabName);
-            if(activeTab) {
-                activeTab.classList.remove('hidden');
-                setTimeout(() => activeTab.classList.add('fade-enter-active'), 50);
-            }
+            if(activeTab) { activeTab.classList.remove('hidden'); setTimeout(() => activeTab.classList.add('fade-enter-active'), 50); }
             const activeBtn = document.getElementById('btnTab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
             if(activeBtn) activeBtn.classList.add('active');
 
-            if(tabName === 'dashboard') {
-                if(map) setTimeout(() => map.invalidateSize(), 100);
-                if(customerMap) setTimeout(() => customerMap.invalidateSize(), 100);
-            }
-
+            if(tabName === 'dashboard') { if(map) setTimeout(() => map.invalidateSize(), 100); if(customerMap) setTimeout(() => customerMap.invalidateSize(), 100); }
+            if(tabName === 'security') { if(securityMap) setTimeout(() => securityMap.invalidateSize(), 200); renderSecurityCenter(); }
             localStorage.setItem('activeEqbadAdminTab', tabName);
         };
 
@@ -385,148 +502,704 @@
         window.switchTab(savedTab);
 
         async function fetchAddress(lat, lng) {
-            const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`; 
-            if(addressCache[cacheKey]) return addressCache[cacheKey];
+            const key = `${lat.toFixed(4)},${lng.toFixed(4)}`; 
+            if(addressCache[key]) return addressCache[key];
             try {
-                let response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`);
-                let data = await response.json();
-                if(data && data.features && data.features.length > 0) {
-                    let placeName = data.features[0].place_name_ar || data.features[0].place_name;
-                    let addrParts = placeName.split(',');
-                    let addr = addrParts.slice(0, 2).join('،').trim(); 
-                    addressCache[cacheKey] = addr;
-                    return addr;
-                }
+                let r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`);
+                let d = await r.json();
+                if(d?.features?.length > 0) { let addr = d.features[0].place_name_ar || d.features[0].place_name; addr = addr.split(',').slice(0, 2).join('،').trim(); addressCache[key] = addr; return addr; }
                 return "العنوان غير معروف";
             } catch (e) { return "تعذر جلب العنوان"; }
         }
 
-        function initMap() {
+        // ============ حساب المسافة (Haversine) ============
+        function getDistance(lat1, lon1, lat2, lon2) {
+            if(!lat1 || !lon1 || !lat2 || !lon2) return null;
+            const p = 0.017453292519943295;
+            const c = Math.cos;
+            const a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+            return 12742 * Math.asin(Math.sqrt(a));
+        }
+
+        function initMaps() {
             if(!map) {
                 map = L.map('adminMap').setView([30.0444, 31.2357], 6);
-                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { 
-                    maxZoom: 18, attribution: '© Mapbox'
-                }).addTo(map);
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18, attribution: '© Mapbox' }).addTo(map);
             }
             if(!customerMap) {
                 customerMap = L.map('customerAdminMap').setView([30.0444, 31.2357], 6);
-                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { 
-                    maxZoom: 18, attribution: '© Mapbox'
-                }).addTo(customerMap);
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18, attribution: '© Mapbox' }).addTo(customerMap);
+            }
+            if(!securityMap) {
+                securityMap = L.map('securityTrackMap').setView([30.0444, 31.2357], 12);
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, { maxZoom: 18, attribution: '© Mapbox' }).addTo(securityMap);
             }
         }
 
-        window.focusMerchantOnMap = function(phone) {
-            if(document.getElementById('tab-dashboard').classList.contains('hidden')) {
-                window.switchTab('dashboard');
+        // ==========================================================
+        // ==================== محرك المخاطر المتقدم ====================
+        // ==========================================================
+        
+        function calculateAdvancedRisk(order) {
+            const factors = [];
+            let score = 0; // كل ما زاد = أخطر
+
+            const custPhone = order.customer_phone;
+            const merchPhone = order.target_merchant;
+            const cust = Object.values(allCustomers).find(c => c.phone === custPhone);
+            const merch = Object.values(allMerchants).find(m => m.phone === merchPhone);
+            
+            if(!cust) { score += 50; factors.push({ t: 'danger', i: '⚠️', m: 'عميل غير مسجل في النظام' }); }
+            if(!merch) { score += 30; factors.push({ t: 'warn', i: '⚠️', m: 'تاجر غير مسجل' }); }
+
+            // 1. حساب جديد
+            if(cust?.createdAt) {
+                const ageHours = (Date.now() - cust.createdAt) / 3600000;
+                if(ageHours < 1) { score += 25; factors.push({ t: 'danger', i: '🆕', m: 'حساب العميل عمره أقل من ساعة' }); }
+                else if(ageHours < 24) { score += 15; factors.push({ t: 'warn', i: '⏱️', m: 'حساب العميل عمره أقل من 24 ساعة' }); }
             }
-            if (merchantMarkers[phone]) {
-                setTimeout(() => {
-                    document.getElementById('adminMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    map.flyTo(merchantMarkers[phone].getLatLng(), 16);
-                    merchantMarkers[phone].openPopup();
-                }, 300);
+
+            // 2. سجل العميل
+            const custOrders = allOrders.filter(o => o.customer_phone === custPhone);
+            const completed = custOrders.filter(o => o.status === 'completed').length;
+            const rejected = custOrders.filter(o => o.status === 'rejected').length;
+            const pending = custOrders.filter(o => o.status === 'pending').length;
+            
+            if(completed === 0) { score += 20; factors.push({ t: 'danger', i: '🚫', m: 'لا يوجد أي عملية ناجحة سابقة' }); }
+            if(rejected >= 3) { score += 25; factors.push({ t: 'danger', i: '❌', m: `لديه ${rejected} عمليات ملغاة سابقة` }); }
+            else if(rejected >= 1) { score += 10; factors.push({ t: 'warn', i: '⚠️', m: `لديه ${rejected} عملية ملغاة` }); }
+
+            // 3. طلبات متزامنة (نمط نصب)
+            if(pending >= 3) { score += 30; factors.push({ t: 'danger', i: '📛', m: `${pending} طلبات معلقة متزامنة (نمط نصب)` }); }
+            else if(pending >= 2) { score += 15; factors.push({ t: 'warn', i: '⏳', m: `${pending} طلبات معلقة حالياً` }); }
+
+            // 4. مبلغ كبير من حساب جديد
+            const amount = parseFloat(order.amount) || 0;
+            if(amount >= 5000 && completed === 0) { score += 25; factors.push({ t: 'danger', i: '💰', m: `مبلغ كبير (${amount.toLocaleString()} ج) من حساب بدون سجل` }); }
+            else if(amount >= 3000 && completed < 2) { score += 10; factors.push({ t: 'warn', i: '💰', m: `مبلغ كبير نسبياً (${amount.toLocaleString()} ج)` }); }
+
+            // 5. طلب في وقت غير عادي (12ص - 5ص)
+            const hour = new Date(order.timestamp).getHours();
+            if(hour >= 0 && hour <= 5) { score += 15; factors.push({ t: 'warn', i: '🌙', m: `طلب في وقت متأخر (${hour}:00 صباحاً)` }); }
+
+            // 6. تكرار الطلب على نفس التاجر عدة مرات في وقت قصير
+            const last24h = allOrders.filter(o => 
+                o.customer_phone === custPhone && 
+                o.target_merchant === merchPhone &&
+                (Date.now() - o.timestamp) < 86400000
+            );
+            if(last24h.length >= 3) { score += 20; factors.push({ t: 'danger', i: '🔁', m: `3+ طلبات لنفس التاجر خلال 24 ساعة` }); }
+
+            // 7. العميل محظور
+            if(cust?.status === 'blocked') { score += 100; factors.push({ t: 'danger', i: '🚷', m: 'العميل محظور حالياً' }); }
+            if(merch?.status === 'blocked') { score += 50; factors.push({ t: 'danger', i: '🚷', m: 'التاجر محظور' }); }
+
+            // 8. نفس الجهاز (fingerprint)
+            const sameDevice = allOrders.filter(o => 
+                o.customer_device && 
+                cust?.device && 
+                o.customer_device === cust.device && 
+                o.customer_phone !== custPhone
+            );
+            if(cust?.device) {
+                const otherAccounts = Object.values(allCustomers).filter(c => c.device === cust.device && c.phone !== custPhone);
+                if(otherAccounts.length > 0) { score += 35; factors.push({ t: 'danger', i: '📱', m: `${otherAccounts.length} حساب آخر على نفس الجهاز` }); }
+            }
+
+            // 9. المسافة بين العميل والتاجر
+            const orderDist = getDistance(order.lat, order.lng, merch?.lat, merch?.lng);
+            if(orderDist !== null && orderDist > 15) { score += 15; factors.push({ t: 'warn', i: '📏', m: `المسافة بعيدة (${orderDist.toFixed(1)} كم)` }); }
+
+            // 10. ماركات إيجابية (تخفيف)
+            if(completed >= 5 && rejected === 0) { score -= 30; factors.push({ t: 'ok', i: '✅', m: `${completed} عملية ناجحة بدون إلغاء` }); }
+            if(completed >= 10) { score -= 20; factors.push({ t: 'ok', i: '👑', m: `عميل ذو سجل ممتاز (${completed} عملية)` }); }
+
+            score = Math.max(0, Math.min(150, score));
+
+            let level, color, label;
+            if(score >= 60) { level = 'danger'; color = '#DC2626'; label = 'خطر عالي'; }
+            else if(score >= 30) { level = 'warn'; color = '#D97706'; label = 'يحتاج حذر'; }
+            else { level = 'safe'; color = '#059669'; label = 'آمن'; }
+
+            return { score, level, color, label, factors };
+        }
+
+        // ============ تحليل الأجهزة (كشف الحسابات المتعددة) ============
+        function analyzeDevices() {
+            const deviceMap = {};
+            Object.values(allCustomers).forEach(c => {
+                if(!c.device) return;
+                if(!deviceMap[c.device]) deviceMap[c.device] = [];
+                deviceMap[c.device].push(c);
+            });
+
+            const multipleDevices = Object.values(deviceMap).filter(arr => arr.length > 1);
+            return { deviceMap, multipleDevices };
+        }
+
+        // ============ تحليل الأنماط المشبوهة العامة ============
+        function detectSuspiciousPatterns() {
+            const patterns = [];
+
+            // نمط 1: عميل يطلب من 3+ تجار في نفس الوقت
+            const customerPending = {};
+            allOrders.filter(o => o.status === 'pending').forEach(o => {
+                if(!customerPending[o.customer_phone]) customerPending[o.customer_phone] = new Set();
+                customerPending[o.customer_phone].add(o.target_merchant);
+            });
+            Object.entries(customerPending).forEach(([phone, merchants]) => {
+                if(merchants.size >= 3) {
+                    const c = Object.values(allCustomers).find(x => x.phone === phone);
+                    patterns.push({ type: 'danger', icon: '🎯', title: 'نصب متعدد الأهداف', desc: `العميل ${c?.name || phone} يطلب من ${merchants.size} تجار في نفس الوقت`, phone });
+                }
+            });
+
+            // نمط 2: عمليات سريعة جداً (6 عمليات في ساعة)
+            const now = Date.now();
+            const recentByCustomer = {};
+            allOrders.filter(o => (now - o.timestamp) < 3600000).forEach(o => {
+                if(!recentByCustomer[o.customer_phone]) recentByCustomer[o.customer_phone] = 0;
+                recentByCustomer[o.customer_phone]++;
+            });
+            Object.entries(recentByCustomer).forEach(([phone, count]) => {
+                if(count >= 6) {
+                    const c = Object.values(allCustomers).find(x => x.phone === phone);
+                    patterns.push({ type: 'warn', icon: '⚡', title: 'نشاط سريع مشبوه', desc: `${count} عمليات من ${c?.name || phone} خلال ساعة`, phone });
+                }
+            });
+
+            // نمط 3: نفس الجهاز بحسابات مختلفة
+            const { multipleDevices } = analyzeDevices();
+            multipleDevices.forEach(arr => {
+                const names = arr.map(c => c.name).join('، ');
+                patterns.push({ type: 'danger', icon: '📱', title: 'حسابات متعددة على نفس الجهاز', desc: `${arr.length} حسابات: ${names}`, phones: arr.map(c => c.phone) });
+            });
+
+            // نمط 4: عميل مبلغ كبير بدون سجل
+            allOrders.filter(o => o.status === 'pending' && (parseFloat(o.amount) || 0) >= 5000).forEach(o => {
+                const custOrders = allOrders.filter(x => x.customer_phone === o.customer_phone && x.status === 'completed').length;
+                if(custOrders === 0) {
+                    const c = Object.values(allCustomers).find(x => x.phone === o.customer_phone);
+                    patterns.push({ type: 'danger', icon: '💰', title: 'مبلغ ضخم من حساب جديد', desc: `${c?.name || o.customer_phone} طلب ${(parseFloat(o.amount)||0).toLocaleString()} ج بدون سجل`, phone: o.customer_phone });
+                }
+            });
+
+            return patterns;
+        }
+
+        // ==========================================================
+        // ================ خريطة التتبع اللحظي ================
+        // ==========================================================
+        
+        function renderSecurityMap() {
+            if(!securityMap) return;
+
+            // مسح الماركرات والخطوط القديمة
+            Object.values(securityMarkers).forEach(m => securityMap.removeLayer(m));
+            Object.values(securityLines).forEach(l => securityMap.removeLayer(l));
+            securityMarkers = {}; securityLines = {};
+
+            const activeOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted');
+            
+            if(activeOrders.length === 0) {
+                securityMap.setView([30.0444, 31.2357], 8);
+                return;
+            }
+
+            const allPoints = [];
+            let nearest = Infinity, farthest = 0;
+
+            activeOrders.forEach(o => {
+                const custPhone = o.customer_phone;
+                const merchPhone = o.target_merchant;
+                
+                // جيب أحدث موقع للعميل من جدول العملاء أو من الطلب
+                const cust = Object.values(allCustomers).find(c => c.phone === custPhone);
+                const custLat = cust?.lat || o.lat;
+                const custLng = cust?.lng || o.lng;
+                
+                const merch = Object.values(allMerchants).find(m => m.phone === merchPhone);
+                const merchLat = merch?.lat;
+                const merchLng = merch?.lng;
+
+                const risk = calculateAdvancedRisk(o);
+                const isDanger = risk.level === 'danger';
+
+                // ماركر العميل
+                if(custLat && custLng) {
+                    const custIcon = L.divIcon({
+                        html: `<div class="track-line-pin ${isDanger ? 'pin-suspect' : 'pin-customer'}">🏃</div>`,
+                        className: 'bg-transparent', iconSize: [32, 32], iconAnchor: [16, 16]
+                    });
+                    const custMarker = L.marker([custLat, custLng], { icon: custIcon })
+                        .addTo(securityMap)
+                        .bindPopup(`<div dir="rtl" style="font-family:Cairo;font-weight:800;">
+                            <b>🏃 ${cust?.name || o.customer_name}</b><br>
+                            <span dir="ltr" style="font-size:11px;">${custPhone}</span><br>
+                            <span style="color:#3B82F6;font-size:11px;">👤 العميل</span><br>
+                            <span style="font-size:10px;">مخاطرة: <b style="color:${risk.color}">${risk.label}</b></span>
+                        </div>`);
+                    securityMarkers['cust_' + o.key] = custMarker;
+                    allPoints.push([custLat, custLng]);
+                }
+
+                // ماركر التاجر
+                if(merchLat && merchLng) {
+                    const merchIcon = L.divIcon({
+                        html: `<div class="track-line-pin pin-merchant">🏪</div>`,
+                        className: 'bg-transparent', iconSize: [32, 32], iconAnchor: [16, 16]
+                    });
+                    const merchMarker = L.marker([merchLat, merchLng], { icon: merchIcon })
+                        .addTo(securityMap)
+                        .bindPopup(`<div dir="rtl" style="font-family:Cairo;font-weight:800;">
+                            <b>🏪 ${merch?.name || o.merchant_name}</b><br>
+                            <span dir="ltr" style="font-size:11px;">${merchPhone}</span><br>
+                            <span style="color:#10B981;font-size:11px;">🏪 التاجر</span>
+                        </div>`);
+                    securityMarkers['merch_' + o.key] = merchMarker;
+                    allPoints.push([merchLat, merchLng]);
+                }
+
+                // خط الربط + حساب المسافة
+                if(custLat && custLng && merchLat && merchLng) {
+                    const dist = getDistance(custLat, custLng, merchLat, merchLng);
+                    if(dist !== null) {
+                        nearest = Math.min(nearest, dist);
+                        farthest = Math.max(farthest, dist);
+                        
+                        const lineColor = dist > 5 ? '#F59E0B' : dist > 15 ? '#DC2626' : '#10B981';
+                        const line = L.polyline([[custLat, custLng], [merchLat, merchLng]], {
+                            color: lineColor, weight: 3, opacity: 0.7, dashArray: '8, 8'
+                        }).addTo(securityMap);
+                        securityLines['line_' + o.key] = line;
+
+                        // علامة المسافة في المنتصف
+                        const midLat = (custLat + merchLat) / 2;
+                        const midLng = (custLng + merchLng) / 2;
+                        const distIcon = L.divIcon({
+                            html: `<div style="background:${lineColor};color:white;font-weight:900;font-size:10px;padding:3px 7px;border-radius:10px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">${dist.toFixed(1)} كم</div>`,
+                            className: 'bg-transparent', iconSize: [60, 20], iconAnchor: [30, 10]
+                        });
+                        securityMarkers['dist_' + o.key] = L.marker([midLat, midLng], { icon: distIcon, interactive: false }).addTo(securityMap);
+                    }
+                }
+            });
+
+            // ضبط الحدود على كل النقاط
+            if(allPoints.length > 0) {
+                try {
+                    const bounds = L.latLngBounds(allPoints);
+                    securityMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+                } catch(e) {}
+            }
+
+            // تحديث الـ metrics
+            document.getElementById('tmActiveOrders').innerText = activeOrders.length;
+            document.getElementById('tmNearestDistance').innerText = nearest === Infinity ? '—' : nearest.toFixed(1) + ' كم';
+            document.getElementById('tmFarthestDistance').innerText = farthest === 0 ? '—' : farthest.toFixed(1) + ' كم';
+            document.getElementById('tmLastUpdate').innerText = new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        }
+
+        window.centerAllTracking = function() {
+            if(!securityMap) return;
+            const activeOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted');
+            const points = [];
+            activeOrders.forEach(o => {
+                const cust = Object.values(allCustomers).find(c => c.phone === o.customer_phone);
+                const merch = Object.values(allMerchants).find(m => m.phone === o.target_merchant);
+                if(cust?.lat && cust?.lng) points.push([cust.lat, cust.lng]);
+                if(merch?.lat && merch?.lng) points.push([merch.lat, merch.lng]);
+            });
+            if(points.length > 0) {
+                try { securityMap.fitBounds(L.latLngBounds(points), { padding: [50, 50], maxZoom: 14 }); } catch(e) {}
+            }
+        };
+
+        // ==========================================================
+        // ================ مركز الأمان Renderer ================
+        // ==========================================================
+        
+        function renderSecurityCenter() {
+            if(!securityMap) initMaps();
+            renderSecurityMap();
+
+            const activeOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted');
+            
+            // إحصائيات
+            let dangerCount = 0, warnCount = 0, safeCount = 0;
+            const ordersWithRisk = activeOrders.map(o => ({ order: o, risk: calculateAdvancedRisk(o) }));
+            ordersWithRisk.forEach(({risk}) => {
+                if(risk.level === 'danger') dangerCount++;
+                else if(risk.level === 'warn') warnCount++;
+                else safeCount++;
+            });
+
+            document.getElementById('secThreatsCount').innerText = dangerCount;
+            document.getElementById('secMonitorCount').innerText = warnCount;
+            document.getElementById('secSafeCount').innerText = safeCount;
+            document.getElementById('secTrackingCount').innerText = activeOrders.length;
+
+            const alertBadge = document.getElementById('secAlertBadge');
+            if(dangerCount > 0) {
+                alertBadge.classList.remove('hidden');
+                alertBadge.innerText = dangerCount;
+                const alertBar = document.getElementById('secTopAlert');
+                alertBar.classList.remove('hidden');
+                document.getElementById('secAlertTitle').innerText = `🚨 ${dangerCount} عملية عالية المخاطرة`;
+                document.getElementById('secAlertMessage').innerText = `يُنصح بمراجعة العمليات المشبوهة أدناه فوراً`;
             } else {
-                alert("لا توجد إحداثيات جغرافية دقيقة مسجلة لهذا المتجر.");
+                alertBadge.classList.add('hidden');
+                document.getElementById('secTopAlert').classList.add('hidden');
             }
-        };
 
-        window.focusCustomerOnMap = function(phone) {
-            if(document.getElementById('tab-dashboard').classList.contains('hidden')) {
-                window.switchTab('dashboard');
-            }
-            if (customerMarkers[phone]) {
-                setTimeout(() => {
-                    document.getElementById('customerAdminMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    customerMap.flyTo(customerMarkers[phone].getLatLng(), 16);
-                    customerMarkers[phone].openPopup();
-                }, 300);
+            // قائمة العمليات المشبوهة
+            const suspicious = ordersWithRisk
+                .filter(x => x.risk.level === 'danger' || x.risk.level === 'warn')
+                .sort((a, b) => b.risk.score - a.risk.score);
+            
+            document.getElementById('secSuspiciousBadge').innerText = suspicious.length;
+
+            if(suspicious.length === 0) {
+                document.getElementById('suspiciousOrdersList').innerHTML = `
+                    <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-6 text-center">
+                        <div class="text-4xl mb-2">✅</div>
+                        <p class="font-black text-emerald-700 text-sm">لا توجد عمليات مشبوهة حالياً</p>
+                        <p class="text-[10px] font-bold text-emerald-600 mt-1">كل العمليات النشطة آمنة</p>
+                    </div>`;
             } else {
-                alert("لا توجد إحداثيات جغرافية دقيقة مسجلة لهذا العميل.");
+                document.getElementById('suspiciousOrdersList').innerHTML = suspicious.map(({order, risk}) => {
+                    const cust = Object.values(allCustomers).find(c => c.phone === order.customer_phone);
+                    const merch = Object.values(allMerchants).find(m => m.phone === order.target_merchant);
+                    const isVf = (order.method || 'vodafone') === 'vodafone';
+                    const custPhone = order.customer_phone || '';
+                    const merchPhone = order.target_merchant || '';
+                    
+                    return `
+                    <div class="bg-white border-2 ${risk.level === 'danger' ? 'border-rose-300' : 'border-amber-300'} rounded-xl p-3">
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="${risk.level === 'danger' ? 'bg-rose-500' : 'bg-amber-500'} text-white text-[10px] font-black px-2 py-0.5 rounded-md">${risk.label}</span>
+                                <span class="${isVf ? 'bg-red-100 text-red-700 border-red-300' : 'bg-purple-100 text-purple-700 border-purple-300'} border text-[10px] font-black px-2 py-0.5 rounded">${isVf ? 'فودافون' : 'إنستاباي'}</span>
+                            </div>
+                            <span class="text-lg font-black" style="color:${risk.color}">${risk.score}</span>
+                        </div>
+                        <div class="text-[11px] font-bold text-slate-700 mb-1">👤 ${cust?.name || order.customer_name} <span class="text-slate-500" dir="ltr">(${custPhone})</span></div>
+                        <div class="text-[11px] font-bold text-slate-700 mb-2">🏪 ${merch?.name || order.merchant_name} <span class="text-slate-500" dir="ltr">(${merchPhone})</span></div>
+                        <div class="text-sm font-black text-slate-900 mb-2">💰 ${(parseFloat(order.amount)||0).toLocaleString()} ج</div>
+                        <div class="space-y-1 mb-2 max-h-24 overflow-y-auto">
+                            ${risk.factors.map(f => `<div class="text-[10px] font-bold ${f.t === 'danger' ? 'text-rose-700' : f.t === 'warn' ? 'text-amber-700' : 'text-emerald-700'}">${f.i} ${f.m}</div>`).join('')}
+                        </div>
+                        <div class="flex gap-1.5 flex-wrap">
+                            <a href="tel:${custPhone}" class="bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-black px-2 py-1 rounded-lg flex-1 text-center">📞 عميل</a>
+                            <a href="tel:${merchPhone}" class="bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-black px-2 py-1 rounded-lg flex-1 text-center">📞 تاجر</a>
+                            <button onclick="window.verifyCustomer('${custPhone}')" class="bg-indigo-100 border border-indigo-300 text-indigo-700 text-[10px] font-black px-2 py-1 rounded-lg">🛡️ فحص</button>
+                        </div>
+                    </div>`;
+                }).join('');
             }
+
+            // تحليل الأجهزة
+            const { multipleDevices, deviceMap } = analyzeDevices();
+            const devContainer = document.getElementById('deviceAnalysisContainer');
+            
+            if(Object.keys(deviceMap).length === 0) {
+                devContainer.innerHTML = '<p class="text-center text-slate-400 text-xs font-black py-4">لا توجد بيانات أجهزة مسجلة بعد — يحتاج العملاء لإرسال fingerprint التطبيق</p>';
+            } else if(multipleDevices.length === 0) {
+                devContainer.innerHTML = `
+                    <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4 text-center">
+                        <div class="text-3xl mb-1">✅</div>
+                        <p class="font-black text-emerald-700 text-sm">لا توجد حسابات متعددة على نفس الجهاز</p>
+                        <p class="text-[10px] font-bold text-emerald-600 mt-1">${Object.keys(deviceMap).length} جهاز فريد مسجل</p>
+                    </div>`;
+            } else {
+                devContainer.innerHTML = multipleDevices.map(arr => `
+                    <div class="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 mb-2">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xl">🚨</span>
+                            <span class="font-black text-rose-800 text-sm">جهاز واحد — ${arr.length} حسابات</span>
+                        </div>
+                        <div class="space-y-1.5">
+                            ${arr.map(c => `
+                                <div class="bg-white rounded-lg p-2 flex items-center justify-between gap-2 border border-rose-200">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-black text-xs text-slate-800 truncate">${c.name}</p>
+                                        <p class="text-[10px] text-slate-500 font-bold" dir="ltr">${c.phone}</p>
+                                    </div>
+                                    <button onclick="window.verifyCustomer('${c.phone}')" class="bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-1 rounded border border-indigo-300">فحص</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`).join('');
+            }
+
+            renderActivityLog();
+        }
+
+        // ==========================================================
+        // ==================== OTP System ====================
+        // ==========================================================
+        
+        function generateOTP(length = 6) {
+            let code = '';
+            for(let i = 0; i < length; i++) code += Math.floor(Math.random() * 10);
+            return code;
+        }
+
+        window.generateOrderOTP = function(orderKey) {
+            const order = allOrders.find(o => o.key === orderKey);
+            if(!order) return;
+            
+            const code = generateOTP(6);
+            currentOTP = code;
+            currentOTPOrder = orderKey;
+            
+            // نخزن في Firebase
+            update(ref(db, 'eqbad_orders/' + orderKey), {
+                otp_code: code,
+                otp_created_at: Date.now(),
+                otp_verified: false
+            }).then(() => {
+                logActivity('otp', '🔐', `تم توليد OTP للعملية #${orderKey.substring(0,8)}`, 'success');
+            }).catch(err => console.error(err));
+
+            // عرض modal
+            const cust = Object.values(allCustomers).find(c => c.phone === order.customer_phone);
+            document.getElementById('otpOrderInfo').innerHTML = `
+                <b>${cust?.name || order.customer_name}</b> → <b>${order.merchant_name || 'التاجر'}</b>
+                <br><span class="en-num">${(parseFloat(order.amount)||0).toLocaleString()} ج.م</span>
+            `;
+            document.getElementById('otpCode').innerText = code;
+            document.getElementById('otpModal').classList.remove('hidden');
+            playSound('https://actions.google.com/sounds/v1/alarms/beep_short.ogg', [200, 100, 200]);
         };
 
-        // ============== Admin Actions ==============
-        window.deleteMerchant = function(key) {
-            if(confirm("تحذير: هل أنت متأكد من حذف هذا المتجر نهائياً؟")) {
-                remove(ref(db, `eqbad_merchants/${key}`)).then(() => alert('تم حذف المتجر بنجاح.')).catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
-            }
+        window.copyOTP = function() {
+            if(!currentOTP) return;
+            navigator.clipboard.writeText(currentOTP).then(() => alert('✅ تم نسخ الرمز')).catch(() => alert('تعذر النسخ'));
         };
 
-        window.toggleBlockMerchant = function(key, currentStatus) {
-            const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
-            const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
-            if(confirm(`هل تريد ${actionText} هذا المتجر؟`)) {
-                update(ref(db, `eqbad_merchants/${key}`), { status: newStatus }).catch((error) => alert('فشل التعديل:\n' + error.message));
-            }
+        window.regenerateOTP = function() {
+            if(!currentOTPOrder) return;
+            window.generateOrderOTP(currentOTPOrder);
         };
 
-        window.deleteCustomer = function(key) {
-            if(confirm("تحذير: هل أنت متأكد من حذف هذا العميل نهائياً؟")) {
-                remove(ref(db, `eqbad_customers/${key}`)).then(() => alert('تم حذف العميل بنجاح.')).catch((error) => alert('فشل الحذف. راجع صلاحيات Firebase:\n' + error.message));
+        // ==========================================================
+        // ==================== Search System ====================
+        // ==========================================================
+        
+        function calculateCustomerTrust(phone) {
+            const customer = Object.values(allCustomers).find(c => c.phone === phone);
+            const cOrders = allOrders.filter(o => o.customer_phone === phone);
+            const completed = cOrders.filter(o => o.status === 'completed').length;
+            const rejected = cOrders.filter(o => o.status === 'rejected').length;
+            const pending = cOrders.filter(o => o.status === 'pending').length;
+            const totalAmount = cOrders.filter(o => o.status === 'completed').reduce((s, o) => s + (parseFloat(o.amount) || 0), 0);
+            const accountAgeDays = customer?.createdAt ? Math.max(0, Math.floor((Date.now() - customer.createdAt) / 86400000)) : 0;
+            
+            let score = 50;
+            score += Math.min(completed * 8, 40);
+            score -= Math.min(rejected * 20, 50);
+            score -= pending > 3 ? 15 : 0;
+            score += Math.min(Math.floor(accountAgeDays / 3) * 3, 20);
+            score += Math.min(Math.floor(totalAmount / 1000) * 2, 15);
+            score = Math.max(0, Math.min(100, score));
+            
+            let level, color, bgColor, label, emoji;
+            if(score >= 75) { level='trusted'; color='#059669'; bgColor='#ECFDF5'; label='موثوق'; emoji='🟢'; }
+            else if(score >= 40) { level='caution'; color='#D97706'; bgColor='#FFFBEB'; label='يحتاج حذر'; emoji='🟡'; }
+            else { level='danger'; color='#DC2626'; bgColor='#FEF2F2'; label='خطر / مشبوه'; emoji='🔴'; }
+            
+            const flags = [];
+            if(!customer) flags.push({ type:'danger', icon:'⚠️', text:'العميل غير مسجل' });
+            if(accountAgeDays < 1 && customer) flags.push({ type:'warn', icon:'🆕', text:'حساب جديد (أقل من 24 ساعة)' });
+            else if(accountAgeDays < 3 && customer) flags.push({ type:'warn', icon:'⏱️', text:`حساب حديث (${accountAgeDays} أيام)` });
+            if(completed === 0 && customer) flags.push({ type:'danger', icon:'🚫', text:'لا يوجد عمليات ناجحة' });
+            if(rejected >= 3) flags.push({ type:'danger', icon:'❌', text:`${rejected} عملية ملغاة — مشبوه` });
+            else if(rejected >= 1) flags.push({ type:'warn', icon:'⚠️', text:`${rejected} عملية ملغاة` });
+            if(pending >= 4) flags.push({ type:'danger', icon:'📛', text:`${pending} طلبات معلقة متزامنة` });
+            else if(pending >= 2) flags.push({ type:'warn', icon:'⏳', text:`${pending} طلبات معلقة` });
+            if(completed >= 3 && rejected === 0) flags.push({ type:'ok', icon:'✅', text:`${completed} عملية ناجحة بدون إلغاء` });
+            if(customer?.status === 'blocked') flags.push({ type:'danger', icon:'🚷', text:'العميل محظور' });
+            
+            // فحص الجهاز
+            if(customer?.device) {
+                const others = Object.values(allCustomers).filter(c => c.device === customer.device && c.phone !== phone);
+                if(others.length > 0) flags.push({ type:'danger', icon:'📱', text:`${others.length} حساب آخر على نفس الجهاز` });
             }
+
+            return { score, level, color, bgColor, label, emoji, flags, stats: { completed, rejected, pending, total: cOrders.length, totalAmount, accountAgeDays, registeredAt: customer?.createdAt, customerExists: !!customer, blocked: customer?.status === 'blocked' } };
+        }
+
+        window.verifyCustomer = function(phone) {
+            const phoneStr = String(phone).trim();
+            const customer = Object.values(allCustomers).find(c => c.phone === phoneStr);
+            const trust = calculateCustomerTrust(phoneStr);
+            const cOrders = allOrders.filter(o => o.customer_phone === phoneStr).sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+            
+            document.getElementById('verifyName').innerText = customer?.name || 'عميل غير مسجل';
+            document.getElementById('verifyPhone').innerText = phoneStr;
+            document.getElementById('verifySubtitle').innerHTML = customer ? `مسجل منذ: <span class="en-num">${trust.stats.accountAgeDays}</span> يوم` : '⚠️ غير موجود';
+            document.getElementById('verifyAvatar').innerText = trust.stats.blocked ? '🚷' : '👤';
+
+            const header = document.getElementById('verifyModalHeader');
+            if(trust.level === 'trusted') header.className = "bg-gradient-to-r from-emerald-600 to-green-700 text-white p-5 relative";
+            else if(trust.level === 'caution') header.className = "bg-gradient-to-r from-amber-500 to-orange-600 text-white p-5 relative";
+            else header.className = "bg-gradient-to-r from-rose-600 to-red-700 text-white p-5 relative";
+
+            const cleanPhone = phoneStr.startsWith('0') ? '2' + phoneStr : phoneStr;
+            let bodyHtml = '';
+
+            const gaugeGradient = `conic-gradient(${trust.color} ${trust.score * 3.6}deg, #E2E8F0 0deg)`;
+            bodyHtml += `<div class="bg-gradient-to-br from-slate-50 to-white rounded-2xl border-2 border-slate-200 p-5"><div class="flex items-center gap-4"><div class="trust-gauge flex-shrink-0" style="background:${gaugeGradient};"><div class="text-center"><div class="text-2xl font-black" style="color:${trust.color}">${trust.score}</div><div class="text-[9px] font-black text-slate-500">/100</div></div></div><div class="flex-1"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl font-black text-sm" style="background:${trust.bgColor};color:${trust.color};border:2px solid ${trust.color}40;"><span class="text-lg">${trust.emoji}</span> ${trust.label}</div><p class="text-[11px] text-slate-500 font-bold mt-2 leading-relaxed">درجة الثقة من: العمليات الناجحة، الملغاة، عمر الحساب، وحجم التعامل</p></div></div></div>`;
+
+            if(trust.flags.length > 0) {
+                bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2 flex items-center gap-2"><span>🚨</span> تقرير الأمان</h4><div>${trust.flags.map(f => `<div class="flag-item flag-${f.type}"><span class="text-base flex-shrink-0">${f.icon}</span><span>${f.text}</span></div>`).join('')}</div></div>`;
+            }
+
+            bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2">📊 إحصائيات</h4><div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-emerald-700 mb-1">مكتملة</p><p class="text-2xl font-black text-emerald-700">${trust.stats.completed}</p></div>
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-amber-700 mb-1">معلقة</p><p class="text-2xl font-black text-amber-700">${trust.stats.pending}</p></div>
+                <div class="bg-rose-50 border-2 border-rose-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-rose-700 mb-1">ملغاة</p><p class="text-2xl font-black text-rose-700">${trust.stats.rejected}</p></div>
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-blue-700 mb-1">حجم</p><p class="text-base font-black text-blue-700">${trust.stats.totalAmount.toLocaleString('en-US')} <span class="text-[10px]">ج</span></p></div>
+            </div></div>`;
+
+            bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2">📞 تواصل</h4><div class="grid grid-cols-2 gap-2">
+                <a href="tel:${phoneStr}" class="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl text-sm text-center active:scale-95 shadow-lg">📞 اتصال</a>
+                <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent('مرحباً، بخصوص طلبك على تطبيق وصلني كاش، نود التأكد من بياناتك.')}" target="_blank" class="bg-[#25D366] hover:bg-[#1da851] text-white font-black py-3 rounded-xl text-sm text-center active:scale-95 shadow-lg">💬 واتساب</a>
+            </div></div>`;
+
+            if(cOrders.length > 0) {
+                bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2">📜 سجل العمليات (${cOrders.length})</h4><div class="space-y-2 max-h-64 overflow-y-auto pr-1">${cOrders.map(o => {
+                    const isVf = (o.method === 'vodafone');
+                    const statusBadge = o.status === 'completed' ? '<span class="bg-emerald-100 text-emerald-700 border-emerald-300 border px-2 py-0.5 rounded text-[10px] font-black">مكتمل ✔️</span>' : o.status === 'rejected' ? '<span class="bg-rose-100 text-rose-700 border-rose-300 border px-2 py-0.5 rounded text-[10px] font-black">ملغي ❌</span>' : o.status === 'pending' ? '<span class="bg-amber-100 text-amber-700 border-amber-300 border px-2 py-0.5 rounded text-[10px] font-black">معلق ⏳</span>' : '<span class="bg-blue-100 text-blue-700 border-blue-300 border px-2 py-0.5 rounded text-[10px] font-black">جاري 🔄</span>';
+                    const d = new Date(o.timestamp);
+                    const dStr = d.toLocaleDateString('ar-EG', {month:'short', day:'numeric'}) + ' - ' + d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+                    const mName = Object.values(allMerchants).find(m => m.phone === o.target_merchant)?.name || o.merchant_name || 'تاجر';
+                    return `<div class="bg-white border-2 border-slate-200 rounded-xl p-3"><div class="flex justify-between items-start gap-2 mb-1.5"><div class="flex items-center gap-2 flex-wrap"><span class="${isVf ? 'bg-red-100 text-red-700 border-red-300' : 'bg-purple-100 text-purple-700 border-purple-300'} border px-2 py-0.5 rounded text-[10px] font-black">${isVf ? 'فودافون' : 'إنستاباي'}</span>${statusBadge}</div><span class="text-[10px] text-slate-500 font-bold whitespace-nowrap">${dStr}</span></div><div class="flex justify-between items-center"><div class="text-[11px] text-slate-600 font-bold">🏪 ${mName}</div><div class="text-sm font-black text-slate-900">${(parseFloat(o.amount)||0).toLocaleString()} <span class="text-[10px]">ج</span></div></div></div>`;
+                }).join('')}</div></div>`;
+            }
+
+            if(customer) {
+                const isBlocked = customer.status === 'blocked';
+                bodyHtml += `<div class="pt-3 border-t-2 border-slate-200"><button onclick="window.toggleBlockFromModal('${customer.fb_key}', '${customer.status}')" class="w-full ${isBlocked ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'} text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-lg">${isBlocked ? '✅ فك الحظر' : '🚫 حظر فوري'}</button></div>`;
+            }
+
+            document.getElementById('verifyModalBody').innerHTML = bodyHtml;
+            document.getElementById('verifyModal').classList.remove('hidden');
         };
 
-        window.toggleBlockCustomer = function(key, currentStatus) {
+        window.closeVerifyModal = function() { document.getElementById('verifyModal').classList.add('hidden'); };
+        document.getElementById('verifyModal').addEventListener('click', function(e) { if(e.target === this) window.closeVerifyModal(); });
+
+        window.toggleBlockFromModal = function(key, currentStatus) {
             const newStatus = (currentStatus === 'blocked') ? 'active' : 'blocked';
             const actionText = (newStatus === 'blocked') ? 'حظر' : 'فك الحظر عن';
             if(confirm(`هل تريد ${actionText} هذا العميل؟`)) {
-                update(ref(db, `eqbad_customers/${key}`), { status: newStatus }).catch((error) => alert('فشل التعديل:\n' + error.message));
+                update(ref(db, `eqbad_customers/${key}`), { status: newStatus }).then(() => {
+                    logActivity('block', newStatus === 'blocked' ? '🚫' : '✅', `${actionText} العميل`, newStatus === 'blocked' ? 'danger' : 'success');
+                    window.closeVerifyModal();
+                }).catch(e => alert('فشل: ' + e.message));
             }
         };
 
-        window.deleteOrder = function(key) {
-            if(confirm("هل أنت متأكد من حذف هذه العملية من السجل؟")) {
-                remove(ref(db, `eqbad_orders/${key}`)).catch((error) => alert('فشل الحذف:\n' + error.message));
-            }
+        let _searchDebounce = null;
+        window.handleLiveSearch = function(query) {
+            clearTimeout(_searchDebounce);
+            _searchDebounce = setTimeout(() => {
+                const container = document.getElementById('liveSearchResults');
+                const q = (query || '').trim();
+                if(q.length < 2) { container.classList.add('hidden'); container.innerHTML = ''; return; }
+                
+                const qLower = q.toLowerCase();
+                const qDigits = q.replace(/\D/g, '');
+                
+                const customerResults = Object.values(allCustomers).filter(c => (qDigits && c.phone?.includes(qDigits)) || c.name?.toLowerCase().includes(qLower)).slice(0, 5);
+                const merchantResults = Object.values(allMerchants).filter(m => (qDigits && m.phone?.includes(qDigits)) || m.name?.toLowerCase().includes(qLower)).slice(0, 5);
+                const orderResults = allOrders.filter(o => (o.key?.toLowerCase().includes(qLower)) || (qDigits && o.customer_phone?.includes(qDigits)) || (qDigits && o.target_merchant?.includes(qDigits))).slice(0, 5);
+                
+                if(customerResults.length === 0 && merchantResults.length === 0 && orderResults.length === 0) {
+                    container.innerHTML = `<div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-5 text-center"><div class="text-3xl mb-1 opacity-40">🔍</div><p class="text-sm font-black text-slate-600">لا توجد نتائج</p></div>`;
+                    container.classList.remove('hidden'); return;
+                }
+                
+                let html = '';
+                if(customerResults.length > 0) {
+                    html += `<div class="mb-3"><h4 class="text-xs font-black text-slate-500 mb-2">👤 عملاء (${customerResults.length})</h4>`;
+                    customerResults.forEach(c => {
+                        const trust = calculateCustomerTrust(c.phone);
+                        const completed = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
+                        html += `<div onclick="window.verifyCustomer('${c.phone}')" class="cursor-pointer bg-white border-2 border-slate-200 hover:border-indigo-400 rounded-xl p-3 mb-2 transition-all active:scale-98">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                    <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style="background:${trust.bgColor};border:2px solid ${trust.color}40;">${trust.emoji}</div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-black text-slate-900 text-sm truncate">${c.name}</p>
+                                        <p class="text-[11px] font-bold text-slate-500 en-num" dir="ltr">${c.phone}</p>
+                                        <div class="flex gap-2 mt-1 text-[10px] font-black"><span class="text-emerald-600">✔ ${completed}</span></div>
+                                    </div>
+                                </div>
+                                <div class="text-center flex-shrink-0">
+                                    <div class="text-2xl font-black" style="color:${trust.color}">${trust.score}</div>
+                                    <div class="text-[9px] font-black text-slate-500">ثقة</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                }
+                
+                if(merchantResults.length > 0) {
+                    html += `<div class="mb-3"><h4 class="text-xs font-black text-slate-500 mb-2">🏪 متاجر (${merchantResults.length})</h4>`;
+                    merchantResults.forEach(m => {
+                        const completed = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
+                        const isBlocked = m.status === 'blocked';
+                        html += `<div class="bg-white border-2 ${isBlocked ? 'border-rose-300' : 'border-slate-200'} rounded-xl p-3 mb-2"><div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-xl bg-purple-100 border-2 border-purple-300 flex items-center justify-center text-xl flex-shrink-0">${isBlocked ? '🚷' : '🏪'}</div>
+                            <div class="flex-1 min-w-0"><p class="font-black text-slate-900 text-sm truncate">${m.name}</p><p class="text-[11px] font-bold text-slate-500 en-num" dir="ltr">${m.phone}</p><div class="flex gap-2 mt-1 text-[10px] font-black"><span class="text-emerald-600">✔ ${completed}</span></div></div>
+                        </div></div>`;
+                    });
+                    html += `</div>`;
+                }
+                
+                if(orderResults.length > 0) {
+                    html += `<div><h4 class="text-xs font-black text-slate-500 mb-2">📋 عمليات (${orderResults.length})</h4>`;
+                    orderResults.forEach(o => {
+                        const cName = o.customer_name || Object.values(allCustomers).find(c => c.phone === o.customer_phone)?.name || 'عميل';
+                        const mName = o.merchant_name || Object.values(allMerchants).find(m => m.phone === o.target_merchant)?.name || 'تاجر';
+                        html += `<div class="bg-white border-2 border-slate-200 rounded-xl p-3 mb-2"><div class="flex justify-between items-center gap-2 mb-1"><span class="text-[10px] font-black text-slate-700">#${o.key.substring(0,8)}</span></div><div class="text-[11px] font-bold text-slate-600 truncate">👤 ${cName} ← 🏪 ${mName}</div><div class="text-sm font-black text-slate-900 mt-1">${(parseFloat(o.amount)||0).toLocaleString()} ج</div></div>`;
+                    });
+                    html += `</div>`;
+                }
+                
+                container.innerHTML = html;
+                container.classList.remove('hidden');
+            }, 250);
         };
 
-        window.deleteAllOrders = function() {
-            if(confirm("تحذير خطير: هل أنت متأكد من مسح جميع العمليات؟ لا يمكن التراجع عن هذا الإجراء!")) {
-                remove(ref(db, 'eqbad_orders')).then(() => alert('تم مسح السجل بالكامل بنجاح.')).catch((error) => alert('فشل المسح:\n' + error.message));
-            }
-        };
-
-        // ============== Live Operations Renderer ==============
+        // ==========================================================
+        // ================ Live Operations Renderer ================
+        // ==========================================================
+        
         function timeAgo(ts) {
             if(!ts) return '';
             const diff = Math.floor((Date.now() - ts) / 1000);
-            if(diff < 60) return `منذ ${diff} ثانية`;
-            if(diff < 3600) return `منذ ${Math.floor(diff/60)} دقيقة`;
-            if(diff < 86400) return `منذ ${Math.floor(diff/3600)} ساعة`;
-            return `منذ ${Math.floor(diff/86400)} يوم`;
+            if(diff < 60) return `منذ ${diff} ث`;
+            if(diff < 3600) return `منذ ${Math.floor(diff/60)} د`;
+            if(diff < 86400) return `منذ ${Math.floor(diff/3600)} س`;
+            return `منذ ${Math.floor(diff/86400)} ي`;
         }
-
-        function formatTime(ts) {
-            if(!ts) return '';
-            const d = new Date(ts);
-            return d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-        }
-
-        function getMerchantNameByPhone(phone) {
-            const m = Object.values(allMerchants).find(x => x.phone === phone);
-            return m ? m.name : 'تاجر غير معروف';
-        }
-
-        function getCustomerNameByPhone(phone) {
-            const c = Object.values(allCustomers).find(x => x.phone === phone);
-            return c ? c.name : 'عميل';
-        }
+        function formatTime(ts) { return ts ? new Date(ts).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : ''; }
 
         function renderLiveOperations() {
             const container = document.getElementById('liveOpsContainer');
+            if(!container) return;
             const badge = document.getElementById('liveCountBadge');
             const pendingCountEl = document.getElementById('livePendingCount');
             const acceptedCountEl = document.getElementById('liveAcceptedCount');
             const totalAmountEl = document.getElementById('liveTotalAmount');
             const pulseEl = document.getElementById('livePulse');
-            
-            if(!container) return;
 
-            const liveOrders = allOrders
-                .filter(o => o.status === 'pending' || o.status === 'accepted')
-                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
+            const liveOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted').sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             const pendingCount = liveOrders.filter(o => o.status === 'pending').length;
             const acceptedCount = liveOrders.filter(o => o.status === 'accepted').length;
             const totalAmount = liveOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount || o.amount) || 0), 0);
@@ -536,23 +1209,13 @@
             if(acceptedCountEl) acceptedCountEl.innerText = acceptedCount;
             if(totalAmountEl) totalAmountEl.innerText = totalAmount.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' ج.م';
             
-            // نبضة حية فقط عند وجود طلبات قيد الانتظار
             if(pulseEl) {
-                if(pendingCount > 0) {
-                    pulseEl.style.display = 'inline-flex';
-                    pulseEl.innerHTML = '<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>';
-                } else {
-                    pulseEl.style.display = 'none';
-                }
+                if(pendingCount > 0) { pulseEl.style.display = 'inline-flex'; pulseEl.innerHTML = '<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>'; }
+                else pulseEl.style.display = 'none';
             }
 
             if(liveOrders.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300 rounded-3xl p-12 text-center">
-                        <div class="text-6xl mb-4 opacity-40">📭</div>
-                        <p class="text-lg font-black text-slate-600 mb-1">لا توجد عمليات مباشرة الآن</p>
-                        <p class="text-xs font-bold text-slate-400">سيظهر هنا كل طلب جديد لحظة إنشائه</p>
-                    </div>`;
+                container.innerHTML = `<div class="col-span-full bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300 rounded-3xl p-12 text-center"><div class="text-6xl mb-4 opacity-40">📭</div><p class="text-lg font-black text-slate-600 mb-1">لا توجد عمليات مباشرة الآن</p></div>`;
                 return;
             }
 
@@ -561,132 +1224,107 @@
                 const method = o.method || 'vodafone';
                 const isVf = method === 'vodafone';
                 const methodName = isVf ? 'فودافون كاش' : 'إنستاباي';
-                const methodColor = isVf 
-                    ? 'bg-red-100 text-red-700 border-red-300' 
-                    : 'bg-purple-100 text-purple-700 border-purple-300';
-                const methodEmoji = isVf ? '🔴' : '🟣';
-                
+                const methodColor = isVf ? 'bg-red-100 text-red-700 border-red-300' : 'bg-purple-100 text-purple-700 border-purple-300';
                 const isCashOut = o.transaction_type === 'cash_out' || !o.transaction_type;
-                const txLabel = isCashOut ? '💵 طلب سيولة (كاش)' : '📱 طلب رصيد (تحويل)';
-                const txColor = isCashOut 
-                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                    : 'bg-blue-100 text-blue-800 border-blue-300';
-
+                const txLabel = isCashOut ? '💵 طلب سيولة' : '📱 طلب رصيد';
+                const txColor = isCashOut ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-blue-100 text-blue-800 border-blue-300';
                 const isPending = o.status === 'pending';
-                const statusLabel = isPending ? '⏳ قيد الانتظار' : '✔️ مقبولة - جاري التنفيذ';
-                const statusColor = isPending 
-                    ? 'bg-amber-100 text-amber-800 border-amber-400' 
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-400';
+                const statusLabel = isPending ? '⏳ قيد الانتظار' : '✔️ مقبولة';
+                const statusColor = isPending ? 'bg-amber-100 text-amber-800 border-amber-400' : 'bg-emerald-100 text-emerald-800 border-emerald-400';
                 const topBarClass = isPending ? 'shimmer-top' : 'bg-emerald-500';
 
                 const amount = parseFloat(o.amount) || 0;
                 const comm = parseFloat(o.commission_amount) || 0;
                 const total = parseFloat(o.total_amount) || amount + comm;
 
-                const customerName = o.customer_name || getCustomerNameByPhone(o.customer_phone);
+                const customerName = o.customer_name || Object.values(allCustomers).find(c => c.phone === o.customer_phone)?.name || 'عميل';
                 const customerPhone = o.customer_phone || '';
                 const cleanCustPhone = customerPhone.startsWith('0') ? '2' + customerPhone : customerPhone;
                 const merchantPhone = o.target_merchant || '';
                 const cleanMerchPhone = merchantPhone.startsWith('0') ? '2' + merchantPhone : merchantPhone;
-                const merchantName = o.merchant_name || getMerchantNameByPhone(merchantPhone);
-                const address = o.address || 'بدون عنوان محدد';
-                const lat = o.lat, lng = o.lng;
-                const hasLocation = lat && lng;
+                const merchantName = o.merchant_name || Object.values(allMerchants).find(m => m.phone === merchantPhone)?.name || 'تاجر';
+                const address = o.address || 'بدون عنوان';
+                const hasLocation = o.lat && o.lng;
 
-                // بناء رسالة الواتساب للتحقق
-                const waVerifyMsg = encodeURIComponent(
-                    isCashOut
-                    ? `مرحباً، بخصوص طلب ${customerName} بمبلغ ${amount} ج.م كاش (تحويل ${total} ج.م ${methodName}) - تطبيق وصلني كاش`
-                    : `مرحباً، بخصوص طلب ${customerName} بمبلغ ${amount} ج.م ${methodName} (دفع ${total} ج.م كاش) - تطبيق وصلني كاش`
-                );
+                // بيانات المسافة اللحظية
+                const cust = Object.values(allCustomers).find(c => c.phone === customerPhone);
+                const merch = Object.values(allMerchants).find(m => m.phone === merchantPhone);
+                const custLat = cust?.lat || o.lat, custLng = cust?.lng || o.lng;
+                const liveDist = getDistance(custLat, custLng, merch?.lat, merch?.lng);
+
+                const risk = calculateAdvancedRisk(o);
+                const trust = calculateCustomerTrust(customerPhone);
+                const riskBadgeColor = risk.level === 'danger' ? 'bg-rose-500' : risk.level === 'warn' ? 'bg-amber-500' : 'bg-emerald-500';
+
+                const waVerifyMsg = encodeURIComponent(`مرحباً، بخصوص طلب ${customerName} بمبلغ ${amount} ج.م - تطبيق وصلني كاش`);
 
                 html += `
                 <div class="live-card bg-white rounded-2xl border-2 ${isPending ? 'border-amber-300' : 'border-emerald-300'} shadow-lg relative overflow-hidden">
-                    <!-- Top bar -->
                     <div class="h-1.5 ${topBarClass}"></div>
-                    
-                    <!-- Header -->
                     <div class="p-4 pb-3 border-b border-slate-100">
-                        <div class="flex justify-between items-start gap-2 mb-2">
-                            <span class="${statusColor} border-2 px-2.5 py-1 rounded-lg text-[11px] font-black whitespace-nowrap">${statusLabel}</span>
-                            <span class="text-[10px] text-slate-500 font-bold">${timeAgo(o.timestamp)}</span>
+                        <div class="flex justify-between items-start gap-2 mb-2 flex-wrap">
+                            <span class="${statusColor} border-2 px-2.5 py-1 rounded-lg text-[11px] font-black">${statusLabel}</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="${riskBadgeColor} text-white text-[10px] font-black px-2 py-1 rounded-lg">🛡️ ${risk.label} (${risk.score})</span>
+                                <span class="text-[10px] text-slate-500 font-bold">${timeAgo(o.timestamp)}</span>
+                            </div>
                         </div>
                         <div class="flex gap-1.5 flex-wrap">
-                            <span class="${methodColor} border px-2 py-0.5 rounded-md text-[10px] font-black">${methodEmoji} ${methodName}</span>
+                            <span class="${methodColor} border px-2 py-0.5 rounded-md text-[10px] font-black">${isVf ? '🔴' : '🟣'} ${methodName}</span>
                             <span class="${txColor} border px-2 py-0.5 rounded-md text-[10px] font-black">${txLabel}</span>
+                            ${liveDist !== null ? `<span class="bg-indigo-100 text-indigo-700 border border-indigo-300 px-2 py-0.5 rounded-md text-[10px] font-black">📏 ${liveDist.toFixed(1)} كم</span>` : ''}
                         </div>
                     </div>
 
-                    <!-- Amount Box -->
                     <div class="p-4">
                         <div class="bg-gradient-to-br from-[#0A1F3C] to-[#17477E] rounded-xl py-3 px-3 mb-3 text-center relative overflow-hidden">
                             <div class="absolute -left-4 -top-4 opacity-10 text-6xl">💰</div>
-                            <p class="text-[10px] text-white/70 font-bold mb-0.5">المبلغ الأصلي</p>
+                            <p class="text-[10px] text-white/70 font-bold mb-0.5">المبلغ</p>
                             <p class="text-3xl font-black text-white leading-tight">${amount.toLocaleString('en-US')} <span class="text-sm">ج.م</span></p>
                             <div class="flex justify-center gap-3 mt-1.5 text-[10px]">
                                 <span class="text-amber-300 font-black">عمولة: ${comm.toLocaleString('en-US')} ج</span>
-                                <span class="text-emerald-300 font-black">الإجمالي: ${total.toLocaleString('en-US')} ج</span>
+                                <span class="text-emerald-300 font-black">إجمالي: ${total.toLocaleString('en-US')} ج</span>
                             </div>
                         </div>
 
-                        <!-- Customer Info -->
                         <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-2">
-                            <div class="flex items-center gap-2 mb-1.5">
-                                <span class="text-base">🏃‍♂️</span>
-                                <span class="text-[10px] text-blue-700 font-black uppercase tracking-wider">العميل</span>
+                            <div class="flex items-center justify-between gap-2 mb-1.5">
+                                <div class="flex items-center gap-2"><span class="text-base">🏃‍♂️</span><span class="text-[10px] text-blue-700 font-black uppercase">العميل</span></div>
+                                <div class="${riskBadgeColor} text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">${trust.emoji} ${trust.score}</div>
                             </div>
                             <div class="font-black text-slate-900 text-sm mb-1.5 truncate">${customerName}</div>
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <a href="tel:${customerPhone}" class="bg-white border-2 border-blue-300 text-blue-800 font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-blue-100 active:scale-95 transition-all">
-                                    📞 <span dir="ltr">${customerPhone}</span>
-                                </a>
-                                <a href="https://wa.me/${cleanCustPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-[#1da851] active:scale-95 transition-all">
-                                    💬 واتساب
-                                </a>
+                                <a href="tel:${customerPhone}" class="bg-white border-2 border-blue-300 text-blue-800 font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-blue-100 active:scale-95"><span>📞</span> <span dir="ltr">${customerPhone}</span></a>
+                                <a href="https://wa.me/${cleanCustPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] active:scale-95">💬</a>
+                                <button onclick="window.verifyCustomer('${customerPhone}')" class="bg-gradient-to-r from-indigo-600 to-blue-700 text-white font-black px-2.5 py-1 rounded-lg text-[11px] active:scale-95 shadow-md">🛡️ فحص</button>
                             </div>
                         </div>
 
-                        <!-- Merchant Info -->
                         <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-2">
-                            <div class="flex items-center gap-2 mb-1.5">
-                                <span class="text-base">🏪</span>
-                                <span class="text-[10px] text-purple-700 font-black uppercase tracking-wider">التاجر المستهدف</span>
-                            </div>
+                            <div class="flex items-center gap-2 mb-1.5"><span class="text-base">🏪</span><span class="text-[10px] text-purple-700 font-black uppercase">التاجر</span></div>
                             <div class="font-black text-slate-900 text-sm mb-1.5 truncate">${merchantName}</div>
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <a href="tel:${merchantPhone}" class="bg-white border-2 border-purple-300 text-purple-800 font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-purple-100 active:scale-95 transition-all">
-                                    📞 <span dir="ltr">${merchantPhone}</span>
-                                </a>
-                                <a href="https://wa.me/${cleanMerchPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-[#1da851] active:scale-95 transition-all">
-                                    💬 واتساب
-                                </a>
+                                <a href="tel:${merchantPhone}" class="bg-white border-2 border-purple-300 text-purple-800 font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-purple-100 active:scale-95"><span>📞</span> <span dir="ltr">${merchantPhone}</span></a>
+                                <a href="https://wa.me/${cleanMerchPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] active:scale-95">💬</a>
                             </div>
                         </div>
 
-                        <!-- Address -->
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3">
-                            <div class="flex items-center gap-2 mb-1.5">
-                                <span class="text-base">📍</span>
-                                <span class="text-[10px] text-slate-600 font-black uppercase tracking-wider">عنوان العميل</span>
-                            </div>
+                            <div class="flex items-center gap-2 mb-1.5"><span class="text-base">📍</span><span class="text-[10px] text-slate-600 font-black uppercase">العنوان</span></div>
                             <p class="text-xs font-black text-slate-800 leading-relaxed mb-2">${address}</p>
-                            ${hasLocation ? `
-                            <div class="flex gap-1.5 flex-wrap">
-                                <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="bg-blue-100 text-blue-700 border border-blue-300 text-[11px] font-black px-3 py-1 rounded-lg hover:bg-blue-200 active:scale-95 transition-all">
-                                    🗺️ فتح الموقع
-                                </a>
-                                <a href="https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${lat},${lng}" target="_blank" class="bg-emerald-100 text-emerald-700 border border-emerald-300 text-[11px] font-black px-3 py-1 rounded-lg hover:bg-emerald-200 active:scale-95 transition-all">
-                                    🚗 اتجاهات
-                                </a>
-                            </div>
-                            ` : `
-                            <span class="text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1 rounded inline-block">لا توجد إحداثيات GPS</span>
-                            `}
+                            ${hasLocation ? `<div class="flex gap-1.5 flex-wrap">
+                                <a href="https://www.google.com/maps/search/?api=1&query=${o.lat},${o.lng}" target="_blank" class="bg-blue-100 text-blue-700 border border-blue-300 text-[11px] font-black px-3 py-1 rounded-lg active:scale-95">🗺️ الموقع</a>
+                                <button onclick="window.switchTab('security')" class="bg-indigo-100 text-indigo-700 border border-indigo-300 text-[11px] font-black px-3 py-1 rounded-lg active:scale-95">📡 تتبع لحظي</button>
+                            </div>` : ''}
                         </div>
 
-                        <!-- Footer -->
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <button onclick="window.generateOrderOTP('${o.key}')" class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black py-2.5 rounded-xl text-xs active:scale-95 shadow-md">🔐 رمز OTP</button>
+                            <button onclick="window.cancelSuspiciousOrder('${o.key}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-rose-300 font-black py-2.5 rounded-xl text-xs active:scale-95">🚫 إلغاء فوري</button>
+                        </div>
+
                         <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold border-t border-slate-200 pt-2 gap-2">
-                            <span class="truncate">رقم العملية: <span class="text-slate-700 font-black">#${o.key.substring(0, 8)}</span></span>
+                            <span>رقم: <span class="text-slate-700 font-black">#${o.key.substring(0, 8)}</span></span>
                             <span>⏰ ${formatTime(o.timestamp)}</span>
                         </div>
                     </div>
@@ -696,53 +1334,36 @@
             container.innerHTML = html;
         }
 
-        // ============== Dashboard Stats & Maps ==============
-        function updateDashboard() {
-            const merchCount = Object.keys(allMerchants).length;
-            const custCount = Object.keys(allCustomers).length;
-            const orderCount = allOrders.length;
-            
-            let totalVodafone = 0;
-            let totalInstapay = 0;
-            
-            Object.values(allMerchants).forEach(m => {
-                totalVodafone += parseFloat(m.balance_vodafone) || 0;
-                totalInstapay += parseFloat(m.balance_instapay) || 0;
-            });
+        window.cancelSuspiciousOrder = function(orderKey) {
+            if(!confirm('⚠️ هل أنت متأكد من إلغاء هذه العملية فوراً؟ سيتم إبلاغ الطرفين.')) return;
+            update(ref(db, 'eqbad_orders/' + orderKey), { status: 'rejected', rejectedAt: Date.now(), rejected_by: 'admin' }).then(() => {
+                logActivity('cancel', '🚫', `تم إلغاء العملية #${orderKey.substring(0,8)} من قِبل الإدارة`, 'danger');
+                playSound('https://actions.google.com/sounds/v1/alarms/beep_short.ogg', [200, 100, 200]);
+                alert('✅ تم إلغاء العملية');
+            }).catch(err => alert('فشل: ' + err.message));
+        };
 
-            document.getElementById('statMerchants').innerText = merchCount;
-            document.getElementById('statCustomers').innerText = custCount;
-            document.getElementById('statOrders').innerText = orderCount;
+        // ============ Dashboard ============
+        function updateDashboard() {
+            document.getElementById('statMerchants').innerText = Object.keys(allMerchants).length;
+            document.getElementById('statCustomers').innerText = Object.keys(allCustomers).length;
+            document.getElementById('statOrders').innerText = allOrders.length;
             
-            document.getElementById('statVodaLiquidity').innerText = totalVodafone.toLocaleString() + ' ج.م';
-            document.getElementById('statInstaLiquidity').innerText = totalInstapay.toLocaleString() + ' ج.م';
+            let vf = 0, ip = 0;
+            Object.values(allMerchants).forEach(m => { vf += parseFloat(m.balance_vodafone) || 0; ip += parseFloat(m.balance_instapay) || 0; });
+            document.getElementById('statVodaLiquidity').innerText = vf.toLocaleString() + ' ج.م';
+            document.getElementById('statInstaLiquidity').innerText = ip.toLocaleString() + ' ج.م';
 
             if(map) {
                 Object.values(merchantMarkers).forEach(m => map.removeLayer(m));
                 merchantMarkers = {};
-
                 const storeIcon = L.divIcon({ html: '<span style="font-size: 24px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">🏪</span>', className: 'bg-transparent', iconSize: [24, 24] });
-                
                 Object.values(allMerchants).forEach(m => {
                     if(m.lat && m.lng && m.status !== 'blocked') {
                         const pPhone = m.phone;
-                        let popupHtml = `<div class="text-center font-cairo" dir="rtl">
-                            <b class="text-[#7e122f]">${m.name}</b><br>
-                            <span class="text-xs text-slate-600" dir="ltr">${m.phone}</span>
-                            <div id="address_box_${pPhone}"></div>
-                        </div>`;
-
+                        const popupHtml = `<div class="text-center" dir="rtl"><b class="text-[#7e122f]">${m.name}</b><br><span class="text-xs text-slate-600" dir="ltr">${m.phone}</span><div id="address_box_${pPhone}"></div></div>`;
                         const marker = L.marker([m.lat, m.lng], { icon: storeIcon }).bindPopup(popupHtml).addTo(map);
-                        
-                        marker.on('click', function() {
-                            fetchAddress(m.lat, m.lng).then(addr => {
-                                let box = document.getElementById(`address_box_${pPhone}`);
-                                if(box) { 
-                                    box.innerHTML = `📍 ${addr}`; 
-                                    box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; 
-                                }
-                            });
-                        });
+                        marker.on('click', () => { fetchAddress(m.lat, m.lng).then(addr => { let box = document.getElementById(`address_box_${pPhone}`); if(box) { box.innerHTML = `📍 ${addr}`; box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; } }); });
                         merchantMarkers[pPhone] = marker;
                     }
                 });
@@ -751,345 +1372,183 @@
             if(customerMap) {
                 Object.values(customerMarkers).forEach(m => customerMap.removeLayer(m));
                 customerMarkers = {};
-
                 const custIcon = L.divIcon({ html: '<span style="font-size: 24px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">🏃‍♂️</span>', className: 'bg-transparent', iconSize: [24, 24] });
-                
                 Object.values(allCustomers).forEach(c => {
-                    let lat = c.lat;
-                    let lng = c.lng;
-                    if (!lat || !lng) {
-                        const custOrder = allOrders.find(o => o.customer_phone === c.phone && o.lat && o.lng);
-                        if (custOrder) {
-                            lat = custOrder.lat;
-                            lng = custOrder.lng;
-                        }
-                    }
-
+                    let lat = c.lat, lng = c.lng;
+                    if(!lat || !lng) { const co = allOrders.find(o => o.customer_phone === c.phone && o.lat && o.lng); if(co) { lat = co.lat; lng = co.lng; } }
                     if(lat && lng && c.status !== 'blocked') {
                         const pPhone = c.phone;
-                        let popupHtml = `<div class="text-center font-cairo" dir="rtl">
-                            <b class="text-[#0f172a]">${c.name}</b><br>
-                            <span class="text-xs text-slate-600" dir="ltr">${c.phone}</span>
-                            <div id="cust_address_box_${pPhone}"></div>
-                        </div>`;
-
+                        const popupHtml = `<div class="text-center" dir="rtl"><b class="text-[#0f172a]">${c.name}</b><br><span class="text-xs text-slate-600" dir="ltr">${c.phone}</span><div id="cust_address_box_${pPhone}"></div></div>`;
                         const marker = L.marker([lat, lng], { icon: custIcon }).bindPopup(popupHtml).addTo(customerMap);
-                        
-                        marker.on('click', function() {
-                            fetchAddress(lat, lng).then(addr => {
-                                let box = document.getElementById(`cust_address_box_${pPhone}`);
-                                if(box) { 
-                                    box.innerHTML = `📍 ${addr}`; 
-                                    box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; 
-                                }
-                            });
-                        });
+                        marker.on('click', () => { fetchAddress(lat, lng).then(addr => { let box = document.getElementById(`cust_address_box_${pPhone}`); if(box) { box.innerHTML = `📍 ${addr}`; box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; } }); });
                         customerMarkers[pPhone] = marker;
                     }
                 });
             }
         }
 
+        // ============ Actions ============
+        window.focusMerchantOnMap = function(phone) { if(document.getElementById('tab-dashboard').classList.contains('hidden')) window.switchTab('dashboard'); if(merchantMarkers[phone]) setTimeout(() => { document.getElementById('adminMap').scrollIntoView({ behavior: 'smooth', block: 'center' }); map.flyTo(merchantMarkers[phone].getLatLng(), 16); merchantMarkers[phone].openPopup(); }, 300); };
+        window.focusCustomerOnMap = function(phone) { if(document.getElementById('tab-dashboard').classList.contains('hidden')) window.switchTab('dashboard'); if(customerMarkers[phone]) setTimeout(() => { document.getElementById('customerAdminMap').scrollIntoView({ behavior: 'smooth', block: 'center' }); customerMap.flyTo(customerMarkers[phone].getLatLng(), 16); customerMarkers[phone].openPopup(); }, 300); };
+
+        window.deleteMerchant = (key) => { if(confirm("حذف هذا المتجر نهائياً؟")) remove(ref(db, `eqbad_merchants/${key}`)).then(() => alert('تم الحذف')).catch(e => alert('فشل: ' + e.message)); };
+        window.toggleBlockMerchant = (key, cs) => { const ns = cs === 'blocked' ? 'active' : 'blocked'; if(confirm(`هل تريد ${ns === 'blocked' ? 'حظر' : 'فك حظر'} هذا المتجر؟`)) update(ref(db, `eqbad_merchants/${key}`), { status: ns }).catch(e => alert('فشل: ' + e.message)); };
+        window.deleteCustomer = (key) => { if(confirm("حذف هذا العميل نهائياً؟")) remove(ref(db, `eqbad_customers/${key}`)).then(() => alert('تم الحذف')).catch(e => alert('فشل: ' + e.message)); };
+        window.toggleBlockCustomer = (key, cs) => { const ns = cs === 'blocked' ? 'active' : 'blocked'; if(confirm(`هل تريد ${ns === 'blocked' ? 'حظر' : 'فك حظر'} هذا العميل؟`)) update(ref(db, `eqbad_customers/${key}`), { status: ns }).catch(e => alert('فشل: ' + e.message)); };
+        window.deleteOrder = (key) => { if(confirm("حذف هذه العملية؟")) remove(ref(db, `eqbad_orders/${key}`)).catch(e => alert('فشل: ' + e.message)); };
+        window.deleteAllOrders = () => { if(confirm("⚠️ حذف كل السجل؟")) remove(ref(db, 'eqbad_orders')).then(() => alert('تم المسح')).catch(e => alert('فشل: ' + e.message)); };
+
+        // ============ Renderers ============
         function renderLocationsTable() {
-            let html = '';
-            Object.values(allMerchants).forEach(m => {
-                const hasLocation = m.lat && m.lng;
-                
-                html += `
-                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+            document.getElementById('tableLocations').innerHTML = Object.values(allMerchants).map(m => {
+                const hasLoc = m.lat && m.lng;
+                return `<tr class="hover:bg-slate-50 border-b border-slate-100">
                     <td class="p-3 font-black text-slate-800">${m.name}</td>
                     <td class="p-3 text-slate-600 font-bold" dir="ltr">${m.phone}</td>
                     <td class="p-3 text-xs text-slate-500">${m.address || 'بدون عنوان'}</td>
-                    <td class="p-3 text-center">
-                        ${hasLocation ? `
-                        <div class="flex justify-center gap-2">
-                            <button onclick="window.focusMerchantOnMap('${m.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 hover:bg-indigo-100 shadow-sm transition active:scale-95">🗺️ الخريطة</button>
-                            <a href="https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200 hover:bg-blue-100 shadow-sm transition inline-block">📍 جوجل</a>
-                        </div>
-                        ` : '<span class="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">لا توجد إحداثيات</span>'}
-                    </td>
+                    <td class="p-3 text-center">${hasLoc ? `<div class="flex justify-center gap-2"><button onclick="window.focusMerchantOnMap('${m.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 active:scale-95">🗺️</button><a href="https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200">📍</a></div>` : '<span class="text-[11px] font-bold text-slate-400">لا توجد إحداثيات</span>'}</td>
                 </tr>`;
-            });
-            document.getElementById('tableLocations').innerHTML = html;
+            }).join('');
         }
 
         function renderCustomerLocationsTable() {
-            let html = '';
-            Object.values(allCustomers).forEach(c => {
-                let lat = c.lat;
-                let lng = c.lng;
-                let address = c.address;
-                
-                if (!lat || !lng) {
-                    const custOrder = allOrders.find(o => o.customer_phone === c.phone && o.lat && o.lng);
-                    if (custOrder) {
-                        lat = custOrder.lat;
-                        lng = custOrder.lng;
-                        address = custOrder.address || address;
-                    } else {
-                        const custOrderWithAddress = allOrders.find(o => o.customer_phone === c.phone && o.address);
-                        if(custOrderWithAddress) address = custOrderWithAddress.address;
-                    }
-                }
-                
-                const hasLocation = lat && lng;
-                
-                html += `
-                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+            document.getElementById('tableCustomerLocations').innerHTML = Object.values(allCustomers).map(c => {
+                let lat = c.lat, lng = c.lng, address = c.address;
+                if(!lat || !lng) { const co = allOrders.find(o => o.customer_phone === c.phone && o.lat && o.lng); if(co) { lat = co.lat; lng = co.lng; address = co.address || address; } else { const c2 = allOrders.find(o => o.customer_phone === c.phone && o.address); if(c2) address = c2.address; } }
+                const hasLoc = lat && lng;
+                return `<tr class="hover:bg-slate-50 border-b border-slate-100">
                     <td class="p-3 font-black text-slate-800">${c.name}</td>
                     <td class="p-3 text-slate-600 font-bold" dir="ltr">${c.phone}</td>
                     <td class="p-3 text-xs text-slate-500">${address || 'بدون عنوان'}</td>
-                    <td class="p-3 text-center">
-                        ${hasLocation ? `
-                        <div class="flex justify-center gap-2">
-                            <button onclick="window.focusCustomerOnMap('${c.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 hover:bg-indigo-100 shadow-sm transition active:scale-95">🗺️ الخريطة</button>
-                            <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200 hover:bg-blue-100 shadow-sm transition inline-block">📍 جوجل</a>
-                        </div>
-                        ` : '<span class="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">لا توجد إحداثيات</span>'}
-                    </td>
+                    <td class="p-3 text-center">${hasLoc ? `<div class="flex justify-center gap-2"><button onclick="window.focusCustomerOnMap('${c.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 active:scale-95">🗺️</button><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200">📍</a></div>` : '<span class="text-[11px] font-bold text-slate-400">لا توجد إحداثيات</span>'}</td>
                 </tr>`;
-            });
-            document.getElementById('tableCustomerLocations').innerHTML = html;
+            }).join('');
         }
 
         function renderMerchantsTable() {
-            let html = '';
-            Object.values(allMerchants).forEach(m => {
-                const mOrders = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
-                const isBlocked = m.status === 'blocked';
-                
-                const blockBtnText = isBlocked ? '✅ فك حظر' : '🚫 حظر';
-                const blockBtnClass = isBlocked ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
-                const nameBadge = isBlocked ? `<span class="bg-red-100 text-red-700 px-1 py-0.5 rounded text-[10px] mr-1">معلق 🚫</span>` : '';
-
-                html += `
-                <tr class="hover:bg-slate-50 transition-colors ${isBlocked ? 'opacity-60 bg-slate-100' : ''}">
-                    <td class="p-3">
-                        <div class="font-black text-slate-900">${m.name} ${nameBadge}</div>
-                        <div class="text-xs text-slate-500 max-w-[150px] truncate" title="${m.address}">${m.address || 'بدون عنوان'}</div>
-                    </td>
-                    <td class="p-3">
-                        <div class="text-slate-900 font-bold" dir="ltr">${m.phone}</div>
-                        <div class="text-xs text-rose-600 font-black">السرّي: ${m.pin}</div>
-                    </td>
-                    <td class="p-3">
-                        <div class="text-[11px] font-bold text-red-600">فودافون: ${parseFloat(m.balance_vodafone||0).toLocaleString()} ج</div>
-                        <div class="text-[11px] font-bold text-purple-700">إنستا: ${parseFloat(m.balance_instapay||0).toLocaleString()} ج</div>
-                    </td>
+            document.getElementById('tableMerchants').innerHTML = Object.values(allMerchants).map(m => {
+                const mO = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
+                const isB = m.status === 'blocked';
+                return `<tr class="hover:bg-slate-50 border-b border-slate-100 ${isB ? 'opacity-60 bg-slate-100' : ''}">
+                    <td class="p-3"><div class="font-black text-slate-900">${m.name}${isB ? ' 🚫' : ''}</div><div class="text-xs text-slate-500 max-w-[150px] truncate">${m.address || ''}</div></td>
+                    <td class="p-3"><div class="text-slate-900 font-bold" dir="ltr">${m.phone}</div><div class="text-xs text-rose-600 font-black">PIN: ${m.pin}</div></td>
+                    <td class="p-3"><div class="text-[11px] font-bold text-red-600">فود: ${parseFloat(m.balance_vodafone||0).toLocaleString()} ج</div><div class="text-[11px] font-bold text-purple-700">إنستا: ${parseFloat(m.balance_instapay||0).toLocaleString()} ج</div></td>
                     <td class="p-3 font-black text-emerald-600">${m.commission_rate||0}%</td>
-                    <td class="p-3 text-center font-black text-blue-600 bg-blue-50 rounded-lg m-1">${mOrders}</td>
-                    <td class="p-3">
-                        <div class="flex justify-center gap-1">
-                            <button onclick="window.toggleBlockMerchant('${m.fb_key}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
-                            <button onclick="window.deleteMerchant('${m.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
-                        </div>
-                    </td>
+                    <td class="p-3 text-center font-black text-blue-600 bg-blue-50 rounded-lg m-1">${mO}</td>
+                    <td class="p-3"><div class="flex justify-center gap-1"><button onclick="window.toggleBlockMerchant('${m.fb_key}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border ${isB ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'} active:scale-95">${isB ? '✅' : '🚫'}</button><button onclick="window.deleteMerchant('${m.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 active:scale-95">🗑️</button></div></td>
                 </tr>`;
-            });
-            document.getElementById('tableMerchants').innerHTML = html;
+            }).join('');
         }
 
         function renderCustomersTable() {
-            let html = '';
-            Object.values(allCustomers).forEach(c => {
-                const cOrders = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
+            document.getElementById('tableCustomers').innerHTML = Object.values(allCustomers).map(c => {
+                const cO = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
                 const d = new Date(c.createdAt || Date.now());
-                const isBlocked = c.status === 'blocked';
-                
-                const blockBtnText = isBlocked ? '✅ فك حظر' : '🚫 حظر';
-                const blockBtnClass = isBlocked ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
-                const nameBadge = isBlocked ? `<span class="bg-red-100 text-red-700 px-1 py-0.5 rounded text-[10px] mr-1">معلق 🚫</span>` : '';
-
-                html += `
-                <tr class="hover:bg-slate-50 transition-colors ${isBlocked ? 'opacity-60 bg-slate-100' : ''}">
-                    <td class="p-3 font-black text-slate-900">${c.name} ${nameBadge}</td>
-                    <td class="p-3">
-                        <div class="text-slate-900 font-bold" dir="ltr">${c.phone}</div>
-                        <div class="text-xs text-rose-600 font-black">السرّي: ${c.pin}</div>
-                    </td>
+                const isB = c.status === 'blocked';
+                const trust = calculateCustomerTrust(c.phone);
+                return `<tr class="hover:bg-slate-50 border-b border-slate-100 ${isB ? 'opacity-60 bg-slate-100' : ''}">
+                    <td class="p-3"><div class="font-black text-slate-900 flex items-center gap-2">${c.name}${isB ? ' 🚫' : ''}<span class="text-[9px] font-black px-1.5 py-0.5 rounded" style="background:${trust.bgColor};color:${trust.color};">${trust.emoji} ${trust.score}</span></div></td>
+                    <td class="p-3"><div class="text-slate-900 font-bold" dir="ltr">${c.phone}</div><div class="text-xs text-rose-600 font-black">PIN: ${c.pin}</div></td>
                     <td class="p-3 text-xs text-slate-500">${d.toLocaleDateString('ar-EG')}</td>
-                    <td class="p-3 text-center font-black text-emerald-600 bg-emerald-50 rounded-lg m-1">${cOrders}</td>
-                    <td class="p-3">
-                        <div class="flex justify-center gap-1">
-                            <button onclick="window.toggleBlockCustomer('${c.fb_key}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border shadow-sm active:scale-95 ${blockBtnClass}">${blockBtnText}</button>
-                            <button onclick="window.deleteCustomer('${c.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm active:scale-95">🗑️ حذف</button>
-                        </div>
-                    </td>
+                    <td class="p-3 text-center font-black text-emerald-600 bg-emerald-50 rounded-lg m-1">${cO}</td>
+                    <td class="p-3"><div class="flex justify-center gap-1"><button onclick="window.verifyCustomer('${c.phone}')" class="px-2 py-1.5 text-xs font-black rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-300 active:scale-95">🔍</button><button onclick="window.toggleBlockCustomer('${c.fb_key}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border ${isB ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'} active:scale-95">${isB ? '✅' : '🚫'}</button><button onclick="window.deleteCustomer('${c.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 active:scale-95">🗑️</button></div></td>
                 </tr>`;
-            });
-            document.getElementById('tableCustomers').innerHTML = html;
+            }).join('');
         }
 
         function renderOrdersTable() {
-            let html = '';
-            let compCount = 0; let rejCount = 0;
-            const sortedOrders = [...allOrders].sort((a, b) => (b.timestamp||0) - (a.timestamp||0));
-
-            sortedOrders.forEach(o => {
+            let html = '', cc = 0, rc = 0;
+            [...allOrders].sort((a, b) => (b.timestamp||0) - (a.timestamp||0)).forEach(o => {
                 const d = new Date(o.timestamp);
-                const dStr = d.toLocaleDateString('ar-EG', {month: 'short', day: 'numeric'}) + ' ' + d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-                
-                let statusBadge = '';
-                if(o.status === 'completed') { statusBadge = '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold text-[10px]">مكتملة ✔️</span>'; compCount++; }
-                else if(o.status === 'rejected') { statusBadge = '<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded font-bold text-[10px]">مرفوضة ❌</span>'; rejCount++; }
-                else if(o.status === 'accepted') { statusBadge = '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold text-[10px]">مقبولة (جاري)</span>'; }
-                else { statusBadge = '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold text-[10px]">قيد الانتظار</span>'; }
-
-                const methodLabel = o.method === 'vodafone' ? '<span class="text-red-600 font-black text-[11px]">فودافون</span>' : '<span class="text-purple-700 font-black text-[11px]">إنستاباي</span>';
-
-                let targetMerchantName = 'تاجر';
-                Object.values(allMerchants).forEach(m => {
-                    if (m.phone === o.target_merchant) {
-                        targetMerchantName = m.name;
-                    }
-                });
-
-                html += `
-                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                    <td class="p-3 text-[11px] text-slate-500 font-bold whitespace-nowrap">${dStr}</td>
-                    <td class="p-3">
-                        <div class="font-black text-xs text-slate-800">${o.customer_name || 'بدون اسم'}</div>
-                        <div class="text-[10px] text-slate-500" dir="ltr">${o.customer_phone}</div>
-                    </td>
-                    <td class="p-3">
-                        <div class="font-black text-xs text-slate-800">${targetMerchantName}</div>
-                        <div class="text-[10px] text-slate-500" dir="ltr">${o.target_merchant}</div>
-                    </td>
-                    <td class="p-3">
-                        <div class="font-black text-sm text-slate-900">${o.total_amount||o.amount} ج</div>
-                        <div class="text-[10px] text-emerald-600 font-bold">ربح التاجر: ${o.commission_amount||0} ج</div>
-                    </td>
-                    <td class="p-3 text-center">${methodLabel}</td>
-                    <td class="p-3 text-center">${statusBadge}</td>
+                const ds = d.toLocaleDateString('ar-EG', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+                let sb = '';
+                if(o.status === 'completed') { sb = '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold text-[10px]">مكتملة ✔️</span>'; cc++; }
+                else if(o.status === 'rejected') { sb = '<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded font-bold text-[10px]">مرفوضة ❌</span>'; rc++; }
+                else if(o.status === 'accepted') sb = '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold text-[10px]">مقبولة</span>';
+                else sb = '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold text-[10px]">قيد الانتظار</span>';
+                const ml = o.method === 'vodafone' ? '<span class="text-red-600 font-black text-[11px]">فودافون</span>' : '<span class="text-purple-700 font-black text-[11px]">إنستاباي</span>';
+                let mName = 'تاجر';
+                Object.values(allMerchants).forEach(m => { if(m.phone === o.target_merchant) mName = m.name; });
+                html += `<tr class="hover:bg-slate-50 border-b border-slate-100">
+                    <td class="p-3 text-[11px] text-slate-500 font-bold whitespace-nowrap">${ds}</td>
+                    <td class="p-3"><div class="font-black text-xs text-slate-800">${o.customer_name || 'بدون اسم'}</div><div class="text-[10px] text-slate-500" dir="ltr">${o.customer_phone}</div></td>
+                    <td class="p-3"><div class="font-black text-xs text-slate-800">${mName}</div><div class="text-[10px] text-slate-500" dir="ltr">${o.target_merchant}</div></td>
+                    <td class="p-3"><div class="font-black text-sm text-slate-900">${o.total_amount||o.amount} ج</div><div class="text-[10px] text-emerald-600 font-bold">ربح: ${o.commission_amount||0} ج</div></td>
+                    <td class="p-3 text-center">${ml}</td>
+                    <td class="p-3 text-center">${sb}</td>
                     <td class="p-3 text-center">
-                        <button onclick="window.deleteOrder('${o.key}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded text-xs font-bold transition active:scale-95 shadow-sm">حذف</button>
+                        <button onclick="window.verifyCustomer('${o.customer_phone}')" class="bg-indigo-50 text-indigo-600 border border-indigo-200 px-2 py-1 rounded text-xs font-bold mr-1">🔍</button>
+                        <button onclick="window.deleteOrder('${o.key}')" class="bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1 rounded text-xs font-bold">حذف</button>
                     </td>
                 </tr>`;
             });
-
             document.getElementById('tableOrders').innerHTML = html;
-            document.getElementById('badgeCompleted').innerText = `${compCount} ناجحة`;
-            document.getElementById('badgeRejected').innerText = `${rejCount} مرفوضة`;
+            document.getElementById('badgeCompleted').innerText = `${cc} ناجحة`;
+            document.getElementById('badgeRejected').innerText = `${rc} مرفوضة`;
         }
 
-        initMap();
+        initMaps();
 
-        // ============== Firebase Listeners ==============
-
+        // ============ Firebase Listeners ============
         onValue(ref(db, 'eqbad_merchants'), snap => {
             allMerchants = {};
-            if(snap.exists()){
-                snap.forEach(child => {
-                    allMerchants[child.key] = { fb_key: child.key, ...child.val() };
-                });
-            }
-            updateDashboard();
-            renderLocationsTable();
-            renderMerchantsTable();
-            renderOrdersTable();
-            renderLiveOperations();
+            if(snap.exists()) snap.forEach(c => { allMerchants[c.key] = { fb_key: c.key, ...c.val() }; });
+            updateDashboard(); renderLocationsTable(); renderMerchantsTable(); renderOrdersTable(); renderLiveOperations();
+            if(!document.getElementById('tab-security').classList.contains('hidden')) renderSecurityCenter();
         });
 
         onValue(ref(db, 'eqbad_customers'), snap => {
             allCustomers = {};
-            if(snap.exists()){
-                snap.forEach(child => {
-                    allCustomers[child.key] = { fb_key: child.key, ...child.val() };
-                });
-            }
-            updateDashboard();
-            renderCustomersTable();
-            renderCustomerLocationsTable();
-            renderLiveOperations();
+            if(snap.exists()) snap.forEach(c => { allCustomers[c.key] = { fb_key: c.key, ...c.val() }; });
+            updateDashboard(); renderCustomersTable(); renderCustomerLocationsTable(); renderLiveOperations();
+            if(!document.getElementById('tab-security').classList.contains('hidden')) renderSecurityCenter();
         });
 
         onValue(ref(db, 'eqbad_orders'), snap => {
             allOrders = [];
-            if(snap.exists()){
-                snap.forEach(child => {
-                    allOrders.push({ key: child.key, ...child.val() });
-                });
-            }
-            updateDashboard();
-            renderMerchantsTable(); 
-            renderCustomersTable(); 
-            renderCustomerLocationsTable();
-            renderOrdersTable();
-            renderLiveOperations();
+            if(snap.exists()) snap.forEach(c => { allOrders.push({ key: c.key, ...c.val() }); });
+            updateDashboard(); renderMerchantsTable(); renderCustomersTable(); renderCustomerLocationsTable(); renderOrdersTable(); renderLiveOperations();
+            if(!document.getElementById('tab-security').classList.contains('hidden')) renderSecurityCenter();
 
-            // كشف الطلبات الجديدة + إشعار صوتي
             const hasNew = detectNewOrders(allOrders);
             if(hasNew) {
-                playNewOrderSound();
-                // لو مش على التبويب المباشر، نظهر تنبيه بلون الـ tab
-                if(!document.getElementById('tab-live').classList.contains('hidden') === false) {
-                    const liveBtn = document.getElementById('btnTabLive');
-                    if(liveBtn && !liveBtn.classList.contains('active')) {
-                        liveBtn.classList.add('animate-pulse');
-                        setTimeout(() => liveBtn.classList.remove('animate-pulse'), 5000);
-                    }
-                }
-            }
-        });
-
-        // ============== تحديث "منذ كم دقيقة" كل 30 ثانية ==============
-        setInterval(() => {
-            if(!document.getElementById('tab-live').classList.contains('hidden')) {
-                renderLiveOperations();
-            }
-        }, 30000);
-
-        // ============== Pull to refresh ==============
-        let ptrStartY = 0;
-        let ptrCurrentY = 0;
-        
-        const ptrElement = document.createElement('div');
-        ptrElement.className = "flex justify-center items-center overflow-hidden transition-all duration-200 bg-slate-200 text-slate-700 font-bold text-sm w-full";
-        ptrElement.style.height = "0px";
-        ptrElement.innerHTML = '<span class="mr-2 text-lg" id="ptr-icon">⬇️</span> <span id="ptr-text">اسحب لأسفل للتحديث</span>';
-        document.body.prepend(ptrElement);
-
-        document.addEventListener('touchstart', (e) => {
-            if (window.scrollY === 0) {
-                ptrStartY = e.touches[0].clientY;
-            }
-        }, { passive: true });
-
-        document.addEventListener('touchmove', (e) => {
-            if (window.scrollY === 0 && ptrStartY > 0) {
-                ptrCurrentY = e.touches[0].clientY;
-                let distance = ptrCurrentY - ptrStartY;
+                playSound();
+                const liveBtn = document.getElementById('btnTabLive');
+                if(liveBtn && !liveBtn.classList.contains('active')) { liveBtn.classList.add('animate-pulse'); setTimeout(() => liveBtn.classList.remove('animate-pulse'), 5000); }
                 
-                if (distance > 0 && distance < 180) {
-                    ptrElement.style.height = (distance / 2.5) + 'px';
+                // كشف العملية الجديدة + تحليل المخاطر
+                const newest = allOrders.sort((a,b) => b.timestamp - a.timestamp)[0];
+                if(newest) {
+                    const risk = calculateAdvancedRisk(newest);
+                    const cust = Object.values(allCustomers).find(c => c.phone === newest.customer_phone);
+                    logActivity('new_order', risk.level === 'danger' ? '🚨' : '🆕', `طلب جديد: ${cust?.name || newest.customer_name || 'عميل'} بمبلغ ${(parseFloat(newest.amount)||0).toLocaleString()} ج — مخاطرة: ${risk.label}`, risk.level === 'danger' ? 'danger' : risk.level === 'warn' ? 'warn' : 'info');
                     
-                    if (distance > 120) {
-                        document.getElementById('ptr-icon').innerText = '🔄';
-                        document.getElementById('ptr-text').innerText = 'أفلت الآن للتحديث';
-                    } else {
-                        document.getElementById('ptr-icon').innerText = '⬇️';
-                        document.getElementById('ptr-text').innerText = 'اسحب لأسفل للتحديث';
+                    // إشعار لو خطير
+                    if(risk.level === 'danger') {
+                        setTimeout(() => playSound('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', [800, 200, 800, 200, 800]), 500);
                     }
                 }
             }
-        }, { passive: true });
-
-        document.addEventListener('touchend', () => {
-            if (window.scrollY === 0 && ptrStartY > 0) {
-                let distance = ptrCurrentY - ptrStartY;
-                if (distance > 120) {
-                    ptrElement.style.height = '50px';
-                    document.getElementById('ptr-icon').innerText = '⏳';
-                    document.getElementById('ptr-text').innerText = 'جاري التحديث...';
-                    
-                    setTimeout(() => window.location.reload(), 400);
-                } else {
-                    ptrElement.style.height = '0px';
-                }
-            }
-            ptrStartY = 0;
-            ptrCurrentY = 0;
         });
+
+        // تحديث "منذ" بشكل دوري
+        setInterval(() => {
+            if(!document.getElementById('tab-live').classList.contains('hidden')) renderLiveOperations();
+            if(!document.getElementById('tab-security').classList.contains('hidden')) renderSecurityCenter();
+        }, 20000);
+
+        renderActivityLog();
+
+        // Pull to refresh
+        let ptrY = 0, ptrCY = 0;
+        const ptrEl = document.createElement('div');
+        ptrEl.className = "flex justify-center items-center overflow-hidden transition-all duration-200 bg-slate-200 text-slate-700 font-bold text-sm w-full";
+        ptrEl.style.height = "0px";
+        ptrEl.innerHTML = '<span class="mr-2 text-lg" id="ptr-icon">⬇️</span> <span id="ptr-text">اسحب للتحديث</span>';
+        document.body.prepend(ptrEl);
+        document.addEventListener('touchstart', (e) => { if(window.scrollY === 0) ptrY = e.touches[0].clientY; }, { passive: true });
+        document.addEventListener('touchmove', (e) => { if(window.scrollY === 0 && ptrY > 0) { ptrCY = e.touches[0].clientY; const d = ptrCY - ptrY; if(d > 0 && d < 180) { ptrEl.style.height = (d/2.5)+'px'; if(d > 120) { document.getElementById('ptr-icon').innerText = '🔄'; document.getElementById('ptr-text').innerText = 'أفلت للتحديث'; } } } }, { passive: true });
+        document.addEventListener('touchend', () => { if(window.scrollY === 0 && ptrY > 0) { const d = ptrCY - ptrY; if(d > 120) { ptrEl.style.height = '50px'; document.getElementById('ptr-icon').innerText = '⏳'; document.getElementById('ptr-text').innerText = 'جاري التحديث...'; setTimeout(() => window.location.reload(), 400); } else ptrEl.style.height = '0px'; } ptrY = 0; ptrCY = 0; });
 
     </script>
 </body>
