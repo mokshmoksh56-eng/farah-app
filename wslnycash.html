@@ -147,7 +147,7 @@ body{
 .badge-offline{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:900; color:var(--muted); background:var(--surface-3); padding:8px 12px; border-radius:12px; border:1px solid var(--line); flex-shrink:0; }
 .dot{ display:inline-block; width:8px; height:8px; border-radius:999px; flex-shrink:0; position:relative; }
 .dot-live{ background:#10B981; }
-.dot-live::after{ content:'Piece'; position:absolute; inset:0; border-radius:999px; background:#10B981; animation:pulseRing 1.7s cubic-bezier(0,0,.2,1) infinite; }
+.dot-live::after{ content:''; position:absolute; inset:0; border-radius:999px; background:#10B981; animation:pulseRing 1.7s cubic-bezier(0,0,.2,1) infinite; }
 .dot-off{ background:#94A3B8; }
 @keyframes pulseRing{ 75%,100%{ transform:scale(2.3); opacity:0; } }
 
@@ -887,7 +887,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     function locateMeOnMerchantMap() {
         if (!navigator.geolocation) return alert("متصفحك لا يدعم تحديد الموقع.");
         if(confirm("هل تريد تحديث موقع متجرك إلى موقعك الحالي (GPS) الآن؟")) {
-            document.getElementById('merchantVisibilityText').innerHTML = "⏳ جاري تحديث الموقع...";
+            const bannerText = document.getElementById('merchantVisibilityText');
+            if(bannerText) bannerText.innerHTML = "⏳ جاري تحديث الموقع...";
             navigator.geolocation.getCurrentPosition(pos => {
                 const lat = pos.coords.latitude, lng = pos.coords.longitude;
                 if (merchantStoreMapInstance) {
@@ -1164,6 +1165,64 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window._merchantDataUnsub = null;
     window._customerPendingUnsub = null;
     window._authReady = false;
+
+    // التحكم الذكي في محافظ فودافون وإنستاباي وربطها بظهور المتجر
+    window.toggleServiceStatus = function(type) {
+        if(!window.currentMerchantPhone) return;
+        let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+        
+        get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
+            if(!snap.exists()) return;
+            const m = snap.val();
+            
+            const field = (type === 'vodafone') ? 'enable_vodafone' : 'enable_instapay';
+            const otherField = (type === 'vodafone') ? 'enable_instapay' : 'enable_vodafone';
+            
+            const currentVal = m[field];
+            const newVal = (currentVal === undefined) ? false : !currentVal;
+            const otherVal = (m[otherField] === undefined) ? true : m[otherField];
+            
+            let updates = { [field]: newVal };
+            
+            if (newVal === false && otherVal === false) {
+                updates['status'] = 'offline';
+            } 
+            else if ((newVal === true || otherVal === true) && (m.provide_cash !== false || m.provide_transfer !== false)) {
+                updates['status'] = 'active';
+            }
+            
+            update(ref(window.dbRef, 'eqbad_merchants/' + mKey), updates);
+        }).catch(err => alert("خطأ: " + err.message));
+    };
+
+    // التحكم الذكي في خزنة الكاش ورصيد التحويل وربطها بظهور المتجر
+    window.toggleProvideService = function(type) {
+        if(!window.currentMerchantPhone) return;
+        let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+        
+        get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
+            if(!snap.exists()) return;
+            const m = snap.val();
+            
+            const field = (type === 'cash') ? 'provide_cash' : 'provide_transfer';
+            const otherField = (type === 'cash') ? 'provide_transfer' : 'provide_cash';
+            
+            const currentVal = m[field];
+            const newVal = (currentVal === undefined) ? false : !currentVal;
+            const otherVal = (m[otherField] === undefined) ? true : m[otherField];
+            
+            let updates = { [field]: newVal };
+            
+            if (newVal === false && otherVal === false) {
+                updates['status'] = 'offline';
+            } 
+            else if ((newVal === true || otherVal === true) && (m.enable_vodafone !== false || m.enable_instapay !== false)) {
+                updates['status'] = 'active';
+            }
+            
+            update(ref(window.dbRef, 'eqbad_merchants/' + mKey), updates);
+        }).catch(err => alert("خطأ: " + err.message));
+    };
 
     window.saveCustomerLocation = function(lat, lng, address) {
         const phone = window.normalizePhone(
@@ -1452,43 +1511,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         window.currentActiveMerchantData = null;
         window.notifiedOrders.clear();
         showView('roleView');
-    };
-
-    window.toggleServiceStatus = function(type) {
-        if(!window.currentMerchantPhone) return;
-        let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-        get(ref(db, 'eqbad_merchants/' + mKey)).then(snap => {
-            if(!snap.exists()) return;
-            const field = (type === 'vodafone') ? 'enable_vodafone' : 'enable_instapay';
-            update(ref(db, 'eqbad_merchants/' + mKey), { [field]: !(snap.val()[field] !== false) });
-        }).catch(err => alert("خطأ: " + err.message));
-    };
-
-    window.toggleProvideService = function(type) {
-        if(!window.currentMerchantPhone) return;
-        let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-        
-        get(ref(window.dbRef, 'eqbad_merchants/' + mKey)).then(snap => {
-            if(!snap.exists()) return;
-            const m = snap.val();
-            
-            const field = (type === 'cash') ? 'provide_cash' : 'provide_transfer';
-            const otherField = (type === 'cash') ? 'provide_transfer' : 'provide_cash';
-            
-            const currentVal = m[field];
-            const newVal = (currentVal === undefined) ? false : !currentVal;
-            const otherVal = (m[otherField] === undefined) ? true : m[otherField];
-            
-            let updates = { [field]: newVal };
-            
-            if (newVal === false && otherVal === false) {
-                updates['status'] = 'offline';
-            } else if (newVal === true || otherVal === true) {
-                updates['status'] = 'active';
-            }
-            
-            update(ref(window.dbRef, 'eqbad_merchants/' + mKey), updates);
-        }).catch(err => alert("خطأ: " + err.message));
     };
 
     window.acceptOrder = function(reqKey) {
