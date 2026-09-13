@@ -119,8 +119,9 @@ body{
 .tx-card-idle{ opacity:.7; filter:grayscale(.85); }
 .tx-card-out{ border-color:#10B981; background:#ECFDF5; color:#065F46; box-shadow:0 10px 20px -14px rgba(16,185,129,.9); }
 .tx-card-out .tx-badge{ background:#A7F3D0; color:#065F46; }
-.tx-card-in{ border-color:#3B82F6; background:#EFF6FF; color:#1E40AF; box-shadow:0 10px 20px -14px rgba(59,130,246,.9); }
-.tx-card-in .tx-badge{ background:#BFDBFE; color:#1E40AF; }
+/* تعديل لون بطاقة الرصيد لتصبح خضراء مثل الكاش عند التحديد */
+.tx-card-in{ border-color:#10B981; background:#ECFDF5; color:#065F46; box-shadow:0 10px 20px -14px rgba(16,185,129,.9); }
+.tx-card-in .tx-badge{ background:#A7F3D0; color:#065F46; }
 
 .method-card{
   position:relative; display:flex; align-items:center; justify-content:center; gap:8px; padding:13px 10px;
@@ -815,7 +816,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         const lblIn = document.getElementById('lbl-tx-cashin');
         if (!lblOut || !lblIn) return;
         lblOut.className = "tx-card " + (txType === 'cash_out' ? "tx-card-out" : "tx-card-idle");
-        lblIn.className  = "tx-card " + (txType === 'cash_in'  ? "tx-card-in"  : "tx-card-idle");
+        lblIn.className  = "tx-card " + (txType === 'cash_in'  ? "tx-card-out"  : "tx-card-idle");
     };
 
     window.updateCustomerTheme = function(method) {
@@ -836,20 +837,36 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         return s;
     };
 
-    let viewHistory = [];
+    /* ---------- نظام التنقل وإدارة التاريخ (متوافق مع زر الرجوع الأساسي) ---------- */
+    let viewHistoryStack = [];
     let currentHistoryIndex = -1;
+
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.viewId) {
+            currentHistoryIndex = event.state.index;
+            showView(event.state.viewId, true);
+        } else {
+            showView('roleView', true);
+        }
+    });
+
     function updateNavButtons() {
-        document.getElementById('btnNavBack').disabled = !(currentHistoryIndex > 0);
-        document.getElementById('btnNavForward').disabled = !(currentHistoryIndex < viewHistory.length - 1);
+        const btnBack = document.getElementById('btnNavBack');
+        const btnFwd = document.getElementById('btnNavForward');
+        if(btnBack) btnBack.disabled = !(currentHistoryIndex > 0);
+        if(btnFwd) btnFwd.disabled = !(currentHistoryIndex < viewHistoryStack.length - 1);
     }
-    function goBackHistory() { if(currentHistoryIndex > 0) { currentHistoryIndex--; showView(viewHistory[currentHistoryIndex], true); } }
-    function goForwardHistory() { if(currentHistoryIndex < viewHistory.length - 1) { currentHistoryIndex++; showView(viewHistory[currentHistoryIndex], true); } }
+    
+    window.goBackHistory = function() { window.history.back(); };
+    window.goForwardHistory = function() { window.history.forward(); };
+
     function showView(viewId, isHistoryNav = false) {
         if(!isHistoryNav) {
-            if(viewHistory[currentHistoryIndex] !== viewId) {
-                viewHistory = viewHistory.slice(0, currentHistoryIndex + 1);
-                viewHistory.push(viewId);
+            if(viewHistoryStack[currentHistoryIndex] !== viewId) {
+                viewHistoryStack = viewHistoryStack.slice(0, currentHistoryIndex + 1);
+                viewHistoryStack.push(viewId);
                 currentHistoryIndex++;
+                window.history.pushState({ viewId: viewId, index: currentHistoryIndex }, "", `#${viewId}`);
             }
         }
         localStorage.setItem('eqbad_active_view', viewId);
@@ -865,8 +882,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }, 250);
     }
     window.showView = showView;
-    window.goBackHistory = goBackHistory;
-    window.goForwardHistory = goForwardHistory;
+    /* ----------------------------------------------------------------------------- */
 
     const getDistance = (lat1, lon1, lat2, lon2) => {
         if(!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -1346,7 +1362,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         localStorage.removeItem('eqbad_customer_name');
         window.currentCustomerPhone = "";
         window.currentCustomerName = "";
-        viewHistory = []; currentHistoryIndex = -1;
         showView('roleView');
     };
 
@@ -1426,7 +1441,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         window.currentMerchantKey = "";
         window.currentActiveMerchantData = null;
         window.notifiedOrders.clear();
-        viewHistory = []; currentHistoryIndex = -1;
         showView('roleView');
     };
 
