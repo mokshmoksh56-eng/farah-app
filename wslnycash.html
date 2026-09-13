@@ -876,12 +876,26 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         return 12742 * Math.asin(Math.sqrt(a));
     };
 
+    /* ========================================================= */
+    /* ✅ معدلة: تاجر "أين مكاني" — مع جلب العنوان وإرساله لحظيًا */
+    /* ========================================================= */
     function locateMeOnMerchantMap() {
         if (!navigator.geolocation) return alert("متصفحك لا يدعم تحديد الموقع.");
         if(confirm("هل تريد تحديث موقع متجرك إلى موقعك الحالي (GPS) الآن؟")) {
             document.getElementById('merchantVisibilityText').innerHTML = "⏳ جاري تحديث الموقع...";
-            navigator.geolocation.getCurrentPosition(pos => {
+            navigator.geolocation.getCurrentPosition(async pos => {
                 const lat = pos.coords.latitude, lng = pos.coords.longitude;
+
+                // ⬇️ جديد: اجلب العنوان النصي عشان الأدمن يشوفه لحظيًا
+                let address = '';
+                try {
+                    const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`);
+                    const data = await res.json();
+                    if(data && data.features && data.features.length > 0) {
+                        address = data.features[0].place_name_ar || data.features[0].place_name;
+                    }
+                } catch(e) {}
+
                 if (merchantStoreMapInstance) {
                     merchantStoreMapInstance.setView([lat, lng], 16);
                     if (!merchantMarkerInstance) {
@@ -890,7 +904,9 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                     } else { merchantMarkerInstance.setLatLng([lat, lng]); }
                     merchantMarkerInstance.bindPopup("<b>موقع المتجر الجديد 📍</b>").openPopup();
                 }
-                if(window.updateMerchantLocationToDB) window.updateMerchantLocationToDB(lat, lng);
+
+                // ⬇️ جديد: ابعت الـ address كمان
+                if(window.updateMerchantLocationToDB) window.updateMerchantLocationToDB(lat, lng, address);
             }, (err) => {
                 alert("يرجى التأكد من تشغيل الـ GPS ومنح الإذن.");
                 if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status);
@@ -982,7 +998,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     }
     window.searchOnMap = searchOnMap;
 
-    /* ✅ معدلة: مزامنة موقع العميل لحظيًا مع لوحة الإدارة */
     function confirmMapSelection() {
         if(!window.tempLat) return alert("الرجاء تحديد النقطة على الخريطة أولاً.");
         if(window.activeMapMode === 'customer') {
@@ -991,7 +1006,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             window.finalCustAddress = window.tempAddress;
             document.getElementById('custAddressDisplay').value = window.tempAddress;
 
-            // ⬇️ مزامنة فورية مع Firebase لتظهر في لوحة الإدارة لحظيًا
             if (window.saveCustomerLocation) {
                 window.saveCustomerLocation(window.tempLat, window.tempLng, window.tempAddress);
             }
@@ -1159,7 +1173,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window._customerPendingUnsub = null;
     window._authReady = false;
 
-    /* ✅ دالة جديدة: حفظ موقع العميل في قاعدة البيانات لحظيًا */
     window.saveCustomerLocation = function(lat, lng, address) {
         const phone = window.normalizePhone(
             window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone')
@@ -1206,14 +1219,29 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }
     });
 
-    window.updateMerchantLocationToDB = function(lat, lng) {
+    /* ========================================================= */
+    /* ✅ معدلة: تحديث موقع التاجر مع العنوان ووقت التحديث */
+    /* ========================================================= */
+    window.updateMerchantLocationToDB = function(lat, lng, address) {
         let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
         if(!mKey) return;
-        update(ref(db, 'eqbad_merchants/' + mKey), { lat: lat, lng: lng })
+
+        // ⬇️ جديد: احفظ العنوان ووقت التحديث عشان الأدمن يعرف إن ده تحديث لحظي
+        const updates = {
+            lat: lat,
+            lng: lng,
+            locationUpdatedAt: Date.now()
+        };
+        if (address) updates.address = address;
+
+        update(ref(db, 'eqbad_merchants/' + mKey), updates)
         .then(() => {
             alert("✅ تم تحديث مكان المتجر بنجاح!");
-            document.getElementById('merchantVisibilityText').innerHTML = `<span class="dot dot-live"></span> <span class="truncate">تم التحديث ✔️</span>`;
-            setTimeout(() => { if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status); }, 2500);
+            document.getElementById('merchantVisibilityText').innerHTML =
+                `<span class="dot dot-live"></span> <span class="truncate">تم التحديث ✔️</span>`;
+            setTimeout(() => {
+                if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status);
+            }, 2500);
         })
         .catch(err => alert("خطأ: " + err.message));
     };
