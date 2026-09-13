@@ -876,26 +876,12 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         return 12742 * Math.asin(Math.sqrt(a));
     };
 
-    /* ========================================================= */
-    /* ✅ معدلة: تاجر "أين مكاني" — مع جلب العنوان وإرساله لحظيًا */
-    /* ========================================================= */
     function locateMeOnMerchantMap() {
         if (!navigator.geolocation) return alert("متصفحك لا يدعم تحديد الموقع.");
         if(confirm("هل تريد تحديث موقع متجرك إلى موقعك الحالي (GPS) الآن؟")) {
             document.getElementById('merchantVisibilityText').innerHTML = "⏳ جاري تحديث الموقع...";
-            navigator.geolocation.getCurrentPosition(async pos => {
+            navigator.geolocation.getCurrentPosition(pos => {
                 const lat = pos.coords.latitude, lng = pos.coords.longitude;
-
-                // ⬇️ جديد: اجلب العنوان النصي عشان الأدمن يشوفه لحظيًا
-                let address = '';
-                try {
-                    const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=ar`);
-                    const data = await res.json();
-                    if(data && data.features && data.features.length > 0) {
-                        address = data.features[0].place_name_ar || data.features[0].place_name;
-                    }
-                } catch(e) {}
-
                 if (merchantStoreMapInstance) {
                     merchantStoreMapInstance.setView([lat, lng], 16);
                     if (!merchantMarkerInstance) {
@@ -904,9 +890,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                     } else { merchantMarkerInstance.setLatLng([lat, lng]); }
                     merchantMarkerInstance.bindPopup("<b>موقع المتجر الجديد 📍</b>").openPopup();
                 }
-
-                // ⬇️ جديد: ابعت الـ address كمان
-                if(window.updateMerchantLocationToDB) window.updateMerchantLocationToDB(lat, lng, address);
+                if(window.updateMerchantLocationToDB) window.updateMerchantLocationToDB(lat, lng);
             }, (err) => {
                 alert("يرجى التأكد من تشغيل الـ GPS ومنح الإذن.");
                 if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status);
@@ -1005,7 +989,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             window.finalCustLng = window.tempLng;
             window.finalCustAddress = window.tempAddress;
             document.getElementById('custAddressDisplay').value = window.tempAddress;
-
             if (window.saveCustomerLocation) {
                 window.saveCustomerLocation(window.tempLat, window.tempLng, window.tempAddress);
             }
@@ -1219,29 +1202,14 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }
     });
 
-    /* ========================================================= */
-    /* ✅ معدلة: تحديث موقع التاجر مع العنوان ووقت التحديث */
-    /* ========================================================= */
-    window.updateMerchantLocationToDB = function(lat, lng, address) {
+    window.updateMerchantLocationToDB = function(lat, lng) {
         let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
         if(!mKey) return;
-
-        // ⬇️ جديد: احفظ العنوان ووقت التحديث عشان الأدمن يعرف إن ده تحديث لحظي
-        const updates = {
-            lat: lat,
-            lng: lng,
-            locationUpdatedAt: Date.now()
-        };
-        if (address) updates.address = address;
-
-        update(ref(db, 'eqbad_merchants/' + mKey), updates)
+        update(ref(db, 'eqbad_merchants/' + mKey), { lat: lat, lng: lng })
         .then(() => {
             alert("✅ تم تحديث مكان المتجر بنجاح!");
-            document.getElementById('merchantVisibilityText').innerHTML =
-                `<span class="dot dot-live"></span> <span class="truncate">تم التحديث ✔️</span>`;
-            setTimeout(() => {
-                if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status);
-            }, 2500);
+            document.getElementById('merchantVisibilityText').innerHTML = `<span class="dot dot-live"></span> <span class="truncate">تم التحديث ✔️</span>`;
+            setTimeout(() => { if(window.currentActiveMerchantData) window.updateVisibilityUI(window.currentActiveMerchantData.status); }, 2500);
         })
         .catch(err => alert("خطأ: " + err.message));
     };
@@ -1899,12 +1867,18 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                         ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)`
                         : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي. (تطبيق وصلني كاش)`
                     );
+                    
+                    const mapRouteBtn = (ord.merchant_lat && ord.merchant_lng && ord.lat && ord.lng) 
+                        ? `<a href="https://www.google.com/maps/dir/?api=1&origin=${ord.lat},${ord.lng}&destination=${ord.merchant_lat},${ord.merchant_lng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a>`
+                        : '';
+
                     actionHtml = `
                     <div class="space-y-1.5 pt-2 border-t border-slate-200 mt-2">
                         <div class="text-[11px] font-black text-emerald-700 text-center">التاجر وافق! تواصل معه أو توجه للفرع:</div>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-${mapRouteBtn ? '3' : '2'} gap-1.5">
                             <a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a>
-                            <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتساب</a>
+                            <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a>
+                            ${mapRouteBtn}
                         </div>
                     </div>`;
                 }
@@ -2100,6 +2074,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             await set(newReqRef, {
                 target_merchant: safeTargetMerchant,
                 merchant_name: merchantName,
+                merchant_lat: merchLat,
+                merchant_lng: merchLng,
                 customer_phone: safeCustPhone,
                 customer_name: safeCustName,
                 amount: reqAmount,
