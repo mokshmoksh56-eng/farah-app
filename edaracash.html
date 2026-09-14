@@ -290,6 +290,15 @@
                 <div class="stat-card border-t-4 border-t-purple-500 bg-purple-50"><p class="text-sm text-purple-600 mb-1">سيولة إنستاباي</p><p id="statInstaLiquidity" class="text-2xl text-purple-700">0 ج.م</p></div>
             </div>
 
+            <!-- إعدادات رقم دفع الاشتراكات -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mt-6 mb-6">
+                <h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>⚙️</span> إعدادات الدفع (تجديد الاشتراكات)</h3>
+                <div class="flex flex-col sm:flex-row items-center gap-3">
+                    <input type="tel" id="adminPaymentPhone" placeholder="أدخل رقم فودافون كاش لاستقبال الاشتراكات..." class="w-full bg-slate-50 border border-slate-300 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors en-num" dir="ltr">
+                    <button onclick="window.savePaymentNumber()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-xl text-sm active:scale-95 transition-all whitespace-nowrap shadow-md">حفظ الرقم 💾</button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3><div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار العملاء</h3><div id="customerAdminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
@@ -461,6 +470,22 @@
             if(!liveSoundEnabled) return;
             try { const audio = new Audio(url); audio.volume = 1.0; audio.play().catch(()=>{}); if(navigator.vibrate) navigator.vibrate(vibrate); } catch(e) {}
         }
+
+        // ============ إعدادات الدفع (رقم فودافون كاش) ============
+        onValue(ref(db, 'eqbad_settings/admin_payment_phone'), snap => {
+            if(snap.exists()) {
+                const phoneInput = document.getElementById('adminPaymentPhone');
+                if(phoneInput) phoneInput.value = snap.val();
+            }
+        });
+
+        window.savePaymentNumber = function() {
+            const phone = document.getElementById('adminPaymentPhone').value.trim();
+            if(phone.length < 10) return alert("يرجى إدخال رقم صحيح.");
+            update(ref(db, 'eqbad_settings'), { admin_payment_phone: phone })
+            .then(() => alert("✅ تم حفظ رقم استقبال الاشتراكات بنجاح. سيظهر هذا الرقم للتجار عند انتهاء اشتراكهم."))
+            .catch(e => alert("خطأ في الحفظ: " + e.message));
+        };
 
         // ============ إدارة الاشتراكات للتاجر ============
         window.manageMerchantSub = function(merchantKey, action) {
