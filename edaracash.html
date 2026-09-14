@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>لوحة الإدارة | إقبض</title>
+    <title>إدارة تطبيق وصلني كاش</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -81,7 +81,7 @@
             <div class="flex items-center gap-4">
                 <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl shadow-lg border-2 border-amber-500">💰</div>
                 <div>
-                    <h1 class="text-3xl gradient-text">إقبض (Eqbad)</h1>
+                    <h1 class="text-3xl gradient-text">إدارة تطبيق وصلني كاش</h1>
                     <p class="text-sm text-slate-500">لوحة تحكم الإدارة الشاملة</p>
                 </div>
             </div>
@@ -400,17 +400,6 @@
                 </div>
             </div>
 
-            <!-- رادار الاشتراكات التي توشك على الانتهاء -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-indigo-200 mb-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-lg text-slate-800 flex items-center gap-2"><span>📡</span> رادار التجديدات (ينتهي خلال 3 أيام)</h3>
-                    <span class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-1 rounded-lg font-bold">تنبيه استباقي</span>
-                </div>
-                <div id="expiringSoonGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <!-- سيتم تعبئتها ديناميكياً -->
-                </div>
-            </div>
-
             <!-- قائمة الطلبات -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-slate-200">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
@@ -427,7 +416,7 @@
                         <button onclick="window.clearAllSubReqs()" class="text-[11px] bg-rose-50 text-rose-700 border-2 border-rose-300 px-3 py-1.5 rounded-lg hover:bg-rose-100 active:scale-95">🗑️ مسح القديمة</button>
                     </div>
                 </div>
-                <div id="subReqsGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+                <div id="subReqsGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
             </div>
         </div>
 
@@ -1459,10 +1448,10 @@
                     </div>
 
                     <div class="flex items-center gap-3 mb-3">
-                        <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-3xl shadow-sm border-2 border-white">🏪</div>
+                        <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-4xl shadow-sm border-2 border-white">🏪</div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm text-slate-900 truncate">${r.merchant_name || 'تاجر'}</p>
-                            <p class="text-[11px] text-slate-500 en-num" dir="ltr">${r.merchant_phone || ''}</p>
+                            <p class="text-xl font-black text-slate-900 truncate">${r.merchant_name || 'تاجر'}</p>
+                            <p class="text-sm font-bold text-slate-600 en-num" dir="ltr">${r.merchant_phone || ''}</p>
                         </div>
                     </div>
 
@@ -1473,15 +1462,15 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <span class="text-2xl">${pkgIcon}</span>
+                                <span class="text-3xl">${pkgIcon}</span>
                                 <div>
-                                    <div class="text-sm text-slate-900">${r.package_name || 'باقة'}</div>
-                                    <div class="text-[10px] text-slate-500">${r.requested_days || 30} يوم</div>
+                                    <div class="text-lg font-black text-slate-900">${r.package_name || 'باقة'}</div>
+                                    <div class="text-sm font-bold text-slate-600">${r.requested_days || 30} يوم</div>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="text-lg text-[#C9A227]">${(r.package_price || 100).toLocaleString('en-US')} <span class="text-xs">ج</span></div>
-                                <div class="text-[9px] text-slate-400">المبلغ المُحوّل</div>
+                                <div class="text-3xl font-black text-[#C9A227] en-num">${(parseFloat(r.package_price) || 100).toLocaleString('en-US')} <span class="text-sm">ج</span></div>
+                                <div class="text-[11px] font-bold text-slate-400">المبلغ المُحوّل</div>
                             </div>
                         </div>
                     </div>
@@ -1492,47 +1481,6 @@
         }
 
         // ============ بيانات Firebase الرئيسية ============
-        function renderExpirationRadar() {
-            const container = document.getElementById('expiringSoonGrid');
-            if(!container) return;
-
-            const now = Date.now();
-            const warningThreshold = 3 * 24 * 60 * 60 * 1000; // 3 أيام
-            
-            const expiringMerchants = Object.values(allMerchants).filter(m => {
-                if(m.status === 'offline' || m.subscription_status === 'expired') return false;
-                const subEnd = m.subscription_end || m.createdAt || now;
-                const timeRemaining = subEnd - now;
-                return timeRemaining > 0 && timeRemaining <= warningThreshold;
-            }).sort((a, b) => (a.subscription_end || 0) - (b.subscription_end || 0));
-
-            if(expiringMerchants.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-slate-400 text-xs py-4 bg-slate-50 rounded-xl border border-dashed border-slate-300">لا توجد اشتراكات تنتهي قريباً.</div>`;
-                return;
-            }
-
-            container.innerHTML = expiringMerchants.map(m => {
-                const timeRemaining = (m.subscription_end || now) - now;
-                const daysLeft = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
-                const hoursLeft = Math.floor(timeRemaining / (1000 * 60 * 60));
-                
-                const timeText = daysLeft > 1 ? `باقي ${daysLeft} أيام` : `باقي ${hoursLeft} ساعة`;
-                const waMsg = encodeURIComponent(`مرحباً ${m.name}، نود تذكيرك بأن اشتراكك في منصة إقبض سينتهي خلال ${daysLeft > 1 ? daysLeft + ' أيام' : hoursLeft + ' ساعة'}. يرجى التجديد لتجنب توقف الخدمة.`);
-                const cleanPhone = (m.phone || "").startsWith("0") ? "2" + m.phone : m.phone;
-
-                return `
-                <div class="bg-amber-50 border border-amber-300 rounded-xl p-3 flex justify-between items-center shadow-sm">
-                    <div>
-                        <p class="text-sm text-slate-800 font-bold truncate">🏪 ${m.name}</p>
-                        <p class="text-[11px] text-amber-700 font-bold mt-1">⏳ ${timeText}</p>
-                    </div>
-                    <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white p-2 rounded-lg text-[10px] hover:bg-green-600 active:scale-95 shadow-sm transition-all flex flex-col items-center gap-1">
-                        <span class="text-sm">💬</span> تذكير
-                    </a>
-                </div>`;
-            }).join('');
-        }
-
         onValue(ref(db, 'eqbad_merchants'), snap => {
             allMerchants = {};
             if(snap.exists()) {
@@ -1543,7 +1491,6 @@
             renderMerchantsTable();
             renderDashboardStats();
             updateMapsMerchants();
-            renderExpirationRadar();
         });
 
         onValue(ref(db, 'eqbad_customers'), snap => {
