@@ -111,6 +111,10 @@
                 <button onclick="switchTab('merchants')" id="btnTabMerchants" class="tab-btn">المتاجر</button>
                 <button onclick="switchTab('customers')" id="btnTabCustomers" class="tab-btn">العملاء</button>
                 <button onclick="switchTab('orders')" id="btnTabOrders" class="tab-btn">السجل</button>
+                <button onclick="switchTab('subreq')" id="btnTabSubreq" class="tab-btn">
+                    طلبات التجديد
+                    <span id="badgeSubReq" class="bg-rose-500 text-white text-[10px] rounded-full px-2 py-0.5 inline-block mr-1 hidden">0</span>
+                </button>
             </div>
         </div>
 
@@ -290,7 +294,7 @@
                 <div class="stat-card border-t-4 border-t-purple-500 bg-purple-50"><p class="text-sm text-purple-600 mb-1">سيولة إنستاباي</p><p id="statInstaLiquidity" class="text-2xl text-purple-700">0 ج.م</p></div>
             </div>
 
-            <!-- إعدادات رقم دفع الاشتراكات -->
+            <!-- إعدادات رقم دفع الاشتراكات فودافون كاش -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mt-6 mb-6">
                 <h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>⚙️</span> إعدادات الدفع (تجديد الاشتراكات)</h3>
                 <div class="flex flex-col sm:flex-row items-center gap-3">
@@ -375,6 +379,29 @@
             </div>
         </div>
 
+        <!-- Subscription Requests Tab (طلبات التجديد) -->
+        <div id="tab-subreq" class="hidden fade-enter space-y-4">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <h3 class="text-xl text-slate-800">إشعارات الدفع وطلبات التجديد</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-50 text-slate-500">
+                            <tr>
+                                <th class="p-3 rounded-tr-xl">الوقت</th>
+                                <th class="p-3">اسم المتجر</th>
+                                <th class="p-3">رقم الهاتف</th>
+                                <th class="p-3">الحالة</th>
+                                <th class="p-3 rounded-tl-xl text-center min-w-[250px]">تفعيل سريع</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableSubReqs" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Verification Modal -->
@@ -439,6 +466,7 @@
         let securityMarkers = {}, securityLines = {};
         let addressCache = {};
         let allMerchants = {}, allCustomers = {}, allOrders = [];
+        let allSubRequests = [];
 
         // ============ نظام الصوت والإشعارات ============
         let liveSoundEnabled = localStorage.getItem('eqbad_admin_sound') !== 'off';
@@ -568,7 +596,7 @@
 
         // ============ Tab Switching ============
         window.switchTab = function(tabName) {
-            ['security', 'live', 'dashboard', 'merchants', 'customers', 'orders'].forEach(t => {
+            ['security', 'live', 'dashboard', 'merchants', 'customers', 'orders', 'subreq'].forEach(t => {
                 const el = document.getElementById('tab-' + t);
                 const btn = document.getElementById('btnTab' + t.charAt(0).toUpperCase() + t.slice(1));
                 if(el) { el.classList.add('hidden'); el.classList.remove('fade-enter-active'); }
@@ -598,7 +626,6 @@
             } catch (e) { return "تعذر جلب العنوان"; }
         }
 
-        // ============ حساب المسافة (Haversine) ============
         function getDistance(lat1, lon1, lat2, lon2) {
             if(!lat1 || !lon1 || !lat2 || !lon2) return null;
             const p = 0.017453292519943295;
@@ -625,10 +652,9 @@
         // ==========================================================
         // ==================== محرك المخاطر المتقدم ====================
         // ==========================================================
-        
         function calculateAdvancedRisk(order) {
             const factors = [];
-            let score = 0; // كل ما زاد = أخطر
+            let score = 0;
 
             const custPhone = order.customer_phone;
             const merchPhone = order.target_merchant;
@@ -638,14 +664,12 @@
             if(!cust) { score += 50; factors.push({ t: 'danger', i: '⚠️', m: 'عميل غير مسجل في النظام' }); }
             if(!merch) { score += 30; factors.push({ t: 'warn', i: '⚠️', m: 'تاجر غير مسجل' }); }
 
-            // 1. حساب جديد
             if(cust?.createdAt) {
                 const ageHours = (Date.now() - cust.createdAt) / 3600000;
                 if(ageHours < 1) { score += 25; factors.push({ t: 'danger', i: '🆕', m: 'حساب العميل عمره أقل من ساعة' }); }
                 else if(ageHours < 24) { score += 15; factors.push({ t: 'warn', i: '⏱️', m: 'حساب العميل عمره أقل من 24 ساعة' }); }
             }
 
-            // 2. سجل العميل
             const custOrders = allOrders.filter(o => o.customer_phone === custPhone);
             const completed = custOrders.filter(o => o.status === 'completed').length;
             const rejected = custOrders.filter(o => o.status === 'rejected').length;
@@ -655,20 +679,16 @@
             if(rejected >= 3) { score += 25; factors.push({ t: 'danger', i: '❌', m: `لديه ${rejected} عمليات ملغاة سابقة` }); }
             else if(rejected >= 1) { score += 10; factors.push({ t: 'warn', i: '⚠️', m: `لديه ${rejected} عملية ملغاة` }); }
 
-            // 3. طلبات متزامنة (نمط نصب)
             if(pending >= 3) { score += 30; factors.push({ t: 'danger', i: '📛', m: `${pending} طلبات معلقة متزامنة (نمط نصب)` }); }
             else if(pending >= 2) { score += 15; factors.push({ t: 'warn', i: '⏳', m: `${pending} طلبات معلقة حالياً` }); }
 
-            // 4. مبلغ كبير من حساب جديد
             const amount = parseFloat(order.amount) || 0;
             if(amount >= 5000 && completed === 0) { score += 25; factors.push({ t: 'danger', i: '💰', m: `مبلغ كبير (${amount.toLocaleString()} ج) من حساب بدون سجل` }); }
             else if(amount >= 3000 && completed < 2) { score += 10; factors.push({ t: 'warn', i: '💰', m: `مبلغ كبير نسبياً (${amount.toLocaleString()} ج)` }); }
 
-            // 5. طلب في وقت غير عادي (12ص - 5ص)
             const hour = new Date(order.timestamp).getHours();
             if(hour >= 0 && hour <= 5) { score += 15; factors.push({ t: 'warn', i: '🌙', m: `طلب في وقت متأخر (${hour}:00 صباحاً)` }); }
 
-            // 6. تكرار الطلب على نفس التاجر عدة مرات في وقت قصير
             const last24h = allOrders.filter(o => 
                 o.customer_phone === custPhone && 
                 o.target_merchant === merchPhone &&
@@ -676,27 +696,17 @@
             );
             if(last24h.length >= 3) { score += 20; factors.push({ t: 'danger', i: '🔁', m: `3+ طلبات لنفس التاجر خلال 24 ساعة` }); }
 
-            // 7. العميل محظور
             if(cust?.status === 'blocked') { score += 100; factors.push({ t: 'danger', i: '🚷', m: 'العميل محظور حالياً' }); }
             if(merch?.status === 'blocked') { score += 50; factors.push({ t: 'danger', i: '🚷', m: 'التاجر محظور' }); }
 
-            // 8. نفس الجهاز (fingerprint)
-            const sameDevice = allOrders.filter(o => 
-                o.customer_device && 
-                cust?.device && 
-                o.customer_device === cust.device && 
-                o.customer_phone !== custPhone
-            );
             if(cust?.device) {
                 const otherAccounts = Object.values(allCustomers).filter(c => c.device === cust.device && c.phone !== custPhone);
                 if(otherAccounts.length > 0) { score += 35; factors.push({ t: 'danger', i: '📱', m: `${otherAccounts.length} حساب آخر على نفس الجهاز` }); }
             }
 
-            // 9. المسافة بين العميل والتاجر
             const orderDist = getDistance(order.lat, order.lng, merch?.lat, merch?.lng);
             if(orderDist !== null && orderDist > 15) { score += 15; factors.push({ t: 'warn', i: '📏', m: `المسافة بعيدة (${orderDist.toFixed(1)} كم)` }); }
 
-            // 10. ماركات إيجابية (تخفيف)
             if(completed >= 5 && rejected === 0) { score -= 30; factors.push({ t: 'ok', i: '✅', m: `${completed} عملية ناجحة بدون إلغاء` }); }
             if(completed >= 10) { score -= 20; factors.push({ t: 'ok', i: '👑', m: `عميل ذو سجل ممتاز (${completed} عملية)` }); }
 
@@ -710,7 +720,6 @@
             return { score, level, color, label, factors };
         }
 
-        // ============ تحليل الأجهزة (كشف الحسابات المتعددة) ============
         function analyzeDevices() {
             const deviceMap = {};
             Object.values(allCustomers).forEach(c => {
@@ -723,64 +732,12 @@
             return { deviceMap, multipleDevices };
         }
 
-        // ============ تحليل الأنماط المشبوهة العامة ============
-        function detectSuspiciousPatterns() {
-            const patterns = [];
-
-            // نمط 1: عميل يطلب من 3+ تجار في نفس الوقت
-            const customerPending = {};
-            allOrders.filter(o => o.status === 'pending').forEach(o => {
-                if(!customerPending[o.customer_phone]) customerPending[o.customer_phone] = new Set();
-                customerPending[o.customer_phone].add(o.target_merchant);
-            });
-            Object.entries(customerPending).forEach(([phone, merchants]) => {
-                if(merchants.size >= 3) {
-                    const c = Object.values(allCustomers).find(x => x.phone === phone);
-                    patterns.push({ type: 'danger', icon: '🎯', title: 'نصب متعدد الأهداف', desc: `العميل ${c?.name || phone} يطلب من ${merchants.size} تجار في نفس الوقت`, phone });
-                }
-            });
-
-            // نمط 2: عمليات سريعة جداً (6 عمليات في ساعة)
-            const now = Date.now();
-            const recentByCustomer = {};
-            allOrders.filter(o => (now - o.timestamp) < 3600000).forEach(o => {
-                if(!recentByCustomer[o.customer_phone]) recentByCustomer[o.customer_phone] = 0;
-                recentByCustomer[o.customer_phone]++;
-            });
-            Object.entries(recentByCustomer).forEach(([phone, count]) => {
-                if(count >= 6) {
-                    const c = Object.values(allCustomers).find(x => x.phone === phone);
-                    patterns.push({ type: 'warn', icon: '⚡', title: 'نشاط سريع مشبوه', desc: `${count} عمليات من ${c?.name || phone} خلال ساعة`, phone });
-                }
-            });
-
-            // نمط 3: نفس الجهاز بحسابات مختلفة
-            const { multipleDevices } = analyzeDevices();
-            multipleDevices.forEach(arr => {
-                const names = arr.map(c => c.name).join('، ');
-                patterns.push({ type: 'danger', icon: '📱', title: 'حسابات متعددة على نفس الجهاز', desc: `${arr.length} حسابات: ${names}`, phones: arr.map(c => c.phone) });
-            });
-
-            // نمط 4: عميل مبلغ كبير بدون سجل
-            allOrders.filter(o => o.status === 'pending' && (parseFloat(o.amount) || 0) >= 5000).forEach(o => {
-                const custOrders = allOrders.filter(x => x.customer_phone === o.customer_phone && x.status === 'completed').length;
-                if(custOrders === 0) {
-                    const c = Object.values(allCustomers).find(x => x.phone === o.customer_phone);
-                    patterns.push({ type: 'danger', icon: '💰', title: 'مبلغ ضخم من حساب جديد', desc: `${c?.name || o.customer_phone} طلب ${(parseFloat(o.amount)||0).toLocaleString()} ج بدون سجل`, phone: o.customer_phone });
-                }
-            });
-
-            return patterns;
-        }
-
         // ==========================================================
         // ================ خريطة التتبع اللحظي ================
         // ==========================================================
-        
         function renderSecurityMap() {
             if(!securityMap) return;
 
-            // مسح الماركرات والخطوط القديمة
             Object.values(securityMarkers).forEach(m => securityMap.removeLayer(m));
             Object.values(securityLines).forEach(l => securityMap.removeLayer(l));
             securityMarkers = {}; securityLines = {};
@@ -799,7 +756,6 @@
                 const custPhone = o.customer_phone;
                 const merchPhone = o.target_merchant;
                 
-                // جيب أحدث موقع للعميل من جدول العملاء أو من الطلب
                 const cust = Object.values(allCustomers).find(c => c.phone === custPhone);
                 const custLat = cust?.lat || o.lat;
                 const custLng = cust?.lng || o.lng;
@@ -811,7 +767,6 @@
                 const risk = calculateAdvancedRisk(o);
                 const isDanger = risk.level === 'danger';
 
-                // ماركر العميل
                 if(custLat && custLng) {
                     const custIcon = L.divIcon({
                         html: `<div class="track-line-pin ${isDanger ? 'pin-suspect' : 'pin-customer'}">🏃</div>`,
@@ -829,7 +784,6 @@
                     allPoints.push([custLat, custLng]);
                 }
 
-                // ماركر التاجر
                 if(merchLat && merchLng) {
                     const merchIcon = L.divIcon({
                         html: `<div class="track-line-pin pin-merchant">🏪</div>`,
@@ -846,7 +800,6 @@
                     allPoints.push([merchLat, merchLng]);
                 }
 
-                // خط الربط + حساب المسافة
                 if(custLat && custLng && merchLat && merchLng) {
                     const dist = getDistance(custLat, custLng, merchLat, merchLng);
                     if(dist !== null) {
@@ -859,7 +812,6 @@
                         }).addTo(securityMap);
                         securityLines['line_' + o.key] = line;
 
-                        // علامة المسافة في المنتصف
                         const midLat = (custLat + merchLat) / 2;
                         const midLng = (custLng + merchLng) / 2;
                         const distIcon = L.divIcon({
@@ -871,7 +823,6 @@
                 }
             });
 
-            // ضبط الحدود على كل النقاط
             if(allPoints.length > 0) {
                 try {
                     const bounds = L.latLngBounds(allPoints);
@@ -879,7 +830,6 @@
                 } catch(e) {}
             }
 
-            // تحديث الـ metrics
             document.getElementById('tmActiveOrders').innerText = activeOrders.length;
             document.getElementById('tmNearestDistance').innerText = nearest === Infinity ? '—' : nearest.toFixed(1) + ' كم';
             document.getElementById('tmFarthestDistance').innerText = farthest === 0 ? '—' : farthest.toFixed(1) + ' كم';
@@ -901,17 +851,13 @@
             }
         };
 
-        // ==========================================================
-        // ================ مركز الأمان Renderer ================
-        // ==========================================================
-        
+        // ============ مركز الأمان Renderer ============
         function renderSecurityCenter() {
             if(!securityMap) initMaps();
             renderSecurityMap();
 
             const activeOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted');
             
-            // إحصائيات
             let dangerCount = 0, warnCount = 0, safeCount = 0;
             const ordersWithRisk = activeOrders.map(o => ({ order: o, risk: calculateAdvancedRisk(o) }));
             ordersWithRisk.forEach(({risk}) => {
@@ -938,7 +884,6 @@
                 document.getElementById('secTopAlert').classList.add('hidden');
             }
 
-            // قائمة العمليات المشبوهة
             const suspicious = ordersWithRisk
                 .filter(x => x.risk.level === 'danger' || x.risk.level === 'warn')
                 .sort((a, b) => b.risk.score - a.risk.score);
@@ -984,7 +929,6 @@
                 }).join('');
             }
 
-            // تحليل الأجهزة
             const { multipleDevices, deviceMap } = analyzeDevices();
             const devContainer = document.getElementById('deviceAnalysisContainer');
             
@@ -1021,10 +965,7 @@
             renderActivityLog();
         }
 
-        // ==========================================================
-        // ==================== OTP System ====================
-        // ==========================================================
-        
+        // ============ OTP System ============
         function generateOTP(length = 6) {
             let code = '';
             for(let i = 0; i < length; i++) code += Math.floor(Math.random() * 10);
@@ -1039,7 +980,6 @@
             currentOTP = code;
             currentOTPOrder = orderKey;
             
-            // نخزن في Firebase
             update(ref(db, 'eqbad_orders/' + orderKey), {
                 otp_code: code,
                 otp_created_at: Date.now(),
@@ -1048,7 +988,6 @@
                 logActivity('otp', '🔐', `تم توليد OTP للعملية #${orderKey.substring(0,8)}`, 'success');
             }).catch(err => console.error(err));
 
-            // عرض modal
             const cust = Object.values(allCustomers).find(c => c.phone === order.customer_phone);
             document.getElementById('otpOrderInfo').innerHTML = `
                 <b>${cust?.name || order.customer_name}</b> → <b>${order.merchant_name || 'التاجر'}</b>
@@ -1069,10 +1008,7 @@
             window.generateOrderOTP(currentOTPOrder);
         };
 
-        // ==========================================================
-        // ==================== Search System ====================
-        // ==========================================================
-        
+        // ============ Search System ============
         function calculateCustomerTrust(phone) {
             const customer = Object.values(allCustomers).find(c => c.phone === phone);
             const cOrders = allOrders.filter(o => o.customer_phone === phone);
@@ -1107,7 +1043,6 @@
             if(completed >= 3 && rejected === 0) flags.push({ type:'ok', icon:'✅', text:`${completed} عملية ناجحة بدون إلغاء` });
             if(customer?.status === 'blocked') flags.push({ type:'danger', icon:'🚷', text:'العميل محظور' });
             
-            // فحص الجهاز
             if(customer?.device) {
                 const others = Object.values(allCustomers).filter(c => c.device === customer.device && c.phone !== phone);
                 if(others.length > 0) flags.push({ type:'danger', icon:'📱', text:`${others.length} حساب آخر على نفس الجهاز` });
@@ -1241,7 +1176,7 @@
                         const isBlocked = m.status === 'blocked';
                         html += `<div class="bg-white border-2 ${isBlocked ? 'border-rose-300' : 'border-slate-200'} rounded-xl p-3 mb-2"><div class="flex items-center gap-3">
                             <div class="w-11 h-11 rounded-xl bg-purple-100 border-2 border-purple-300 flex items-center justify-center text-xl flex-shrink-0">${isBlocked ? '🚷' : '🏪'}</div>
-                            <div class="flex-1 min-w-0"><p class="text-slate-900 text-sm truncate">${m.name}</p><p class="text-[11px] text-slate-500 en-num" dir="ltr">${m.phone}</p><div class="flex gap-2 mt-1 text-[10px]"><span class="text-emerald-600">✔ ${completed}</span></div></div>
+                            <div class="flex-1 min-w-0"><p class="font-black text-slate-900 text-sm truncate">${m.name}</p><p class="text-[11px] font-bold text-slate-500 en-num" dir="ltr">${m.phone}</p><div class="flex gap-2 mt-1 text-[10px] font-black"><span class="text-emerald-600">✔ ${completed}</span></div></div>
                         </div></div>`;
                     });
                     html += `</div>`;
@@ -1265,7 +1200,6 @@
         // ==========================================================
         // ================ Live Operations Renderer ================
         // ==========================================================
-        
         function timeAgo(ts) {
             if(!ts) return '';
             const diff = Math.floor((Date.now() - ts) / 1000);
@@ -1332,7 +1266,6 @@
                 const address = o.address || 'بدون عنوان';
                 const hasLocation = o.lat && o.lng;
 
-                // بيانات المسافة اللحظية
                 const cust = Object.values(allCustomers).find(c => c.phone === customerPhone);
                 const merch = Object.values(allMerchants).find(m => m.phone === merchantPhone);
                 const custLat = cust?.lat || o.lat, custLng = cust?.lng || o.lng;
@@ -1563,6 +1496,90 @@
             }).join('');
         }
 
+        // ============ نظام إشعارات الدفع (جدولة طلبات التجديد) ============
+        onValue(ref(db, 'eqbad_subscription_requests'), snap => {
+            allSubRequests = [];
+            if(snap.exists()) {
+                snap.forEach(c => allSubRequests.push({key: c.key, ...c.val()}));
+            }
+            renderSubReqsTable();
+        });
+
+        function renderSubReqsTable() {
+            const container = document.getElementById('tableSubReqs');
+            if(!container) return;
+
+            const pendingReqs = allSubRequests.filter(r => r.status === 'pending');
+            const badge = document.getElementById('badgeSubReq');
+            if(badge) {
+                if(pendingReqs.length > 0) {
+                    badge.innerText = pendingReqs.length;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            if(allSubRequests.length === 0) {
+                container.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">لا توجد طلبات تجديد حالياً.</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = allSubRequests.sort((a,b) => b.timestamp - a.timestamp).map(r => {
+                const d = new Date(r.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit', day:'numeric', month:'short'});
+                
+                let statusHtml = r.status === 'pending' ? '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px]">قيد المراجعة ⏳</span>' :
+                                 r.status === 'approved' ? '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px]">تم التفعيل ✔️</span>' :
+                                 '<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded text-[10px]">مرفوض ❌</span>';
+
+                let actionHtml = '';
+                if(r.status === 'pending') {
+                    actionHtml = `
+                    <div class="flex gap-1 justify-center">
+                        <button onclick="window.approveSubReq('${r.key}', '${r.merchant_key}', 30)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">+ شهر</button>
+                        <button onclick="window.approveSubReq('${r.key}', '${r.merchant_key}', 180)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">+ 6 شهور</button>
+                        <button onclick="window.approveSubReq('${r.key}', '${r.merchant_key}', 365)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">+ سنة</button>
+                        <button onclick="window.rejectSubReq('${r.key}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">رفض ❌</button>
+                    </div>`;
+                } else {
+                    actionHtml = `<span class="text-[11px] text-slate-400">مكتمل</span>`;
+                }
+
+                return `<tr class="border-b border-slate-100 hover:bg-slate-50">
+                    <td class="p-3 text-[11px] text-slate-500 whitespace-nowrap" dir="ltr">${d}</td>
+                    <td class="p-3 text-slate-800">${r.merchant_name}</td>
+                    <td class="p-3 text-slate-600 en-num" dir="ltr">${r.merchant_phone}</td>
+                    <td class="p-3">${statusHtml}</td>
+                    <td class="p-3 text-center">${actionHtml}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        window.approveSubReq = function(reqKey, merchantKey, days) {
+            if(!confirm(`تأكيد تفعيل اشتراك التاجر لمدة ${days} يوم؟`)) return;
+            
+            const m = allMerchants[merchantKey];
+            if(!m) return alert("هذا التاجر محذوف أو غير موجود بالنظام.");
+
+            const now = Date.now();
+            let currentEnd = (m.subscription_end && m.subscription_end > now) ? m.subscription_end : now;
+            let newEnd = currentEnd + (days * 24 * 60 * 60 * 1000);
+
+            update(ref(db, 'eqbad_merchants/' + merchantKey), {
+                subscription_end: newEnd,
+                subscription_status: 'active'
+            }).then(() => {
+                update(ref(db, 'eqbad_subscription_requests/' + reqKey), { status: 'approved' });
+                logActivity('subscription', '✨', `تم تفعيل اشتراك للتاجر ${m.name} بناءً على إشعار دفع، لمدة ${days} يوم`, 'success');
+            }).catch(e => alert("خطأ: " + e.message));
+        };
+
+        window.rejectSubReq = function(reqKey) {
+            if(!confirm('هل أنت متأكد من رفض طلب الدفع هذا؟')) return;
+            update(ref(db, 'eqbad_subscription_requests/' + reqKey), { status: 'rejected' })
+            .catch(e => alert("خطأ: " + e.message));
+        };
+
         function renderCustomersTable() {
             document.getElementById('tableCustomers').innerHTML = Object.values(allCustomers).map(c => {
                 const cO = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
@@ -1639,14 +1656,12 @@
                 const liveBtn = document.getElementById('btnTabLive');
                 if(liveBtn && !liveBtn.classList.contains('active')) { liveBtn.classList.add('animate-pulse'); setTimeout(() => liveBtn.classList.remove('animate-pulse'), 5000); }
                 
-                // كشف العملية الجديدة + تحليل المخاطر
                 const newest = allOrders.sort((a,b) => b.timestamp - a.timestamp)[0];
                 if(newest) {
                     const risk = calculateAdvancedRisk(newest);
                     const cust = Object.values(allCustomers).find(c => c.phone === newest.customer_phone);
                     logActivity('new_order', risk.level === 'danger' ? '🚨' : '🆕', `طلب جديد: ${cust?.name || newest.customer_name || 'عميل'} بمبلغ ${(parseFloat(newest.amount)||0).toLocaleString()} ج — مخاطرة: ${risk.label}`, risk.level === 'danger' ? 'danger' : risk.level === 'warn' ? 'warn' : 'info');
                     
-                    // إشعار لو خطير
                     if(risk.level === 'danger') {
                         setTimeout(() => playSound('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', [800, 200, 800, 200, 800]), 500);
                     }
@@ -1654,7 +1669,6 @@
             }
         });
 
-        // تحديث "منذ" بشكل دوري
         setInterval(() => {
             if(!document.getElementById('tab-live').classList.contains('hidden')) renderLiveOperations();
             if(!document.getElementById('tab-security').classList.contains('hidden')) renderSecurityCenter();
