@@ -308,7 +308,12 @@
         <!-- Merchants Tab -->
         <div id="tab-merchants" class="hidden fade-enter space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="text-xl font-black text-slate-800 mb-4">قائمة المتاجر المسجلة</h3>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <h3 class="text-xl font-black text-slate-800">قائمة المتاجر المسجلة</h3>
+                    <div class="relative w-full sm:w-72">
+                        <input type="text" placeholder="🔍 بحث باسم المتجر أو الهاتف..." class="w-full bg-slate-50 border border-slate-300 text-sm rounded-xl px-4 py-2 font-bold focus:outline-none focus:border-indigo-500 transition-colors" oninput="window.filterMerchantsTable(this.value)">
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-right text-sm">
                         <thead class="bg-slate-50 text-slate-500">
@@ -316,7 +321,7 @@
                                 <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
                                 <th class="p-3 font-black">رقم الهاتف / السرّي</th>
                                 <th class="p-3 font-black">سيولة المتجر</th>
-                                <th class="p-3 font-black text-center">الاشتراك</th>
+                                <th class="p-3 font-black text-center min-w-[170px]">الاشتراك</th>
                                 <th class="p-3 font-black">العمولة</th>
                                 <th class="p-3 font-black text-center">العمليات</th>
                                 <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
@@ -1475,13 +1480,29 @@
             }).join('');
         }
 
+        // ============ Merchants Table + Search logic ============
+        window.currentMerchantSearchQuery = '';
+        window.filterMerchantsTable = function(query) {
+            window.currentMerchantSearchQuery = query.toLowerCase().trim();
+            renderMerchantsTable();
+        };
+
         function renderMerchantsTable() {
             const now = Date.now();
-            document.getElementById('tableMerchants').innerHTML = Object.values(allMerchants).map(m => {
+            let merchantsArray = Object.values(allMerchants);
+
+            if (window.currentMerchantSearchQuery) {
+                const q = window.currentMerchantSearchQuery;
+                merchantsArray = merchantsArray.filter(m => 
+                    (m.name && m.name.toLowerCase().includes(q)) || 
+                    (m.phone && m.phone.includes(q))
+                );
+            }
+
+            document.getElementById('tableMerchants').innerHTML = merchantsArray.map(m => {
                 const mO = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
                 const isB = m.status === 'blocked';
                 
-                // حساب أيام الاشتراك
                 const subEnd = m.subscription_end || m.createdAt || now;
                 const remainingDays = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
                 const subStatusBadge = remainingDays > 0 
@@ -1493,10 +1514,9 @@
                     <td class="p-3"><div class="text-slate-900 font-bold" dir="ltr">${m.phone}</div><div class="text-xs text-rose-600 font-black">PIN: ${m.pin}</div></td>
                     <td class="p-3"><div class="text-[11px] font-bold text-red-600">فود: ${parseFloat(m.balance_vodafone||0).toLocaleString()} ج</div><div class="text-[11px] font-bold text-purple-700">إنستا: ${parseFloat(m.balance_instapay||0).toLocaleString()} ج</div></td>
                     
-                    <!-- عمود الاشتراك الجديد -->
                     <td class="p-3 text-center">
                         <div class="mb-2">${subStatusBadge}</div>
-                        <select onchange="window.manageMerchantSub('${m.fb_key}', this.value); this.value='';" class="text-[10px] font-bold border border-slate-300 rounded p-1 w-full max-w-[120px] outline-none">
+                        <select onchange="window.manageMerchantSub('${m.fb_key}', this.value); this.value='';" class="text-[11px] font-bold border border-slate-300 bg-white rounded p-1.5 w-full max-w-[160px] outline-none cursor-pointer">
                             <option value="">إدارة الاشتراك...</option>
                             <option value="30">تجديد شهر (100 ج)</option>
                             <option value="180">تجديد 6 شهور (500 ج)</option>
