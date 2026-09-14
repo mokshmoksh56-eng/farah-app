@@ -529,7 +529,8 @@
                 if(!confirm(`هل أنت متأكد من إيقاف اشتراك التاجر (${m.name}) فوراً؟`)) return;
                 updates = {
                     subscription_end: now - 1000, 
-                    subscription_status: 'expired'
+                    subscription_status: 'expired',
+                    status: 'offline'
                 };
                 logActivity('subscription', '🚫', `تم إيقاف اشتراك التاجر ${m.name}`, 'danger');
             } else {
@@ -542,7 +543,8 @@
 
                 updates = {
                     subscription_end: currentEnd + (daysToAdd * 24 * 60 * 60 * 1000),
-                    subscription_status: 'active'
+                    subscription_status: 'active',
+                    status: 'active'
                 };
                 logActivity('subscription', '✨', `تم تجديد اشتراك ${m.name} لمدة ${confirmMsg}`, 'success');
             }
@@ -1176,7 +1178,7 @@
                         const isBlocked = m.status === 'blocked';
                         html += `<div class="bg-white border-2 ${isBlocked ? 'border-rose-300' : 'border-slate-200'} rounded-xl p-3 mb-2"><div class="flex items-center gap-3">
                             <div class="w-11 h-11 rounded-xl bg-purple-100 border-2 border-purple-300 flex items-center justify-center text-xl flex-shrink-0">${isBlocked ? '🚷' : '🏪'}</div>
-                            <div class="flex-1 min-w-0"><p class="font-black text-slate-900 text-sm truncate">${m.name}</p><p class="text-[11px] font-bold text-slate-500 en-num" dir="ltr">${m.phone}</p><div class="flex gap-2 mt-1 text-[10px] font-black"><span class="text-emerald-600">✔ ${completed}</span></div></div>
+                            <div class="flex-1 min-w-0"><p class="text-slate-900 text-sm truncate">${m.name}</p><p class="text-[11px] text-slate-500 en-num" dir="ltr">${m.phone}</p><div class="flex gap-2 mt-1 text-[10px]"><span class="text-emerald-600">✔ ${completed}</span></div></div>
                         </div></div>`;
                     });
                     html += `</div>`;
@@ -1266,6 +1268,7 @@
                 const address = o.address || 'بدون عنوان';
                 const hasLocation = o.lat && o.lng;
 
+                // بيانات المسافة اللحظية
                 const cust = Object.values(allCustomers).find(c => c.phone === customerPhone);
                 const merch = Object.values(allMerchants).find(m => m.phone === merchantPhone);
                 const custLat = cust?.lat || o.lat, custLng = cust?.lng || o.lng;
@@ -1496,90 +1499,6 @@
             }).join('');
         }
 
-        // ============ نظام إشعارات الدفع (جدولة طلبات التجديد) ============
-        onValue(ref(db, 'eqbad_subscription_requests'), snap => {
-            allSubRequests = [];
-            if(snap.exists()) {
-                snap.forEach(c => allSubRequests.push({key: c.key, ...c.val()}));
-            }
-            renderSubReqsTable();
-        });
-
-        function renderSubReqsTable() {
-            const container = document.getElementById('tableSubReqs');
-            if(!container) return;
-
-            const pendingReqs = allSubRequests.filter(r => r.status === 'pending');
-            const badge = document.getElementById('badgeSubReq');
-            if(badge) {
-                if(pendingReqs.length > 0) {
-                    badge.innerText = pendingReqs.length;
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
-                }
-            }
-
-            if(allSubRequests.length === 0) {
-                container.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">لا توجد طلبات تجديد حالياً.</td></tr>`;
-                return;
-            }
-
-            container.innerHTML = allSubRequests.sort((a,b) => b.timestamp - a.timestamp).map(r => {
-                const d = new Date(r.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit', day:'numeric', month:'short'});
-                
-                let statusHtml = r.status === 'pending' ? '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px]">قيد المراجعة ⏳</span>' :
-                                 r.status === 'approved' ? '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px]">تم التفعيل ✔️</span>' :
-                                 '<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded text-[10px]">مرفوض ❌</span>';
-
-                let actionHtml = '';
-                if(r.status === 'pending') {
-                    actionHtml = `
-                    <div class="flex gap-1 justify-center">
-                        <button onclick="window.approveSubReq('${r.key}', '${r.merchant_key}', 30)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">+ شهر</button>
-                        <button onclick="window.approveSubReq('${r.key}', '${r.merchant_key}', 180)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">+ 6 شهور</button>
-                        <button onclick="window.approveSubReq('${r.key}', '${r.merchant_key}', 365)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">+ سنة</button>
-                        <button onclick="window.rejectSubReq('${r.key}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1.5 rounded-lg text-[11px] active:scale-95 transition-all">رفض ❌</button>
-                    </div>`;
-                } else {
-                    actionHtml = `<span class="text-[11px] text-slate-400">مكتمل</span>`;
-                }
-
-                return `<tr class="border-b border-slate-100 hover:bg-slate-50">
-                    <td class="p-3 text-[11px] text-slate-500 whitespace-nowrap" dir="ltr">${d}</td>
-                    <td class="p-3 text-slate-800">${r.merchant_name}</td>
-                    <td class="p-3 text-slate-600 en-num" dir="ltr">${r.merchant_phone}</td>
-                    <td class="p-3">${statusHtml}</td>
-                    <td class="p-3 text-center">${actionHtml}</td>
-                </tr>`;
-            }).join('');
-        }
-
-        window.approveSubReq = function(reqKey, merchantKey, days) {
-            if(!confirm(`تأكيد تفعيل اشتراك التاجر لمدة ${days} يوم؟`)) return;
-            
-            const m = allMerchants[merchantKey];
-            if(!m) return alert("هذا التاجر محذوف أو غير موجود بالنظام.");
-
-            const now = Date.now();
-            let currentEnd = (m.subscription_end && m.subscription_end > now) ? m.subscription_end : now;
-            let newEnd = currentEnd + (days * 24 * 60 * 60 * 1000);
-
-            update(ref(db, 'eqbad_merchants/' + merchantKey), {
-                subscription_end: newEnd,
-                subscription_status: 'active'
-            }).then(() => {
-                update(ref(db, 'eqbad_subscription_requests/' + reqKey), { status: 'approved' });
-                logActivity('subscription', '✨', `تم تفعيل اشتراك للتاجر ${m.name} بناءً على إشعار دفع، لمدة ${days} يوم`, 'success');
-            }).catch(e => alert("خطأ: " + e.message));
-        };
-
-        window.rejectSubReq = function(reqKey) {
-            if(!confirm('هل أنت متأكد من رفض طلب الدفع هذا؟')) return;
-            update(ref(db, 'eqbad_subscription_requests/' + reqKey), { status: 'rejected' })
-            .catch(e => alert("خطأ: " + e.message));
-        };
-
         function renderCustomersTable() {
             document.getElementById('tableCustomers').innerHTML = Object.values(allCustomers).map(c => {
                 const cO = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
@@ -1656,12 +1575,14 @@
                 const liveBtn = document.getElementById('btnTabLive');
                 if(liveBtn && !liveBtn.classList.contains('active')) { liveBtn.classList.add('animate-pulse'); setTimeout(() => liveBtn.classList.remove('animate-pulse'), 5000); }
                 
+                // كشف العملية الجديدة + تحليل المخاطر
                 const newest = allOrders.sort((a,b) => b.timestamp - a.timestamp)[0];
                 if(newest) {
                     const risk = calculateAdvancedRisk(newest);
                     const cust = Object.values(allCustomers).find(c => c.phone === newest.customer_phone);
                     logActivity('new_order', risk.level === 'danger' ? '🚨' : '🆕', `طلب جديد: ${cust?.name || newest.customer_name || 'عميل'} بمبلغ ${(parseFloat(newest.amount)||0).toLocaleString()} ج — مخاطرة: ${risk.label}`, risk.level === 'danger' ? 'danger' : risk.level === 'warn' ? 'warn' : 'info');
                     
+                    // إشعار لو خطير
                     if(risk.level === 'danger') {
                         setTimeout(() => playSound('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', [800, 200, 800, 200, 800]), 500);
                     }
@@ -1669,6 +1590,7 @@
             }
         });
 
+        // تحديث "منذ" بشكل دوري
         setInterval(() => {
             if(!document.getElementById('tab-live').classList.contains('hidden')) renderLiveOperations();
             if(!document.getElementById('tab-security').classList.contains('hidden')) renderSecurityCenter();
