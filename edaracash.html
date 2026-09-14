@@ -315,7 +315,7 @@
                                 <th class="p-3 rounded-tr-xl">اسم المتجر</th>
                                 <th class="p-3">رقم الهاتف / السرّي</th>
                                 <th class="p-3">سيولة المتجر</th>
-                                <th class="p-3 text-center min-w-[170px]">الاشتراك</th>
+                                <th class="p-3 text-center min-w-[420px]">الاشتراك</th>
                                 <th class="p-3 text-center">العمليات</th>
                                 <th class="p-3 rounded-tl-xl text-center">الإجراءات</th>
                             </tr>
@@ -555,13 +555,40 @@
             .catch(e => alert("خطأ في الحفظ: " + e.message));
         };
 
-        // ============ إدارة الاشتراكات (مع حل مشكلة زر الإرسال) ============
+        // ============ إدارة الاشتراكات (مع "مجاناً") ============
         window.manageMerchantSub = function(merchantKey, action) {
             if (!action) return;
             const m = allMerchants[merchantKey];
             if (!m) return;
             const now = Date.now();
             let updates = {};
+
+            // 🎁 اشتراك مجاني (شهر واحد هدية)
+            if (action === 'free') {
+                if(!confirm(`🎁 تأكيد تفعيل اشتراك مجاني (شهر واحد هدية) للتاجر (${m.name})؟\n\n✅ لن يتم أي دفع\n✅ سيُضاف 30 يوم لحسابه`)) return;
+                
+                let currentEnd = m.subscription_end || now;
+                if (currentEnd < now) currentEnd = now;
+                
+                updates = {
+                    subscription_end: currentEnd + (30 * 24 * 60 * 60 * 1000),
+                    subscription_status: 'active',
+                    status: 'active',
+                    subscription_plan: 'monthly',
+                    free_subscription: true,
+                    free_activated_at: now
+                };
+                
+                logActivity('subscription', '🎁', `تم تفعيل اشتراك مجاني (شهر) للتاجر ${m.name}`, 'success');
+                
+                update(ref(db, `eqbad_merchants/${merchantKey}`), updates)
+                    .then(() => {
+                        playSound('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+                        alert(`✅ تم تفعيل اشتراك مجاني (شهر) للتاجر ${m.name} بنجاح!`);
+                    })
+                    .catch(err => alert('فشل التحديث: ' + err.message));
+                return;
+            }
 
             if (action === 'cancel') {
                 if(!confirm(`هل أنت متأكد من تصفير وإيقاف اشتراك التاجر (${m.name}) فوراً؟\n\n⚠️ سيتم حذف كل إشعارات الدفع القديمة، وسيتمكن التاجر من إرسال طلب جديد.`)) return;
@@ -1251,7 +1278,6 @@
             }
         };
 
-        // ============ اعتماد ذكي للباقة المطلوبة ============
         window.approveSubReqSmart = function(reqKey, merchantKey, requestedDays) {
             const m = allMerchants[merchantKey];
             if(!m) return alert("هذا التاجر محذوف أو غير موجود بالنظام.");
@@ -1324,7 +1350,6 @@
             }).catch(e => alert("خطأ: " + e.message));
         };
 
-        // ✅ الإلغاء: نغير الحالة لـ rejected (يظهر في العداد، والزر يفتح عند التاجر)
         window.rejectSubReq = function(reqKey) {
             const req = allSubRequests.find(r => r.key === reqKey);
             if(!confirm(`❌ تأكيد إلغاء طلب الدفع؟\n\n🏪 التاجر: ${req?.merchant_name || '—'}\n📦 الباقة: ${req?.package_name || '—'}\n\n✅ بعد الإلغاء سيتمكن التاجر من إرسال طلب جديد.`)) return;
@@ -1597,17 +1622,18 @@
                 else if(m.subscription_plan === 'annual') planName = 'سنة';
                 
                 let subBadge = isExpired 
-                    ? `<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded text-[10px] border border-rose-300">منتهي ❌</span>`
+                    ? `<span class="bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg text-sm border-2 border-rose-400 font-black">❌ منتهي</span>`
                     : m.subscription_status === 'trial'
-                    ? `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] border border-amber-300">🎁 تجريبي: ${daysLeft} يوم</span>`
-                    : `<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] border border-emerald-300">✅ ${planName}: ${daysLeft} يوم</span>`;
+                    ? `<span class="bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg text-sm border-2 border-amber-400 font-black">🎁 تجريبي: ${daysLeft} يوم</span>`
+                    : `<span class="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-sm border-2 border-emerald-400 font-black">✅ ${planName}: ${daysLeft} يوم</span>`;
 
                 const subActions = `
-                    <div class="flex gap-1 justify-center flex-wrap mt-1.5">
-                        <button onclick="window.manageMerchantSub('${m.fb_key}', 30)" class="bg-emerald-50 text-emerald-700 border border-emerald-300 px-2 py-1 rounded text-[10px] hover:bg-emerald-100 active:scale-95">+ شهر</button>
-                        <button onclick="window.manageMerchantSub('${m.fb_key}', 180)" class="bg-emerald-50 text-emerald-700 border border-emerald-300 px-2 py-1 rounded text-[10px] hover:bg-emerald-100 active:scale-95">+ 6ش</button>
-                        <button onclick="window.manageMerchantSub('${m.fb_key}', 365)" class="bg-emerald-50 text-emerald-700 border border-emerald-300 px-2 py-1 rounded text-[10px] hover:bg-emerald-100 active:scale-95">+ سنة</button>
-                        <button onclick="window.manageMerchantSub('${m.fb_key}', 'cancel')" class="bg-rose-50 text-rose-700 border border-rose-300 px-2 py-1 rounded text-[10px] hover:bg-rose-100 active:scale-95">تصفير</button>
+                    <div class="flex gap-1.5 justify-center flex-wrap mt-2">
+                        <button onclick="window.manageMerchantSub('${m.fb_key}', 'free')" class="bg-purple-100 text-purple-800 border-2 border-purple-400 px-3 py-1.5 rounded-lg text-sm font-black hover:bg-purple-200 active:scale-95 shadow-sm">🎁 مجاناً</button>
+                        <button onclick="window.manageMerchantSub('${m.fb_key}', 30)" class="bg-emerald-100 text-emerald-800 border-2 border-emerald-400 px-3 py-1.5 rounded-lg text-sm font-black hover:bg-emerald-200 active:scale-95 shadow-sm">📅 شهر</button>
+                        <button onclick="window.manageMerchantSub('${m.fb_key}', 180)" class="bg-emerald-100 text-emerald-800 border-2 border-emerald-400 px-3 py-1.5 rounded-lg text-sm font-black hover:bg-emerald-200 active:scale-95 shadow-sm">🗓️ 6 شهور</button>
+                        <button onclick="window.manageMerchantSub('${m.fb_key}', 365)" class="bg-indigo-100 text-indigo-800 border-2 border-indigo-400 px-3 py-1.5 rounded-lg text-sm font-black hover:bg-indigo-200 active:scale-95 shadow-sm">👑 سنة</button>
+                        <button onclick="window.manageMerchantSub('${m.fb_key}', 'cancel')" class="bg-rose-100 text-rose-800 border-2 border-rose-400 px-3 py-1.5 rounded-lg text-sm font-black hover:bg-rose-200 active:scale-95 shadow-sm">🔴 تصفير</button>
                     </div>`;
 
                 return `<tr class="border-b border-slate-100 hover:bg-slate-50">
