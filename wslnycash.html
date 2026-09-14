@@ -193,6 +193,8 @@ body{
 .cell-merchant-name{ font-weight:900; color:#0F172A; font-size:13px; }
 .cell-merchant-phone{ font-size:11px; color:#64748B; margin-top:2px; direction:ltr; display:inline-block; }
 .cell-merchant-addr{ font-size:10.5px; color:#94A3B8; margin-top:3px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cell-cust-name{ font-weight:900; color:#0F172A; font-size:13px; }
+.cell-cust-phone{ font-size:11px; color:#64748B; margin-top:2px; direction:ltr; display:inline-block; }
 
 .data-tag{ display:inline-block; padding:3px 9px; border-radius:4px; font-size:10.5px; font-weight:900; white-space:nowrap; line-height:1.4; }
 .tag-vf{ background:var(--vf-bg); color:var(--vf-text); border:1px solid var(--vf-line); }
@@ -743,7 +745,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     </div>
 </div>
 
-<!-- باقي أكواد السكريبت محتفظة بنفس ترتيبها -->
 <script>
     const MAPBOX_TOKEN = "pk.eyJ1IjoibW9rc2htb2tzaCIsImEiOiJjbXRyZXF5cXkwMWRhMnlzaDI0OXJiNXQ1In0.X30BmuAkJ69jOlicXZK53A";
 
@@ -788,7 +789,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     };
     window.getMethodIcon = function(method) {
         return (method === 'vodafone')
-            ? `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white shrink-0 shadow-xs"><svg viewBox="0 0 100 100" class="w-3.5 h-3.5" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="38" fill="#E60000"/><path d="M50 20C38 20 28 29 28 42C28 53 36 61 47 62.5V54C40.5 53 36 48 36 42C36 34 42.5 28 50 28C57.5 28 64 34 64 42C64 46.5 62 50.5 58.5 53.5L64.5 59.5C69.5 55 72.5 49 72.5 42C72.5 29 62 20 50 20Z" fill="white"/><circle cx="50" cy="42" r="9" fill="#E60000"/></svg></span>`
+            ? `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white shrink-0 shadow-xs"><svg viewBox="0 0 100 100" class="w-3.5 h-3.5" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="38" fill="#E60000"/><path d="M50 20C38 20 28 29 28 42C28 53 36 61 47 62.5V54C40.5 53 36 48 36 42C36 34 42.5 28 50 28C57.5 28 64 34 64 42C64 46.5 62 50.5 58.5 53.5L64.5 59.5C69.5 55 72.5 49 72.5 42C72.5 29 62 20 50 20Z" fill="#E60000"/></svg></span>`
             : `<span class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-white border border-purple-300 p-0.5 shrink-0 shadow-xs"><svg viewBox="0 0 100 85" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="18" width="10" height="42" rx="5" transform="skewX(-12)" fill="#4A2277"/><path d="M26 22 L38 39 L26 56" stroke="#F4735E" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-10)"/><path d="M42 22 L54 39 L42 56" stroke="#EE4E23" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-10)"/><path d="M58 20 L58 62 M58 20 C76 20 86 28 84 41 C82 52 70 54 58 54" stroke="#4A2277" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-10)"/></svg></span>`;
     };
 
@@ -1143,10 +1144,19 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window._customerPendingUnsub = null;
     window._authReady = false;
 
-    // تم تغييرها لتعمل بالاستيراد المباشر بدون مشاكل الـ Dynamic Import
+    // دالة إرسال إشعار الدفع للإدارة (مباشرة وبدون أخطاء + مانع التكرار)
     window.notifyPaymentMade = function() {
         if(!window.currentMerchantPhone) return;
+        
+        // مانع التكرار باستخدام LocalStorage (يمنع الضغط لـ 12 ساعة متواصلة)
+        const lastSent = localStorage.getItem('subReqSent_' + window.currentMerchantPhone);
+        if (lastSent && (Date.now() - parseInt(lastSent)) < 12 * 60 * 60 * 1000) {
+            alert("لقد قمت بإرسال إشعار بالفعل. يرجى الانتظار حتى تقوم الإدارة بمراجعته وتفعيل حسابك.");
+            return;
+        }
+
         const btn = document.getElementById('btnNotifyPayment');
+        if(btn.disabled) return;
         btn.innerHTML = "⏳ جاري الإرسال..."; 
         btn.disabled = true;
 
@@ -1158,9 +1168,11 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             timestamp: Date.now(),
             status: 'pending'
         }).then(() => {
-            btn.innerHTML = "✔️ تم إرسال الطلب للإدارة بنجاح";
+            // تسجيل وقت الإرسال لمنع التكرار
+            localStorage.setItem('subReqSent_' + window.currentMerchantPhone, Date.now());
+            btn.innerHTML = "✔️ تم إرسال الطلب وجاري المراجعة";
             btn.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
-            alert("✅ تم إرسال إشعار الدفع للإدارة. سيتم مراجعة الدفعة وتفعيل حسابك قريباً.");
+            alert("✅ تم إرسال إشعار الدفع للإدارة بنجاح. سيتم مراجعة الدفعة وتفعيل حسابك قريباً.");
         }).catch(e => {
             btn.innerHTML = "✅ تم التحويل (أرسل إشعار للإدارة)"; 
             btn.disabled = false;
@@ -1188,6 +1200,22 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                     else numElem.innerText = "غير متوفر حالياً";
                 }
             });
+
+            // فحص حالة زر الإشعار لمنع التكرار البصري
+            const lastSent = localStorage.getItem('subReqSent_' + window.currentMerchantPhone);
+            const btnNotify = document.getElementById('btnNotifyPayment');
+            if (btnNotify) {
+                if (lastSent && (Date.now() - parseInt(lastSent)) < 12 * 60 * 60 * 1000) {
+                    btnNotify.innerHTML = "✔️ تم إرسال الطلب وجاري المراجعة";
+                    btnNotify.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
+                    btnNotify.disabled = true;
+                } else {
+                    btnNotify.innerHTML = "✅ تم التحويل (أرسل إشعار للإدارة)";
+                    btnNotify.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
+                    btnNotify.disabled = false;
+                }
+            }
+
             showView('merchantSubscriptionView');
             return;
         }
@@ -1220,7 +1248,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         if(document.getElementById('settingMaxIp')) document.getElementById('settingMaxIp').value = maxIp ? Number(maxIp).toLocaleString('en-US') : '';
         if(document.getElementById('settingCommIp')) document.getElementById('settingCommIp').value = commRate;
 
-        window.updateServiceButtonsUI(data.enable_vodafone !== false, data.enable_instapay !== false);
+        window.updateServiceButtonsUI((data.enable_vodafone !== false), (data.enable_instapay !== false));
         window.updateProvideServicesUI(data.provide_cash, data.provide_transfer);
         window.updateVisibilityUI(data.status);
         showView('merchantDashboardView');
@@ -1522,7 +1550,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️"; btn.disabled = false;
                 return alert("هذا الرقم مسجل بالفعل في النظام!");
             }
-            // إضافة الاشتراك التجريبي 30 يوم
+            
             const merchantData = {
                 name: storeName, phone: phone, pin: pin, commission_rate: 0, enable_vodafone: enableVf, enable_instapay: enableIp,
                 provide_cash: true, provide_transfer: true, min_amount_vf: 50, max_amount_vf: 30000, min_amount_ip: 50, max_amount_ip: 30000,
@@ -1657,6 +1685,21 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                                 const numElem = document.getElementById('subPaymentNumber');
                                 if(numElem && snap2.exists() && snap2.val()) numElem.innerText = snap2.val();
                             });
+
+                            const lastSent = localStorage.getItem('subReqSent_' + window.currentMerchantPhone);
+                            const btnNotify = document.getElementById('btnNotifyPayment');
+                            if (btnNotify) {
+                                if (lastSent && (Date.now() - parseInt(lastSent)) < 12 * 60 * 60 * 1000) {
+                                    btnNotify.innerHTML = "✔️ تم إرسال الطلب وجاري المراجعة";
+                                    btnNotify.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
+                                    btnNotify.disabled = true;
+                                } else {
+                                    btnNotify.innerHTML = "✅ تم التحويل (أرسل إشعار للإدارة)";
+                                    btnNotify.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
+                                    btnNotify.disabled = false;
+                                }
+                            }
+
                             showView('merchantSubscriptionView');
                         }
                     } else {
@@ -2112,7 +2155,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                         maxAmt = parseFloat(m.max_amount_ip) || parseFloat(m.max_amount) || Infinity;
                     }
                     let isWithinLimits = (amount >= minAmt && amount <= maxAmt);
-                    // التأكد من أن اشتراك التاجر ما زال صالحاً ولم ينتهِ
+                    
                     let isNotExpired = !m.subscription_end || m.subscription_end > Date.now();
 
                     if(m.status === 'active' && m[enableField] !== false && isServiceProvided && isWithinLimits && isNotExpired) {
