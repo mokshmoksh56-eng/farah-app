@@ -544,7 +544,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             </form>
         </div>
 
-        <!-- شاشة انتهاء الاشتراك (الذكية الجديدة) -->
+        <!-- شاشة انتهاء الاشتراك (الذكية) -->
         <div id="merchantSubscriptionView" class="fade-enter flex flex-col justify-center items-center p-2 h-full flex-1">
             <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-rose-200 w-full max-w-md">
                 
@@ -804,7 +804,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window.notifiedOrders = new Set();
     window.merchantMarkers = {};
 
-    // متغيرات نظام الاشتراك
     window.currentSelectedDays = 30;
     window.currentSelectedPkgName = 'شهر';
     window.currentSelectedPkgPrice = 100;
@@ -936,7 +935,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }, 250);
     }
     window.showView = showView;
-    /* ----------------------------------------------------------------------------- */
 
     const getDistance = (lat1, lon1, lat2, lon2) => {
         if(!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -1206,67 +1204,89 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window._customerPendingUnsub = null;
     window._authReady = false;
 
-    // ================= نظام الإشعار الذكي للدفع =================
+    // ================= نظام الإشعار الذكي للدفع (بعد التصفير يعمل مجدداً) =================
     window.notifyPaymentMade = function() {
         if(!window.currentMerchantPhone) return;
-        
-        const lastSent = localStorage.getItem('subReqSent_' + window.currentMerchantPhone);
-        if (lastSent && (Date.now() - parseInt(lastSent)) < 12 * 60 * 60 * 1000) {
-            alert("⏳ لديك طلب قيد المراجعة بالفعل. يرجى الانتظار حتى يتم الرد من الإدارة.");
-            return;
-        }
 
         const btn = document.getElementById('btnNotifyPayment');
         if(btn.disabled) return;
         btn.innerHTML = "⏳ جاري الإرسال..."; 
         btn.disabled = true;
 
-        // رقم مرجعي فريد
-        const refNumber = 'SUB-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random()*9000+1000);
+        // ✅ فحص ذكي: نتحقق من Firebase لو في طلب معلق فعلاً
+        const myReqKey = localStorage.getItem('subReqKey_' + window.currentMerchantPhone);
         
-        const reqRef = push(ref(db, 'eqbad_subscription_requests'));
-        set(reqRef, {
-            ref_number: refNumber,
-            merchant_phone: window.currentMerchantPhone,
-            merchant_name: window.currentActiveMerchantData ? window.currentActiveMerchantData.name : 'تاجر',
-            merchant_key: window.currentMerchantKey,
-            requested_days: window.currentSelectedDays || 30,
-            package_name: window.currentSelectedPkgName || 'شهر',
-            package_price: window.currentSelectedPkgPrice || 100,
-            timestamp: Date.now(),
-            status: 'pending',
-            seen_by_admin: false
-        }).then(() => {
-            localStorage.setItem('subReqSent_' + window.currentMerchantPhone, Date.now());
-            localStorage.setItem('subReqKey_' + window.currentMerchantPhone, reqRef.key);
+        const proceedToSend = () => {
+            const refNumber = 'SUB-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random()*9000+1000);
             
-            btn.innerHTML = "✅ تم الإرسال — قيد المراجعة";
-            btn.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
-            
-            const statusBox = document.getElementById('subRequestStatusBox');
-            statusBox.classList.remove('hidden');
-            statusBox.className = "mb-3 p-3 rounded-xl bg-amber-50 border-2 border-amber-300 text-center";
-            statusBox.innerHTML = `
-                <div class="flex items-center justify-center gap-2 mb-1">
-                    <span class="text-xl">⏳</span>
-                    <span class="text-sm font-black text-amber-800">بانتظار تأكيد الإدارة</span>
-                </div>
-                <div class="text-[10px] text-amber-700 font-bold mb-1">رقم الطلب المرجعي</div>
-                <div class="text-xs font-black text-amber-900 en-num bg-white px-2 py-1 rounded border border-amber-200 inline-block" dir="ltr">${refNumber}</div>
-                <div class="text-[10px] text-slate-500 mt-2">سيتم تفعيل حسابك فور المراجعة</div>
-            `;
-            
-            window.watchMySubRequest(reqRef.key);
-            alert("✅ تم إرسال إشعار الدفع للإدارة!\n\nرقم الطلب: " + refNumber + "\nسيتم تفعيل حسابك قريباً.");
-        }).catch(e => {
-            btn.innerHTML = "✅ تم الدفع — أرسل إشعار للإدارة"; 
-            btn.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
-            btn.disabled = false;
-            alert("خطأ في الإرسال: " + e.message);
+            const reqRef = push(ref(db, 'eqbad_subscription_requests'));
+            set(reqRef, {
+                ref_number: refNumber,
+                merchant_phone: window.currentMerchantPhone,
+                merchant_name: window.currentActiveMerchantData ? window.currentActiveMerchantData.name : 'تاجر',
+                merchant_key: window.currentMerchantKey,
+                requested_days: window.currentSelectedDays || 30,
+                package_name: window.currentSelectedPkgName || 'شهر',
+                package_price: window.currentSelectedPkgPrice || 100,
+                timestamp: Date.now(),
+                status: 'pending',
+                seen_by_admin: false
+            }).then(() => {
+                localStorage.setItem('subReqSent_' + window.currentMerchantPhone, Date.now());
+                localStorage.setItem('subReqKey_' + window.currentMerchantPhone, reqRef.key);
+                
+                btn.innerHTML = "✅ تم الإرسال — قيد المراجعة";
+                btn.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
+                
+                const statusBox = document.getElementById('subRequestStatusBox');
+                statusBox.classList.remove('hidden');
+                statusBox.className = "mb-3 p-3 rounded-xl bg-amber-50 border-2 border-amber-300 text-center";
+                statusBox.innerHTML = `
+                    <div class="flex items-center justify-center gap-2 mb-1">
+                        <span class="text-xl">⏳</span>
+                        <span class="text-sm font-black text-amber-800">بانتظار تأكيد الإدارة</span>
+                    </div>
+                    <div class="text-[10px] text-amber-700 font-bold mb-1">رقم الطلب المرجعي</div>
+                    <div class="text-xs font-black text-amber-900 en-num bg-white px-2 py-1 rounded border border-amber-200 inline-block" dir="ltr">${refNumber}</div>
+                    <div class="text-[10px] text-slate-500 mt-2">سيتم تفعيل حسابك فور المراجعة</div>
+                `;
+                
+                window.watchMySubRequest(reqRef.key);
+                alert("✅ تم إرسال إشعار الدفع للإدارة!\n\nرقم الطلب: " + refNumber);
+            }).catch(e => {
+                btn.innerHTML = "✅ تم الدفع — أرسل إشعار للإدارة"; 
+                btn.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
+                btn.disabled = false;
+                alert("خطأ في الإرسال: " + e.message);
+            });
+        };
+
+        // إذا مفيش طلب محفوظ → ابعت مباشرة
+        if(!myReqKey) {
+            proceedToSend();
+            return;
+        }
+
+        // لو في طلب محفوظ → نتحقق من Firebase
+        get(ref(db, 'eqbad_subscription_requests/' + myReqKey)).then(snap => {
+            if(snap.exists() && snap.val().status === 'pending') {
+                btn.innerHTML = "✅ تم الإرسال — قيد المراجعة";
+                btn.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
+                alert("⏳ لديك طلب قيد المراجعة بالفعل. يرجى الانتظار.");
+            } else {
+                // الطلب انتهى/انحذف/انرفض → نسمح بالإرسال من جديد
+                localStorage.removeItem('subReqSent_' + window.currentMerchantPhone);
+                localStorage.removeItem('subReqKey_' + window.currentMerchantPhone);
+                proceedToSend();
+            }
+        }).catch(() => {
+            // في حالة الخطأ، نسمح بالإرسال
+            localStorage.removeItem('subReqSent_' + window.currentMerchantPhone);
+            localStorage.removeItem('subReqKey_' + window.currentMerchantPhone);
+            proceedToSend();
         });
     };
 
-    // مراقبة الرد على الطلب مباشرة
     window.watchMySubRequest = function(reqKey) {
         if(window._mySubReqUnsub) window._mySubReqUnsub();
         
@@ -1330,27 +1350,27 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 }
             });
 
-            const lastSent = localStorage.getItem('subReqSent_' + window.currentMerchantPhone);
+            // ✅ نظام ذكي: نتحقق من Firebase بدل localStorage
             const btnNotify = document.getElementById('btnNotifyPayment');
-            if (btnNotify) {
-                if (lastSent && (Date.now() - parseInt(lastSent)) < 12 * 60 * 60 * 1000) {
-                    btnNotify.innerHTML = "✅ تم الإرسال — قيد المراجعة";
-                    btnNotify.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
-                    btnNotify.disabled = true;
-                } else {
-                    btnNotify.innerHTML = "✅ تم الدفع — أرسل إشعار للإدارة";
-                    btnNotify.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
-                    btnNotify.disabled = false;
-                }
-            }
-
-            // استرجاع الطلب المعلق إن وُجد
             const myReqKey = localStorage.getItem('subReqKey_' + window.currentMerchantPhone);
-            if(myReqKey) {
+            const statusBox = document.getElementById('subRequestStatusBox');
+
+            if (btnNotify) {
+                btnNotify.innerHTML = "✅ تم الدفع — أرسل إشعار للإدارة";
+                btnNotify.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
+                btnNotify.disabled = false;
+            }
+            if (statusBox) statusBox.classList.add('hidden');
+
+            if (myReqKey) {
                 get(ref(db, 'eqbad_subscription_requests/' + myReqKey)).then(s => {
-                    if(s.exists() && s.val().status === 'pending') {
-                        const statusBox = document.getElementById('subRequestStatusBox');
-                        if(statusBox) {
+                    if (s.exists() && s.val().status === 'pending') {
+                        if (btnNotify) {
+                            btnNotify.innerHTML = "✅ تم الإرسال — قيد المراجعة";
+                            btnNotify.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
+                            btnNotify.disabled = true;
+                        }
+                        if (statusBox) {
                             statusBox.classList.remove('hidden');
                             statusBox.className = "mb-3 p-3 rounded-xl bg-amber-50 border-2 border-amber-300 text-center";
                             statusBox.innerHTML = `
@@ -1363,7 +1383,13 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                             `;
                         }
                         window.watchMySubRequest(myReqKey);
+                    } else {
+                        localStorage.removeItem('subReqSent_' + window.currentMerchantPhone);
+                        localStorage.removeItem('subReqKey_' + window.currentMerchantPhone);
                     }
+                }).catch(() => {
+                    localStorage.removeItem('subReqSent_' + window.currentMerchantPhone);
+                    localStorage.removeItem('subReqKey_' + window.currentMerchantPhone);
                 });
             }
 
@@ -1838,18 +1864,47 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                                 if(numElem && snap2.exists() && snap2.val()) numElem.innerText = snap2.val();
                             });
 
-                            const lastSent = localStorage.getItem('subReqSent_' + window.currentMerchantPhone);
+                            // ✅ نظام ذكي: نتحقق من Firebase بدل localStorage
                             const btnNotify = document.getElementById('btnNotifyPayment');
+                            const myReqKey = localStorage.getItem('subReqKey_' + window.currentMerchantPhone);
+                            const statusBox = document.getElementById('subRequestStatusBox');
+
                             if (btnNotify) {
-                                if (lastSent && (Date.now() - parseInt(lastSent)) < 12 * 60 * 60 * 1000) {
-                                    btnNotify.innerHTML = "✅ تم الإرسال — قيد المراجعة";
-                                    btnNotify.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
-                                    btnNotify.disabled = true;
-                                } else {
-                                    btnNotify.innerHTML = "✅ تم الدفع — أرسل إشعار للإدارة";
-                                    btnNotify.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
-                                    btnNotify.disabled = false;
-                                }
+                                btnNotify.innerHTML = "✅ تم الدفع — أرسل إشعار للإدارة";
+                                btnNotify.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all";
+                                btnNotify.disabled = false;
+                            }
+                            if (statusBox) statusBox.classList.add('hidden');
+
+                            if (myReqKey) {
+                                get(ref(db, 'eqbad_subscription_requests/' + myReqKey)).then(s => {
+                                    if (s.exists() && s.val().status === 'pending') {
+                                        if (btnNotify) {
+                                            btnNotify.innerHTML = "✅ تم الإرسال — قيد المراجعة";
+                                            btnNotify.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
+                                            btnNotify.disabled = true;
+                                        }
+                                        if (statusBox) {
+                                            statusBox.classList.remove('hidden');
+                                            statusBox.className = "mb-3 p-3 rounded-xl bg-amber-50 border-2 border-amber-300 text-center";
+                                            statusBox.innerHTML = `
+                                                <div class="flex items-center justify-center gap-2 mb-1">
+                                                    <span class="text-xl">⏳</span>
+                                                    <span class="text-sm font-black text-amber-800">طلبك قيد المراجعة</span>
+                                                </div>
+                                                <div class="text-[10px] text-slate-600 font-bold">رقم المرجع</div>
+                                                <div class="text-xs font-black text-slate-900 en-num bg-white px-2 py-1 rounded border inline-block mt-1" dir="ltr">${s.val().ref_number || '—'}</div>
+                                            `;
+                                        }
+                                        window.watchMySubRequest(myReqKey);
+                                    } else {
+                                        localStorage.removeItem('subReqSent_' + window.currentMerchantPhone);
+                                        localStorage.removeItem('subReqKey_' + window.currentMerchantPhone);
+                                    }
+                                }).catch(() => {
+                                    localStorage.removeItem('subReqSent_' + window.currentMerchantPhone);
+                                    localStorage.removeItem('subReqKey_' + window.currentMerchantPhone);
+                                });
                             }
 
                             showView('merchantSubscriptionView');
