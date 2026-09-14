@@ -562,6 +562,35 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             </form>
         </div>
 
+        <!-- شاشة انتهاء الاشتراك -->
+        <div id="merchantSubscriptionView" class="fade-enter flex flex-col justify-center items-center text-center p-4 h-full flex-1">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-rose-200 w-full">
+                <div class="text-6xl mb-4">🔒</div>
+                <h2 class="text-2xl font-black text-[#0A1F3C] mb-2">عفواً، انتهت صلاحية اشتراكك</h2>
+                <p class="text-sm font-bold text-slate-500 mb-6">يرجى تجديد الاشتراك لتتمكن من استقبال الطلبات وإدارة متجرك.</p>
+                
+                <div class="space-y-3 mb-6">
+                    <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex justify-between items-center">
+                        <div class="font-black text-slate-800 text-sm">شهر واحد</div>
+                        <div class="text-base font-black text-[#C9A227]">100 ج.م</div>
+                    </div>
+                    <div class="bg-slate-50 border border-emerald-200 p-3 rounded-xl flex justify-between items-center relative overflow-hidden">
+                        <div class="absolute -right-5 top-1 bg-emerald-500 text-white text-[9px] font-black px-6 py-0.5 rotate-45">توفير</div>
+                        <div class="font-black text-slate-800 text-sm">6 شهور</div>
+                        <div class="text-base font-black text-[#C9A227]">500 ج.م</div>
+                    </div>
+                    <div class="bg-slate-50 border border-indigo-200 p-3 rounded-xl flex justify-between items-center relative overflow-hidden">
+                        <div class="absolute -right-5 top-1 bg-indigo-500 text-white text-[9px] font-black px-6 py-0.5 rotate-45">الأفضل</div>
+                        <div class="font-black text-slate-800 text-sm">سنة كاملة</div>
+                        <div class="text-base font-black text-[#C9A227]">800 ج.م</div>
+                    </div>
+                </div>
+                
+                <button type="button" onclick="window.logoutMerchant()" class="btn-ghost w-full mb-3">تسجيل الخروج 🚪</button>
+                <p class="text-[11px] font-bold text-slate-400">تواصل مع الإدارة لتفعيل الباقة الخاصة بك.</p>
+            </div>
+        </div>
+
         <!-- لوحة التاجر -->
         <div id="merchantDashboardView" class="fade-enter">
             <div class="flex items-center justify-between mb-4 border-b border-slate-200 pb-3 gap-2">
@@ -863,7 +892,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             }
         }
         localStorage.setItem('eqbad_active_view', viewId);
-        const views = ['roleView', 'customerLoginView', 'customerRegisterView', 'customerView', 'customerResultsView', 'customerReportsView', 'customerPendingView', 'merchantLoginView', 'merchantRegisterView', 'merchantDashboardView', 'merchantReportsView'];
+        // أضفنا merchantSubscriptionView لمصفوفة الشاشات
+        const views = ['roleView', 'customerLoginView', 'customerRegisterView', 'customerView', 'customerResultsView', 'customerReportsView', 'customerPendingView', 'merchantLoginView', 'merchantRegisterView', 'merchantSubscriptionView', 'merchantDashboardView', 'merchantReportsView'];
         views.forEach(v => {
             const el = document.getElementById(v);
             if(el) { el.classList.remove('fade-enter-active'); el.classList.add('fade-enter'); }
@@ -1010,9 +1040,36 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window.confirmMapSelection = confirmMapSelection;
 
     window.renderMerchantDashboard = function(data) {
+        const now = Date.now();
+        const subEnd = data.subscription_end || data.createdAt || now;
+        const remainingDays = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
+
+        if (remainingDays <= 0) {
+            // إغلاق المتجر في قواعد البيانات إذا لزم الأمر واظهار شاشة الاشتراك
+            if (data.status !== 'offline') {
+                let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
+                if (window.dbRef) {
+                    import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js").then(module => {
+                        module.update(module.ref(window.dbRef, 'eqbad_merchants/' + mKey), { status: 'offline' }).catch(e => console.log(e));
+                    });
+                }
+            }
+            showView('merchantSubscriptionView');
+            return;
+        }
+
         window.currentActiveMerchantData = data;
         document.getElementById('merchantProfileName').innerText = data.name || "متجر مسجل";
-        if (document.getElementById('merchantProfilePhone')) document.getElementById('merchantProfilePhone').innerText = data.phone || window.currentMerchantPhone || "";
+        
+        // عرض حالة الاشتراك والمدة ديناميكياً تحت اسم التاجر
+        const badgeHTML = data.subscription_status === 'trial' 
+            ? `<span class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mt-1.5 inline-block border border-amber-200">فترة تجريبية: باقي ${remainingDays} يوم</span>`
+            : `<span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5 inline-block border border-emerald-200">اشتراك مفعّل: باقي ${remainingDays} يوم</span>`;
+
+        if (document.getElementById('merchantProfilePhone')) {
+            document.getElementById('merchantProfilePhone').innerHTML = `<span dir="ltr">${data.phone || window.currentMerchantPhone || ""}</span><br>${badgeHTML}`;
+        }
+        
         const vfBal = parseFloat(data.balance_vodafone) || 0;
         const ipBal = parseFloat(data.balance_instapay) || 0;
         if(document.getElementById('merchantVodafoneDisplay')) document.getElementById('merchantVodafoneDisplay').innerHTML = window.fmtNum(vfBal) + " ج.م";
@@ -1449,11 +1506,14 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️"; btn.disabled = false;
                 return alert("هذا الرقم مسجل بالفعل في النظام!");
             }
+            // إضافة الاشتراك التجريبي 30 يوم
             const merchantData = {
                 name: storeName, phone: phone, pin: pin, commission_rate: 0, enable_vodafone: enableVf, enable_instapay: enableIp,
                 provide_cash: true, provide_transfer: true, min_amount_vf: 50, max_amount_vf: 30000, min_amount_ip: 50, max_amount_ip: 30000,
                 balance_vodafone: 30000, balance_instapay: 30000, lat: window.finalMerchLat, lng: window.finalMerchLng,
-                address: window.finalMerchAddress || "موقع محدد عبر الخريطة", status: 'active', createdAt: Date.now()
+                address: window.finalMerchAddress || "موقع محدد عبر الخريطة", status: 'active', createdAt: Date.now(),
+                subscription_end: Date.now() + (30 * 24 * 60 * 60 * 1000),
+                subscription_status: 'trial'
             };
             let mKey = 'merchant_' + phone;
             await set(ref(db, 'eqbad_merchants/' + mKey), merchantData);
@@ -1567,17 +1627,40 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             try {
                 if(snap.exists()) {
                     const m = snap.val();
-                    if(document.getElementById('merchantVodafoneDisplay')) document.getElementById('merchantVodafoneDisplay').innerHTML = window.fmtNum(m.balance_vodafone || 0) + " ج.م";
-                    if(document.getElementById('merchantInstapayDisplay')) document.getElementById('merchantInstapayDisplay').innerHTML = window.fmtNum(m.balance_instapay || 0) + " ج.م";
-                    if(document.getElementById('settingMinVf')) document.getElementById('settingMinVf').value = (parseFloat(m.min_amount_vf) || parseFloat(m.min_amount) || 50).toLocaleString('en-US');
-                    if(document.getElementById('settingMaxVf')) document.getElementById('settingMaxVf').value = (parseFloat(m.max_amount_vf) || parseFloat(m.max_amount) || 30000).toLocaleString('en-US');
-                    if(document.getElementById('settingCommVf')) document.getElementById('settingCommVf').value = parseFloat(m.commission_rate) || 0;
-                    if(document.getElementById('settingMinIp')) document.getElementById('settingMinIp').value = (parseFloat(m.min_amount_ip) || parseFloat(m.min_amount) || 50).toLocaleString('en-US');
-                    if(document.getElementById('settingMaxIp')) document.getElementById('settingMaxIp').value = (parseFloat(m.max_amount_ip) || parseFloat(m.max_amount) || 30000).toLocaleString('en-US');
-                    if(document.getElementById('settingCommIp')) document.getElementById('settingCommIp').value = parseFloat(m.commission_rate) || 0;
-                    window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
-                    window.updateProvideServicesUI(m.provide_cash, m.provide_transfer);
-                    window.updateVisibilityUI(m.status);
+                    
+                    // التحكم الذكي في شاشة انتهاء الاشتراك عند التحديث اللحظي من الفايربيز
+                    const now = Date.now();
+                    const subEnd = m.subscription_end || m.createdAt || now;
+                    const remainingDays = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
+                    
+                    if (remainingDays <= 0) {
+                        if (localStorage.getItem('eqbad_active_view') !== 'merchantSubscriptionView') {
+                            showView('merchantSubscriptionView');
+                        }
+                    } else {
+                        if (localStorage.getItem('eqbad_active_view') === 'merchantSubscriptionView') {
+                            showView('merchantDashboardView');
+                        }
+                        
+                        // تحديث بيانات التاجر الأساسية وشارات الاشتراك
+                        const badgeHTML = m.subscription_status === 'trial' 
+                            ? `<span class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mt-1.5 inline-block border border-amber-200">فترة تجريبية: باقي ${remainingDays} يوم</span>`
+                            : `<span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5 inline-block border border-emerald-200">اشتراك مفعّل: باقي ${remainingDays} يوم</span>`;
+                        const phoneElem = document.getElementById('merchantProfilePhone');
+                        if (phoneElem) phoneElem.innerHTML = `<span dir="ltr">${m.phone || window.currentMerchantPhone || ""}</span><br>${badgeHTML}`;
+
+                        if(document.getElementById('merchantVodafoneDisplay')) document.getElementById('merchantVodafoneDisplay').innerHTML = window.fmtNum(m.balance_vodafone || 0) + " ج.م";
+                        if(document.getElementById('merchantInstapayDisplay')) document.getElementById('merchantInstapayDisplay').innerHTML = window.fmtNum(m.balance_instapay || 0) + " ج.م";
+                        if(document.getElementById('settingMinVf')) document.getElementById('settingMinVf').value = (parseFloat(m.min_amount_vf) || parseFloat(m.min_amount) || 50).toLocaleString('en-US');
+                        if(document.getElementById('settingMaxVf')) document.getElementById('settingMaxVf').value = (parseFloat(m.max_amount_vf) || parseFloat(m.max_amount) || 30000).toLocaleString('en-US');
+                        if(document.getElementById('settingCommVf')) document.getElementById('settingCommVf').value = parseFloat(m.commission_rate) || 0;
+                        if(document.getElementById('settingMinIp')) document.getElementById('settingMinIp').value = (parseFloat(m.min_amount_ip) || parseFloat(m.min_amount) || 50).toLocaleString('en-US');
+                        if(document.getElementById('settingMaxIp')) document.getElementById('settingMaxIp').value = (parseFloat(m.max_amount_ip) || parseFloat(m.max_amount) || 30000).toLocaleString('en-US');
+                        if(document.getElementById('settingCommIp')) document.getElementById('settingCommIp').value = parseFloat(m.commission_rate) || 0;
+                        window.updateServiceButtonsUI((m.enable_vodafone !== false), (m.enable_instapay !== false));
+                        window.updateProvideServicesUI(m.provide_cash, m.provide_transfer);
+                        window.updateVisibilityUI(m.status);
+                    }
                 }
             } catch(err) { console.error("merchant data error:", err); }
         }, (err) => console.error("merchant data error:", err));
@@ -2008,8 +2091,10 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                         maxAmt = parseFloat(m.max_amount_ip) || parseFloat(m.max_amount) || Infinity;
                     }
                     let isWithinLimits = (amount >= minAmt && amount <= maxAmt);
+                    // التأكد من أن اشتراك التاجر ما زال صالحاً ولم ينتهِ
+                    let isNotExpired = !m.subscription_end || m.subscription_end > Date.now();
 
-                    if(m.status === 'active' && m[enableField] !== false && isServiceProvided && isWithinLimits) {
+                    if(m.status === 'active' && m[enableField] !== false && isServiceProvided && isWithinLimits && isNotExpired) {
                         m.distance = getDistance(window.finalCustLat, window.finalCustLng, m.lat, m.lng);
                         merchants.push(m);
                     }
