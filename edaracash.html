@@ -500,7 +500,7 @@
         let addressCache = {};
         let allMerchants = {}, allCustomers = {}, allOrders = [];
         let allSubRequests = [];
-        let currentSubFilter = 'all';
+        let currentSubFilter = 'pending'; // يفتح على الطلبات المعلقة تلقائياً
         let latestPendingReqKey = null;
 
         // ============ نظام الصوت والإشعارات ============
@@ -643,7 +643,7 @@
             }
         };
 
-        // ============ Tab Switching (مع تتبع القراءة للإشعارات) ============
+        // ============ Tab Switching (مع تتبع القراءة للإشعارات وفتح المعلقة) ============
         window.switchTab = function(tabName) {
             ['security', 'live', 'dashboard', 'merchants', 'customers', 'orders', 'subreq'].forEach(t => {
                 const el = document.getElementById('tab-' + t);
@@ -659,7 +659,7 @@
             if(tabName === 'dashboard') { if(map) setTimeout(() => map.invalidateSize(), 100); if(customerMap) setTimeout(() => customerMap.invalidateSize(), 100); }
             if(tabName === 'security') { if(securityMap) setTimeout(() => securityMap.invalidateSize(), 200); renderSecurityCenter(); }
 
-            // التحديث الذكي: مسح الإشعارات عند دخول قسم الاشتراكات
+            // التحديث الذكي: مسح الإشعارات وفتح الطلبات المعلقة عند الدخول للقسم
             if(tabName === 'subreq') {
                 const banner = document.getElementById('newSubReqBanner');
                 const toast = document.getElementById('paymentToast');
@@ -670,6 +670,10 @@
                     const unseen = allSubRequests.filter(r => r.status === 'pending' && !r.seen_by_admin);
                     if(unseen.length > 0) window.markRequestsAsSeen(unseen);
                 }
+                
+                // إجبار الواجهة على عرض الطلبات المعلقة فور فتح التبويب
+                currentSubFilter = 'pending';
+                if(typeof renderSubReqsTable === 'function') renderSubReqsTable();
             }
 
             localStorage.setItem('activeEqbadAdminTab', tabName);
