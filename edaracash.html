@@ -10,14 +10,20 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        /* فرض الخط العريض (Bold) على جميع عناصر الصفحة إجبارياً */
+        * { 
+            font-weight: 800 !important; 
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        body { background-color: #f8fafc; color: #0f172a; }
         .stat-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .gradient-text { background: linear-gradient(135deg, #7e122f, #4a0718); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .fade-enter { opacity: 0; transform: translateY(10px); transition: all 0.3s ease; }
         .fade-enter-active { opacity: 1; transform: translateY(0); }
         .map-container { height: 400px; width: 100%; border-radius: 1rem; z-index: 1; }
-        .leaflet-popup-content { font-family: 'Cairo', sans-serif; font-weight: bold; text-align: center; }
-        .tab-btn { padding: 0.75rem 1.25rem; font-weight: 800; border-radius: 0.75rem; transition: all 0.2s; position: relative; }
+        .leaflet-popup-content { text-align: center; }
+        .tab-btn { padding: 0.75rem 1.25rem; border-radius: 0.75rem; transition: all 0.2s; position: relative; }
         .tab-btn.active { background-color: #7e122f; color: white; }
         .tab-btn:not(.active) { background-color: white; color: #64748b; border: 2px solid #e2e8f0; }
         
@@ -32,7 +38,7 @@
         @keyframes alertFlash { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.7); } 50% { box-shadow: 0 0 0 15px rgba(244,63,94,0); } }
         .alert-pulse { animation: alertFlash 2s infinite; }
 
-        .trust-gauge { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; font-weight: 900; }
+        .trust-gauge { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
         .trust-gauge::before { content: ''; position: absolute; inset: 6px; background: white; border-radius: 50%; }
         .trust-gauge > * { position: relative; z-index: 1; }
 
@@ -41,14 +47,14 @@
         .modal-overlay { animation: modalFadeIn 0.25s ease; }
         .modal-box { animation: modalSlideUp 0.35s ease; }
 
-        .flag-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 800; margin-bottom: 6px; border: 1.5px solid; }
+        .flag-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-size: 12px; margin-bottom: 6px; border: 1.5px solid; }
         .flag-danger { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
         .flag-warn { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
         .flag-ok { background: #ECFDF5; color: #065F46; border-color: #A7F3D0; }
         .flag-info { background: #EFF6FF; color: #1E40AF; border-color: #BFDBFE; }
 
         /* Security Center */
-        .sec-tab { padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 900; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; background: #F1F5F9; color: #475569; }
+        .sec-tab { padding: 8px 14px; border-radius: 10px; font-size: 12px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; background: #F1F5F9; color: #475569; }
         .sec-tab.active { background: #0A1F3C; color: white; border-color: #0A1F3C; }
         .sec-tab:not(.active):hover { background: #E2E8F0; }
 
@@ -83,22 +89,22 @@
             <div class="flex items-center gap-4">
                 <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl shadow-lg border-2 border-amber-500">💰</div>
                 <div>
-                    <h1 class="text-3xl font-black gradient-text">إقبض (Eqbad)</h1>
-                    <p class="text-sm font-bold text-slate-500">لوحة تحكم الإدارة الشاملة</p>
+                    <h1 class="text-3xl gradient-text">إقبض (Eqbad)</h1>
+                    <p class="text-sm text-slate-500">لوحة تحكم الإدارة الشاملة</p>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-xl">
                 <button onclick="switchTab('security')" id="btnTabSecurity" class="tab-btn">
                     <span class="inline-flex items-center gap-2">
                         🛡️ مركز الأمان
-                        <span id="secAlertBadge" class="bg-rose-500 text-white text-[10px] font-black rounded-full px-2 py-0.5 min-w-[22px] text-center hidden">0</span>
+                        <span id="secAlertBadge" class="bg-rose-500 text-white text-[10px] rounded-full px-2 py-0.5 min-w-[22px] text-center hidden">0</span>
                     </span>
                 </button>
                 <button onclick="switchTab('live')" id="btnTabLive" class="tab-btn">
                     <span class="inline-flex items-center gap-2">
                         <span class="live-ping" id="livePulse"><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span></span>
                         العمليات المباشرة
-                        <span id="liveCountBadge" class="bg-rose-500 text-white text-[10px] font-black rounded-full px-2 py-0.5 min-w-[22px] text-center">0</span>
+                        <span id="liveCountBadge" class="bg-rose-500 text-white text-[10px] rounded-full px-2 py-0.5 min-w-[22px] text-center">0</span>
                     </span>
                 </button>
                 <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="tab-btn active">نظرة عامة</button>
@@ -116,8 +122,8 @@
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🚨</div>
                     <div class="flex-1">
-                        <p class="font-black text-base" id="secAlertTitle">تنبيه أمني</p>
-                        <p class="text-xs font-bold opacity-90" id="secAlertMessage">—</p>
+                        <p class="text-base" id="secAlertTitle">تنبيه أمني</p>
+                        <p class="text-xs opacity-90" id="secAlertMessage">—</p>
                     </div>
                 </div>
             </div>
@@ -127,30 +133,30 @@
                 <div class="bg-white border-2 border-rose-200 rounded-2xl p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="pulse-dot text-rose-500"></span>
-                        <p class="text-[11px] font-black text-rose-700">تهديدات محتملة</p>
+                        <p class="text-[11px] text-rose-700">تهديدات محتملة</p>
                     </div>
-                    <p id="secThreatsCount" class="text-3xl font-black text-rose-700">0</p>
+                    <p id="secThreatsCount" class="text-3xl text-rose-700">0</p>
                 </div>
                 <div class="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="pulse-dot text-amber-500"></span>
-                        <p class="text-[11px] font-black text-amber-700">قيد المتابعة</p>
+                        <p class="text-[11px] text-amber-700">قيد المتابعة</p>
                     </div>
-                    <p id="secMonitorCount" class="text-3xl font-black text-amber-700">0</p>
+                    <p id="secMonitorCount" class="text-3xl text-amber-700">0</p>
                 </div>
                 <div class="bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="pulse-dot text-emerald-500"></span>
-                        <p class="text-[11px] font-black text-emerald-700">عمليات آمنة</p>
+                        <p class="text-[11px] text-emerald-700">عمليات آمنة</p>
                     </div>
-                    <p id="secSafeCount" class="text-3xl font-black text-emerald-700">0</p>
+                    <p id="secSafeCount" class="text-3xl text-emerald-700">0</p>
                 </div>
                 <div class="bg-white border-2 border-indigo-200 rounded-2xl p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="pulse-dot text-indigo-500"></span>
-                        <p class="text-[11px] font-black text-indigo-700">تتبع لحظي نشط</p>
+                        <p class="text-[11px] text-indigo-700">تتبع لحظي نشط</p>
                     </div>
-                    <p id="secTrackingCount" class="text-3xl font-black text-indigo-700">0</p>
+                    <p id="secTrackingCount" class="text-3xl text-indigo-700">0</p>
                 </div>
             </div>
 
@@ -160,11 +166,11 @@
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl text-white shadow">🗺️</div>
                         <div>
-                            <h3 class="font-black text-slate-800 text-base leading-tight">خريطة التتبع اللحظي</h3>
-                            <p class="text-[11px] text-slate-600 font-bold">مواقع العميل والتاجر لحظة بلحظة</p>
+                            <h3 class="text-slate-800 text-base leading-tight">خريطة التتبع اللحظي</h3>
+                            <p class="text-[11px] text-slate-600">مواقع العميل والتاجر لحظة بلحظة</p>
                         </div>
                     </div>
-                    <div class="flex gap-2 items-center text-[11px] font-black">
+                    <div class="flex gap-2 items-center text-[11px]">
                         <span class="flex items-center gap-1.5 bg-white border-2 border-blue-300 rounded-lg px-2 py-1"><span class="w-3 h-3 rounded-full bg-blue-600"></span> عميل</span>
                         <span class="flex items-center gap-1.5 bg-white border-2 border-emerald-300 rounded-lg px-2 py-1"><span class="w-3 h-3 rounded-full bg-emerald-600"></span> تاجر</span>
                         <button onclick="window.centerAllTracking()" class="bg-indigo-600 text-white border-2 border-indigo-700 rounded-lg px-3 py-1 hover:bg-indigo-700 active:scale-95 transition-all">🎯 توسيط</button>
@@ -173,10 +179,10 @@
                 <div id="securityTrackMap" class="map-container" style="height:450px; border-radius:0;"></div>
                 <!-- Live metrics bar -->
                 <div id="trackingMetrics" class="p-3 bg-slate-50 border-t border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-                    <div><p class="text-[10px] font-black text-slate-500">عمليات نشطة</p><p class="text-lg font-black text-slate-800" id="tmActiveOrders">0</p></div>
-                    <div><p class="text-[10px] font-black text-slate-500">أقرب مسافة</p><p class="text-lg font-black text-emerald-700" id="tmNearestDistance">—</p></div>
-                    <div><p class="text-[10px] font-black text-slate-500">أبعد مسافة</p><p class="text-lg font-black text-amber-700" id="tmFarthestDistance">—</p></div>
-                    <div><p class="text-[10px] font-black text-slate-500">آخر تحديث</p><p class="text-lg font-black text-slate-700" id="tmLastUpdate">—</p></div>
+                    <div><p class="text-[10px] text-slate-500">عمليات نشطة</p><p class="text-lg text-slate-800" id="tmActiveOrders">0</p></div>
+                    <div><p class="text-[10px] text-slate-500">أقرب مسافة</p><p class="text-lg text-emerald-700" id="tmNearestDistance">—</p></div>
+                    <div><p class="text-[10px] text-slate-500">أبعد مسافة</p><p class="text-lg text-amber-700" id="tmFarthestDistance">—</p></div>
+                    <div><p class="text-[10px] text-slate-500">آخر تحديث</p><p class="text-lg text-slate-700" id="tmLastUpdate">—</p></div>
                 </div>
             </div>
 
@@ -186,8 +192,8 @@
                 <!-- Suspicious Orders -->
                 <div class="bg-white rounded-2xl shadow-sm border-2 border-rose-200 overflow-hidden">
                     <div class="bg-gradient-to-r from-rose-50 to-red-50 px-5 py-3 border-b-2 border-rose-100 flex justify-between items-center">
-                        <h3 class="font-black text-slate-800 text-base flex items-center gap-2">🚨 عمليات مشبوهة</h3>
-                        <span id="secSuspiciousBadge" class="bg-rose-500 text-white text-[10px] font-black rounded-full px-2.5 py-1">0</span>
+                        <h3 class="text-slate-800 text-base flex items-center gap-2">🚨 عمليات مشبوهة</h3>
+                        <span id="secSuspiciousBadge" class="bg-rose-500 text-white text-[10px] rounded-full px-2.5 py-1">0</span>
                     </div>
                     <div id="suspiciousOrdersList" class="p-3 space-y-2 max-h-[400px] overflow-y-auto bg-slate-50">
                         <!-- JS -->
@@ -197,11 +203,11 @@
                 <!-- Activity Log -->
                 <div class="bg-white rounded-2xl shadow-sm border-2 border-slate-200 overflow-hidden">
                     <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-5 py-3 border-b-2 border-slate-200 flex justify-between items-center">
-                        <h3 class="font-black text-slate-800 text-base flex items-center gap-2">📋 سجل النشاط الأمني</h3>
-                        <button onclick="window.clearActivityLog()" class="text-[10px] font-black text-slate-600 bg-white border border-slate-300 rounded-lg px-2 py-1 hover:bg-slate-100 active:scale-95">🗑️ تفريغ</button>
+                        <h3 class="text-slate-800 text-base flex items-center gap-2">📋 سجل النشاط الأمني</h3>
+                        <button onclick="window.clearActivityLog()" class="text-[10px] text-slate-600 bg-white border border-slate-300 rounded-lg px-2 py-1 hover:bg-slate-100 active:scale-95">🗑️ تفريغ</button>
                     </div>
                     <div id="activityLogContainer" class="p-3 space-y-1.5 max-h-[400px] overflow-y-auto bg-slate-50">
-                        <p class="text-center text-slate-400 text-xs font-black py-8">لا يوجد نشاط بعد</p>
+                        <p class="text-center text-slate-400 text-xs py-8">لا يوجد نشاط بعد</p>
                     </div>
                 </div>
             </div>
@@ -209,8 +215,8 @@
             <!-- Device Fingerprints Panel -->
             <div class="bg-white rounded-2xl shadow-sm border-2 border-purple-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-purple-50 to-fuchsia-50 px-5 py-3 border-b-2 border-purple-100 flex justify-between items-center">
-                    <h3 class="font-black text-slate-800 text-base flex items-center gap-2">🔍 تحليل البصمات والأجهزة</h3>
-                    <span class="text-[10px] font-bold text-purple-700 bg-purple-100 border border-purple-300 rounded-lg px-2 py-1">كشف الحسابات المتعددة</span>
+                    <h3 class="text-slate-800 text-base flex items-center gap-2">🔍 تحليل البصمات والأجهزة</h3>
+                    <span class="text-[10px] text-purple-700 bg-purple-100 border border-purple-300 rounded-lg px-2 py-1">كشف الحسابات المتعددة</span>
                 </div>
                 <div id="deviceAnalysisContainer" class="p-3 bg-slate-50">
                     <!-- JS -->
@@ -228,14 +234,14 @@
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-700 rounded-xl flex items-center justify-center text-2xl text-white shadow-lg">🛡️</div>
                         <div class="flex-1">
-                            <h3 class="font-black text-slate-800 text-lg leading-tight">مركز التحقق الأمني</h3>
-                            <p class="text-[11px] text-slate-600 font-bold mt-0.5">ابحث عن عميل/تاجر لفحص سمعة التعامل قبل تنفيذ العملية</p>
+                            <h3 class="text-slate-800 text-lg leading-tight">مركز التحقق الأمني</h3>
+                            <p class="text-[11px] text-slate-600 mt-0.5">ابحث عن عميل/تاجر لفحص سمعة التعامل قبل تنفيذ العملية</p>
                         </div>
                     </div>
                 </div>
                 <div class="p-5">
                     <div class="relative">
-                        <input type="text" id="liveSearchInput" placeholder="🔎 ابحث برقم التليفون، اسم العميل، اسم التاجر، أو رقم العملية..." class="w-full p-4 pr-12 border-2 border-slate-300 rounded-2xl font-bold text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all" oninput="window.handleLiveSearch(this.value)">
+                        <input type="text" id="liveSearchInput" placeholder="🔎 ابحث برقم التليفون، اسم العميل، اسم التاجر، أو رقم العملية..." class="w-full p-4 pr-12 border-2 border-slate-300 rounded-2xl text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all" oninput="window.handleLiveSearch(this.value)">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl pointer-events-none">🔍</span>
                     </div>
                     <div id="liveSearchResults" class="mt-4 hidden"></div>
@@ -245,18 +251,18 @@
             <div class="grid grid-cols-3 gap-3">
                 <div class="bg-gradient-to-br from-amber-400 to-amber-600 text-white rounded-2xl p-4 shadow-lg border-2 border-amber-500 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 opacity-20 text-7xl">⏳</div>
-                    <p class="text-xs font-bold opacity-90 mb-1">قيد الانتظار</p>
-                    <p id="livePendingCount" class="text-3xl font-black">0</p>
+                    <p class="text-xs opacity-90 mb-1">قيد الانتظار</p>
+                    <p id="livePendingCount" class="text-3xl">0</p>
                 </div>
                 <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white rounded-2xl p-4 shadow-lg border-2 border-emerald-500 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 opacity-20 text-7xl">✔️</div>
-                    <p class="text-xs font-bold opacity-90 mb-1">مقبولة</p>
-                    <p id="liveAcceptedCount" class="text-3xl font-black">0</p>
+                    <p class="text-xs opacity-90 mb-1">مقبولة</p>
+                    <p id="liveAcceptedCount" class="text-3xl">0</p>
                 </div>
                 <div class="bg-gradient-to-br from-[#17477E] to-[#0A1F3C] text-white rounded-2xl p-4 shadow-lg border-2 border-blue-500 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 opacity-20 text-7xl">💰</div>
-                    <p class="text-xs font-bold opacity-90 mb-1">إجمالي المبالغ النشطة</p>
-                    <p id="liveTotalAmount" class="text-2xl font-black">0 ج.م</p>
+                    <p class="text-xs opacity-90 mb-1">إجمالي المبالغ النشطة</p>
+                    <p id="liveTotalAmount" class="text-2xl">0 ج.م</p>
                 </div>
             </div>
 
@@ -264,11 +270,11 @@
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-xl border-2 border-rose-300">📡</div>
                     <div>
-                        <h3 class="text-lg font-black text-slate-800 leading-tight">مراقبة العمليات المباشرة</h3>
-                        <p class="text-[11px] font-bold text-slate-500">تحديث تلقائي لحظي من Firebase</p>
+                        <h3 class="text-lg text-slate-800 leading-tight">مراقبة العمليات المباشرة</h3>
+                        <p class="text-[11px] text-slate-500">تحديث تلقائي لحظي من Firebase</p>
                     </div>
                 </div>
-                <button onclick="window.toggleLiveSound()" id="btnLiveSound" class="bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-emerald-100 active:scale-95 transition-all">🔊 الصوت مفتوح</button>
+                <button onclick="window.toggleLiveSound()" id="btnLiveSound" class="bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-100 active:scale-95 transition-all">🔊 الصوت مفتوح</button>
             </div>
 
             <div id="liveOpsContainer" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4"></div>
@@ -277,29 +283,29 @@
         <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="fade-enter-active space-y-6">
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div class="stat-card border-t-4 border-t-blue-500"><p class="text-sm font-bold text-slate-500 mb-1">إجمالي المتاجر</p><p id="statMerchants" class="text-3xl font-black text-slate-900">0</p></div>
-                <div class="stat-card border-t-4 border-t-emerald-500"><p class="text-sm font-bold text-slate-500 mb-1">العملاء المسجلين</p><p id="statCustomers" class="text-3xl font-black text-slate-900">0</p></div>
-                <div class="stat-card border-t-4 border-t-slate-800"><p class="text-sm font-bold text-slate-500 mb-1">إجمالي العمليات</p><p id="statOrders" class="text-3xl font-black text-slate-900">0</p></div>
-                <div class="stat-card border-t-4 border-t-red-500 bg-red-50"><p class="text-sm font-bold text-red-600 mb-1">سيولة فودافون</p><p id="statVodaLiquidity" class="text-2xl font-black text-red-700">0 ج.م</p></div>
-                <div class="stat-card border-t-4 border-t-purple-500 bg-purple-50"><p class="text-sm font-bold text-purple-600 mb-1">سيولة إنستاباي</p><p id="statInstaLiquidity" class="text-2xl font-black text-purple-700">0 ج.م</p></div>
+                <div class="stat-card border-t-4 border-t-blue-500"><p class="text-sm text-slate-500 mb-1">إجمالي المتاجر</p><p id="statMerchants" class="text-3xl text-slate-900">0</p></div>
+                <div class="stat-card border-t-4 border-t-emerald-500"><p class="text-sm text-slate-500 mb-1">العملاء المسجلين</p><p id="statCustomers" class="text-3xl text-slate-900">0</p></div>
+                <div class="stat-card border-t-4 border-t-slate-800"><p class="text-sm text-slate-500 mb-1">إجمالي العمليات</p><p id="statOrders" class="text-3xl text-slate-900">0</p></div>
+                <div class="stat-card border-t-4 border-t-red-500 bg-red-50"><p class="text-sm text-red-600 mb-1">سيولة فودافون</p><p id="statVodaLiquidity" class="text-2xl text-red-700">0 ج.م</p></div>
+                <div class="stat-card border-t-4 border-t-purple-500 bg-purple-50"><p class="text-sm text-purple-600 mb-1">سيولة إنستاباي</p><p id="statInstaLiquidity" class="text-2xl text-purple-700">0 ج.م</p></div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3><div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار العملاء</h3><div id="customerAdminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار المتاجر</h3><div id="adminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200"><h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>🗺️</span> خريطة انتشار العملاء</h3><div id="customerAdminMap" class="map-container border-2 border-slate-200 shadow-inner"></div></div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن المتاجر</h3>
+                    <h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن المتاجر</h3>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">اسم المتجر</th><th class="p-3 font-black">رقم الهاتف</th><th class="p-3 font-black">العنوان</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableLocations" class="divide-y divide-slate-100"></tbody></table>
+                        <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl">اسم المتجر</th><th class="p-3">رقم الهاتف</th><th class="p-3">العنوان</th><th class="p-3 rounded-tl-xl text-center">الإجراءات</th></tr></thead><tbody id="tableLocations" class="divide-y divide-slate-100"></tbody></table>
                     </div>
                 </div>
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن العملاء</h3>
+                    <h3 class="text-lg text-slate-800 mb-3 flex items-center gap-2"><span>📍</span> جدول أماكن العملاء</h3>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">اسم العميل</th><th class="p-3 font-black">رقم الهاتف</th><th class="p-3 font-black">العنوان</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableCustomerLocations" class="divide-y divide-slate-100"></tbody></table>
+                        <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl">اسم العميل</th><th class="p-3">رقم الهاتف</th><th class="p-3">العنوان</th><th class="p-3 rounded-tl-xl text-center">الإجراءات</th></tr></thead><tbody id="tableCustomerLocations" class="divide-y divide-slate-100"></tbody></table>
                     </div>
                 </div>
             </div>
@@ -309,22 +315,22 @@
         <div id="tab-merchants" class="hidden fade-enter space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                    <h3 class="text-xl font-black text-slate-800">قائمة المتاجر المسجلة</h3>
+                    <h3 class="text-xl text-slate-800">قائمة المتاجر المسجلة</h3>
                     <div class="relative w-full sm:w-72">
-                        <input type="text" placeholder="🔍 بحث باسم المتجر أو الهاتف..." class="w-full bg-slate-50 border border-slate-300 text-sm rounded-xl px-4 py-2 font-bold focus:outline-none focus:border-indigo-500 transition-colors" oninput="window.filterMerchantsTable(this.value)">
+                        <input type="text" placeholder="🔍 بحث باسم المتجر أو الهاتف..." class="w-full bg-slate-50 border border-slate-300 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors" oninput="window.filterMerchantsTable(this.value)">
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-right text-sm">
                         <thead class="bg-slate-50 text-slate-500">
                             <tr>
-                                <th class="p-3 rounded-tr-xl font-black">اسم المتجر</th>
-                                <th class="p-3 font-black">رقم الهاتف / السرّي</th>
-                                <th class="p-3 font-black">سيولة المتجر</th>
-                                <th class="p-3 font-black text-center min-w-[170px]">الاشتراك</th>
-                                <th class="p-3 font-black">العمولة</th>
-                                <th class="p-3 font-black text-center">العمليات</th>
-                                <th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th>
+                                <th class="p-3 rounded-tr-xl">اسم المتجر</th>
+                                <th class="p-3">رقم الهاتف / السرّي</th>
+                                <th class="p-3">سيولة المتجر</th>
+                                <th class="p-3 text-center min-w-[170px]">الاشتراك</th>
+                                <th class="p-3">العمولة</th>
+                                <th class="p-3 text-center">العمليات</th>
+                                <th class="p-3 rounded-tl-xl text-center">الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody id="tableMerchants" class="divide-y divide-slate-100"></tbody>
@@ -336,9 +342,9 @@
         <!-- Customers Tab -->
         <div id="tab-customers" class="hidden fade-enter space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="text-xl font-black text-slate-800 mb-4">قائمة العملاء المسجلين</h3>
+                <h3 class="text-xl text-slate-800 mb-4">قائمة العملاء المسجلين</h3>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">اسم العميل</th><th class="p-3 font-black">رقم الهاتف / السرّي</th><th class="p-3 font-black">تاريخ التسجيل</th><th class="p-3 font-black text-center">العمليات الناجحة</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableCustomers" class="divide-y divide-slate-100"></tbody></table>
+                    <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl">اسم العميل</th><th class="p-3">رقم الهاتف / السرّي</th><th class="p-3">تاريخ التسجيل</th><th class="p-3 text-center">العمليات الناجحة</th><th class="p-3 rounded-tl-xl text-center">الإجراءات</th></tr></thead><tbody id="tableCustomers" class="divide-y divide-slate-100"></tbody></table>
                 </div>
             </div>
         </div>
@@ -347,15 +353,15 @@
         <div id="tab-orders" class="hidden fade-enter space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                    <h3 class="text-xl font-black text-slate-800">سجل العمليات الشامل</h3>
+                    <h3 class="text-xl text-slate-800">سجل العمليات الشامل</h3>
                     <div class="flex flex-wrap gap-2 items-center">
-                        <button onclick="window.deleteAllOrders()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-lg text-xs font-bold shadow border border-rose-700 active:scale-95 transition-all">🗑️ حذف كل السجل</button>
-                        <span class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg text-xs font-bold border border-emerald-200" id="badgeCompleted">0 ناجحة</span>
-                        <span class="bg-rose-50 text-rose-700 px-3 py-1 rounded-lg text-xs font-bold border border-rose-200" id="badgeRejected">0 مرفوضة</span>
+                        <button onclick="window.deleteAllOrders()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-lg text-xs shadow border border-rose-700 active:scale-95 transition-all">🗑️ حذف كل السجل</button>
+                        <span class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg text-xs border border-emerald-200" id="badgeCompleted">0 ناجحة</span>
+                        <span class="bg-rose-50 text-rose-700 px-3 py-1 rounded-lg text-xs border border-rose-200" id="badgeRejected">0 مرفوضة</span>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl font-black">التاريخ والوقت</th><th class="p-3 font-black">العميل</th><th class="p-3 font-black">التاجر</th><th class="p-3 font-black">المبلغ</th><th class="p-3 font-black">الطريقة</th><th class="p-3 font-black text-center">الحالة</th><th class="p-3 rounded-tl-xl font-black text-center">الإجراءات</th></tr></thead><tbody id="tableOrders" class="divide-y divide-slate-100"></tbody></table>
+                    <table class="w-full text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 rounded-tr-xl">التاريخ والوقت</th><th class="p-3">العميل</th><th class="p-3">التاجر</th><th class="p-3">المبلغ</th><th class="p-3">الطريقة</th><th class="p-3 text-center">الحالة</th><th class="p-3 rounded-tl-xl text-center">الإجراءات</th></tr></thead><tbody id="tableOrders" class="divide-y divide-slate-100"></tbody></table>
                 </div>
             </div>
         </div>
@@ -366,13 +372,13 @@
     <div id="verifyModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[99999] modal-overlay flex justify-center items-center p-3">
         <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border-2 border-slate-200 modal-box flex flex-col">
             <div id="verifyModalHeader" class="bg-gradient-to-r from-indigo-600 to-blue-700 text-white p-5 relative">
-                <button onclick="window.closeVerifyModal()" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-2xl font-black transition-all active:scale-95">×</button>
+                <button onclick="window.closeVerifyModal()" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-2xl transition-all active:scale-95">×</button>
                 <div class="flex items-center gap-3">
                     <div id="verifyAvatar" class="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center text-3xl flex-shrink-0">👤</div>
                     <div class="flex-1 min-w-0">
-                        <h3 id="verifyName" class="text-xl font-black truncate">—</h3>
-                        <p id="verifyPhone" class="text-sm font-bold opacity-90 en-num" dir="ltr">—</p>
-                        <p id="verifySubtitle" class="text-[11px] font-bold opacity-80 mt-1">—</p>
+                        <h3 id="verifyName" class="text-xl truncate">—</h3>
+                        <p id="verifyPhone" class="text-sm opacity-90 en-num" dir="ltr">—</p>
+                        <p id="verifySubtitle" class="text-[11px] opacity-80 mt-1">—</p>
                     </div>
                 </div>
             </div>
@@ -384,23 +390,23 @@
     <div id="otpModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[99999] modal-overlay flex justify-center items-center p-3">
         <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl border-2 border-emerald-300 modal-box">
             <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-5 rounded-t-3xl relative">
-                <button onclick="document.getElementById('otpModal').classList.add('hidden')" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-2xl font-black">×</button>
+                <button onclick="document.getElementById('otpModal').classList.add('hidden')" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-2xl">×</button>
                 <div class="flex items-center gap-3">
                     <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-3xl">🔐</div>
                     <div>
-                        <h3 class="text-xl font-black">رمز التحقق OTP</h3>
-                        <p class="text-xs opacity-90 font-bold">أظهر هذا الرمز للتاجر للتأكد</p>
+                        <h3 class="text-xl">رمز التحقق OTP</h3>
+                        <p class="text-xs opacity-90">أظهر هذا الرمز للتاجر للتأكد</p>
                     </div>
                 </div>
             </div>
             <div class="p-6 text-center">
-                <p id="otpOrderInfo" class="text-xs font-bold text-slate-500 mb-4">—</p>
-                <div id="otpCode" class="bg-slate-900 text-white font-black text-5xl tracking-[0.3em] py-6 rounded-2xl mb-4 en-num" style="font-family:'Segoe UI',monospace;">------</div>
+                <p id="otpOrderInfo" class="text-xs text-slate-500 mb-4">—</p>
+                <div id="otpCode" class="bg-slate-900 text-white text-5xl tracking-[0.3em] py-6 rounded-2xl mb-4 en-num" style="font-family:'Segoe UI',monospace;">------</div>
                 <div class="flex gap-2">
-                    <button onclick="window.copyOTP()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black py-3 rounded-xl text-sm active:scale-95 transition-all">📋 نسخ</button>
-                    <button onclick="window.regenerateOTP()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 transition-all">🔄 توليد جديد</button>
+                    <button onclick="window.copyOTP()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-sm active:scale-95 transition-all">📋 نسخ</button>
+                    <button onclick="window.regenerateOTP()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl text-sm active:scale-95 transition-all">🔄 توليد جديد</button>
                 </div>
-                <p class="text-[10px] font-bold text-slate-400 mt-3">⏱️ الرمز صالح لمدة 10 دقائق</p>
+                <p class="text-[10px] text-slate-400 mt-3">⏱️ الرمز صالح لمدة 10 دقائق</p>
             </div>
         </div>
     </div>
@@ -437,18 +443,18 @@
             localStorage.setItem('eqbad_admin_sound', liveSoundEnabled ? 'on' : 'off');
             const btn = document.getElementById('btnLiveSound');
             if(liveSoundEnabled) {
-                btn.className = "bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-emerald-100 active:scale-95 transition-all";
+                btn.className = "bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-100 active:scale-95 transition-all";
                 btn.innerHTML = "🔊 الصوت مفتوح";
                 try { new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(()=>{}); } catch(e){}
             } else {
-                btn.className = "bg-slate-100 text-slate-500 border-2 border-slate-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-slate-200 active:scale-95 transition-all";
+                btn.className = "bg-slate-100 text-slate-500 border-2 border-slate-300 px-3 py-1.5 rounded-xl text-xs hover:bg-slate-200 active:scale-95 transition-all";
                 btn.innerHTML = "🔇 الصوت مقفول";
             }
         };
 
         (function(){
             const btn = document.getElementById('btnLiveSound');
-            if(btn && !liveSoundEnabled) { btn.className = "bg-slate-100 text-slate-500 border-2 border-slate-300 px-3 py-1.5 rounded-xl font-black text-xs hover:bg-slate-200 active:scale-95 transition-all"; btn.innerHTML = "🔇 الصوت مقفول"; }
+            if(btn && !liveSoundEnabled) { btn.className = "bg-slate-100 text-slate-500 border-2 border-slate-300 px-3 py-1.5 rounded-xl text-xs hover:bg-slate-200 active:scale-95 transition-all"; btn.innerHTML = "🔇 الصوت مقفول"; }
         })();
 
         function playSound(url = 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', vibrate = [500, 250, 500]) {
@@ -505,15 +511,15 @@
         function renderActivityLog() {
             const c = document.getElementById('activityLogContainer');
             if(!c) return;
-            if(activityLog.length === 0) { c.innerHTML = '<p class="text-center text-slate-400 text-xs font-black py-8">لا يوجد نشاط بعد</p>'; return; }
+            if(activityLog.length === 0) { c.innerHTML = '<p class="text-center text-slate-400 text-xs py-8">لا يوجد نشاط بعد</p>'; return; }
             c.innerHTML = activityLog.slice(0, 50).map(a => {
                 const colorClass = a.level === 'danger' ? 'border-rose-300 bg-rose-50' : a.level === 'warn' ? 'border-amber-300 bg-amber-50' : a.level === 'success' ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white';
                 const time = new Date(a.ts).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
                 return `<div class="log-item ${colorClass} border-2 rounded-xl p-2.5 flex items-start gap-2">
                     <span class="text-lg flex-shrink-0">${a.icon}</span>
                     <div class="flex-1 min-w-0">
-                        <p class="text-[11px] font-black text-slate-800 leading-tight">${a.message}</p>
-                        <p class="text-[9px] font-bold text-slate-400 mt-0.5">${time}</p>
+                        <p class="text-[11px] text-slate-800 leading-tight">${a.message}</p>
+                        <p class="text-[9px] text-slate-400 mt-0.5">${time}</p>
                     </div>
                 </div>`;
             }).join('');
@@ -788,7 +794,7 @@
                     });
                     const custMarker = L.marker([custLat, custLng], { icon: custIcon })
                         .addTo(securityMap)
-                        .bindPopup(`<div dir="rtl" style="font-family:Cairo;font-weight:800;">
+                        .bindPopup(`<div dir="rtl" style="font-family:Cairo;">
                             <b>🏃 ${cust?.name || o.customer_name}</b><br>
                             <span dir="ltr" style="font-size:11px;">${custPhone}</span><br>
                             <span style="color:#3B82F6;font-size:11px;">👤 العميل</span><br>
@@ -806,7 +812,7 @@
                     });
                     const merchMarker = L.marker([merchLat, merchLng], { icon: merchIcon })
                         .addTo(securityMap)
-                        .bindPopup(`<div dir="rtl" style="font-family:Cairo;font-weight:800;">
+                        .bindPopup(`<div dir="rtl" style="font-family:Cairo;">
                             <b>🏪 ${merch?.name || o.merchant_name}</b><br>
                             <span dir="ltr" style="font-size:11px;">${merchPhone}</span><br>
                             <span style="color:#10B981;font-size:11px;">🏪 التاجر</span>
@@ -832,7 +838,7 @@
                         const midLat = (custLat + merchLat) / 2;
                         const midLng = (custLng + merchLng) / 2;
                         const distIcon = L.divIcon({
-                            html: `<div style="background:${lineColor};color:white;font-weight:900;font-size:10px;padding:3px 7px;border-radius:10px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">${dist.toFixed(1)} كم</div>`,
+                            html: `<div style="background:${lineColor};color:white;font-size:10px;padding:3px 7px;border-radius:10px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">${dist.toFixed(1)} كم</div>`,
                             className: 'bg-transparent', iconSize: [60, 20], iconAnchor: [30, 10]
                         });
                         securityMarkers['dist_' + o.key] = L.marker([midLat, midLng], { icon: distIcon, interactive: false }).addTo(securityMap);
@@ -918,8 +924,8 @@
                 document.getElementById('suspiciousOrdersList').innerHTML = `
                     <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-6 text-center">
                         <div class="text-4xl mb-2">✅</div>
-                        <p class="font-black text-emerald-700 text-sm">لا توجد عمليات مشبوهة حالياً</p>
-                        <p class="text-[10px] font-bold text-emerald-600 mt-1">كل العمليات النشطة آمنة</p>
+                        <p class="text-emerald-700 text-sm">لا توجد عمليات مشبوهة حالياً</p>
+                        <p class="text-[10px] text-emerald-600 mt-1">كل العمليات النشطة آمنة</p>
                     </div>`;
             } else {
                 document.getElementById('suspiciousOrdersList').innerHTML = suspicious.map(({order, risk}) => {
@@ -933,21 +939,21 @@
                     <div class="bg-white border-2 ${risk.level === 'danger' ? 'border-rose-300' : 'border-amber-300'} rounded-xl p-3">
                         <div class="flex justify-between items-start gap-2 mb-2">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="${risk.level === 'danger' ? 'bg-rose-500' : 'bg-amber-500'} text-white text-[10px] font-black px-2 py-0.5 rounded-md">${risk.label}</span>
-                                <span class="${isVf ? 'bg-red-100 text-red-700 border-red-300' : 'bg-purple-100 text-purple-700 border-purple-300'} border text-[10px] font-black px-2 py-0.5 rounded">${isVf ? 'فودافون' : 'إنستاباي'}</span>
+                                <span class="${risk.level === 'danger' ? 'bg-rose-500' : 'bg-amber-500'} text-white text-[10px] px-2 py-0.5 rounded-md">${risk.label}</span>
+                                <span class="${isVf ? 'bg-red-100 text-red-700 border-red-300' : 'bg-purple-100 text-purple-700 border-purple-300'} border text-[10px] px-2 py-0.5 rounded">${isVf ? 'فودافون' : 'إنستاباي'}</span>
                             </div>
-                            <span class="text-lg font-black" style="color:${risk.color}">${risk.score}</span>
+                            <span class="text-lg" style="color:${risk.color}">${risk.score}</span>
                         </div>
-                        <div class="text-[11px] font-bold text-slate-700 mb-1">👤 ${cust?.name || order.customer_name} <span class="text-slate-500" dir="ltr">(${custPhone})</span></div>
-                        <div class="text-[11px] font-bold text-slate-700 mb-2">🏪 ${merch?.name || order.merchant_name} <span class="text-slate-500" dir="ltr">(${merchPhone})</span></div>
-                        <div class="text-sm font-black text-slate-900 mb-2">💰 ${(parseFloat(order.amount)||0).toLocaleString()} ج</div>
+                        <div class="text-[11px] text-slate-700 mb-1">👤 ${cust?.name || order.customer_name} <span class="text-slate-500" dir="ltr">(${custPhone})</span></div>
+                        <div class="text-[11px] text-slate-700 mb-2">🏪 ${merch?.name || order.merchant_name} <span class="text-slate-500" dir="ltr">(${merchPhone})</span></div>
+                        <div class="text-sm text-slate-900 mb-2">💰 ${(parseFloat(order.amount)||0).toLocaleString()} ج</div>
                         <div class="space-y-1 mb-2 max-h-24 overflow-y-auto">
-                            ${risk.factors.map(f => `<div class="text-[10px] font-bold ${f.t === 'danger' ? 'text-rose-700' : f.t === 'warn' ? 'text-amber-700' : 'text-emerald-700'}">${f.i} ${f.m}</div>`).join('')}
+                            ${risk.factors.map(f => `<div class="text-[10px] ${f.t === 'danger' ? 'text-rose-700' : f.t === 'warn' ? 'text-amber-700' : 'text-emerald-700'}">${f.i} ${f.m}</div>`).join('')}
                         </div>
                         <div class="flex gap-1.5 flex-wrap">
-                            <a href="tel:${custPhone}" class="bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-black px-2 py-1 rounded-lg flex-1 text-center">📞 عميل</a>
-                            <a href="tel:${merchPhone}" class="bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-black px-2 py-1 rounded-lg flex-1 text-center">📞 تاجر</a>
-                            <button onclick="window.verifyCustomer('${custPhone}')" class="bg-indigo-100 border border-indigo-300 text-indigo-700 text-[10px] font-black px-2 py-1 rounded-lg">🛡️ فحص</button>
+                            <a href="tel:${custPhone}" class="bg-blue-50 border border-blue-200 text-blue-700 text-[10px] px-2 py-1 rounded-lg flex-1 text-center">📞 عميل</a>
+                            <a href="tel:${merchPhone}" class="bg-purple-50 border border-purple-200 text-purple-700 text-[10px] px-2 py-1 rounded-lg flex-1 text-center">📞 تاجر</a>
+                            <button onclick="window.verifyCustomer('${custPhone}')" class="bg-indigo-100 border border-indigo-300 text-indigo-700 text-[10px] px-2 py-1 rounded-lg">🛡️ فحص</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -958,29 +964,29 @@
             const devContainer = document.getElementById('deviceAnalysisContainer');
             
             if(Object.keys(deviceMap).length === 0) {
-                devContainer.innerHTML = '<p class="text-center text-slate-400 text-xs font-black py-4">لا توجد بيانات أجهزة مسجلة بعد — يحتاج العملاء لإرسال fingerprint التطبيق</p>';
+                devContainer.innerHTML = '<p class="text-center text-slate-400 text-xs py-4">لا توجد بيانات أجهزة مسجلة بعد — يحتاج العملاء لإرسال fingerprint التطبيق</p>';
             } else if(multipleDevices.length === 0) {
                 devContainer.innerHTML = `
                     <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4 text-center">
                         <div class="text-3xl mb-1">✅</div>
-                        <p class="font-black text-emerald-700 text-sm">لا توجد حسابات متعددة على نفس الجهاز</p>
-                        <p class="text-[10px] font-bold text-emerald-600 mt-1">${Object.keys(deviceMap).length} جهاز فريد مسجل</p>
+                        <p class="text-emerald-700 text-sm">لا توجد حسابات متعددة على نفس الجهاز</p>
+                        <p class="text-[10px] text-emerald-600 mt-1">${Object.keys(deviceMap).length} جهاز فريد مسجل</p>
                     </div>`;
             } else {
                 devContainer.innerHTML = multipleDevices.map(arr => `
                     <div class="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 mb-2">
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-xl">🚨</span>
-                            <span class="font-black text-rose-800 text-sm">جهاز واحد — ${arr.length} حسابات</span>
+                            <span class="text-rose-800 text-sm">جهاز واحد — ${arr.length} حسابات</span>
                         </div>
                         <div class="space-y-1.5">
                             ${arr.map(c => `
                                 <div class="bg-white rounded-lg p-2 flex items-center justify-between gap-2 border border-rose-200">
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-black text-xs text-slate-800 truncate">${c.name}</p>
-                                        <p class="text-[10px] text-slate-500 font-bold" dir="ltr">${c.phone}</p>
+                                        <p class="text-xs text-slate-800 truncate">${c.name}</p>
+                                        <p class="text-[10px] text-slate-500" dir="ltr">${c.phone}</p>
                                     </div>
-                                    <button onclick="window.verifyCustomer('${c.phone}')" class="bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-1 rounded border border-indigo-300">فحص</button>
+                                    <button onclick="window.verifyCustomer('${c.phone}')" class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-1 rounded border border-indigo-300">فحص</button>
                                 </div>
                             `).join('')}
                         </div>
@@ -1105,38 +1111,38 @@
             let bodyHtml = '';
 
             const gaugeGradient = `conic-gradient(${trust.color} ${trust.score * 3.6}deg, #E2E8F0 0deg)`;
-            bodyHtml += `<div class="bg-gradient-to-br from-slate-50 to-white rounded-2xl border-2 border-slate-200 p-5"><div class="flex items-center gap-4"><div class="trust-gauge flex-shrink-0" style="background:${gaugeGradient};"><div class="text-center"><div class="text-2xl font-black" style="color:${trust.color}">${trust.score}</div><div class="text-[9px] font-black text-slate-500">/100</div></div></div><div class="flex-1"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl font-black text-sm" style="background:${trust.bgColor};color:${trust.color};border:2px solid ${trust.color}40;"><span class="text-lg">${trust.emoji}</span> ${trust.label}</div><p class="text-[11px] text-slate-500 font-bold mt-2 leading-relaxed">درجة الثقة من: العمليات الناجحة، الملغاة، عمر الحساب، وحجم التعامل</p></div></div></div>`;
+            bodyHtml += `<div class="bg-gradient-to-br from-slate-50 to-white rounded-2xl border-2 border-slate-200 p-5"><div class="flex items-center gap-4"><div class="trust-gauge flex-shrink-0" style="background:${gaugeGradient};"><div class="text-center"><div class="text-2xl" style="color:${trust.color}">${trust.score}</div><div class="text-[9px] text-slate-500">/100</div></div></div><div class="flex-1"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm" style="background:${trust.bgColor};color:${trust.color};border:2px solid ${trust.color}40;"><span class="text-lg">${trust.emoji}</span> ${trust.label}</div><p class="text-[11px] text-slate-500 mt-2 leading-relaxed">درجة الثقة من: العمليات الناجحة، الملغاة، عمر الحساب، وحجم التعامل</p></div></div></div>`;
 
             if(trust.flags.length > 0) {
-                bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2 flex items-center gap-2"><span>🚨</span> تقرير الأمان</h4><div>${trust.flags.map(f => `<div class="flag-item flag-${f.type}"><span class="text-base flex-shrink-0">${f.icon}</span><span>${f.text}</span></div>`).join('')}</div></div>`;
+                bodyHtml += `<div><h4 class="text-sm text-slate-800 mb-2 flex items-center gap-2"><span>🚨</span> تقرير الأمان</h4><div>${trust.flags.map(f => `<div class="flag-item flag-${f.type}"><span class="text-base flex-shrink-0">${f.icon}</span><span>${f.text}</span></div>`).join('')}</div></div>`;
             }
 
-            bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2">📊 إحصائيات</h4><div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-emerald-700 mb-1">مكتملة</p><p class="text-2xl font-black text-emerald-700">${trust.stats.completed}</p></div>
-                <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-amber-700 mb-1">معلقة</p><p class="text-2xl font-black text-amber-700">${trust.stats.pending}</p></div>
-                <div class="bg-rose-50 border-2 border-rose-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-rose-700 mb-1">ملغاة</p><p class="text-2xl font-black text-rose-700">${trust.stats.rejected}</p></div>
-                <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 text-center"><p class="text-[10px] font-bold text-blue-700 mb-1">حجم</p><p class="text-base font-black text-blue-700">${trust.stats.totalAmount.toLocaleString('en-US')} <span class="text-[10px]">ج</span></p></div>
+            bodyHtml += `<div><h4 class="text-sm text-slate-800 mb-2">📊 إحصائيات</h4><div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-3 text-center"><p class="text-[10px] text-emerald-700 mb-1">مكتملة</p><p class="text-2xl text-emerald-700">${trust.stats.completed}</p></div>
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-center"><p class="text-[10px] text-amber-700 mb-1">معلقة</p><p class="text-2xl text-amber-700">${trust.stats.pending}</p></div>
+                <div class="bg-rose-50 border-2 border-rose-200 rounded-xl p-3 text-center"><p class="text-[10px] text-rose-700 mb-1">ملغاة</p><p class="text-2xl text-rose-700">${trust.stats.rejected}</p></div>
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 text-center"><p class="text-[10px] text-blue-700 mb-1">حجم</p><p class="text-base text-blue-700">${trust.stats.totalAmount.toLocaleString('en-US')} <span class="text-[10px]">ج</span></p></div>
             </div></div>`;
 
-            bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2">📞 تواصل</h4><div class="grid grid-cols-2 gap-2">
-                <a href="tel:${phoneStr}" class="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl text-sm text-center active:scale-95 shadow-lg">📞 اتصال</a>
-                <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent('مرحباً، بخصوص طلبك على تطبيق وصلني كاش، نود التأكد من بياناتك.')}" target="_blank" class="bg-[#25D366] hover:bg-[#1da851] text-white font-black py-3 rounded-xl text-sm text-center active:scale-95 shadow-lg">💬 واتساب</a>
+            bodyHtml += `<div><h4 class="text-sm text-slate-800 mb-2">📞 تواصل</h4><div class="grid grid-cols-2 gap-2">
+                <a href="tel:${phoneStr}" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm text-center active:scale-95 shadow-lg">📞 اتصال</a>
+                <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent('مرحباً، بخصوص طلبك على تطبيق وصلني كاش، نود التأكد من بياناتك.')}" target="_blank" class="bg-[#25D366] hover:bg-[#1da851] text-white py-3 rounded-xl text-sm text-center active:scale-95 shadow-lg">💬 واتساب</a>
             </div></div>`;
 
             if(cOrders.length > 0) {
-                bodyHtml += `<div><h4 class="text-sm font-black text-slate-800 mb-2">📜 سجل العمليات (${cOrders.length})</h4><div class="space-y-2 max-h-64 overflow-y-auto pr-1">${cOrders.map(o => {
+                bodyHtml += `<div><h4 class="text-sm text-slate-800 mb-2">📜 سجل العمليات (${cOrders.length})</h4><div class="space-y-2 max-h-64 overflow-y-auto pr-1">${cOrders.map(o => {
                     const isVf = (o.method === 'vodafone');
-                    const statusBadge = o.status === 'completed' ? '<span class="bg-emerald-100 text-emerald-700 border-emerald-300 border px-2 py-0.5 rounded text-[10px] font-black">مكتمل ✔️</span>' : o.status === 'rejected' ? '<span class="bg-rose-100 text-rose-700 border-rose-300 border px-2 py-0.5 rounded text-[10px] font-black">ملغي ❌</span>' : o.status === 'pending' ? '<span class="bg-amber-100 text-amber-700 border-amber-300 border px-2 py-0.5 rounded text-[10px] font-black">معلق ⏳</span>' : '<span class="bg-blue-100 text-blue-700 border-blue-300 border px-2 py-0.5 rounded text-[10px] font-black">جاري 🔄</span>';
+                    const statusBadge = o.status === 'completed' ? '<span class="bg-emerald-100 text-emerald-700 border-emerald-300 border px-2 py-0.5 rounded text-[10px]">مكتمل ✔️</span>' : o.status === 'rejected' ? '<span class="bg-rose-100 text-rose-700 border-rose-300 border px-2 py-0.5 rounded text-[10px]">ملغي ❌</span>' : o.status === 'pending' ? '<span class="bg-amber-100 text-amber-700 border-amber-300 border px-2 py-0.5 rounded text-[10px]">معلق ⏳</span>' : '<span class="bg-blue-100 text-blue-700 border-blue-300 border px-2 py-0.5 rounded text-[10px]">جاري 🔄</span>';
                     const d = new Date(o.timestamp);
                     const dStr = d.toLocaleDateString('ar-EG', {month:'short', day:'numeric'}) + ' - ' + d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
                     const mName = Object.values(allMerchants).find(m => m.phone === o.target_merchant)?.name || o.merchant_name || 'تاجر';
-                    return `<div class="bg-white border-2 border-slate-200 rounded-xl p-3"><div class="flex justify-between items-start gap-2 mb-1.5"><div class="flex items-center gap-2 flex-wrap"><span class="${isVf ? 'bg-red-100 text-red-700 border-red-300' : 'bg-purple-100 text-purple-700 border-purple-300'} border px-2 py-0.5 rounded text-[10px] font-black">${isVf ? 'فودافون' : 'إنستاباي'}</span>${statusBadge}</div><span class="text-[10px] text-slate-500 font-bold whitespace-nowrap">${dStr}</span></div><div class="flex justify-between items-center"><div class="text-[11px] text-slate-600 font-bold">🏪 ${mName}</div><div class="text-sm font-black text-slate-900">${(parseFloat(o.amount)||0).toLocaleString()} <span class="text-[10px]">ج</span></div></div></div>`;
+                    return `<div class="bg-white border-2 border-slate-200 rounded-xl p-3"><div class="flex justify-between items-start gap-2 mb-1.5"><div class="flex items-center gap-2 flex-wrap"><span class="${isVf ? 'bg-red-100 text-red-700 border-red-300' : 'bg-purple-100 text-purple-700 border-purple-300'} border px-2 py-0.5 rounded text-[10px]">${isVf ? 'فودافون' : 'إنستاباي'}</span>${statusBadge}</div><span class="text-[10px] text-slate-500 whitespace-nowrap">${dStr}</span></div><div class="flex justify-between items-center"><div class="text-[11px] text-slate-600">🏪 ${mName}</div><div class="text-sm text-slate-900">${(parseFloat(o.amount)||0).toLocaleString()} <span class="text-[10px]">ج</span></div></div></div>`;
                 }).join('')}</div></div>`;
             }
 
             if(customer) {
                 const isBlocked = customer.status === 'blocked';
-                bodyHtml += `<div class="pt-3 border-t-2 border-slate-200"><button onclick="window.toggleBlockFromModal('${customer.fb_key}', '${customer.status}')" class="w-full ${isBlocked ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'} text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-lg">${isBlocked ? '✅ فك الحظر' : '🚫 حظر فوري'}</button></div>`;
+                bodyHtml += `<div class="pt-3 border-t-2 border-slate-200"><button onclick="window.toggleBlockFromModal('${customer.fb_key}', '${customer.status}')" class="w-full ${isBlocked ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'} text-white py-3 rounded-xl text-sm active:scale-95 shadow-lg">${isBlocked ? '✅ فك الحظر' : '🚫 حظر فوري'}</button></div>`;
             }
 
             document.getElementById('verifyModalBody').innerHTML = bodyHtml;
@@ -1173,13 +1179,13 @@
                 const orderResults = allOrders.filter(o => (o.key?.toLowerCase().includes(qLower)) || (qDigits && o.customer_phone?.includes(qDigits)) || (qDigits && o.target_merchant?.includes(qDigits))).slice(0, 5);
                 
                 if(customerResults.length === 0 && merchantResults.length === 0 && orderResults.length === 0) {
-                    container.innerHTML = `<div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-5 text-center"><div class="text-3xl mb-1 opacity-40">🔍</div><p class="text-sm font-black text-slate-600">لا توجد نتائج</p></div>`;
+                    container.innerHTML = `<div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-5 text-center"><div class="text-3xl mb-1 opacity-40">🔍</div><p class="text-sm text-slate-600">لا توجد نتائج</p></div>`;
                     container.classList.remove('hidden'); return;
                 }
                 
                 let html = '';
                 if(customerResults.length > 0) {
-                    html += `<div class="mb-3"><h4 class="text-xs font-black text-slate-500 mb-2">👤 عملاء (${customerResults.length})</h4>`;
+                    html += `<div class="mb-3"><h4 class="text-xs text-slate-500 mb-2">👤 عملاء (${customerResults.length})</h4>`;
                     customerResults.forEach(c => {
                         const trust = calculateCustomerTrust(c.phone);
                         const completed = allOrders.filter(o => o.customer_phone === c.phone && o.status === 'completed').length;
@@ -1188,14 +1194,14 @@
                                 <div class="flex items-center gap-3 flex-1 min-w-0">
                                     <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style="background:${trust.bgColor};border:2px solid ${trust.color}40;">${trust.emoji}</div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-black text-slate-900 text-sm truncate">${c.name}</p>
-                                        <p class="text-[11px] font-bold text-slate-500 en-num" dir="ltr">${c.phone}</p>
-                                        <div class="flex gap-2 mt-1 text-[10px] font-black"><span class="text-emerald-600">✔ ${completed}</span></div>
+                                        <p class="text-slate-900 text-sm truncate">${c.name}</p>
+                                        <p class="text-[11px] text-slate-500 en-num" dir="ltr">${c.phone}</p>
+                                        <div class="flex gap-2 mt-1 text-[10px]"><span class="text-emerald-600">✔ ${completed}</span></div>
                                     </div>
                                 </div>
                                 <div class="text-center flex-shrink-0">
-                                    <div class="text-2xl font-black" style="color:${trust.color}">${trust.score}</div>
-                                    <div class="text-[9px] font-black text-slate-500">ثقة</div>
+                                    <div class="text-2xl" style="color:${trust.color}">${trust.score}</div>
+                                    <div class="text-[9px] text-slate-500">ثقة</div>
                                 </div>
                             </div>
                         </div>`;
@@ -1204,24 +1210,24 @@
                 }
                 
                 if(merchantResults.length > 0) {
-                    html += `<div class="mb-3"><h4 class="text-xs font-black text-slate-500 mb-2">🏪 متاجر (${merchantResults.length})</h4>`;
+                    html += `<div class="mb-3"><h4 class="text-xs text-slate-500 mb-2">🏪 متاجر (${merchantResults.length})</h4>`;
                     merchantResults.forEach(m => {
                         const completed = allOrders.filter(o => o.target_merchant === m.phone && o.status === 'completed').length;
                         const isBlocked = m.status === 'blocked';
                         html += `<div class="bg-white border-2 ${isBlocked ? 'border-rose-300' : 'border-slate-200'} rounded-xl p-3 mb-2"><div class="flex items-center gap-3">
                             <div class="w-11 h-11 rounded-xl bg-purple-100 border-2 border-purple-300 flex items-center justify-center text-xl flex-shrink-0">${isBlocked ? '🚷' : '🏪'}</div>
-                            <div class="flex-1 min-w-0"><p class="font-black text-slate-900 text-sm truncate">${m.name}</p><p class="text-[11px] font-bold text-slate-500 en-num" dir="ltr">${m.phone}</p><div class="flex gap-2 mt-1 text-[10px] font-black"><span class="text-emerald-600">✔ ${completed}</span></div></div>
+                            <div class="flex-1 min-w-0"><p class="text-slate-900 text-sm truncate">${m.name}</p><p class="text-[11px] text-slate-500 en-num" dir="ltr">${m.phone}</p><div class="flex gap-2 mt-1 text-[10px]"><span class="text-emerald-600">✔ ${completed}</span></div></div>
                         </div></div>`;
                     });
                     html += `</div>`;
                 }
                 
                 if(orderResults.length > 0) {
-                    html += `<div><h4 class="text-xs font-black text-slate-500 mb-2">📋 عمليات (${orderResults.length})</h4>`;
+                    html += `<div><h4 class="text-xs text-slate-500 mb-2">📋 عمليات (${orderResults.length})</h4>`;
                     orderResults.forEach(o => {
                         const cName = o.customer_name || Object.values(allCustomers).find(c => c.phone === o.customer_phone)?.name || 'عميل';
                         const mName = o.merchant_name || Object.values(allMerchants).find(m => m.phone === o.target_merchant)?.name || 'تاجر';
-                        html += `<div class="bg-white border-2 border-slate-200 rounded-xl p-3 mb-2"><div class="flex justify-between items-center gap-2 mb-1"><span class="text-[10px] font-black text-slate-700">#${o.key.substring(0,8)}</span></div><div class="text-[11px] font-bold text-slate-600 truncate">👤 ${cName} ← 🏪 ${mName}</div><div class="text-sm font-black text-slate-900 mt-1">${(parseFloat(o.amount)||0).toLocaleString()} ج</div></div>`;
+                        html += `<div class="bg-white border-2 border-slate-200 rounded-xl p-3 mb-2"><div class="flex justify-between items-center gap-2 mb-1"><span class="text-[10px] text-slate-700">#${o.key.substring(0,8)}</span></div><div class="text-[11px] text-slate-600 truncate">👤 ${cName} ← 🏪 ${mName}</div><div class="text-sm text-slate-900 mt-1">${(parseFloat(o.amount)||0).toLocaleString()} ج</div></div>`;
                     });
                     html += `</div>`;
                 }
@@ -1270,7 +1276,7 @@
             }
 
             if(liveOrders.length === 0) {
-                container.innerHTML = `<div class="col-span-full bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300 rounded-3xl p-12 text-center"><div class="text-6xl mb-4 opacity-40">📭</div><p class="text-lg font-black text-slate-600 mb-1">لا توجد عمليات مباشرة الآن</p></div>`;
+                container.innerHTML = `<div class="col-span-full bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300 rounded-3xl p-12 text-center"><div class="text-6xl mb-4 opacity-40">📭</div><p class="text-lg text-slate-600 mb-1">لا توجد عمليات مباشرة الآن</p></div>`;
                 return;
             }
 
@@ -1318,68 +1324,68 @@
                     <div class="h-1.5 ${topBarClass}"></div>
                     <div class="p-4 pb-3 border-b border-slate-100">
                         <div class="flex justify-between items-start gap-2 mb-2 flex-wrap">
-                            <span class="${statusColor} border-2 px-2.5 py-1 rounded-lg text-[11px] font-black">${statusLabel}</span>
+                            <span class="${statusColor} border-2 px-2.5 py-1 rounded-lg text-[11px]">${statusLabel}</span>
                             <div class="flex items-center gap-1.5">
-                                <span class="${riskBadgeColor} text-white text-[10px] font-black px-2 py-1 rounded-lg">🛡️ ${risk.label} (${risk.score})</span>
-                                <span class="text-[10px] text-slate-500 font-bold">${timeAgo(o.timestamp)}</span>
+                                <span class="${riskBadgeColor} text-white text-[10px] px-2 py-1 rounded-lg">🛡️ ${risk.label} (${risk.score})</span>
+                                <span class="text-[10px] text-slate-500">${timeAgo(o.timestamp)}</span>
                             </div>
                         </div>
                         <div class="flex gap-1.5 flex-wrap">
-                            <span class="${methodColor} border px-2 py-0.5 rounded-md text-[10px] font-black">${isVf ? '🔴' : '🟣'} ${methodName}</span>
-                            <span class="${txColor} border px-2 py-0.5 rounded-md text-[10px] font-black">${txLabel}</span>
-                            ${liveDist !== null ? `<span class="bg-indigo-100 text-indigo-700 border border-indigo-300 px-2 py-0.5 rounded-md text-[10px] font-black">📏 ${liveDist.toFixed(1)} كم</span>` : ''}
+                            <span class="${methodColor} border px-2 py-0.5 rounded-md text-[10px]"> ${isVf ? '🔴' : '🟣'} ${methodName}</span>
+                            <span class="${txColor} border px-2 py-0.5 rounded-md text-[10px]"> ${txLabel}</span>
+                            ${liveDist !== null ? `<span class="bg-indigo-100 text-indigo-700 border border-indigo-300 px-2 py-0.5 rounded-md text-[10px]">📏 ${liveDist.toFixed(1)} كم</span>` : ''}
                         </div>
                     </div>
 
                     <div class="p-4">
                         <div class="bg-gradient-to-br from-[#0A1F3C] to-[#17477E] rounded-xl py-3 px-3 mb-3 text-center relative overflow-hidden">
                             <div class="absolute -left-4 -top-4 opacity-10 text-6xl">💰</div>
-                            <p class="text-[10px] text-white/70 font-bold mb-0.5">المبلغ</p>
-                            <p class="text-3xl font-black text-white leading-tight">${amount.toLocaleString('en-US')} <span class="text-sm">ج.م</span></p>
+                            <p class="text-[10px] text-white/70 mb-0.5">المبلغ</p>
+                            <p class="text-3xl text-white leading-tight">${amount.toLocaleString('en-US')} <span class="text-sm">ج.م</span></p>
                             <div class="flex justify-center gap-3 mt-1.5 text-[10px]">
-                                <span class="text-amber-300 font-black">عمولة: ${comm.toLocaleString('en-US')} ج</span>
-                                <span class="text-emerald-300 font-black">إجمالي: ${total.toLocaleString('en-US')} ج</span>
+                                <span class="text-amber-300">عمولة: ${comm.toLocaleString('en-US')} ج</span>
+                                <span class="text-emerald-300">إجمالي: ${total.toLocaleString('en-US')} ج</span>
                             </div>
                         </div>
 
                         <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-2">
                             <div class="flex items-center justify-between gap-2 mb-1.5">
-                                <div class="flex items-center gap-2"><span class="text-base">🏃‍♂️</span><span class="text-[10px] text-blue-700 font-black uppercase">العميل</span></div>
-                                <div class="${riskBadgeColor} text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">${trust.emoji} ${trust.score}</div>
+                                <div class="flex items-center gap-2"><span class="text-base">🏃‍♂️</span><span class="text-[10px] text-blue-700 uppercase">العميل</span></div>
+                                <div class="${riskBadgeColor} text-white text-[9px] px-2 py-0.5 rounded-md flex items-center gap-1">${trust.emoji} ${trust.score}</div>
                             </div>
-                            <div class="font-black text-slate-900 text-sm mb-1.5 truncate">${customerName}</div>
+                            <div class="text-slate-900 text-sm mb-1.5 truncate">${customerName}</div>
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <a href="tel:${customerPhone}" class="bg-white border-2 border-blue-300 text-blue-800 font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-blue-100 active:scale-95"><span>📞</span> <span dir="ltr">${customerPhone}</span></a>
-                                <a href="https://wa.me/${cleanCustPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] active:scale-95">💬</a>
-                                <button onclick="window.verifyCustomer('${customerPhone}')" class="bg-gradient-to-r from-indigo-600 to-blue-700 text-white font-black px-2.5 py-1 rounded-lg text-[11px] active:scale-95 shadow-md">🛡️ فحص</button>
+                                <a href="tel:${customerPhone}" class="bg-white border-2 border-blue-300 text-blue-800 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-blue-100 active:scale-95"><span>📞</span> <span dir="ltr">${customerPhone}</span></a>
+                                <a href="https://wa.me/${cleanCustPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] active:scale-95">💬</a>
+                                <button onclick="window.verifyCustomer('${customerPhone}')" class="bg-gradient-to-r from-indigo-600 to-blue-700 text-white px-2.5 py-1 rounded-lg text-[11px] active:scale-95 shadow-md">🛡️ فحص</button>
                             </div>
                         </div>
 
                         <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-2">
-                            <div class="flex items-center gap-2 mb-1.5"><span class="text-base">🏪</span><span class="text-[10px] text-purple-700 font-black uppercase">التاجر</span></div>
-                            <div class="font-black text-slate-900 text-sm mb-1.5 truncate">${merchantName}</div>
+                            <div class="flex items-center gap-2 mb-1.5"><span class="text-base">🏪</span><span class="text-[10px] text-purple-700 uppercase">التاجر</span></div>
+                            <div class="text-slate-900 text-sm mb-1.5 truncate">${merchantName}</div>
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <a href="tel:${merchantPhone}" class="bg-white border-2 border-purple-300 text-purple-800 font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-purple-100 active:scale-95"><span>📞</span> <span dir="ltr">${merchantPhone}</span></a>
-                                <a href="https://wa.me/${cleanMerchPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] active:scale-95">💬</a>
+                                <a href="tel:${merchantPhone}" class="bg-white border-2 border-purple-300 text-purple-800 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] hover:bg-purple-100 active:scale-95"><span>📞</span> <span dir="ltr">${merchantPhone}</span></a>
+                                <a href="https://wa.me/${cleanMerchPhone}?text=${waVerifyMsg}" target="_blank" class="bg-[#25D366] text-white px-2.5 py-1 rounded-lg inline-flex items-center gap-1 text-[11px] active:scale-95">💬</a>
                             </div>
                         </div>
 
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3">
-                            <div class="flex items-center gap-2 mb-1.5"><span class="text-base">📍</span><span class="text-[10px] text-slate-600 font-black uppercase">العنوان</span></div>
-                            <p class="text-xs font-black text-slate-800 leading-relaxed mb-2">${address}</p>
+                            <div class="flex items-center gap-2 mb-1.5"><span class="text-base">📍</span><span class="text-[10px] text-slate-600 uppercase">العنوان</span></div>
+                            <p class="text-xs text-slate-800 leading-relaxed mb-2">${address}</p>
                             ${hasLocation ? `<div class="flex gap-1.5 flex-wrap">
-                                <a href="https://www.google.com/maps/search/?api=1&query=${o.lat},${o.lng}" target="_blank" class="bg-blue-100 text-blue-700 border border-blue-300 text-[11px] font-black px-3 py-1 rounded-lg active:scale-95">🗺️ الموقع</a>
-                                <button onclick="window.switchTab('security')" class="bg-indigo-100 text-indigo-700 border border-indigo-300 text-[11px] font-black px-3 py-1 rounded-lg active:scale-95">📡 تتبع لحظي</button>
+                                <a href="https://www.google.com/maps/search/?api=1&query=${o.lat},${o.lng}" target="_blank" class="bg-blue-100 text-blue-700 border border-blue-300 text-[11px] px-3 py-1 rounded-lg active:scale-95">🗺️ الموقع</a>
+                                <button onclick="window.switchTab('security')" class="bg-indigo-100 text-indigo-700 border border-indigo-300 text-[11px] px-3 py-1 rounded-lg active:scale-95">📡 تتبع لحظي</button>
                             </div>` : ''}
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 mb-3">
-                            <button onclick="window.generateOrderOTP('${o.key}')" class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black py-2.5 rounded-xl text-xs active:scale-95 shadow-md">🔐 رمز OTP</button>
-                            <button onclick="window.cancelSuspiciousOrder('${o.key}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-rose-300 font-black py-2.5 rounded-xl text-xs active:scale-95">🚫 إلغاء فوري</button>
+                            <button onclick="window.generateOrderOTP('${o.key}')" class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-2.5 rounded-xl text-xs active:scale-95 shadow-md">🔐 رمز OTP</button>
+                            <button onclick="window.cancelSuspiciousOrder('${o.key}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-rose-300 py-2.5 rounded-xl text-xs active:scale-95">🚫 إلغاء فوري</button>
                         </div>
 
-                        <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold border-t border-slate-200 pt-2 gap-2">
-                            <span>رقم: <span class="text-slate-700 font-black">#${o.key.substring(0, 8)}</span></span>
+                        <div class="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-200 pt-2 gap-2">
+                            <span>رقم: <span class="text-slate-700">#${o.key.substring(0, 8)}</span></span>
                             <span>⏰ ${formatTime(o.timestamp)}</span>
                         </div>
                     </div>
@@ -1418,7 +1424,7 @@
                         const pPhone = m.phone;
                         const popupHtml = `<div class="text-center" dir="rtl"><b class="text-[#7e122f]">${m.name}</b><br><span class="text-xs text-slate-600" dir="ltr">${m.phone}</span><div id="address_box_${pPhone}"></div></div>`;
                         const marker = L.marker([m.lat, m.lng], { icon: storeIcon }).bindPopup(popupHtml).addTo(map);
-                        marker.on('click', () => { fetchAddress(m.lat, m.lng).then(addr => { let box = document.getElementById(`address_box_${pPhone}`); if(box) { box.innerHTML = `📍 ${addr}`; box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; } }); });
+                        marker.on('click', () => { fetchAddress(m.lat, m.lng).then(addr => { let box = document.getElementById(`address_box_${pPhone}`); if(box) { box.innerHTML = `📍 ${addr}`; box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 border border-slate-200"; } }); });
                         merchantMarkers[pPhone] = marker;
                     }
                 });
@@ -1435,7 +1441,7 @@
                         const pPhone = c.phone;
                         const popupHtml = `<div class="text-center" dir="rtl"><b class="text-[#0f172a]">${c.name}</b><br><span class="text-xs text-slate-600" dir="ltr">${c.phone}</span><div id="cust_address_box_${pPhone}"></div></div>`;
                         const marker = L.marker([lat, lng], { icon: custIcon }).bindPopup(popupHtml).addTo(customerMap);
-                        marker.on('click', () => { fetchAddress(lat, lng).then(addr => { let box = document.getElementById(`cust_address_box_${pPhone}`); if(box) { box.innerHTML = `📍 ${addr}`; box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 font-bold border border-slate-200"; } }); });
+                        marker.on('click', () => { fetchAddress(lat, lng).then(addr => { let box = document.getElementById(`cust_address_box_${pPhone}`); if(box) { box.innerHTML = `📍 ${addr}`; box.className = "mt-2 p-1.5 bg-slate-100 rounded-lg text-[10px] text-slate-700 border border-slate-200"; } }); });
                         customerMarkers[pPhone] = marker;
                     }
                 });
@@ -1458,10 +1464,10 @@
             document.getElementById('tableLocations').innerHTML = Object.values(allMerchants).map(m => {
                 const hasLoc = m.lat && m.lng;
                 return `<tr class="hover:bg-slate-50 border-b border-slate-100">
-                    <td class="p-3 font-black text-slate-800">${m.name}</td>
-                    <td class="p-3 text-slate-600 font-bold" dir="ltr">${m.phone}</td>
+                    <td class="p-3 text-slate-800">${m.name}</td>
+                    <td class="p-3 text-slate-600" dir="ltr">${m.phone}</td>
                     <td class="p-3 text-xs text-slate-500">${m.address || 'بدون عنوان'}</td>
-                    <td class="p-3 text-center">${hasLoc ? `<div class="flex justify-center gap-2"><button onclick="window.focusMerchantOnMap('${m.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 active:scale-95">🗺️</button><a href="https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200">📍</a></div>` : '<span class="text-[11px] font-bold text-slate-400">لا توجد إحداثيات</span>'}</td>
+                    <td class="p-3 text-center">${hasLoc ? `<div class="flex justify-center gap-2"><button onclick="window.focusMerchantOnMap('${m.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-[11px] border border-indigo-200 active:scale-95">🗺️</button><a href="https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-[11px] border border-blue-200">📍</a></div>` : '<span class="text-[11px] text-slate-400">لا توجد إحداثيات</span>'}</td>
                 </tr>`;
             }).join('');
         }
@@ -1472,10 +1478,10 @@
                 if(!lat || !lng) { const co = allOrders.find(o => o.customer_phone === c.phone && o.lat && o.lng); if(co) { lat = co.lat; lng = co.lng; address = co.address || address; } else { const c2 = allOrders.find(o => o.customer_phone === c.phone && o.address); if(c2) address = c2.address; } }
                 const hasLoc = lat && lng;
                 return `<tr class="hover:bg-slate-50 border-b border-slate-100">
-                    <td class="p-3 font-black text-slate-800">${c.name}</td>
-                    <td class="p-3 text-slate-600 font-bold" dir="ltr">${c.phone}</td>
+                    <td class="p-3 text-slate-800">${c.name}</td>
+                    <td class="p-3 text-slate-600" dir="ltr">${c.phone}</td>
                     <td class="p-3 text-xs text-slate-500">${address || 'بدون عنوان'}</td>
-                    <td class="p-3 text-center">${hasLoc ? `<div class="flex justify-center gap-2"><button onclick="window.focusCustomerOnMap('${c.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-indigo-200 active:scale-95">🗺️</button><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-[11px] border border-blue-200">📍</a></div>` : '<span class="text-[11px] font-bold text-slate-400">لا توجد إحداثيات</span>'}</td>
+                    <td class="p-3 text-center">${hasLoc ? `<div class="flex justify-center gap-2"><button onclick="window.focusCustomerOnMap('${c.phone}')" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-[11px] border border-indigo-200 active:scale-95">🗺️</button><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-[11px] border border-blue-200">📍</a></div>` : '<span class="text-[11px] text-slate-400">لا توجد إحداثيات</span>'}</td>
                 </tr>`;
             }).join('');
         }
@@ -1506,17 +1512,17 @@
                 const subEnd = m.subscription_end || m.createdAt || now;
                 const remainingDays = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
                 const subStatusBadge = remainingDays > 0 
-                    ? `<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg text-[10px] font-black">متبقي ${remainingDays} يوم</span>` 
-                    : `<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-lg text-[10px] font-black">منتهي / موقوف</span>`;
+                    ? `<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg text-[10px]">متبقي ${remainingDays} يوم</span>` 
+                    : `<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-lg text-[10px]">منتهي / موقوف</span>`;
 
                 return `<tr class="hover:bg-slate-50 border-b border-slate-100 ${isB ? 'opacity-60 bg-slate-100' : ''}">
-                    <td class="p-3"><div class="font-black text-slate-900">${m.name}${isB ? ' 🚫' : ''}</div><div class="text-xs text-slate-500 max-w-[150px] truncate">${m.address || ''}</div></td>
-                    <td class="p-3"><div class="text-slate-900 font-bold" dir="ltr">${m.phone}</div><div class="text-xs text-rose-600 font-black">PIN: ${m.pin}</div></td>
-                    <td class="p-3"><div class="text-[11px] font-bold text-red-600">فود: ${parseFloat(m.balance_vodafone||0).toLocaleString()} ج</div><div class="text-[11px] font-bold text-purple-700">إنستا: ${parseFloat(m.balance_instapay||0).toLocaleString()} ج</div></td>
+                    <td class="p-3"><div class="text-slate-900">${m.name}${isB ? ' 🚫' : ''}</div><div class="text-xs text-slate-500 max-w-[150px] truncate">${m.address || ''}</div></td>
+                    <td class="p-3"><div class="text-slate-900" dir="ltr">${m.phone}</div><div class="text-xs text-rose-600">PIN: ${m.pin}</div></td>
+                    <td class="p-3"><div class="text-[11px] text-red-600">فود: ${parseFloat(m.balance_vodafone||0).toLocaleString()} ج</div><div class="text-[11px] text-purple-700">إنستا: ${parseFloat(m.balance_instapay||0).toLocaleString()} ج</div></td>
                     
                     <td class="p-3 text-center">
                         <div class="mb-2">${subStatusBadge}</div>
-                        <select onchange="window.manageMerchantSub('${m.fb_key}', this.value); this.value='';" class="text-[11px] font-bold border border-slate-300 bg-white rounded p-1.5 w-full max-w-[160px] outline-none cursor-pointer">
+                        <select onchange="window.manageMerchantSub('${m.fb_key}', this.value); this.value='';" class="text-[11px] border border-slate-300 bg-white rounded p-1.5 w-full max-w-[160px] outline-none cursor-pointer">
                             <option value="">إدارة الاشتراك...</option>
                             <option value="30">تجديد شهر (100 ج)</option>
                             <option value="180">تجديد 6 شهور (500 ج)</option>
@@ -1525,9 +1531,9 @@
                         </select>
                     </td>
                     
-                    <td class="p-3 font-black text-emerald-600">${m.commission_rate||0}%</td>
-                    <td class="p-3 text-center font-black text-blue-600 bg-blue-50 rounded-lg m-1">${mO}</td>
-                    <td class="p-3"><div class="flex justify-center gap-1"><button onclick="window.toggleBlockMerchant('${m.fb_key}', '${m.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border ${isB ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'} active:scale-95">${isB ? '✅' : '🚫'}</button><button onclick="window.deleteMerchant('${m.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 active:scale-95">🗑️</button></div></td>
+                    <td class="p-3 text-emerald-600">${m.commission_rate||0}%</td>
+                    <td class="p-3 text-center text-blue-600 bg-blue-50 rounded-lg m-1">${mO}</td>
+                    <td class="p-3"><div class="flex justify-center gap-1"><button onclick="window.toggleBlockMerchant('${m.fb_key}', '${m.status}')" class="px-2 py-1.5 text-xs rounded-lg border ${isB ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'} active:scale-95">${isB ? '✅' : '🚫'}</button><button onclick="window.deleteMerchant('${m.fb_key}')" class="px-2 py-1.5 text-xs rounded-lg text-white bg-rose-600 active:scale-95">🗑️</button></div></td>
                 </tr>`;
             }).join('');
         }
@@ -1539,11 +1545,11 @@
                 const isB = c.status === 'blocked';
                 const trust = calculateCustomerTrust(c.phone);
                 return `<tr class="hover:bg-slate-50 border-b border-slate-100 ${isB ? 'opacity-60 bg-slate-100' : ''}">
-                    <td class="p-3"><div class="font-black text-slate-900 flex items-center gap-2">${c.name}${isB ? ' 🚫' : ''}<span class="text-[9px] font-black px-1.5 py-0.5 rounded" style="background:${trust.bgColor};color:${trust.color};">${trust.emoji} ${trust.score}</span></div></td>
-                    <td class="p-3"><div class="text-slate-900 font-bold" dir="ltr">${c.phone}</div><div class="text-xs text-rose-600 font-black">PIN: ${c.pin}</div></td>
+                    <td class="p-3"><div class="text-slate-900 flex items-center gap-2">${c.name}${isB ? ' 🚫' : ''}<span class="text-[9px] px-1.5 py-0.5 rounded" style="background:${trust.bgColor};color:${trust.color};">${trust.emoji} ${trust.score}</span></div></td>
+                    <td class="p-3"><div class="text-slate-900" dir="ltr">${c.phone}</div><div class="text-xs text-rose-600">PIN: ${c.pin}</div></td>
                     <td class="p-3 text-xs text-slate-500">${d.toLocaleDateString('ar-EG')}</td>
-                    <td class="p-3 text-center font-black text-emerald-600 bg-emerald-50 rounded-lg m-1">${cO}</td>
-                    <td class="p-3"><div class="flex justify-center gap-1"><button onclick="window.verifyCustomer('${c.phone}')" class="px-2 py-1.5 text-xs font-black rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-300 active:scale-95">🔍</button><button onclick="window.toggleBlockCustomer('${c.fb_key}', '${c.status}')" class="px-2 py-1.5 text-xs font-black rounded-lg border ${isB ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'} active:scale-95">${isB ? '✅' : '🚫'}</button><button onclick="window.deleteCustomer('${c.fb_key}')" class="px-2 py-1.5 text-xs font-black rounded-lg text-white bg-rose-600 active:scale-95">🗑️</button></div></td>
+                    <td class="p-3 text-center text-emerald-600 bg-emerald-50 rounded-lg m-1">${cO}</td>
+                    <td class="p-3"><div class="flex justify-center gap-1"><button onclick="window.verifyCustomer('${c.phone}')" class="px-2 py-1.5 text-xs rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-300 active:scale-95">🔍</button><button onclick="window.toggleBlockCustomer('${c.fb_key}', '${c.status}')" class="px-2 py-1.5 text-xs rounded-lg border ${isB ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'} active:scale-95">${isB ? '✅' : '🚫'}</button><button onclick="window.deleteCustomer('${c.fb_key}')" class="px-2 py-1.5 text-xs rounded-lg text-white bg-rose-600 active:scale-95">🗑️</button></div></td>
                 </tr>`;
             }).join('');
         }
@@ -1554,23 +1560,23 @@
                 const d = new Date(o.timestamp);
                 const ds = d.toLocaleDateString('ar-EG', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
                 let sb = '';
-                if(o.status === 'completed') { sb = '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold text-[10px]">مكتملة ✔️</span>'; cc++; }
-                else if(o.status === 'rejected') { sb = '<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded font-bold text-[10px]">مرفوضة ❌</span>'; rc++; }
-                else if(o.status === 'accepted') sb = '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold text-[10px]">مقبولة</span>';
-                else sb = '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold text-[10px]">قيد الانتظار</span>';
-                const ml = o.method === 'vodafone' ? '<span class="text-red-600 font-black text-[11px]">فودافون</span>' : '<span class="text-purple-700 font-black text-[11px]">إنستاباي</span>';
+                if(o.status === 'completed') { sb = '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px]">مكتملة ✔️</span>'; cc++; }
+                else if(o.status === 'rejected') { sb = '<span class="bg-rose-100 text-rose-700 px-2 py-1 rounded text-[10px]">مرفوضة ❌</span>'; rc++; }
+                else if(o.status === 'accepted') sb = '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px]">مقبولة</span>';
+                else sb = '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px]">قيد الانتظار</span>';
+                const ml = o.method === 'vodafone' ? '<span class="text-red-600 text-[11px]">فودافون</span>' : '<span class="text-purple-700 text-[11px]">إنستاباي</span>';
                 let mName = 'تاجر';
                 Object.values(allMerchants).forEach(m => { if(m.phone === o.target_merchant) mName = m.name; });
                 html += `<tr class="hover:bg-slate-50 border-b border-slate-100">
-                    <td class="p-3 text-[11px] text-slate-500 font-bold whitespace-nowrap">${ds}</td>
-                    <td class="p-3"><div class="font-black text-xs text-slate-800">${o.customer_name || 'بدون اسم'}</div><div class="text-[10px] text-slate-500" dir="ltr">${o.customer_phone}</div></td>
-                    <td class="p-3"><div class="font-black text-xs text-slate-800">${mName}</div><div class="text-[10px] text-slate-500" dir="ltr">${o.target_merchant}</div></td>
-                    <td class="p-3"><div class="font-black text-sm text-slate-900">${o.total_amount||o.amount} ج</div><div class="text-[10px] text-emerald-600 font-bold">ربح: ${o.commission_amount||0} ج</div></td>
+                    <td class="p-3 text-[11px] text-slate-500 whitespace-nowrap">${ds}</td>
+                    <td class="p-3"><div class="text-xs text-slate-800">${o.customer_name || 'بدون اسم'}</div><div class="text-[10px] text-slate-500" dir="ltr">${o.customer_phone}</div></td>
+                    <td class="p-3"><div class="text-xs text-slate-800">${mName}</div><div class="text-[10px] text-slate-500" dir="ltr">${o.target_merchant}</div></td>
+                    <td class="p-3"><div class="text-sm text-slate-900">${o.total_amount||o.amount} ج</div><div class="text-[10px] text-emerald-600">ربح: ${o.commission_amount||0} ج</div></td>
                     <td class="p-3 text-center">${ml}</td>
                     <td class="p-3 text-center">${sb}</td>
                     <td class="p-3 text-center">
-                        <button onclick="window.verifyCustomer('${o.customer_phone}')" class="bg-indigo-50 text-indigo-600 border border-indigo-200 px-2 py-1 rounded text-xs font-bold mr-1">🔍</button>
-                        <button onclick="window.deleteOrder('${o.key}')" class="bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1 rounded text-xs font-bold">حذف</button>
+                        <button onclick="window.verifyCustomer('${o.customer_phone}')" class="bg-indigo-50 text-indigo-600 border border-indigo-200 px-2 py-1 rounded text-xs mr-1">🔍</button>
+                        <button onclick="window.deleteOrder('${o.key}')" class="bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1 rounded text-xs">حذف</button>
                     </td>
                 </tr>`;
             });
@@ -1634,7 +1640,7 @@
         // Pull to refresh
         let ptrY = 0, ptrCY = 0;
         const ptrEl = document.createElement('div');
-        ptrEl.className = "flex justify-center items-center overflow-hidden transition-all duration-200 bg-slate-200 text-slate-700 font-bold text-sm w-full";
+        ptrEl.className = "flex justify-center items-center overflow-hidden transition-all duration-200 bg-slate-200 text-slate-700 text-sm w-full";
         ptrEl.style.height = "0px";
         ptrEl.innerHTML = '<span class="mr-2 text-lg" id="ptr-icon">⬇️</span> <span id="ptr-text">اسحب للتحديث</span>';
         document.body.prepend(ptrEl);
