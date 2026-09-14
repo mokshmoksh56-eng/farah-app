@@ -185,6 +185,7 @@ body{
 .formal-table{ width:100%; border-collapse:collapse; font-size:12.5px; background:#fff; }
 .formal-table thead th{ background:#F1F5F9; color:#0F172A; font-weight:900; padding:11px 10px; text-align:right; border-bottom:2px solid #CBD5E1; font-size:11.5px; white-space:nowrap; }
 .formal-table tbody td{ padding:11px 10px; border-bottom:1px solid #E2E8F0; vertical-align:middle; color:#334155; font-weight:700; line-height:1.45; }
+.formal-table tbody tr:last-child td{ border-bottom:none; }
 .formal-table tbody tr:hover{ background:#F8FAFC; }
 .cell-center{ text-align:center !important; }
 .cell-amount{ font-weight:900; color:#0A1F3C; font-size:13.5px; }
@@ -192,6 +193,8 @@ body{
 .cell-merchant-name{ font-weight:900; color:#0F172A; font-size:13px; }
 .cell-merchant-phone{ font-size:11px; color:#64748B; margin-top:2px; direction:ltr; display:inline-block; }
 .cell-merchant-addr{ font-size:10.5px; color:#94A3B8; margin-top:3px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cell-cust-name{ font-weight:900; color:#0F172A; font-size:13px; }
+.cell-cust-phone{ font-size:11px; color:#64748B; margin-top:2px; direction:ltr; display:inline-block; }
 
 .data-tag{ display:inline-block; padding:3px 9px; border-radius:4px; font-size:10.5px; font-weight:900; white-space:nowrap; line-height:1.4; }
 .tag-vf{ background:var(--vf-bg); color:var(--vf-text); border:1px solid var(--vf-line); }
@@ -199,6 +202,7 @@ body{
 .tag-ok{ background:#ECFDF5; color:#047857; border:1px solid #A7F3D0; }
 .tag-bad{ background:#FFF1F2; color:#BE123C; border:1px solid #FECDD3; }
 .tag-warn{ background:#FFFBEB; color:#B45309; border:1px solid #FDE68A; }
+.tag-info{ background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; }
 
 .btn-del-mini{ display:inline-flex; align-items:center; justify-content:center; gap:3px; padding:4px 9px; border-radius:6px; font-size:10.5px; font-weight:900; background:#FFF1F2; color:#BE123C; border:1px solid #FECDD3; cursor:pointer; transition:all .18s ease; }
 .btn-del-mini:hover{ background:#FFE4E6; }
@@ -571,7 +575,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                         <div id="subPaymentNumber" class="text-xl font-black text-[#17477E] en-num bg-white px-4 py-1.5 rounded-lg border border-blue-200 w-full" dir="ltr">جاري الجلب...</div>
                         <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('subPaymentNumber').innerText); alert('✅ تم نسخ الرقم بنجاح');" class="bg-[#17477E] text-white p-2.5 rounded-lg text-sm active:scale-95 shadow-md" title="نسخ الرقم">📋</button>
                     </div>
-                    <p class="text-[10px] font-bold text-rose-600 mt-2">بعد التحويل، تواصل مع الإدارة لتفعيل حسابك.</p>
+                    <p class="text-[10px] font-bold text-slate-500 mt-2 mb-3">بعد إتمام عملية التحويل، اضغط على الزر بالأسفل.</p>
+                    <button type="button" onclick="window.notifyPaymentMade()" id="btnNotifyPayment" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all">✅ تم التحويل (أرسل إشعار للإدارة)</button>
                 </div>
                 
                 <button type="button" onclick="window.logoutMerchant()" class="btn-ghost w-full">تسجيل الخروج 🚪</button>
@@ -856,7 +861,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         return s;
     };
 
-    /* ---------- نظام التنقل وإدارة التاريخ (متوافق مع زر الرجوع الأساسي) ---------- */
+    /* ---------- نظام التنقل وإدارة التاريخ ---------- */
     let viewHistoryStack = [];
     let currentHistoryIndex = -1;
 
@@ -1026,12 +1031,13 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window.confirmMapSelection = confirmMapSelection;
 
     window.renderMerchantDashboard = function(data) {
+        window.currentActiveMerchantData = data; 
         const now = Date.now();
         const subEnd = data.subscription_end || data.createdAt || now;
         const remainingDays = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
 
         if (remainingDays <= 0) {
-            // إغلاق المتجر في قواعد البيانات إذا لزم الأمر واظهار شاشة الاشتراك
+            // إغلاق المتجر واظهار شاشة الاشتراك
             if (data.status !== 'offline') {
                 let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
                 if (window.dbRef) {
@@ -1041,7 +1047,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 }
             }
 
-            // جلب رقم الإدارة الديناميكي من الفايربيز
+            // جلب رقم الإدارة
             if (window.dbRef) {
                 import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js").then(module => {
                     module.get(module.ref(window.dbRef, 'eqbad_settings/admin_payment_phone')).then(snap => {
@@ -1061,10 +1067,9 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             return;
         }
 
-        window.currentActiveMerchantData = data;
         document.getElementById('merchantProfileName').innerText = data.name || "متجر مسجل";
         
-        // عرض حالة الاشتراك والمدة ديناميكياً تحت اسم التاجر
+        // عرض حالة الاشتراك 
         const badgeHTML = data.subscription_status === 'trial' 
             ? `<span class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mt-1.5 inline-block border border-amber-200">فترة تجريبية: باقي ${remainingDays} يوم</span>`
             : `<span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5 inline-block border border-emerald-200">اشتراك مفعّل: باقي ${remainingDays} يوم</span>`;
@@ -1226,7 +1231,33 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window._customerPendingUnsub = null;
     window._authReady = false;
 
-    // التحكم الذكي في محافظ فودافون وإنستاباي وربطها بظهور المتجر
+    // دالة إرسال إشعار الدفع للإدارة
+    window.notifyPaymentMade = function() {
+        if(!window.currentMerchantPhone) return;
+        const btn = document.getElementById('btnNotifyPayment');
+        btn.innerHTML = "⏳ جاري الإرسال..."; 
+        btn.disabled = true;
+
+        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js").then(module => {
+            const reqRef = module.push(module.ref(window.dbRef, 'eqbad_subscription_requests'));
+            module.set(reqRef, {
+                merchant_phone: window.currentMerchantPhone,
+                merchant_name: window.currentActiveMerchantData ? window.currentActiveMerchantData.name : 'تاجر',
+                merchant_key: window.currentMerchantKey,
+                timestamp: Date.now(),
+                status: 'pending'
+            }).then(() => {
+                btn.innerHTML = "✔️ تم إرسال الطلب للإدارة بنجاح";
+                btn.className = "w-full bg-slate-200 text-slate-600 font-black py-3 rounded-xl text-sm mb-2 cursor-not-allowed";
+                alert("✅ تم إرسال إشعار الدفع للإدارة. سيتم مراجعة الدفعة وتفعيل حسابك قريباً.");
+            }).catch(e => {
+                btn.innerHTML = "✅ تم التحويل (أرسل إشعار للإدارة)"; 
+                btn.disabled = false;
+                alert("خطأ في الإرسال: " + e.message);
+            });
+        });
+    };
+
     window.toggleServiceStatus = function(type) {
         if(!window.currentMerchantPhone) return;
         let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
@@ -1255,7 +1286,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }).catch(err => alert("خطأ: " + err.message));
     };
 
-    // التحكم الذكي في خزنة الكاش ورصيد التحويل وربطها بظهور المتجر
     window.toggleProvideService = function(type) {
         if(!window.currentMerchantPhone) return;
         let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
@@ -1509,6 +1539,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️"; btn.disabled = false;
                 return alert("هذا الرقم مسجل بالفعل في النظام!");
             }
+            
             // إضافة الاشتراك التجريبي 30 يوم
             const merchantData = {
                 name: storeName, phone: phone, pin: pin, commission_rate: 0, enable_vodafone: enableVf, enable_instapay: enableIp,
@@ -1630,7 +1661,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             try {
                 if(snap.exists()) {
                     const m = snap.val();
-                    
+                    window.currentActiveMerchantData = m; 
+
                     // التحكم الذكي في شاشة انتهاء الاشتراك عند التحديث اللحظي من الفايربيز
                     const now = Date.now();
                     const subEnd = m.subscription_end || m.createdAt || now;
