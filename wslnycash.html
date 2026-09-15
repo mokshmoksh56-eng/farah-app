@@ -1396,6 +1396,62 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window._customerPendingUnsub = null;
     window._authReady = false;
 
+    /* ====== نظام منع فتح الحساب على أكتر من جهاز ====== */
+    window.generateSessionId = function() {
+        return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 15);
+    };
+
+    window.watchMerchantSession = function(mKey) {
+        if (window._merchantSessionUnsub) { try { window._merchantSessionUnsub(); } catch(e){} window._merchantSessionUnsub = null; }
+        window._merchantSessionUnsub = onValue(ref(db, 'eqbad_merchants/' + mKey + '/current_session'), (snap) => {
+            const serverSession = snap.val();
+            const localSession = localStorage.getItem('eqbad_merchant_session');
+            if (serverSession && localSession && serverSession !== localSession) {
+                window.forceMerchantLogout();
+            }
+        });
+    };
+
+    window.watchCustomerSession = function(phone) {
+        if (window._customerSessionUnsub) { try { window._customerSessionUnsub(); } catch(e){} window._customerSessionUnsub = null; }
+        window._customerSessionUnsub = onValue(ref(db, 'eqbad_customers/customer_' + phone + '/current_session'), (snap) => {
+            const serverSession = snap.val();
+            const localSession = localStorage.getItem('eqbad_customer_session');
+            if (serverSession && localSession && serverSession !== localSession) {
+                window.forceCustomerLogout();
+            }
+        });
+    };
+
+    window.forceMerchantLogout = function() {
+        if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
+        if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
+        if (window._mySubReqUnsub) { try { window._mySubReqUnsub(); } catch(e){} window._mySubReqUnsub = null; }
+        if (window._merchantSessionUnsub) { try { window._merchantSessionUnsub(); } catch(e){} window._merchantSessionUnsub = null; }
+        localStorage.removeItem('eqbad_merchant_phone');
+        localStorage.removeItem('eqbad_merchant_key');
+        localStorage.removeItem('eqbad_merchant_session');
+        window.currentMerchantPhone = "";
+        window.currentMerchantKey = "";
+        window.currentActiveMerchantData = null;
+        window.notifiedOrders.clear();
+        if (window.clearAllPendingToasts) window.clearAllPendingToasts();
+        alert("⚠️ تم تسجيل الدخول لحسابك من جهاز آخر.\n\nسيتم تسجيل خروجك من هذا الجهاز الآن.");
+        if (window.showView) window.showView('roleView');
+    };
+
+    window.forceCustomerLogout = function() {
+        if (window._customerPendingUnsub) { try { window._customerPendingUnsub(); } catch(e){} window._customerPendingUnsub = null; }
+        if (window._customerSessionUnsub) { try { window._customerSessionUnsub(); } catch(e){} window._customerSessionUnsub = null; }
+        localStorage.removeItem('eqbad_customer_phone');
+        localStorage.removeItem('eqbad_customer_name');
+        localStorage.removeItem('eqbad_customer_session');
+        window.currentCustomerPhone = "";
+        window.currentCustomerName = "";
+        alert("⚠️ تم تسجيل الدخول لحسابك من جهاز آخر.\n\nسيتم تسجيل خروجك من هذا الجهاز الآن.");
+        if (window.showView) window.showView('roleView');
+    };
+
     window.notifyPaymentMade = function() {
         if(!window.currentMerchantPhone) return;
 
@@ -1815,11 +1871,29 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                     snap = await get(ref(db, 'eqbad_merchants/' + mKey));
                 }
                 if (snap.exists()) {
+                    const mData = snap.val();
+                    const serverSession = mData.current_session;
+                    const localSession = localStorage.getItem('eqbad_merchant_session');
+
+                    if (serverSession && localSession && serverSession !== localSession) {
+                        localStorage.removeItem('eqbad_merchant_phone');
+                        localStorage.removeItem('eqbad_merchant_key');
+                        localStorage.removeItem('eqbad_merchant_session');
+                        alert("⚠️ هذا الحساب مفتوح على جهاز آخر حالياً.\n\nلا يمكن فتح الحساب على أكتر من جهاز في نفس الوقت.");
+                        showView('roleView');
+                        return;
+                    }
+
+                    const mySession = window.generateSessionId();
+                    localStorage.setItem('eqbad_merchant_session', mySession);
+                    await update(ref(db, 'eqbad_merchants/' + mKey), { current_session: mySession });
+
                     window.currentMerchantPhone = window.normalizePhone(savedMerchantPhone);
                     window.currentMerchantKey = mKey;
                     window.requestPushPermissions('merchant', window.currentMerchantPhone);
-                    window.renderMerchantDashboard(snap.val());
+                    window.renderMerchantDashboard(mData);
                     window.listenToOrders();
+                    window.watchMerchantSession(mKey);
                 } else {
                     localStorage.removeItem('eqbad_merchant_phone');
                     localStorage.removeItem('eqbad_merchant_key');
@@ -1827,12 +1901,39 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 }
             } catch(e) { showView('roleView'); }
         } else if (savedCustomerPhone) {
-            window.currentCustomerPhone = window.normalizePhone(savedCustomerPhone);
-            window.currentCustomerName = savedCustomerName || "عميل مسجل";
-            window.requestPushPermissions('customer', window.currentCustomerPhone);
-            document.getElementById('custProfileName').innerText = window.currentCustomerName;
-            document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
-            showView('customerView');
+            const custPhone = window.normalizePhone(savedCustomerPhone);
+            let custSnap = await get(ref(db, 'eqbad_customers/customer_' + custPhone));
+            if (custSnap.exists()) {
+                const cData = custSnap.val();
+                const serverSession = cData.current_session;
+                const localSession = localStorage.getItem('eqbad_customer_session');
+
+                if (serverSession && localSession && serverSession !== localSession) {
+                    localStorage.removeItem('eqbad_customer_phone');
+                    localStorage.removeItem('eqbad_customer_name');
+                    localStorage.removeItem('eqbad_customer_session');
+                    alert("⚠️ هذا الحساب مفتوح على جهاز آخر حالياً.\n\nلا يمكن فتح الحساب على أكتر من جهاز في نفس الوقت.");
+                    showView('roleView');
+                    return;
+                }
+
+                const mySession = window.generateSessionId();
+                localStorage.setItem('eqbad_customer_session', mySession);
+                await update(ref(db, 'eqbad_customers/customer_' + custPhone), { current_session: mySession });
+
+                window.currentCustomerPhone = custPhone;
+                window.currentCustomerName = savedCustomerName || cData.name || "عميل مسجل";
+                window.requestPushPermissions('customer', custPhone);
+                document.getElementById('custProfileName').innerText = window.currentCustomerName;
+                document.getElementById('custProfilePhone').innerText = custPhone;
+                showView('customerView');
+                window.watchCustomerSession(custPhone);
+            } else {
+                localStorage.removeItem('eqbad_customer_phone');
+                localStorage.removeItem('eqbad_customer_name');
+                localStorage.removeItem('eqbad_customer_session');
+                showView('roleView');
+            }
         } else { showView('roleView'); }
     });
 
@@ -1850,7 +1951,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         
         btn.innerHTML = "⏳ جاري الفحص..."; btn.disabled = true;
         try {
-            // ✅ فحص السجل المركزي أولاً
             let regSnap = await get(ref(db, 'eqbad_used_phones/' + phone));
             if (regSnap.exists()) {
                 const regType = regSnap.val().type === 'merchant' ? 'تاجر' : 'عميل';
@@ -1858,7 +1958,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 return alert("❌ هذا الرقم مسجل بالفعل في النظام كـ (" + regType + ")!\n\nكل رقم تليفون يُسمح له بحساب واحد فقط.");
             }
 
-            // فحص احتياطي للمسارات القديمة
             let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
             let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
             let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone));
@@ -1868,8 +1967,10 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 return alert("❌ هذا الرقم مسجل بالفعل في النظام!");
             }
 
-            // ✅ تسجيل العميل + السجل المركزي في نفس الوقت
-            await set(ref(db, 'eqbad_customers/customer_' + phone), { name: name, phone: phone, pin: pin, createdAt: Date.now() });
+            const mySession = window.generateSessionId();
+            localStorage.setItem('eqbad_customer_session', mySession);
+
+            await set(ref(db, 'eqbad_customers/customer_' + phone), { name: name, phone: phone, pin: pin, createdAt: Date.now(), current_session: mySession });
             await set(ref(db, 'eqbad_used_phones/' + phone), { 
                 type: 'customer', 
                 name: name, 
@@ -1885,6 +1986,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             document.getElementById('custProfilePhone').innerText = phone;
             btn.innerHTML = "إنشاء الحساب ✔️"; btn.disabled = false;
             showView('customerView');
+            window.watchCustomerSession(phone);
         } catch (err) {
             btn.innerHTML = "إنشاء الحساب ✔️"; btn.disabled = false;
             alert("خطأ: " + err.message);
@@ -1905,6 +2007,10 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             let snap = await get(ref(db, 'eqbad_customers/customer_' + phone));
             btn.innerHTML = "تسجيل الدخول 🏃‍♂️"; btn.disabled = false;
             if(snap.exists() && String(snap.val().pin) === String(pin)) {
+                const mySession = window.generateSessionId();
+                localStorage.setItem('eqbad_customer_session', mySession);
+                await update(ref(db, 'eqbad_customers/customer_' + phone), { current_session: mySession });
+
                 window.currentCustomerPhone = phone;
                 window.currentCustomerName = snap.val().name;
                 localStorage.setItem('eqbad_customer_phone', phone);
@@ -1913,6 +2019,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 document.getElementById('custProfileName').innerText = window.currentCustomerName;
                 document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
                 showView('customerView');
+                window.watchCustomerSession(phone);
             } else { alert("رقم الهاتف أو الرقم السري غير صحيح."); }
         } catch (err) {
             btn.innerHTML = "تسجيل الدخول 🏃‍♂️"; btn.disabled = false;
@@ -1921,9 +2028,14 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     };
 
     window.logoutCustomer = function() {
+        if (window.currentCustomerPhone) {
+            update(ref(db, 'eqbad_customers/customer_' + window.currentCustomerPhone), { current_session: null }).catch(()=>{});
+        }
         if (window._customerPendingUnsub) { try { window._customerPendingUnsub(); } catch(e){} window._customerPendingUnsub = null; }
+        if (window._customerSessionUnsub) { try { window._customerSessionUnsub(); } catch(e){} window._customerSessionUnsub = null; }
         localStorage.removeItem('eqbad_customer_phone');
         localStorage.removeItem('eqbad_customer_name');
+        localStorage.removeItem('eqbad_customer_session');
         window.currentCustomerPhone = "";
         window.currentCustomerName = "";
         showView('roleView');
@@ -1946,7 +2058,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         const btn = document.getElementById('btnRegMerchant');
         btn.innerHTML = "⏳ جاري الفحص..."; btn.disabled = true;
         try {
-            // ✅ فحص السجل المركزي أولاً
             let regSnap = await get(ref(db, 'eqbad_used_phones/' + phone));
             if (regSnap.exists()) {
                 const regType = regSnap.val().type === 'merchant' ? 'تاجر' : 'عميل';
@@ -1954,7 +2065,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 return alert("❌ هذا الرقم مسجل بالفعل في النظام كـ (" + regType + ")!\n\nكل رقم تليفون يُسمح له بحساب واحد فقط.");
             }
 
-            // فحص احتياطي للمسارات القديمة
             let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
             let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
             let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone));
@@ -1964,6 +2074,9 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 return alert("❌ هذا الرقم مسجل بالفعل في النظام!");
             }
             
+            const mySession = window.generateSessionId();
+            localStorage.setItem('eqbad_merchant_session', mySession);
+
             const merchantData = {
                 name: storeName, phone: phone, pin: pin, commission_rate: 0, enable_vodafone: enableVf, enable_instapay: enableIp,
                 provide_cash: true, provide_transfer: true, min_amount_vf: 50, max_amount_vf: 30000, min_amount_ip: 50, max_amount_ip: 30000,
@@ -1971,7 +2084,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 address: window.finalMerchAddress || "موقع محدد عبر الخريطة", status: 'active', createdAt: Date.now(),
                 subscription_end: Date.now() + (30 * 24 * 60 * 60 * 1000),
                 subscription_status: 'trial',
-                subscription_plan: 'monthly'
+                subscription_plan: 'monthly',
+                current_session: mySession
             };
             let mKey = 'merchant_' + phone;
             await set(ref(db, 'eqbad_merchants/' + mKey), merchantData);
@@ -1988,6 +2102,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             btn.innerHTML = "تأكيد وتفعيل الحساب ✔️"; btn.disabled = false;
             window.renderMerchantDashboard(merchantData);
             window.listenToOrders();
+            window.watchMerchantSession(mKey);
         } catch (err) {
             btn.innerHTML = "تأكيد وتفعيل الحساب ✔️"; btn.disabled = false;
             alert("خطأ: " + err.message);
@@ -2010,6 +2125,10 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             if (!snap.exists()) { actualKey = phone; snap = await get(ref(db, 'eqbad_merchants/' + actualKey)); }
             btn.innerHTML = "دخول لصفحة المتجر 🏪"; btn.disabled = false;
             if(snap.exists() && String(snap.val().pin) === String(pin)) {
+                const mySession = window.generateSessionId();
+                localStorage.setItem('eqbad_merchant_session', mySession);
+                await update(ref(db, 'eqbad_merchants/' + actualKey), { current_session: mySession });
+
                 window.currentMerchantPhone = phone;
                 window.currentMerchantKey = actualKey;
                 localStorage.setItem('eqbad_merchant_phone', phone);
@@ -2017,6 +2136,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 window.requestPushPermissions('merchant', phone);
                 window.renderMerchantDashboard(snap.val());
                 window.listenToOrders();
+                window.watchMerchantSession(actualKey);
             } else { alert("رقم الهاتف أو الرقم السري غير صحيح."); }
         } catch (err) {
             btn.innerHTML = "دخول لصفحة المتجر 🏪"; btn.disabled = false;
@@ -2025,11 +2145,16 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     };
 
     window.logoutMerchant = function() {
+        if (window.currentMerchantKey) {
+            update(ref(db, 'eqbad_merchants/' + window.currentMerchantKey), { current_session: null }).catch(()=>{});
+        }
         if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
         if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
         if (window._mySubReqUnsub) { try { window._mySubReqUnsub(); } catch(e){} window._mySubReqUnsub = null; }
+        if (window._merchantSessionUnsub) { try { window._merchantSessionUnsub(); } catch(e){} window._merchantSessionUnsub = null; }
         localStorage.removeItem('eqbad_merchant_phone');
         localStorage.removeItem('eqbad_merchant_key');
+        localStorage.removeItem('eqbad_merchant_session');
         window.currentMerchantPhone = "";
         window.currentMerchantKey = "";
         window.currentActiveMerchantData = null;
