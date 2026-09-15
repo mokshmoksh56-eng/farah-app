@@ -274,6 +274,72 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 ::-webkit-scrollbar-track{ background:transparent; }
 ::-webkit-scrollbar-thumb{ background:#CBD5E1; border-radius:99px; }
 ::-webkit-scrollbar-thumb:hover{ background:#94A3B8; }
+
+/* ==== إشعار الطلب الجديد البارز للتاجر ==== */
+#orderToastContainer{
+    position:fixed; top:12px; left:50%; transform:translateX(-50%);
+    z-index:9999999; display:flex; flex-direction:column; gap:10px;
+    width:92vw; max-width:440px; pointer-events:none;
+}
+.new-order-toast{
+    pointer-events:auto; position:relative;
+    background:linear-gradient(135deg,#059669 0%,#10B981 100%);
+    color:#fff; border-radius:20px; padding:14px 16px;
+    display:flex; align-items:center; gap:12px;
+    box-shadow:0 20px 40px -10px rgba(16,185,129,.7), 0 0 0 3px rgba(255,255,255,.35) inset;
+    border:2px solid #fff; direction:rtl;
+    animation:slideDownToast .5s cubic-bezier(.16,1,.3,1), notifShake .6s ease .5s;
+}
+.new-order-toast .notif-close{
+    position:absolute; top:6px; left:8px;
+    background:rgba(255,255,255,.25); color:#fff; border:none;
+    width:22px; height:22px; border-radius:50%;
+    font-size:12px; font-weight:900; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Cairo',sans-serif;
+}
+.new-order-toast .notif-close:hover{ background:rgba(255,255,255,.45); }
+.new-order-toast .notif-pulse{
+    font-size:32px; flex-shrink:0;
+    animation:notifPulse 1s ease-in-out infinite;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.3));
+}
+.new-order-toast .notif-content{ flex:1; min-width:0; }
+.new-order-toast .notif-title{
+    font-size:15px; font-weight:900; margin-bottom:4px;
+    text-shadow:0 1px 3px rgba(0,0,0,.25);
+}
+.new-order-toast .notif-body{
+    font-size:13px; font-weight:700; line-height:1.5;
+}
+.new-order-toast .notif-body b{ color:#FEF3C7; font-size:14.5px; }
+.new-order-toast .notif-btn{
+    background:#fff; color:#065F46; border:none;
+    border-radius:12px; padding:10px 14px;
+    font-size:12.5px; font-weight:900; cursor:pointer;
+    font-family:'Cairo',sans-serif; flex-shrink:0;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);
+    transition:transform .2s ease, background .2s ease;
+    white-space:nowrap;
+}
+.new-order-toast .notif-btn:hover{ background:#ECFDF5; }
+.new-order-toast .notif-btn:active{ transform:scale(.94); }
+@keyframes slideDownToast{
+    from{ transform:translateY(-120%); opacity:0; }
+    to{ transform:translateY(0); opacity:1; }
+}
+@keyframes notifPulse{
+    0%,100%{ transform:scale(1) rotate(0); }
+    25%{ transform:scale(1.2) rotate(-12deg); }
+    75%{ transform:scale(1.2) rotate(12deg); }
+}
+@keyframes notifShake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-6px); }
+    40%{ transform:translateX(6px); }
+    60%{ transform:translateX(-4px); }
+    80%{ transform:translateX(4px); }
+}
 </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-3 sm:p-5 relative">
@@ -786,6 +852,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     window.currentMerchantKey = "";
     window.notifiedOrders = new Set();
     window.merchantMarkers = {};
+    window.sessionStartTime = Date.now();
 
     window.currentSelectedDays = 30;
     window.currentSelectedPkgName = 'شهر';
@@ -1122,6 +1189,59 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         } catch(e) {}
     };
 
+    /* ====== إشعار الطلب الجديد البارز للتاجر ====== */
+    window.showNewOrderToast = function(order, reqKey) {
+        let container = document.getElementById('orderToastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'orderToastContainer';
+            document.body.appendChild(container);
+        }
+        if (document.getElementById('toast-' + reqKey)) return;
+
+        const methodName = window.getMethodArabicName(order.method || 'vodafone');
+        const isCashOut = order.transaction_type === 'cash_out' || !order.transaction_type;
+
+        const toast = document.createElement('div');
+        toast.id = 'toast-' + reqKey;
+        toast.className = 'new-order-toast';
+        toast.innerHTML = `
+            <button type="button" class="notif-close" onclick="document.getElementById('toast-${reqKey}').remove()">✕</button>
+            <div class="notif-pulse">🔔</div>
+            <div class="notif-content">
+                <div class="notif-title">🚀 طلب جديد وصل!</div>
+                <div class="notif-body">
+                    ${isCashOut ? '💵 طلب سيولة' : '📱 طلب رصيد'} بمبلغ <b>${window.numEN(order.amount)} ج.م</b>
+                    <br><span style="font-size:11.5px;opacity:.92;">${methodName} • ${order.customer_name || 'عميل'}</span>
+                </div>
+            </div>
+            <button type="button" class="notif-btn" onclick="window.goToNewOrder('${reqKey}')">عرض الطلب ↓</button>
+        `;
+        container.appendChild(toast);
+    };
+
+    window.goToNewOrder = function(reqKey) {
+        const activeView = localStorage.getItem('eqbad_active_view');
+        if (activeView !== 'merchantDashboardView') {
+            if (window.showView) window.showView('merchantDashboardView');
+            setTimeout(() => window.goToNewOrder(reqKey), 450);
+            return;
+        }
+        const container = document.getElementById('liveRequestsContainer');
+        if (container) {
+            container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            container.style.transition = 'box-shadow .4s ease, background .4s ease';
+            container.style.boxShadow = '0 0 0 4px #10B981, 0 0 40px rgba(16,185,129,.7)';
+            container.style.background = '#ECFDF5';
+            setTimeout(() => {
+                container.style.boxShadow = '';
+                container.style.background = '';
+            }, 2500);
+        }
+        const t = document.getElementById('toast-' + reqKey);
+        if (t) t.remove();
+    };
+
     window.focusMerchantOnMap = function(phone) {
         document.querySelectorAll('.merchant-card-item').forEach(card => card.classList.remove('is-focused'));
         const selectedCard = document.getElementById(`merchant-card-${phone}`);
@@ -1401,7 +1521,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             document.getElementById('merchantProfilePhone').innerHTML = `<span dir="ltr">${data.phone || window.currentMerchantPhone || ""}</span>`;
         }
 
-        // ✅ شارات الاشتراك (بدون كلمة "مجاناً")
         const badgesElem = document.getElementById('merchantSubBadges');
         if (badgesElem) {
             badgesElem.innerHTML = `
@@ -1839,6 +1958,9 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         const myPhone = window.normalizePhone(window.currentMerchantPhone || localStorage.getItem('eqbad_merchant_phone'));
         let mKey = window.currentMerchantKey || ('merchant_' + myPhone);
 
+        // تسجيل وقت بدء الجلسة لتمييز الطلبات الجديدة عن القديمة
+        window.sessionStartTime = Date.now();
+
         if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
         if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
 
@@ -1925,7 +2047,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                         const phoneElem = document.getElementById('merchantProfilePhone');
                         if (phoneElem) phoneElem.innerHTML = `<span dir="ltr">${m.phone || window.currentMerchantPhone || ""}</span>`;
 
-                        // ✅ شارات الاشتراك (بدون كلمة "مجاناً")
                         const badgesElem = document.getElementById('merchantSubBadges');
                         if (badgesElem) {
                             badgesElem.innerHTML = `
@@ -1957,6 +2078,8 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 let activeCount = 0;
                 let activeHtml = "";
                 let isNewOrderArrived = false;
+                let latestNewOrder = null;
+                let latestNewOrderKey = null;
 
                 if(snapshot.exists()) {
                     let requests = [];
@@ -1976,7 +2099,13 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 
                             if(req.status === 'pending' && !window.notifiedOrders.has(reqKey)) {
                                 window.notifiedOrders.add(reqKey);
-                                isNewOrderArrived = true;
+                                if ((req.timestamp || 0) > (window.sessionStartTime || 0)) {
+                                    isNewOrderArrived = true;
+                                    if (!latestNewOrder) {
+                                        latestNewOrder = req;
+                                        latestNewOrderKey = reqKey;
+                                    }
+                                }
                             }
 
                             const cardClass = window.getOrderCardClass(method);
@@ -2049,7 +2178,10 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                     });
                 }
 
-                if (isNewOrderArrived) window.playLoudNotification();
+                if (isNewOrderArrived) {
+                    window.playLoudNotification();
+                    if (latestNewOrder) window.showNewOrderToast(latestNewOrder, latestNewOrderKey);
+                }
 
                 badge.innerHTML = `<span class="en-num">${window.numEN(activeCount)}</span> طلب`;
                 activeContainer.innerHTML = activeCount > 0 ? activeHtml : `<div class="text-center py-5 text-slate-400 text-sm font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
