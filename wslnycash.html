@@ -266,7 +266,6 @@ body.dark-mode .sub-pkg-card{ background:#1E293B !important; border-color:#33415
 body.dark-mode .rating-modal-box{ background:#1E293B; }
 body.dark-mode .rating-modal-box h3{ color:#F1F5F9; }
 body.dark-mode .mc-rating-row{ border-color:#334155; }
-body.dark-mode .sound-btn{ background:#1E293B !important; border-color:#334155 !important; color:#F1F5F9 !important; }
 #darkModeToggle{
   position:fixed; bottom:16px; left:16px; z-index:9999;
   width:48px; height:48px; border-radius:50%;
@@ -687,25 +686,6 @@ body.dark-mode #darkModeToggle{ background:linear-gradient(135deg,#F1F5F9,#CBD5E
                     </button>
                     <button type="button" id="btnSettingsIp" onclick="window.openLimitsSettings('ip')" class="btn-settings"><span>⚙️</span> إعدادات إنستاباي</button>
                 </div>
-            </div>
-
-            <div class="panel-soft p-3 mb-4" id="soundSettingsPanel">
-                <label class="field-label mb-2 flex items-center gap-2"><span>🎵</span> نغمة إشعار الطلبات</label>
-                <div class="grid grid-cols-3 gap-2 mb-2" id="soundSelector">
-                    <button type="button" onclick="window.selectSound('system_default', this)" data-sound="system_default" class="sound-btn p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 text-xs font-black">📱 نغمة الجهاز</button>
-                    <button type="button" onclick="window.selectSound('alarm', this)" data-sound="alarm" class="sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black">🔔 عادي</button>
-                    <button type="button" onclick="window.selectSound('bell', this)" data-sound="bell" class="sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black">🎶 جرس</button>
-                    <button type="button" onclick="window.selectSound('chime', this)" data-sound="chime" class="sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black">🎼 نغمة</button>
-                    <button type="button" onclick="window.selectSound('ding', this)" data-sound="ding" class="sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black">🔕 خفيف</button>
-                    <button type="button" onclick="window.selectSound('beep', this)" data-sound="beep" class="sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black">📢 صفير</button>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                    <label for="customSoundFile" id="btnCustomSound" class="sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black cursor-pointer text-center flex items-center justify-center">⬆️ ارفع نغمة</label>
-                    <input type="file" id="customSoundFile" accept="audio/*" class="hidden" onchange="window.uploadCustomSound(this)">
-                    <button type="button" onclick="window.previewCurrentSound()" class="p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 text-xs font-black">▶️ تجربة</button>
-                    <button type="button" onclick="window.removeCustomSound()" class="p-2 rounded-xl border-2 border-rose-300 bg-rose-50 text-rose-700 text-xs font-black">🗑️ حذف</button>
-                </div>
-                <p class="text-[10px] text-slate-500 font-bold mt-2 text-center leading-relaxed">💡 <b>نغمة الجهاز</b>: تشغّل نغمة الإشعارات الافتراضية في هاتفك.<br>⬆️ أو ارفع نغمة من جهازك (mp3/wav/ogg — حتى 5 ميجا).</p>
             </div>
 
             <div id="vfSettingsPanel" class="hidden bg-[#B91C1C] border-2 border-[#991B1B] p-4 rounded-2xl shadow-lg flex-col gap-4 mb-4 mt-3">
@@ -1390,10 +1370,13 @@ window.submitRating = function() {
     }
 };
 
-/* ============ نظام النغمات الجديد ============ */
-let currentMerchantSound = 'system_default';
-let customSoundDataURL = null;
+/* ================================================================
+   🎵 نظام النغمات — النغمة ثابتة في التطبيق
+   نغمة "وصلني كاش" من Pixabay (مجانية تجاريًا)
+   ================================================================ */
+const WSLNY_SOUND_URL = 'https://files.catbox.moe/x98fa6.mp3';
 
+/* نغمة احتياطية بـ Web Audio (لو الرابط فشل) */
 window.playSystemDefaultTone = function() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1413,185 +1396,37 @@ window.playSystemDefaultTone = function() {
     } catch(e) { console.log('AudioContext error:', e); }
 };
 
+/* تشغيل إشعار النظام (يتزامن مع النغمة) */
 window.playDeviceNotificationSound = function(title, body) {
     if ('Notification' in window && Notification.permission === 'granted') {
         try {
-            new Notification(title || '🔔 طلب جديد', {
+            new Notification(title || '💰 وصلني كاش', {
                 body: body || 'وصلك طلب جديد',
                 icon: 'icon.png',
                 dir: 'rtl',
-                silent: false,
-                requireInteraction: true,
-                vibrate: [500, 250, 500, 250, 500]
+                silent: true,
+                requireInteraction: true
             });
         } catch(e) { console.log('Notification error:', e); }
     }
 };
 
-window.playMerchantCustomSound = function(soundKey) {
-    soundKey = soundKey || currentMerchantSound;
-    if (soundKey === 'custom') {
-        const url = customSoundDataURL || (window.currentActiveMerchantData && window.currentActiveMerchantData.custom_sound_url);
-        if (url) {
-            try {
-                const audio = new Audio(url);
-                audio.volume = 1.0;
-                audio.crossOrigin = 'anonymous';
-                audio.play().catch(e => { console.log('audio blocked:', e); window.playSystemDefaultTone(); });
-                if (navigator.vibrate) navigator.vibrate([500, 250, 500, 250, 500]);
-                return;
-            } catch(e) { console.error('custom sound error:', e); }
-        }
-        window.playSystemDefaultTone();
-        return;
-    }
-    if (soundKey === 'system_default') {
-        window.playDeviceNotificationSound('🔔 طلب جديد وصل!', 'افتح التطبيق لعرض التفاصيل');
-        window.playSystemDefaultTone();
-        return;
-    }
-    const FALLBACK = {
-        'alarm': 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg',
-        'bell': 'https://actions.google.com/sounds/v1/alarms/bell_ring.ogg',
-        'chime': 'https://actions.google.com/sounds/v1/alarms/chime.ogg',
-        'ding': 'https://actions.google.com/sounds/v1/alarms/ding_small.ogg',
-        'beep': 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg'
-    };
-    const url = FALLBACK[soundKey] || FALLBACK['alarm'];
+/* الدالة الرئيسية لتشغيل نغمة وصلني كاش */
+window.playMerchantCustomSound = function() {
     try {
-        const audio = new Audio(url);
+        const audio = new Audio(WSLNY_SOUND_URL);
         audio.volume = 1.0;
-        audio.play().catch(e => console.log('audio blocked:', e));
-        if (navigator.vibrate) navigator.vibrate([500, 250, 500, 250, 500]);
-    } catch(e) {}
-};
-
-window.uploadCustomSound = async function(input) {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('audio/')) {
-        alert('❌ من فضلك اختر ملف صوتي (mp3, wav, ogg...)');
-        input.value = ''; return;
-    }
-    const MAX_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-        alert('❌ حجم الملف كبير جدًا. الحد الأقصى: 5 ميجابايت');
-        input.value = ''; return;
-    }
-    const mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-    if (!mKey) { alert('❌ يجب تسجيل الدخول أولاً.'); return; }
-    const customBtn = document.getElementById('btnCustomSound');
-    const oldBtnHTML = customBtn ? customBtn.innerHTML : '';
-    if (customBtn) { customBtn.innerHTML = '⏳ جاري الرفع...'; customBtn.style.pointerEvents = 'none'; customBtn.style.opacity = '0.6'; }
-    try {
-        const formData = new FormData();
-        formData.append('reqtype', 'fileupload');
-        formData.append('fileToUpload', file);
-        const response = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: formData });
-        if (!response.ok) throw new Error('فشل الاتصال. رمز: ' + response.status);
-        const downloadURL = (await response.text()).trim();
-        console.log('🔗 الرابط:', downloadURL);
-        if (!downloadURL.startsWith('https://')) throw new Error('رابط غير صالح: ' + downloadURL);
-        const { ref, update } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
-        await update(ref(window.dbRef, 'eqbad_merchants/' + mKey), {
-            notification_sound: 'custom',
-            custom_sound_url: downloadURL,
-            custom_sound_name: file.name.substring(0, 50),
-            custom_sound_uploaded_at: Date.now()
+        audio.play().catch(e => {
+            console.log('audio blocked:', e);
+            window.playSystemDefaultTone();
         });
-        customSoundDataURL = downloadURL;
-        currentMerchantSound = 'custom';
-        if (window.currentActiveMerchantData) {
-            window.currentActiveMerchantData.custom_sound_url = downloadURL;
-            window.currentActiveMerchantData.notification_sound = 'custom';
-            window.currentActiveMerchantData.custom_sound_name = file.name;
-        }
-        document.querySelectorAll('.sound-btn').forEach(b => { b.className = 'sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black'; });
-        if (customBtn) {
-            customBtn.innerHTML = '🎵 ' + file.name.substring(0, 15);
-            customBtn.className = 'sound-btn p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 text-xs font-black cursor-pointer text-center';
-            customBtn.style.pointerEvents = ''; customBtn.style.opacity = '';
-        }
-        try { const testAudio = new Audio(downloadURL); testAudio.volume = 1.0; await testAudio.play(); } catch(audioErr) { console.warn('audio blocked:', audioErr); }
-        alert('✅ تم رفع النغمة بنجاح!\n\nهيتم تشغيلها عند وصول أي طلب.');
-    } catch(err) {
-        console.error('upload error:', err);
-        alert('❌ فشل الرفع.\n\n' + (err.message || err) + '\n\n💡 تأكد من الإنترنت وحجم الملف.');
-        if (customBtn) {
-            customBtn.innerHTML = oldBtnHTML || '⬆️ ارفع نغمة';
-            customBtn.className = 'sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black cursor-pointer text-center';
-            customBtn.style.pointerEvents = ''; customBtn.style.opacity = '';
-        }
-    } finally { input.value = ''; }
-};
-
-window.removeCustomSound = async function() {
-    if (!confirm('🗑️ حذف النغمة المخصصة والرجوع للافتراضية؟')) return;
-    const mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-    if (!mKey) return;
-    try {
-        const { ref, update } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
-        await update(ref(window.dbRef, 'eqbad_merchants/' + mKey), {
-            notification_sound: 'system_default',
-            custom_sound_url: null,
-            custom_sound_name: null
-        });
-        customSoundDataURL = null;
-        currentMerchantSound = 'system_default';
-        if (window.currentActiveMerchantData) {
-            window.currentActiveMerchantData.custom_sound_url = null;
-            window.currentActiveMerchantData.notification_sound = 'system_default';
-        }
-        document.querySelectorAll('.sound-btn').forEach(b => { b.className = 'sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black'; });
-        const defBtn = document.querySelector('.sound-btn[data-sound="system_default"]');
-        if (defBtn) { defBtn.className = 'sound-btn p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 text-xs font-black'; }
-        const customBtn = document.getElementById('btnCustomSound');
-        if (customBtn) {
-            customBtn.innerHTML = '⬆️ ارفع نغمة';
-            customBtn.className = 'sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black cursor-pointer text-center';
-        }
-        alert('✅ تم الحذف.');
-    } catch(err) { alert('خطأ: ' + err.message); }
-};
-
-window.selectSound = function(soundKey, btn) {
-    currentMerchantSound = soundKey;
-    document.querySelectorAll('.sound-btn').forEach(b => { b.className = 'sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black'; });
-    btn.className = 'sound-btn p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 text-xs font-black';
-    const mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
-    if (mKey && window.dbRef) {
-        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js").then(({ ref, update }) => {
-            update(ref(window.dbRef, 'eqbad_merchants/' + mKey), { notification_sound: soundKey }).catch(e => console.error(e));
-        });
-    }
-    window.playMerchantCustomSound(soundKey);
-};
-
-window.previewCurrentSound = function() { window.playMerchantCustomSound(currentMerchantSound); };
-
-window.loadMerchantSound = function(data) {
-    if (!data) return;
-    if (data.custom_sound_url) customSoundDataURL = data.custom_sound_url;
-    if (data.notification_sound) {
-        currentMerchantSound = data.notification_sound;
-        if (data.notification_sound === 'custom' && data.custom_sound_name) {
-            setTimeout(() => {
-                const customBtn = document.getElementById('btnCustomSound');
-                if (customBtn) {
-                    customBtn.className = 'sound-btn p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 text-xs font-black cursor-pointer text-center';
-                    customBtn.innerHTML = '🎵 ' + (data.custom_sound_name || 'نغمة مخصصة').substring(0, 15);
-                }
-            }, 500);
-            return;
-        }
-        setTimeout(() => {
-            document.querySelectorAll('.sound-btn').forEach(b => { b.className = 'sound-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-black'; });
-            const btn = document.querySelector('.sound-btn[data-sound="' + currentMerchantSound + '"]');
-            if (btn) { btn.className = 'sound-btn p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 text-xs font-black'; }
-        }, 500);
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]);
+    } catch(e) {
+        window.playSystemDefaultTone();
     }
 };
 
+/* تفعيل الصوت على iOS بعد أول تفاعل */
 (function enableAudioOnFirstInteraction() {
     function unlockAudio() {
         try {
@@ -1951,7 +1786,6 @@ window.loadMerchantSound = function(data) {
         window.updateServiceButtonsUI((data.enable_vodafone !== false), (data.enable_instapay !== false));
         window.updateProvideServicesUI(data.provide_cash, data.provide_transfer);
         window.updateVisibilityUI(data.status);
-        window.loadMerchantSound(data);
         let mKey = window.currentMerchantKey || ('merchant_' + window.currentMerchantPhone);
         (async () => {
             try {
@@ -2071,7 +1905,7 @@ window.loadMerchantSound = function(data) {
     onMessage(messaging, (payload) => {
         window.playLoudNotification();
         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === "granted") {
-            new Notification(payload.notification.title || "إشعار جديد", { body: payload.notification.body, icon: 'icon.png', dir: 'rtl' });
+            new Notification(payload.notification.title || "إشعار جديد", { body: payload.notification.body, icon: 'icon.png', dir: 'rtl', silent: true });
         }
     });
 
@@ -2887,10 +2721,17 @@ window.loadMerchantSound = function(data) {
     };
 
     window.playLoudNotification = function() {
-        if (window.currentMerchantPhone && typeof currentMerchantSound !== 'undefined') {
-            try { window.playMerchantCustomSound(currentMerchantSound); return; } catch(e) {}
+        try {
+            const audio = new Audio(WSLNY_SOUND_URL);
+            audio.volume = 1.0;
+            audio.play().catch(e => {
+                console.log('audio blocked:', e);
+                if (window.playSystemDefaultTone) window.playSystemDefaultTone();
+            });
+            if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]);
+        } catch(e) {
+            if (window.playSystemDefaultTone) window.playSystemDefaultTone();
         }
-        window.playSystemDefaultTone();
     };
 </script>
 </body>
