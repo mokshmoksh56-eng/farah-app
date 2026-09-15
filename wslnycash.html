@@ -9,6 +9,22 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="manifest" href="wslnycash-manifest.json">
+
+<!-- 🚀 OneSignal Push Notifications (Web Push) -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "7dd59624-d56e-47aa-b195-de1badc2cca2",
+      allowLocalhostAsSecureOrigin: true,
+      autoResubscribe: true,
+      notifyButton: { enable: false }
+    });
+  });
+</script>
+<!-- نهاية OneSignal -->
+
 <meta name="theme-color" content="#17477E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1287,9 +1303,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         }
     };
 
-    /* ================================================================
-       📸 رفع صورة إثبات الدفع + إرسالها على واتساب الإدارة (نفس رقم التحويل)
-       ================================================================ */
     window.handlePaymentImage = function(event) {
         const file = event.target.files && event.target.files[0];
         if (!file) return;
@@ -1344,7 +1357,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         };
 
         try {
-            // ✅ رقم واتساب الإدارة = نفس رقم التحويل (admin_payment_phone)
             let adminNumber = '';
             try {
                 const snap = await get(ref(db, 'eqbad_settings/admin_payment_phone'));
@@ -1366,7 +1378,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 
             const file = window._paymentImageFile;
 
-            // المحاولة الأولى: Web Share API مع الملف (يعمل على iOS 15+ و Android Chrome)
             if (file && navigator.canShare && navigator.share) {
                 try {
                     const shareData = { text: msg, files: [file] };
@@ -1382,7 +1393,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 }
             }
 
-            // Fallback: فتح واتساب نص فقط + تنبيه المستخدم لإرفاق الصورة يدويًا
             const waUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(msg + (file ? '\n\n⚠️ يرجى إرفاق صورة إثبات الدفع يدويًا.' : ''))}`;
             const win = window.open(waUrl, '_blank');
             if (!win) { location.href = waUrl; }
@@ -1491,9 +1501,6 @@ window.submitRating = function() {
     }
 };
 
-/* ================================================================
-   🎵 نظام النغمات — النغمة ثابتة في التطبيق
-   ================================================================ */
 const WSLNY_SOUND_URL = 'https://files.catbox.moe/x98fa6.mp3';
 
 window.playSystemDefaultTone = function() {
@@ -1615,9 +1622,6 @@ window.playMerchantCustomSound = function() {
         });
     };
 
-    /* ==========================================================
-       🔔 إشعار العميل الدائم على الصفحة الرئيسية
-       ========================================================== */
     window.updateCustomerActiveOrdersBanner = function(orders) {
         const banner = document.getElementById('customerActiveOrdersBanner');
         if(!banner) return;
@@ -2018,9 +2022,6 @@ window.playMerchantCustomSound = function() {
         .catch(err => console.error('خطأ حفظ موقع العميل:', err));
     };
 
-    /* ==========================================================
-       🔔 طلب إذن الإشعارات + تسجيل FCM
-       ========================================================== */
     window.requestPushPermissions = async function(userType, phone) {
         try {
             if (!('Notification' in window)) {
@@ -2041,7 +2042,7 @@ window.playMerchantCustomSound = function() {
             let registration = null;
             if ('serviceWorker' in navigator) {
                 try {
-                    registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                    registration = await navigator.serviceWorker.register('./wslnycash-sw.js', {
                         scope: '/'
                     });
                     console.log('✅ FCM SW مسجل:', registration.scope);
