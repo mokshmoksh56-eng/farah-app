@@ -340,6 +340,28 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     60%{ transform:translateX(-4px); }
     80%{ transform:translateX(4px); }
 }
+
+/* ==== جرس الإشعارات ==== */
+@keyframes bellRing{
+    0%, 100%{ transform:rotate(0); }
+    10%, 30%, 50%{ transform:rotate(-15deg); }
+    20%, 40%, 60%{ transform:rotate(15deg); }
+    70%{ transform:rotate(-8deg); }
+    80%{ transform:rotate(8deg); }
+    90%{ transform:rotate(0); }
+}
+.bell-ringing{
+    animation:bellRing 1.2s ease-in-out infinite;
+    transform-origin:top center;
+    filter:drop-shadow(0 0 8px rgba(220,38,38,.8));
+}
+#newOrdersDot.pulse-dot{
+    animation:dotPulse 1.2s ease-in-out infinite;
+}
+@keyframes dotPulse{
+    0%, 100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(220,38,38,.7); }
+    50%{ transform:scale(1.15); box-shadow:0 0 0 8px rgba(220,38,38,0); }
+}
 </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-3 sm:p-5 relative">
@@ -770,8 +792,14 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             <button type="button" onclick="window.loadMerchantReports()" class="btn-ghost mt-4 mb-4 !py-3.5"><span class="text-xl">📊</span> سجل العمليات والتقارير</button>
 
             <div>
-                <h3 class="text-sm font-black text-slate-900 mb-2.5 flex items-center justify-between">
-                    <span>الطلبات الواردة النشطة:</span>
+                <h3 class="text-sm font-black text-slate-900 mb-2.5 flex items-center justify-between gap-2">
+                    <span class="flex items-center gap-2">
+                        <span class="relative inline-flex items-center justify-center">
+                            <span id="ordersBellIcon" class="text-2xl transition-transform duration-300">🔔</span>
+                            <span id="newOrdersDot" class="hidden absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center border-2 border-white shadow-md">0</span>
+                        </span>
+                        <span>الطلبات الواردة النشطة:</span>
+                    </span>
                     <span id="ordersCountBadge" class="text-xs bg-rose-50 text-rose-700 px-2.5 py-0.5 rounded-full border border-rose-200 font-black"><span class="en-num">0</span> طلب</span>
                 </h3>
                 <div id="liveRequestsContainer" class="space-y-2.5 max-h-52 overflow-y-auto pr-1 pb-2">
@@ -1249,7 +1277,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 
     /* ====== إشعار الطلب الجديد البارز للتاجر ====== */
     window.showNewOrderToast = function(order, reqKey, isRestored = false) {
-        // حفظ الطلب في localStorage لو مش جاي من الاستعادة
         if (!isRestored) {
             window.savePendingToast(order, reqKey);
         }
@@ -1613,7 +1640,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         window.updateVisibilityUI(data.status);
         showView('merchantDashboardView');
 
-        // إرجاع الإشعارات المحفوظة عند فتح التطبيق
         setTimeout(() => window.restorePendingToasts(), 700);
 
         setTimeout(() => {
@@ -2026,7 +2052,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         const myPhone = window.normalizePhone(window.currentMerchantPhone || localStorage.getItem('eqbad_merchant_phone'));
         let mKey = window.currentMerchantKey || ('merchant_' + myPhone);
 
-        // تسجيل وقت بدء الجلسة لتمييز الطلبات الجديدة عن القديمة
         window.sessionStartTime = Date.now();
 
         if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
@@ -2275,6 +2300,41 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                 }
 
                 badge.innerHTML = `<span class="en-num">${window.numEN(activeCount)}</span> طلب`;
+
+                // ==== تحديث جرس الإشعارات ====
+                try {
+                    const bellIcon = document.getElementById('ordersBellIcon');
+                    const dot = document.getElementById('newOrdersDot');
+
+                    let freshPendingCount = 0;
+                    if (snapshot.exists()) {
+                        snapshot.forEach(child => {
+                            const o = child.val();
+                            if (window.normalizePhone(o.target_merchant) === myPhone
+                                && o.status === 'pending'
+                                && (o.timestamp || 0) > (window.sessionStartTime || 0)) {
+                                freshPendingCount++;
+                            }
+                        });
+                    }
+
+                    if (bellIcon) {
+                        if (activeCount > 0) bellIcon.classList.add('bell-ringing');
+                        else bellIcon.classList.remove('bell-ringing');
+                    }
+
+                    if (dot) {
+                        if (freshPendingCount > 0 && activeCount > 0) {
+                            dot.innerText = freshPendingCount > 9 ? '9+' : freshPendingCount;
+                            dot.classList.remove('hidden');
+                            dot.classList.add('pulse-dot');
+                        } else {
+                            dot.classList.add('hidden');
+                            dot.classList.remove('pulse-dot');
+                        }
+                    }
+                } catch(e) { console.error('bell update:', e); }
+
                 activeContainer.innerHTML = activeCount > 0 ? activeHtml : `<div class="text-center py-5 text-slate-400 text-sm font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
             } catch(err) { console.error("orders listener error:", err); }
         }, (err) => { console.error("orders onValue error:", err); });
