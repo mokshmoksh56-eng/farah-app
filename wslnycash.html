@@ -630,7 +630,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 
                 <div id="subRequestStatusBox" class="hidden mb-3"></div>
 
-                <!-- 💬 زر إرسال الصورة على واتساب الإدارة -->
+                <!-- 💬 زر إرسال الصورة على واتساب الإدارة (نفس رقم التحويل) -->
                 <button type="button" onclick="window.sendPaymentOnWhatsApp()" id="btnWhatsAppProof" class="btn-whatsapp mb-2">
                     <span class="text-lg">💬</span> <span>إرسال إثبات الدفع على واتساب الإدارة</span>
                 </button>
@@ -1288,7 +1288,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     };
 
     /* ================================================================
-       📸 رفع صورة إثبات الدفع + إرسالها على واتساب الإدارة
+       📸 رفع صورة إثبات الدفع + إرسالها على واتساب الإدارة (نفس رقم التحويل)
        ================================================================ */
     window.handlePaymentImage = function(event) {
         const file = event.target.files && event.target.files[0];
@@ -1344,15 +1344,11 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         };
 
         try {
-            // الحصول على رقم الواتساب للإدارة من DB
+            // ✅ رقم واتساب الإدارة = نفس رقم التحويل (admin_payment_phone)
             let adminNumber = '';
             try {
-                const snap1 = await get(ref(db, 'eqbad_settings/admin_whatsapp'));
-                if (snap1.exists() && snap1.val()) adminNumber = String(snap1.val()).replace(/\D/g, '');
-                if (!adminNumber) {
-                    const snap2 = await get(ref(db, 'eqbad_settings/admin_payment_phone'));
-                    if (snap2.exists() && snap2.val()) adminNumber = String(snap2.val()).replace(/\D/g, '');
-                }
+                const snap = await get(ref(db, 'eqbad_settings/admin_payment_phone'));
+                if (snap.exists() && snap.val()) adminNumber = String(snap.val()).replace(/\D/g, '');
             } catch(e) { console.error('admin number fetch:', e); }
 
             if (!adminNumber) {
@@ -1392,14 +1388,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
             if (!win) { location.href = waUrl; }
 
             if (file) {
-                // تحميل الصورة ليتمكن المستخدم من إرفاقها يدويًا
                 setTimeout(() => {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(file);
-                    a.download = 'payment-proof.jpg';
-                    document.body.appendChild(a);
-                    // نعرض تعليمات بدل التحميل التلقائي المزعج
-                    a.remove();
                     alert('سيُفتح واتساب مع الرسالة النصية.\nيرجى الضغط على 📎 داخل واتساب وإرفاق صورة إثبات الدفع من الاستوديو.');
                 }, 300);
             }
