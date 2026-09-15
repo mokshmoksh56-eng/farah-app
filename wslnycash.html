@@ -46,8 +46,40 @@ body{
 @media(min-width:640px){ .app-header{ margin:-26px -26px 26px; padding:32px 26px 28px; } }
 .app-header::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:3px; background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600)); }
 .app-header::before{ content:''; position:absolute; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(223,190,88,.18), transparent 68%); top:-140px; right:-70px; pointer-events:none; }
-.app-title{ font-size:27px; font-weight:900; letter-spacing:-.5px; position:relative; z-index:1; text-shadow:0 2px 12px rgba(0,0,0,.35); }
+.app-title{ 
+    font-size:27px; font-weight:900; letter-spacing:-.5px; position:relative; z-index:1; 
+    text-shadow:0 2px 12px rgba(0,0,0,.35);
+    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+}
 .app-title .accent{ color:var(--gold-400); }
+
+/* ==== شارة نوع المستخدم ==== */
+.role-badge{
+    display:inline-flex; align-items:center; gap:5px;
+    padding:5px 14px; border-radius:999px;
+    font-size:13px; font-weight:900; letter-spacing:.3px;
+    border:1.5px solid rgba(255,255,255,.25);
+    animation:roleBadgeIn .5s cubic-bezier(.16,1,.3,1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 4px 12px -4px rgba(0,0,0,.4);
+}
+.role-badge.hidden{ display:none; }
+.role-badge-customer{
+    background:linear-gradient(135deg, rgba(59,130,246,.35) 0%, rgba(37,99,235,.5) 100%);
+    color:#DBEAFE;
+    border-color:rgba(147,197,253,.55);
+    text-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+.role-badge-merchant{
+    background:linear-gradient(135deg, rgba(201,162,39,.45) 0%, rgba(166,124,0,.6) 100%);
+    color:#FEF3C7;
+    border-color:rgba(253,230,138,.55);
+    text-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+@keyframes roleBadgeIn{
+    from{ opacity:0; transform:translateY(-8px) scale(.85); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+}
+
 .app-subtitle{ font-size:11.5px; font-weight:700; color:rgba(255,255,255,.62); margin-top:5px; position:relative; z-index:1; letter-spacing:.2px; }
 .brand-chips{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:15px; position:relative; z-index:1; }
 .chip{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:900; padding:5px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.16); }
@@ -72,7 +104,6 @@ body{
 .btn-primary:active:not(:disabled){ transform:scale(.975); }
 .btn-primary:disabled{ background:#94A3B8 !important; box-shadow:none !important; cursor:not-allowed; transform:none !important; }
 
-/* ==== زرار البحث الأخضر ==== */
 .btn-search-green{
   display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
   padding:16px; border-radius:16px; font-weight:900; font-size:16.5px; color:#fff;
@@ -382,7 +413,12 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 <div class="w-full max-w-xl main-card">
 
     <header class="app-header">
-        <h1 class="app-title">وصلني <span class="accent">كاش</span></h1>
+        <h1 class="app-title">
+            <span>وصلني <span class="accent">كاش</span></span>
+            <span id="roleBadge" class="role-badge hidden">
+                <span id="roleBadgeText">عميل</span>
+            </span>
+        </h1>
         <p class="app-subtitle">منصة وسيطة آمنة لتوفير السيولة النقدية</p>
         <div class="brand-chips">
             <span class="chip chip-vf">فودافون كاش</span>
@@ -1005,6 +1041,30 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
     });
 
     function showView(viewId, isHistoryNav = false) {
+        // ==== تحديث شارة نوع المستخدم ====
+        try {
+            const roleBadge = document.getElementById('roleBadge');
+            const roleBadgeText = document.getElementById('roleBadgeText');
+            if (roleBadge && roleBadgeText) {
+                roleBadge.classList.remove('role-badge-customer', 'role-badge-merchant');
+                
+                const customerViews = ['customerView', 'customerReportsView', 'customerPendingView', 'customerResultsView'];
+                const merchantViews = ['merchantDashboardView', 'merchantReportsView', 'merchantSubscriptionView'];
+                
+                if (customerViews.includes(viewId)) {
+                    roleBadgeText.innerHTML = '🏃‍♂️ عميل';
+                    roleBadge.classList.add('role-badge-customer');
+                    roleBadge.classList.remove('hidden');
+                } else if (merchantViews.includes(viewId)) {
+                    roleBadgeText.innerHTML = '🏪 تاجر';
+                    roleBadge.classList.add('role-badge-merchant');
+                    roleBadge.classList.remove('hidden');
+                } else {
+                    roleBadge.classList.add('hidden');
+                }
+            }
+        } catch(e) { console.error('roleBadge error:', e); }
+
         if(!isHistoryNav) {
             if(viewHistoryStack[currentHistoryIndex] !== viewId) {
                 viewHistoryStack = viewHistoryStack.slice(0, currentHistoryIndex + 1);
