@@ -238,7 +238,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 .bell-ringing{ animation:bellRing 1.2s ease-in-out infinite; transform-origin:top center; filter:drop-shadow(0 0 8px rgba(220,38,38,.8)); }
 #newOrdersDot.pulse-dot{ animation:dotPulse 1.2s ease-in-out infinite; }
 @keyframes dotPulse{ 0%, 100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(220,38,38,.7); } 50%{ transform:scale(1.15); box-shadow:0 0 0 8px rgba(220,38,38,0); } }
-#orderToastContainer{ position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:9999999; display:flex; flex-direction:column; gap:10px; width:92vw; max-width:440px; pointer-events:none; }
 .star-rating{ display:inline-flex; gap:3px; direction:ltr; }
 .star-rating .star{ font-size:32px; cursor:pointer; color:#CBD5E1; transition:all .18s ease; user-select:none; }
 .star-rating .star.active{ color:#F59E0B; text-shadow:0 0 8px rgba(245,158,11,.6); }
@@ -255,6 +254,11 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 #installPWA.show{ display:flex; }
 #installPWA:active{ transform:scale(.95); }
 @keyframes slideUpInstall{ from{ transform:translateY(80px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+@keyframes bannerPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); }
+    50% { box-shadow: 0 0 0 12px rgba(16,185,129,0); }
+}
+.customer-banner-accepted { animation: bannerPulse 1.8s ease-in-out infinite; }
 </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-3 sm:p-5 relative">
@@ -343,6 +347,7 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
         </div>
 
         <div id="customerView" class="fade-enter flex flex-col">
+            <div id="customerActiveOrdersBanner" class="hidden mb-3 shrink-0"></div>
             <div class="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
                 <div class="flex items-center gap-3">
                     <button type="button" onclick="window.logoutCustomer()" class="text-xs bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl font-bold hover:bg-rose-100 shadow-sm transition-colors">تسجيل الخروج</button>
@@ -1416,6 +1421,7 @@ window.playMerchantCustomSound = function() {
     window._orderUnsub = null;
     window._merchantDataUnsub = null;
     window._customerPendingUnsub = null;
+    window._customerActiveOrdersUnsub = null;
     window._authReady = false;
 
     window.generateSessionId = function() { return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 15); };
@@ -1438,6 +1444,86 @@ window.playMerchantCustomSound = function() {
         });
     };
 
+    /* ==========================================================
+       🔔 إشعار العميل الدائم على الصفحة الرئيسية
+       ========================================================== */
+    window.updateCustomerActiveOrdersBanner = function(orders) {
+        const banner = document.getElementById('customerActiveOrdersBanner');
+        if(!banner) return;
+        if(!orders || orders.length === 0) {
+            banner.classList.add('hidden');
+            banner.innerHTML = '';
+            banner.className = 'hidden mb-3 shrink-0';
+            return;
+        }
+        const acceptedCount = orders.filter(o => o.status === 'accepted').length;
+        const pendingCount = orders.filter(o => o.status === 'pending').length;
+        if(acceptedCount > 0) {
+            banner.className = "mb-3 shrink-0 p-3.5 rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-50 to-teal-50 shadow-lg cursor-pointer active:scale-[.98] transition-all customer-banner-accepted";
+            banner.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="text-3xl">🎉</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-black text-emerald-800 mb-0.5">التاجر وافق على طلبك!</div>
+                        <div class="text-[11px] font-bold text-emerald-700 leading-5">اضغط للتواصل معه الآن${pendingCount > 0 ? ` • لديك ${window.numEN(pendingCount)} طلب آخر قيد الانتظار` : ''}</div>
+                    </div>
+                    <div class="text-emerald-600 text-2xl font-black">←</div>
+                </div>
+            `;
+        } else {
+            banner.className = "mb-3 shrink-0 p-3.5 rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50 shadow-md cursor-pointer active:scale-[.98] transition-all";
+            banner.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="text-3xl">⏳</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-black text-amber-800 mb-0.5">لديك ${window.numEN(pendingCount)} طلب قيد الانتظار</div>
+                        <div class="text-[11px] font-bold text-amber-700 leading-5">بانتظار موافقة التجار • اضغط لمتابعة الطلبات</div>
+                    </div>
+                    <div class="text-amber-600 text-2xl font-black">←</div>
+                </div>
+            `;
+        }
+        banner.onclick = () => { if(window.fetchCustomerPendingOrders) window.fetchCustomerPendingOrders(); };
+        banner.classList.remove('hidden');
+    };
+
+    window.listenToCustomerActiveOrders = function() {
+        const myPhone = window.normalizePhone(window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone'));
+        if(!myPhone) return;
+        if(window._customerActiveOrdersUnsub) { try { window._customerActiveOrdersUnsub(); } catch(e){} window._customerActiveOrdersUnsub = null; }
+        window._customerActiveOrdersUnsub = onValue(ref(db, 'eqbad_orders'), (snapshot) => {
+            try {
+                let activeOrders = [];
+                if(snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        const o = child.val();
+                        if(window.normalizePhone(o.customer_phone) === myPhone && (o.status === 'pending' || o.status === 'accepted')) {
+                            activeOrders.push({key: child.key, ...o});
+                        }
+                    });
+                }
+                window.updateCustomerActiveOrdersBanner(activeOrders);
+
+                // 🔔 إشعار صوتي عند قبول التاجر لطلب جديد (يُخزّن في localStorage حتى لا يتكرر عند فتح التطبيق مجددًا)
+                const ALERTED_KEY = 'eqbad_customer_alerted_orders';
+                let alerted = {};
+                try { alerted = JSON.parse(localStorage.getItem(ALERTED_KEY) || '{}'); } catch(e){ alerted = {}; }
+                let dirty = false;
+                activeOrders.forEach(o => {
+                    if(o.status === 'accepted' && !alerted[o.key]) {
+                        alerted[o.key] = Date.now();
+                        dirty = true;
+                        if(window.playLoudNotification) window.playLoudNotification();
+                    }
+                });
+                Object.keys(alerted).forEach(k => {
+                    if(Date.now() - alerted[k] > 7 * 24 * 60 * 60 * 1000) { delete alerted[k]; dirty = true; }
+                });
+                if(dirty) { try { localStorage.setItem(ALERTED_KEY, JSON.stringify(alerted)); } catch(e){} }
+            } catch(err) { console.error('customer active orders listener error:', err); }
+        }, (err) => console.error('customer active orders onValue error:', err));
+    };
+
     window.forceMerchantLogout = function() {
         if (window._orderUnsub) { try { window._orderUnsub(); } catch(e){} window._orderUnsub = null; }
         if (window._merchantDataUnsub) { try { window._merchantDataUnsub(); } catch(e){} window._merchantDataUnsub = null; }
@@ -1458,6 +1544,7 @@ window.playMerchantCustomSound = function() {
     window.forceCustomerLogout = function() {
         if (window._customerPendingUnsub) { try { window._customerPendingUnsub(); } catch(e){} window._customerPendingUnsub = null; }
         if (window._customerSessionUnsub) { try { window._customerSessionUnsub(); } catch(e){} window._customerSessionUnsub = null; }
+        if (window._customerActiveOrdersUnsub) { try { window._customerActiveOrdersUnsub(); } catch(e){} window._customerActiveOrdersUnsub = null; }
         localStorage.removeItem('eqbad_customer_phone');
         localStorage.removeItem('eqbad_customer_name');
         localStorage.removeItem('eqbad_customer_session');
@@ -1616,8 +1703,6 @@ window.playMerchantCustomSound = function() {
         return await set(ratingRef, ratingData);
     };
 
-    /* ⚠️ تم حذف calculateMerchantRank */
-
     window.renderMerchantDashboard = function(data) {
         window.currentActiveMerchantData = data;
         const now = Date.now();
@@ -1699,8 +1784,6 @@ window.playMerchantCustomSound = function() {
         window.updateServiceButtonsUI((data.enable_vodafone !== false), (data.enable_instapay !== false));
         window.updateProvideServicesUI(data.provide_cash, data.provide_transfer);
         window.updateVisibilityUI(data.status);
-
-        /* ⚠️ تم حذف قسم "ترتيبك هذا الأسبوع" بالكامل */
 
         showView('merchantDashboardView');
         setTimeout(() => window.restorePendingToasts(), 700);
@@ -1784,7 +1867,6 @@ window.playMerchantCustomSound = function() {
                 return;
             }
 
-            // سجّل Service Worker المتخصص بالإشعارات
             let registration = null;
             if ('serviceWorker' in navigator) {
                 try {
@@ -1943,6 +2025,7 @@ window.playMerchantCustomSound = function() {
                 document.getElementById('custProfilePhone').innerText = custPhone;
                 showView('customerView');
                 window.watchCustomerSession(custPhone);
+                window.listenToCustomerActiveOrders();
             } else {
                 localStorage.removeItem('eqbad_customer_phone');
                 localStorage.removeItem('eqbad_customer_name');
@@ -1992,6 +2075,7 @@ window.playMerchantCustomSound = function() {
             btn.innerHTML = "إنشاء الحساب ✔️"; btn.disabled = false;
             showView('customerView');
             window.watchCustomerSession(phone);
+            window.listenToCustomerActiveOrders();
         } catch (err) {
             btn.innerHTML = "إنشاء الحساب ✔️"; btn.disabled = false;
             alert("خطأ: " + err.message);
@@ -2022,6 +2106,7 @@ window.playMerchantCustomSound = function() {
                 document.getElementById('custProfilePhone').innerText = window.currentCustomerPhone;
                 showView('customerView');
                 window.watchCustomerSession(phone);
+                window.listenToCustomerActiveOrders();
             } else { alert("رقم الهاتف أو الرقم السري غير صحيح."); }
         } catch (err) {
             btn.innerHTML = "تسجيل الدخول 🏃‍♂️"; btn.disabled = false;
@@ -2033,6 +2118,7 @@ window.playMerchantCustomSound = function() {
         if (window.currentCustomerPhone) { update(ref(db, 'eqbad_customers/customer_' + window.currentCustomerPhone), { current_session: null }).catch(()=>{}); }
         if (window._customerPendingUnsub) { try { window._customerPendingUnsub(); } catch(e){} window._customerPendingUnsub = null; }
         if (window._customerSessionUnsub) { try { window._customerSessionUnsub(); } catch(e){} window._customerSessionUnsub = null; }
+        if (window._customerActiveOrdersUnsub) { try { window._customerActiveOrdersUnsub(); } catch(e){} window._customerActiveOrdersUnsub = null; }
         localStorage.removeItem('eqbad_customer_phone');
         localStorage.removeItem('eqbad_customer_name');
         localStorage.removeItem('eqbad_customer_session');
