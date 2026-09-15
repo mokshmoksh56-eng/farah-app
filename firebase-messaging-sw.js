@@ -1,8 +1,3 @@
-/* ==========================================================
-   Firebase Cloud Messaging Service Worker
-   يستقبل الإشعارات في الخلفية + يفتح التطبيق عند الضغط
-   ========================================================== */
-
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
@@ -19,10 +14,8 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-/* استقبال الإشعار في الخلفية */
 messaging.onBackgroundMessage((payload) => {
-    console.log('[SW] 🔔 Background message:', payload);
-
+    console.log('[SW] 🔔 Background:', payload);
     const notificationTitle = payload.notification?.title || '💰 وصلني كاش';
     const notificationBody  = payload.notification?.body  || 'وصلك طلب جديد';
     const data = payload.data || {};
@@ -40,38 +33,26 @@ messaging.onBackgroundMessage((payload) => {
         data: {
             url: data.url || '/wslnycash.html',
             order_key: data.order_key || ''
-        },
-        actions: [
-            { action: 'open', title: '👁️ عرض الطلب' },
-            { action: 'close', title: '✕ إغلاق' }
-        ]
+        }
     };
 
     self.registration.showNotification(notificationTitle, options);
 });
 
-/* عند الضغط على الإشعار */
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-
-    if (event.action === 'close') return;
-
     const urlToOpen = event.notification.data?.url || '/wslnycash.html';
-
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then((windowClients) => {
-                /* لو التطبيق مفتوح، ركّز عليه */
-                for (let i = 0; i < windowClients.length; i++) {
-                    const client = windowClients[i];
-                    if (client.url.includes('wslnycash') && 'focus' in client) {
-                        return client.focus();
-                    }
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i];
+                if (client.url.includes('wslnycash') && 'focus' in client) {
+                    return client.focus();
                 }
-                /* لو مغلق، افتحه */
-                if (clients.openWindow) {
-                    return clients.openWindow(urlToOpen);
-                }
-            })
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(urlToOpen);
+            }
+        })
     );
 });
