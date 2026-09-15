@@ -19,7 +19,9 @@
       appId: "7dd59624-d56e-47aa-b195-de1badc2cca2",
       allowLocalhostAsSecureOrigin: true,
       autoResubscribe: true,
-      notifyButton: { enable: false }
+      notifyButton: { enable: false },
+      serviceWorkerParam: { scope: "/farah-app/" },
+      serviceWorkerPath: "/farah-app/OneSignalSDKWorker.js"
     });
   });
 </script>
@@ -280,7 +282,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 }
 .customer-banner-accepted { animation: bannerPulse 1.8s ease-in-out infinite; }
 
-/* ⚡ تحسينات الأداء للأجهزة القديمة */
 .sub-pkg-card{ user-select:none; }
 #paymentImagePreview img{ max-width:100%; }
 .payment-upload-zone{ border:2px dashed #93C5FD; background:#EFF6FF; border-radius:12px; padding:12px; text-align:center; }
@@ -289,7 +290,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 .btn-whatsapp:active{ transform:scale(.97); }
 .btn-whatsapp:disabled{ background:#94A3B8 !important; box-shadow:none !important; cursor:not-allowed; }
 
-/* إخفاء التأثيرات الثقيلة على الأجهزة القديمة */
 @media (prefers-reduced-motion: reduce){
   *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
   .app-header::before{ display:none; }
@@ -623,7 +623,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
                     <p class="text-[10px] font-bold text-slate-500 mt-2">بعد التحويل، ارفع صورة الإثبات وأرسلها للإدارة</p>
                 </div>
 
-                <!-- 📸 قسم رفع صورة إثبات الدفع -->
                 <div id="paymentUploadSection" class="mb-3">
                     <label class="field-label mb-2 text-[#0A1F3C]">📸 صورة إثبات الدفع (مستحسن)</label>
                     <div id="paymentUploadZone" class="payment-upload-zone">
@@ -646,12 +645,10 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 
                 <div id="subRequestStatusBox" class="hidden mb-3"></div>
 
-                <!-- 💬 زر إرسال الصورة على واتساب الإدارة (نفس رقم التحويل) -->
                 <button type="button" onclick="window.sendPaymentOnWhatsApp()" id="btnWhatsAppProof" class="btn-whatsapp mb-2">
                     <span class="text-lg">💬</span> <span>إرسال إثبات الدفع على واتساب الإدارة</span>
                 </button>
 
-                <!-- ✅ زر إشعار الإدارة داخل التطبيق -->
                 <button type="button" onclick="window.notifyPaymentMade()" id="btnNotifyPayment" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm active:scale-95 shadow-md mb-2 transition-all">
                     ✅ تم الدفع — أرسل إشعار للإدارة
                 </button>
@@ -1412,7 +1409,6 @@ input[type="number"], input[type="tel"], input[type="password"], input[type="tex
 </script>
 
 <script>
-/* 🌞 تم إلغاء الوضع الليلي نهائيًا */
 document.body.classList.remove('dark-mode');
 localStorage.removeItem('eqbad_dark_mode');
 
@@ -2024,67 +2020,37 @@ window.playMerchantCustomSound = function() {
 
     window.requestPushPermissions = async function(userType, phone) {
         try {
-            if (!('Notification' in window)) {
-                console.log('⚠️ المتصفح لا يدعم الإشعارات');
-                return;
+            if (!('Notification' in window)) return;
+            if (Notification.permission !== 'granted') {
+                const perm = await Notification.requestPermission();
+                if (perm !== 'granted') return;
             }
-
-            let permission = Notification.permission;
-            if (permission !== 'granted' && permission !== 'denied') {
-                permission = await Notification.requestPermission();
-            }
-
-            if (permission !== 'granted') {
-                console.log('⚠️ المستخدم رفض الإشعارات');
-                return;
-            }
-
             let registration = null;
             if ('serviceWorker' in navigator) {
                 try {
-                    registration = await navigator.serviceWorker.register('./wslnycash-sw.js', {
-                        scope: '/'
-                    });
-                    console.log('✅ FCM SW مسجل:', registration.scope);
-                } catch (swErr) {
-                    console.error('❌ فشل تسجيل FCM SW:', swErr);
-                }
+                    registration = await navigator.serviceWorker.register('./wslnycash-sw.js', { scope: '/farah-app/' });
+                } catch (swErr) { console.error('SW error:', swErr); }
             }
-
-            const tokenOptions = {
-                vapidKey: 'BHlaSnheargWsxUa5b18VBog6KSq778kZ398P5drxS0tUwsUdUy8I0ADAzRO6CS3BJKNmZTfjBzG_Fv6gIBOuwI'
-            };
-            if (registration) {
-                tokenOptions.serviceWorkerRegistration = registration;
-            }
-
+            const tokenOptions = { vapidKey: 'BHlaSnheargWsxUa5b18VBog6KSq778kZ398P5drxS0tUwsUdUy8I0ADAzRO6CS3BJKNmZTfjBzG_Fv6gIBOuwI' };
+            if (registration) tokenOptions.serviceWorkerRegistration = registration;
             const currentToken = await getToken(messaging, tokenOptions);
-
             if (currentToken) {
-                console.log('🔑 FCM Token:', currentToken);
-
                 const path = userType === 'merchant'
                     ? `eqbad_merchants/${window.currentMerchantKey || 'merchant_' + phone}`
                     : `eqbad_customers/customer_${phone}`;
-
                 await update(ref(db, path), {
                     fcmToken: currentToken,
                     fcmTokenUpdatedAt: Date.now(),
                     fcmPlatform: /iPhone|iPad|iPod/.test(navigator.userAgent) ? 'ios' :
                                  /Android/.test(navigator.userAgent) ? 'android' : 'web'
                 });
-                console.log('✅ تم حفظ FCM Token في DB');
-            } else {
-                console.warn('⚠️ لم يتم الحصول على توكن');
             }
-        } catch (error) {
-            console.error('❌ خطأ في إعداد الإشعارات:', error);
-        }
+        } catch (error) { console.error('Push setup error:', error); }
     };
 
     onMessage(messaging, (payload) => {
         window.playLoudNotification();
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === "granted") {
+        if ('Notification' in window && Notification.permission === "granted") {
             new Notification(payload.notification.title || "إشعار جديد", {
                 body: payload.notification.body,
                 icon: 'icon.png',
@@ -2153,7 +2119,7 @@ window.playMerchantCustomSound = function() {
                         localStorage.removeItem('eqbad_merchant_phone');
                         localStorage.removeItem('eqbad_merchant_key');
                         localStorage.removeItem('eqbad_merchant_session');
-                        alert("⚠️ هذا الحساب مفتوح على جهاز آخر حالياً.\n\nلا يمكن فتح الحساب على أكتر من جهاز في نفس الوقت.");
+                        alert("⚠️ هذا الحساب مفتوح على جهاز آخر حالياً.");
                         showView('roleView');
                         return;
                     }
@@ -2183,7 +2149,7 @@ window.playMerchantCustomSound = function() {
                     localStorage.removeItem('eqbad_customer_phone');
                     localStorage.removeItem('eqbad_customer_name');
                     localStorage.removeItem('eqbad_customer_session');
-                    alert("⚠️ هذا الحساب مفتوح على جهاز آخر حالياً.\n\nلا يمكن فتح الحساب على أكتر من جهاز في نفس الوقت.");
+                    alert("⚠️ هذا الحساب مفتوح على جهاز آخر حالياً.");
                     showView('roleView');
                     return;
                 }
@@ -2214,8 +2180,8 @@ window.playMerchantCustomSound = function() {
         const pin = document.getElementById('regCustPin').value.trim();
         const confirmPin = document.getElementById('regCustConfirmPin').value.trim();
         const btn = document.getElementById('btnRegCustomer');
-        if (phone.length !== 11) return alert("يجب أن يتكون رقم الهاتف من 11 رقماً بالضبط.");
-        if (pin.length !== 4) return alert("يجب أن يتكون الرقم السري من 4 أرقام فقط.");
+        if (phone.length !== 11) return alert("يجب أن يتكون رقم الهاتف من 11 رقماً.");
+        if (pin.length !== 4) return alert("يجب أن يتكون الرقم السري من 4 أرقام.");
         if (pin !== confirmPin) return alert("الرقم السري وتأكيده غير متطابقين!");
         btn.innerHTML = "⏳ جاري الفحص..."; btn.disabled = true;
         try {
@@ -2223,15 +2189,13 @@ window.playMerchantCustomSound = function() {
             if (regSnap.exists()) {
                 const regType = regSnap.val().type === 'merchant' ? 'تاجر' : 'عميل';
                 btn.innerHTML = "إنشاء الحساب ✔️"; btn.disabled = false;
-                return alert("❌ هذا الرقم مسجل بالفعل في النظام كـ (" + regType + ")!\n\nكل رقم تليفون يُسمح له بحساب واحد فقط.");
+                return alert("❌ هذا الرقم مسجل بالفعل كـ " + regType);
             }
             let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
             let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
-            let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone));
-            if(custSnap.exists() || merchSnap.exists() || merchSnap2.exists()) {
-                await set(ref(db, 'eqbad_used_phones/' + phone), { type: custSnap.exists() ? 'customer' : 'merchant', since: Date.now() }).catch(()=>{});
+            if(custSnap.exists() || merchSnap.exists()) {
                 btn.innerHTML = "إنشاء الحساب ✔️"; btn.disabled = false;
-                return alert("❌ هذا الرقم مسجل بالفعل في النظام!");
+                return alert("❌ هذا الرقم مسجل بالفعل!");
             }
             const mySession = window.generateSessionId();
             localStorage.setItem('eqbad_customer_session', mySession);
@@ -2258,8 +2222,8 @@ window.playMerchantCustomSound = function() {
         e.preventDefault();
         const phone = window.normalizePhone(document.getElementById('loginCustPhone').value);
         const pin = document.getElementById('loginCustPin').value.trim();
-        if (phone.length !== 11) return alert("يجب أن يتكون رقم الهاتف من 11 رقماً بالضبط.");
-        if (pin.length !== 4) return alert("يجب أن يتكون الرقم السري من 4 أرقام فقط.");
+        if (phone.length !== 11) return alert("رقم الهاتف يجب أن يكون 11 رقماً.");
+        if (pin.length !== 4) return alert("الرقم السري يجب أن يكون 4 أرقام.");
         const btn = document.getElementById('btnLoginCustomer');
         btn.innerHTML = "⏳ جاري التحقق..."; btn.disabled = true;
         try {
@@ -2307,8 +2271,8 @@ window.playMerchantCustomSound = function() {
         const confirmPin = document.getElementById('regConfirmPin').value.trim();
         const enableVf = document.getElementById('regEnableVodafone').checked;
         const enableIp = document.getElementById('regEnableInstapay').checked;
-        if (phone.length !== 11) return alert("يجب أن يتكون رقم الهاتف من 11 رقماً بالضبط.");
-        if (pin.length !== 4) return alert("يجب أن يتكون الرقم السري من 4 أرقام فقط.");
+        if (phone.length !== 11) return alert("رقم الهاتف يجب أن يكون 11 رقماً.");
+        if (pin.length !== 4) return alert("الرقم السري يجب أن يكون 4 أرقام.");
         if (pin !== confirmPin) return alert("الرقم السري وتأكيده غير متطابقين!");
         if(!window.finalMerchLat) return alert("يرجى تحديد موقع المتجر أولاً.");
         const btn = document.getElementById('btnRegMerchant');
@@ -2318,15 +2282,13 @@ window.playMerchantCustomSound = function() {
             if (regSnap.exists()) {
                 const regType = regSnap.val().type === 'merchant' ? 'تاجر' : 'عميل';
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️"; btn.disabled = false;
-                return alert("❌ هذا الرقم مسجل بالفعل في النظام كـ (" + regType + ")!\n\nكل رقم تليفون يُسمح له بحساب واحد فقط.");
+                return alert("❌ هذا الرقم مسجل بالفعل كـ " + regType);
             }
             let custSnap = await get(ref(db, 'eqbad_customers/customer_' + phone));
             let merchSnap = await get(ref(db, 'eqbad_merchants/merchant_' + phone));
-            let merchSnap2 = await get(ref(db, 'eqbad_merchants/' + phone));
-            if(custSnap.exists() || merchSnap.exists() || merchSnap2.exists()) {
-                await set(ref(db, 'eqbad_used_phones/' + phone), { type: custSnap.exists() ? 'customer' : 'merchant', since: Date.now() }).catch(()=>{});
+            if(custSnap.exists() || merchSnap.exists()) {
                 btn.innerHTML = "تأكيد وتفعيل الحساب ✔️"; btn.disabled = false;
-                return alert("❌ هذا الرقم مسجل بالفعل في النظام!");
+                return alert("❌ هذا الرقم مسجل بالفعل!");
             }
             const mySession = window.generateSessionId();
             localStorage.setItem('eqbad_merchant_session', mySession);
@@ -2362,8 +2324,8 @@ window.playMerchantCustomSound = function() {
         e.preventDefault();
         const phone = window.normalizePhone(document.getElementById('loginPhone').value);
         const pin = document.getElementById('loginPin').value.trim();
-        if (phone.length !== 11) return alert("يجب أن يتكون رقم الهاتف من 11 رقماً بالضبط.");
-        if (pin.length !== 4) return alert("يجب أن يتكون الرقم السري من 4 أرقام فقط.");
+        if (phone.length !== 11) return alert("رقم الهاتف يجب أن يكون 11 رقماً.");
+        if (pin.length !== 4) return alert("الرقم السري يجب أن يكون 4 أرقام.");
         const btn = document.getElementById('btnLoginMerchant');
         btn.innerHTML = "⏳ جاري التحقق..."; btn.disabled = true;
         try {
@@ -2423,8 +2385,8 @@ window.playMerchantCustomSound = function() {
             const field = (customerMethod === 'vodafone') ? 'balance_vodafone' : 'balance_instapay';
             const currentBalance = parseFloat(m[field]) || 0;
             const isCashIn = (txType === 'cash_in');
-            if(isCashIn && numAmount > currentBalance) { return alert(`رصيدك على ${methodName} لا يكفي لتحويل هذا المبلغ.`); }
-            let confirmMsg = isCashIn ? `تأكيد استلامك الكاش وتحويل ${window.numEN(numAmount)} ج.م ${methodName} للعميل؟` : `تأكيد استلام تحويل ${methodName} وتسليم ${window.numEN(numAmount)} ج.م كاش للعميل؟`;
+            if(isCashIn && numAmount > currentBalance) { return alert(`رصيدك على ${methodName} لا يكفي.`); }
+            let confirmMsg = isCashIn ? `تأكيد استلامك الكاش وتحويل ${window.numEN(numAmount)} ج.م ${methodName}؟` : `تأكيد استلام تحويل ${methodName} وتسليم ${window.numEN(numAmount)} ج.م كاش؟`;
             if(confirm(confirmMsg)) {
                 let newBalance = isCashIn ? (currentBalance - numAmount) : (currentBalance + numTotal);
                 let updates = { [field]: newBalance };
@@ -2432,7 +2394,7 @@ window.playMerchantCustomSound = function() {
                 if (customerMethod === 'instapay') updates['max_amount_ip'] = newBalance;
                 update(ref(db, 'eqbad_orders/' + reqKey), { status: 'completed', completedAt: Date.now() })
                 .then(() => update(ref(db, 'eqbad_merchants/' + mKey), updates))
-                .then(() => alert(`🎉 تم تأكيد العملية (${methodName}) بنجاح!`));
+                .then(() => alert(`🎉 تم تأكيد العملية!`));
             }
         });
     };
@@ -2470,7 +2432,7 @@ window.playMerchantCustomSound = function() {
                                         if (statusBox) {
                                             statusBox.classList.remove('hidden');
                                             statusBox.className = "mb-3 p-3 rounded-xl bg-amber-50 border-2 border-amber-300 text-center";
-                                            statusBox.innerHTML = `<div class="flex items-center justify-center gap-2 mb-1"><span class="text-xl">⏳</span><span class="text-sm font-black text-amber-800">طلبك قيد المراجعة</span></div><div class="text-[10px] text-slate-600 font-bold">رقم المرجع</div><div class="text-xs font-black text-slate-900 en-num bg-white px-2 py-1 rounded border inline-block mt-1" dir="ltr">${s.val().ref_number || '—'}</div>`;
+                                            statusBox.innerHTML = `<div class="flex items-center justify-center gap-2 mb-1"><span class="text-xl">⏳</span><span class="text-sm font-black text-amber-800">طلبك قيد المراجعة</span></div><div class="text-xs font-black text-slate-900 en-num mt-1">${s.val().ref_number || '—'}</div>`;
                                         }
                                         window.watchMySubRequest(myReqKey);
                                     } else {
@@ -2566,25 +2528,6 @@ window.playMerchantCustomSound = function() {
                         }
                     });
                 }
-                try {
-                    let storedToasts = JSON.parse(localStorage.getItem('eqbad_pending_order_toasts') || '{}');
-                    Object.keys(storedToasts).forEach(storedKey => {
-                        let stillPending = false;
-                        if (snapshot.exists()) {
-                            snapshot.forEach(child => {
-                                if (child.key === storedKey) {
-                                    const o = child.val();
-                                    if (window.normalizePhone(o.target_merchant) === myPhone && o.status === 'pending') { stillPending = true; }
-                                }
-                            });
-                        }
-                        if (!stillPending) {
-                            window.removePendingToast(storedKey);
-                            const t = document.getElementById('toast-' + storedKey);
-                            if (t) t.remove();
-                        }
-                    });
-                } catch(e) { console.error('cleanup toasts:', e); }
                 if (isNewOrderArrived) {
                     window.playLoudNotification();
                     if (latestNewOrder) window.showNewOrderToast(latestNewOrder, latestNewOrderKey);
@@ -2605,16 +2548,16 @@ window.playMerchantCustomSound = function() {
                         if (freshPendingCount > 0 && activeCount > 0) { dot.innerText = freshPendingCount > 9 ? '9+' : freshPendingCount; dot.classList.remove('hidden'); dot.classList.add('pulse-dot'); }
                         else { dot.classList.add('hidden'); dot.classList.remove('pulse-dot'); }
                     }
-                } catch(e) { console.error('bell update:', e); }
+                } catch(e) {}
                 activeContainer.innerHTML = activeCount > 0 ? activeHtml : `<div class="text-center py-5 text-slate-400 text-sm font-black bg-slate-50 rounded-2xl border-2 border-slate-200">لا توجد طلبات جارية حالياً.</div>`;
             } catch(err) { console.error("orders listener error:", err); }
         }, (err) => { console.error("orders onValue error:", err); });
     };
 
     window.cancelMerchantReport = function(reqKey) {
-        if(confirm("هل أنت متأكد من مسح هذه العملية من سجلك الخاص بشكل نهائي؟")) {
+        if(confirm("هل أنت متأكد من مسح هذه العملية؟")) {
             update(ref(db, 'eqbad_orders/' + reqKey), { status: 'deleted_by_merchant', deletedAt: Date.now() })
-            .then(() => { alert("تم إخفاء العملية."); window.loadMerchantReports(); })
+            .then(() => { alert("تم الإخفاء."); window.loadMerchantReports(); })
             .catch(err => alert("خطأ: " + err.message));
         }
     };
@@ -2641,14 +2584,14 @@ window.playMerchantCustomSound = function() {
             document.getElementById('reportTotalCommission').innerHTML = window.fmtNum(totalComm) + ' ج.م';
             document.getElementById('reportTotalCountBadge').innerHTML = window.fmtNum(records.length) + ' عملية';
             if(records.length === 0) return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">لا توجد عمليات سابقة.</div>`;
-            let html = `<table class="formal-table"><thead><tr><th style="width:20%">التاريخ والوقت</th><th>العميل</th><th style="width:14%" class="cell-center">المبلغ</th><th style="width:14%" class="cell-center">الطريقة</th><th style="width:12%" class="cell-center">إجراء</th></tr></thead><tbody>`;
+            let html = `<table class="formal-table"><thead><tr><th style="width:20%">التاريخ</th><th>العميل</th><th class="cell-center">المبلغ</th><th class="cell-center">الطريقة</th><th class="cell-center">إجراء</th></tr></thead><tbody>`;
             records.forEach(ord => {
                 const dateObj = new Date(ord.completedAt || ord.timestamp);
                 const dateStr = dateObj.toLocaleDateString('en-GB');
                 const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 const method = ord.method || 'vodafone';
                 const methodName = window.getMethodArabicName(method);
-                html += `<tr><td class="cell-date"><span class="en-num">${dateStr}</span><br><span class="en-num">${timeStr}</span></td><td><div class="cell-cust-name">${ord.customer_name || 'عميل'}</div><div class="cell-cust-phone en-num" dir="ltr">${ord.customer_phone || ''}</div></td><td class="cell-center"><div class="cell-amount">${window.fmtNum(ord.amount)} ج.م</div><div style="font-size:10px;color:#059669;font-weight:900;margin-top:3px;">+ ${window.fmtNum(ord.commission_amount || 0)} ج عمولة</div></td><td class="cell-center"><span class="data-tag ${window.getMethodTagClass(method)}">${methodName}</span></td><td class="cell-center"><button onclick="window.cancelMerchantReport('${ord.key}')" class="btn-del-mini">🗑️ حذف</button></td></tr>`;
+                html += `<tr><td class="cell-date"><span class="en-num">${dateStr}</span><br><span class="en-num">${timeStr}</span></td><td><div class="cell-cust-name">${ord.customer_name || 'عميل'}</div><div class="cell-cust-phone en-num" dir="ltr">${ord.customer_phone || ''}</div></td><td class="cell-center"><div class="cell-amount">${window.fmtNum(ord.amount)} ج.م</div><div style="font-size:10px;color:#059669;margin-top:3px;">+ ${window.fmtNum(ord.commission_amount || 0)} ج عمولة</div></td><td class="cell-center"><span class="data-tag ${window.getMethodTagClass(method)}">${methodName}</span></td><td class="cell-center"><button onclick="window.cancelMerchantReport('${ord.key}')" class="btn-del-mini">🗑️</button></td></tr>`;
             });
             html += `</tbody></table>`;
             container.innerHTML = html;
@@ -2658,7 +2601,7 @@ window.playMerchantCustomSound = function() {
     window.fetchCustomerReports = function() {
         showView('customerReportsView');
         const container = document.getElementById('custReportsListContainer');
-        container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">⏳ جاري تحميل السجل...</div>`;
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">⏳ جاري التحميل...</div>`;
         const myPhone = window.normalizePhone(window.currentCustomerPhone);
         get(ref(db, 'eqbad_orders')).then(snapshot => {
             let records = [], totalCash = 0, totalComm = 0;
@@ -2679,7 +2622,7 @@ window.playMerchantCustomSound = function() {
             document.getElementById('custReportTotalCash').innerHTML = window.fmtNum(totalCash) + ' ج.م';
             document.getElementById('custReportTotalComm').innerHTML = window.fmtNum(totalComm) + ' ج.م';
             if(records.length === 0) return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black">لا توجد عمليات سابقة.</div>`;
-            let html = `<table class="formal-table"><thead><tr><th style="width:20%">التاريخ والوقت</th><th>التاجر / المكان</th><th style="width:14%" class="cell-center">المبلغ</th><th style="width:14%" class="cell-center">الطريقة</th><th style="width:16%" class="cell-center">الحالة</th></tr></thead><tbody>`;
+            let html = `<table class="formal-table"><thead><tr><th style="width:20%">التاريخ</th><th>التاجر</th><th class="cell-center">المبلغ</th><th class="cell-center">الطريقة</th><th class="cell-center">الحالة</th></tr></thead><tbody>`;
             records.forEach(ord => {
                 const dateObj = new Date(ord.completedAt || ord.timestamp);
                 const dateStr = dateObj.toLocaleDateString('en-GB');
@@ -2688,7 +2631,7 @@ window.playMerchantCustomSound = function() {
                 const methodName = window.getMethodArabicName(method);
                 let statusTag = '';
                 if (ord.status === 'completed' && !ord.rated_by_merchant) {
-                    statusTag = `<button onclick="window.openRatingModal('${ord.key}', 'merchant', '${(ord.merchant_name || 'التاجر').replace(/'/g, "")}')" class="data-tag" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;cursor:pointer;">⭐ قيّم التاجر</button>`;
+                    statusTag = `<button onclick="window.openRatingModal('${ord.key}', 'merchant', '${(ord.merchant_name || 'التاجر').replace(/'/g, "")}')" class="data-tag" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;cursor:pointer;">⭐ قيّم</button>`;
                 } else if (ord.status === 'completed' && ord.rated_by_merchant) {
                     const stars = ord.rating_merchant_stars || 0;
                     statusTag = `<span class="data-tag tag-ok">${'⭐'.repeat(stars)} مُقيَّم</span>`;
@@ -2701,7 +2644,7 @@ window.playMerchantCustomSound = function() {
                 } else if (ord.status === 'accepted') {
                     statusTag = `<span class="data-tag tag-warn">قيد التنفيذ</span>`;
                 }
-                html += `<tr><td class="cell-date"><span class="en-num">${dateStr}</span><br><span class="en-num">${timeStr}</span></td><td><div class="cell-merchant-name">${ord.merchant_name || 'تاجر معتمد'}</div><div class="cell-merchant-phone en-num" dir="ltr">${ord.target_merchant || ''}</div><div class="cell-merchant-addr" title="${ord.address}">📍 ${ord.address || ''}</div></td><td class="cell-center"><div class="cell-amount">${window.fmtNum(ord.amount)} ج.م</div></td><td class="cell-center"><span class="data-tag ${window.getMethodTagClass(method)}">${methodName}</span></td><td class="cell-center">${statusTag}</td></tr>`;
+                html += `<tr><td class="cell-date"><span class="en-num">${dateStr}</span><br><span class="en-num">${timeStr}</span></td><td><div class="cell-merchant-name">${ord.merchant_name || 'تاجر معتمد'}</div><div class="cell-merchant-phone en-num" dir="ltr">${ord.target_merchant || ''}</div></td><td class="cell-center"><div class="cell-amount">${window.fmtNum(ord.amount)} ج.م</div></td><td class="cell-center"><span class="data-tag ${window.getMethodTagClass(method)}">${methodName}</span></td><td class="cell-center">${statusTag}</td></tr>`;
             });
             html += `</tbody></table>`;
             container.innerHTML = html;
@@ -2732,7 +2675,7 @@ window.playMerchantCustomSound = function() {
                 });
             }
             records.sort((a, b) => b.timestamp - a.timestamp);
-            if(records.length === 0) return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black bg-white rounded-2xl border-2 border-slate-200">لا توجد طلبات معلقة أو نشطة حالياً.</div>`;
+            if(records.length === 0) return container.innerHTML = `<div class="text-center py-10 text-slate-400 font-black bg-white rounded-2xl border-2 border-slate-200">لا توجد طلبات معلقة حالياً.</div>`;
             container.innerHTML = records.map(ord => {
                 const method = ord.method || 'vodafone';
                 const methodName = window.getMethodArabicName(method);
@@ -2741,15 +2684,15 @@ window.playMerchantCustomSound = function() {
                 const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
                 const cardClass = window.getOrderCardClass(method);
                 const orderMethodClass = window.getOrderMethodClass(method);
-                const statusBadge = isPending ? `<span class="data-tag tag-warn">⏳ بانتظار موافقة التاجر</span>` : `<span class="data-tag tag-ok">✔️ مقبول من التاجر</span>`;
+                const statusBadge = isPending ? `<span class="data-tag tag-warn">⏳ بانتظار موافقة التاجر</span>` : `<span class="data-tag tag-ok">✔️ مقبول</span>`;
                 let actionHtml = '';
                 if (isPending) {
                     actionHtml = `<button onclick="window.cancelCustomerOrder('${ord.key}')" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black py-2 rounded-xl text-xs active:scale-95 shadow-sm">إلغاء الطلب ❌</button>`;
                 } else {
                     const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
-                    const waMsg = encodeURIComponent(isCashOut ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)` : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي. (تطبيق وصلني كاش)`);
+                    const waMsg = encodeURIComponent(isCashOut ? `السلام عليكم، سأقوم بتحويل ${window.numEN(ord.total_amount || ord.amount)} ج.م لك، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (وصلني كاش)` : `السلام عليكم، سأدفع لك ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي. (وصلني كاش)`);
                     const mapRouteBtn = (ord.merchant_lat && ord.merchant_lng && ord.lat && ord.lng) ? `<a href="https://www.google.com/maps/dir/?api=1&origin=${ord.lat},${ord.lng}&destination=${ord.merchant_lat},${ord.merchant_lng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a>` : '';
-                    actionHtml = `<div class="space-y-1.5 pt-2 border-t border-slate-200 mt-2"><div class="text-[11px] font-black text-emerald-700 text-center">التاجر وافق! تواصل معه أو توجه للفرع:</div><div class="grid grid-cols-${mapRouteBtn ? '3' : '2'} gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a>${mapRouteBtn}</div></div>`;
+                    actionHtml = `<div class="space-y-1.5 pt-2 border-t border-slate-200 mt-2"><div class="text-[11px] font-black text-emerald-700 text-center">التاجر وافق! تواصل معه:</div><div class="grid grid-cols-${mapRouteBtn ? '3' : '2'} gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a>${mapRouteBtn}</div></div>`;
                 }
                 const amountDetailsHtml = isCashOut
                     ? `<div class="bg-slate-50 border border-slate-200 p-2 rounded-xl text-center text-xs font-black mt-2 mb-2">سأُحول للتاجر: <span style="color:${method === 'vodafone' ? '#991B1B' : '#5B21B6'}">${window.fmtNum(ord.total_amount || ord.amount)} ج (${methodName})</span> ➔ أستلم كاش: <span class="text-emerald-600">${window.fmtNum(ord.amount)} ج</span></div>`
@@ -2760,8 +2703,8 @@ window.playMerchantCustomSound = function() {
     };
 
     window.cancelCustomerOrder = function(reqKey) {
-        if(confirm("هل أنت متأكد من إلغاء هذا الطلب المعلق؟")) {
-            update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() }).then(() => { alert("تم إلغاء الطلب."); }).catch(err => alert("خطأ: " + err.message));
+        if(confirm("هل أنت متأكد من إلغاء هذا الطلب؟")) {
+            update(ref(db, 'eqbad_orders/' + reqKey), { status: 'rejected', rejectedAt: Date.now() }).then(() => { alert("تم الإلغاء."); }).catch(err => alert("خطأ: " + err.message));
         }
     };
 
@@ -2772,7 +2715,7 @@ window.playMerchantCustomSound = function() {
                 const actionDiv = document.getElementById('merchant-action-' + targetMerchantPhone);
                 const statusBox = document.getElementById('customerStatusMsg');
                 if(actionDiv) { actionDiv.className = "mc-action"; actionDiv.innerHTML = `<button onclick="window.searchMerchants(event)" class="btn-ghost !py-2.5 !text-xs">تم الإلغاء ❌ (ابحث مجدداً)</button>`; }
-                if(statusBox) { statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-3 text-sm font-black shadow-xs"; statusBox.innerHTML = "❌ تم إلغاء الطلب بنجاح."; }
+                if(statusBox) { statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-3 text-sm font-black shadow-xs"; statusBox.innerHTML = "❌ تم الإلغاء."; }
             })
             .catch(err => alert("خطأ: " + err.message));
         }
@@ -2827,11 +2770,11 @@ window.playMerchantCustomSound = function() {
                 const statusBox = document.getElementById('customerStatusMsg');
                 if(merchants.length === 0) {
                     statusBox.className = isVf ? "text-center p-3 rounded-2xl bg-[#FEF2F2] border-2 border-[#FECACA] text-[#991B1B] mb-3 text-sm font-black shadow-xs" : "text-center p-3 rounded-2xl bg-[#F5F3FF] border-2 border-[#DDD6FE] text-[#5B21B6] mb-3 text-sm font-black shadow-xs";
-                    statusBox.innerHTML = `❌ لم يتم العثور على تجار يوفرون ${methodName} بهذه الشروط.`;
+                    statusBox.innerHTML = `❌ لم يتم العثور على تجار.`;
                     document.getElementById('merchantsListContainer').innerHTML = "";
                 } else {
                     statusBox.className = isVf ? "text-center p-3 rounded-2xl bg-[#FEF2F2] border-2 border-[#FECACA] text-[#991B1B] mb-3 text-sm font-black shadow-xs" : "text-center p-3 rounded-2xl bg-[#F5F3FF] border-2 border-[#DDD6FE] text-[#5B21B6] mb-3 text-sm font-black shadow-xs";
-                    statusBox.innerHTML = `✅ تم العثور على (${window.fmtNum(merchants.length)}) تجار يوفرون ${methodName}!`;
+                    statusBox.innerHTML = `✅ تم العثور على (${window.fmtNum(merchants.length)}) تجار!`;
                     window.merchantMarkers = {};
                     let listHTML = `<div class="space-y-3 pb-2 px-0.5">`;
                     const methodIcon = window.getMethodIcon(customerMethod);
@@ -2848,7 +2791,7 @@ window.playMerchantCustomSound = function() {
                         const ratingAvg = parseFloat(m.rating_avg) || 0;
                         const ratingCount = parseInt(m.rating_count) || 0;
                         const starsFilled = Math.round(ratingAvg);
-                        listHTML += `<div id="merchant-card-${m.phone}" class="merchant-card-item"><div onclick="window.focusMerchantForCard('${m.phone}')" class="mc-head" title="اضغط لرؤية موقع التاجر"><div class="flex-1 min-w-0"><div class="mc-title">${methodIcon} <span class="truncate">${m.name}</span></div><div class="mc-addr">📍 ${m.address}</div><div class="mc-meta"><span class="mc-meta-label">نسبة العمولة</span><span class="mc-comm">${window.fmtNum(commRate)}%</span></div><div class="mc-rating-row"><span class="rating-display"><span class="stars-mini">${'★'.repeat(starsFilled)}${'☆'.repeat(5 - starsFilled)}</span><span style="color:#0F172A;font-weight:900;">${ratingAvg.toFixed(1)}</span><span class="count">(${ratingCount} تقييم)</span></span></div><div class="mc-warn">⚠️ تعامل مع المحلات فقط وليس الأشخاص</div></div><div class="mc-dist">${window.fmtNum(m.distance.toFixed(1))} كم</div></div><div id="merchant-action-${m.phone}" class="mc-action"><button onclick="window.sendTargetedOrder('${m.phone}', '${m.name}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="${btnThemeClass}">${actionBtnText}</button></div></div>`;
+                        listHTML += `<div id="merchant-card-${m.phone}" class="merchant-card-item"><div onclick="window.focusMerchantForCard('${m.phone}')" class="mc-head"><div class="flex-1 min-w-0"><div class="mc-title">${methodIcon} <span class="truncate">${m.name}</span></div><div class="mc-addr">📍 ${m.address}</div><div class="mc-meta"><span class="mc-meta-label">نسبة العمولة</span><span class="mc-comm">${window.fmtNum(commRate)}%</span></div><div class="mc-rating-row"><span class="rating-display"><span class="stars-mini">${'★'.repeat(starsFilled)}${'☆'.repeat(5 - starsFilled)}</span><span style="color:#0F172A;font-weight:900;">${ratingAvg.toFixed(1)}</span><span class="count">(${ratingCount} تقييم)</span></span></div><div class="mc-warn">⚠️ تعامل مع المحلات فقط</div></div><div class="mc-dist">${window.fmtNum(m.distance.toFixed(1))} كم</div></div><div id="merchant-action-${m.phone}" class="mc-action"><button onclick="window.sendTargetedOrder('${m.phone}', '${m.name}', ${m.lat}, ${m.lng}, this, ${commRate}, ${amount})" class="${btnThemeClass}">${actionBtnText}</button></div></div>`;
                     });
                     document.getElementById('merchantsListContainer').innerHTML = listHTML + `</div>`;
                 }
@@ -2863,7 +2806,7 @@ window.playMerchantCustomSound = function() {
         const statusBox = document.getElementById('customerStatusMsg');
         const safeCustName = String(window.currentCustomerName || "عميل").trim();
         const safeCustPhone = window.normalizePhone(window.currentCustomerPhone || localStorage.getItem('eqbad_customer_phone'));
-        const safeCustAddress = String(window.finalCustAddress || "موقع محدد عبر الخريطة").trim();
+        const safeCustAddress = String(window.finalCustAddress || "موقع محدد").trim();
         const safeTargetMerchant = window.normalizePhone(merchantPhone);
         const newReqRef = push(ref(db, 'eqbad_orders'));
         try {
@@ -2886,25 +2829,25 @@ window.playMerchantCustomSound = function() {
                         const actionDivTarget = document.getElementById('merchant-action-' + safeTargetMerchant);
                         if(ord.status === 'accepted') {
                             statusBox.className = "text-center p-3 rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 mb-2 text-sm font-black shadow-md";
-                            statusBox.innerHTML = "🎉 وافق التاجر على طلبك! بيانات التواصل متاحة بالأسفل.";
+                            statusBox.innerHTML = "🎉 وافق التاجر على طلبك!";
                             if(actionDivTarget) {
                                 const cleanPhone = (ord.target_merchant||"").startsWith("0") ? "2"+ord.target_merchant : ord.target_merchant;
                                 const isCashOut = ord.transaction_type === 'cash_out' || !ord.transaction_type;
-                                const waMsg = encodeURIComponent(isCashOut ? `السلام عليكم، سأقوم بتحويل مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م لك، لاستلام ${window.numEN(ord.amount)} ج.م كاش. (تطبيق وصلني كاش)` : `السلام عليكم، سأدفع لك مبلغ ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي. (تطبيق وصلني كاش)`);
+                                const waMsg = encodeURIComponent(isCashOut ? `السلام عليكم، سأقوم بتحويل ${window.numEN(ord.total_amount || ord.amount)} ج.م لك، لاستلام ${window.numEN(ord.amount)} ج.م كاش.` : `السلام عليكم، سأدفع لك ${window.numEN(ord.total_amount || ord.amount)} ج.م كاش، لتحويل ${window.numEN(ord.amount)} ج.م لي.`);
                                 actionDivTarget.className = "mc-action";
                                 actionDivTarget.style.background = "#ECFDF5";
                                 actionDivTarget.style.borderTopColor = "#A7F3D0";
-                                actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️ توجه للفرع:</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
+                                actionDivTarget.innerHTML = `<div class="text-center text-emerald-800 text-[11px] font-black mb-1.5">تم القبول ✔️</div><div class="grid grid-cols-3 gap-1.5"><a href="tel:${ord.target_merchant}" class="bg-white border border-emerald-200 text-emerald-800 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">📞 اتصال</a><a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="bg-[#25D366] text-white py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">💬 واتس</a><a href="https://www.google.com/maps/dir/?api=1&origin=${window.finalCustLat},${window.finalCustLng}&destination=${merchLat},${merchLng}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-black text-xs flex justify-center gap-1 shadow-sm">🗺️ مسار</a></div>`;
                             }
                         } else if(ord.status === 'rejected') {
                             if(actionDivTarget && !actionDivTarget.innerHTML.includes("تم الإلغاء")) {
                                 statusBox.className = "text-center p-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-700 mb-2 text-sm font-black shadow-sm";
-                                statusBox.innerHTML = "❌ تم إلغاء أو رفض الطلب.";
+                                statusBox.innerHTML = "❌ تم رفض الطلب.";
                                 actionDivTarget.innerHTML = `<div class="text-center text-rose-600 font-bold text-xs py-1">ملغي / مرفوض ❌</div>`;
                             }
                         } else if(ord.status === 'completed') {
                             statusBox.className = "text-center p-3.5 rounded-2xl btn-primary mb-2 text-sm font-black shadow-md";
-                            statusBox.innerHTML = "✨ تم إتمام العملية بنجاح! شكراً لك.";
+                            statusBox.innerHTML = "✨ تم إتمام العملية بنجاح!";
                             if(actionDivTarget) actionDivTarget.innerHTML = `<div class="text-center text-emerald-700 font-black text-xs py-1">عملية مكتملة ✔️</div>`;
                         }
                     }
@@ -2918,7 +2861,6 @@ window.playMerchantCustomSound = function() {
             const audio = new Audio(WSLNY_SOUND_URL);
             audio.volume = 1.0;
             audio.play().catch(e => {
-                console.log('audio blocked:', e);
                 if (window.playSystemDefaultTone) window.playSystemDefaultTone();
             });
             if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]);
