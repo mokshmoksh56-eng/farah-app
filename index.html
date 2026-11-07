@@ -36,26 +36,40 @@
             background: #ffffff;
             z-index: 100000; display: flex;
             justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;
-            color: #0f172a;
+            color: #0f172a; overflow-y: auto;
         }
         .login-box {
-            background: #ffffff; padding: 30px; border-radius: var(--card-radius);
+            background: #ffffff; padding: 30px 25px; border-radius: var(--card-radius);
             box-shadow: 0 10px 30px rgba(0,0,0,0.15); width: 100%; max-width: 400px; text-align: center;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #e2e8f0; margin: auto;
         }
         .login-box h3 { margin-top: 0; color: #1e293b; }
-        .login-box p { font-size: 13px; color: #64748b; }
+        .login-box p { font-size: 13px; color: #64748b; margin-bottom: 15px; }
         
         .login-box input {
-            width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #cbd5e1;
-            border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: center;
-            background: #f8fafc; color: #0f172a;
+            width: 100%; padding: 12px; margin: 6px 0; border: 2px solid #cbd5e1;
+            border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: right;
+            background: #f8fafc; color: #0f172a; transition: border-color 0.2s;
+            direction: ltr;
         }
+        .login-box input:focus { outline: none; border-color: #6e8efb; background: #fff; }
+        .login-box input.error { border-color: #ef4444; background: #fef2f2; }
+        .login-box input.success { border-color: #10b981; background: #f0fdf4; }
+
+        .error-msg {
+            display: none; font-size: 12px; color: #dc2626; text-align: right;
+            margin: 0 0 8px 0; padding: 6px 10px; background: #fef2f2;
+            border-radius: 6px; border-right: 3px solid #dc2626;
+        }
+        .error-msg.show { display: block; }
+
         .login-box button {
             width: 100%; padding: 12px; background: #6e8efb; border: none;
             color: #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
-            margin-top: 10px;
+            margin-top: 8px; transition: opacity 0.2s;
         }
+        .login-box button:disabled { opacity: 0.6; cursor: wait; }
+
         .switch-link {
             margin-top: 15px; font-size: 13px; color: #64748b;
         }
@@ -148,9 +162,16 @@
         <div id="signup-form">
             <h3>✨ إنشاء حساب جديد</h3>
             <p>أنشئ حسابك للدخول إلى azemaa proo</p>
-            <input type="email" id="signup-email" placeholder="البريد الإلكتروني" autocomplete="email">
-            <input type="password" id="signup-password" placeholder="كلمة المرور (6 أحرف على الأقل)" autocomplete="new-password">
-            <input type="password" id="signup-confirm" placeholder="تأكيد كلمة المرور" autocomplete="new-password">
+            
+            <input type="email" id="signup-email" placeholder="البريد الإلكتروني (name@example.com)" autocomplete="email" dir="ltr">
+            <div class="error-msg" id="signup-email-error"></div>
+            
+            <input type="password" id="signup-password" placeholder="كلمة المرور (6 أحرف على الأقل)" autocomplete="new-password" dir="ltr">
+            <div class="error-msg" id="signup-password-error"></div>
+            
+            <input type="password" id="signup-confirm" placeholder="تأكيد كلمة المرور" autocomplete="new-password" dir="ltr">
+            <div class="error-msg" id="signup-confirm-error"></div>
+            
             <button id="signup-btn" style="background: #10b981;">إنشاء الحساب</button>
             <div class="switch-link">
                 لديك حساب بالفعل؟ <a id="goto-login">تسجيل الدخول</a>
@@ -161,8 +182,13 @@
         <div id="login-form" style="display: none;">
             <h3>🔐 تسجيل الدخول</h3>
             <p>سجل دخول بحساب العميل</p>
-            <input type="email" id="sys-email" placeholder="البريد الإلكتروني" autocomplete="email">
-            <input type="password" id="sys-password" placeholder="كلمة المرور" autocomplete="current-password">
+            
+            <input type="email" id="sys-email" placeholder="البريد الإلكتروني" autocomplete="email" dir="ltr">
+            <div class="error-msg" id="sys-email-error"></div>
+            
+            <input type="password" id="sys-password" placeholder="كلمة المرور" autocomplete="current-password" dir="ltr">
+            <div class="error-msg" id="sys-password-error"></div>
+            
             <button id="login-btn">تسجيل الدخول</button>
             <div class="switch-link">
                 ليس لديك حساب؟ <a id="goto-signup">إنشاء حساب جديد</a>
@@ -579,49 +605,181 @@
     const signupBtn = document.getElementById('signup-btn');
     const loginBtn = document.getElementById('login-btn');
 
-    // التبديل بين النماذج
+    // ==================== دوال مساعدة للرسائل ====================
+    
+    // فحص صيغة الإيميل بـ Regex
+    function isValidEmail(email) {
+        // لازم: كلمة + @ + كلمة + . + امتداد (2 حرف على الأقل)
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return emailRegex.test(email);
+    }
+
+    // إظهار رسالة خطأ تحت الحقل
+    function showError(inputId, errorId, message) {
+        const input = document.getElementById(inputId);
+        const errorDiv = document.getElementById(errorId);
+        input.classList.add('error');
+        input.classList.remove('success');
+        errorDiv.innerText = message;
+        errorDiv.classList.add('show');
+    }
+
+    // إخفاء رسالة الخطأ
+    function clearError(inputId, errorId) {
+        const input = document.getElementById(inputId);
+        const errorDiv = document.getElementById(errorId);
+        input.classList.remove('error');
+        errorDiv.classList.remove('show');
+        errorDiv.innerText = '';
+    }
+
+    // تعليم الحقل كصحيح
+    function markSuccess(inputId) {
+        const input = document.getElementById(inputId);
+        input.classList.remove('error');
+        input.classList.add('success');
+    }
+
+    // ==================== التبديل بين النماذج ====================
+    
     document.getElementById('goto-login').addEventListener('click', (e) => {
         e.preventDefault();
         signupForm.style.display = 'none';
         loginForm.style.display = 'block';
+        // مسح الأخطاء عند التبديل
+        clearError('signup-email', 'signup-email-error');
+        clearError('signup-password', 'signup-password-error');
+        clearError('signup-confirm', 'signup-confirm-error');
     });
+    
     document.getElementById('goto-signup').addEventListener('click', (e) => {
         e.preventDefault();
         loginForm.style.display = 'none';
         signupForm.style.display = 'block';
+        clearError('sys-email', 'sys-email-error');
+        clearError('sys-password', 'sys-password-error');
     });
 
-    // مراقبة حالة الدخول — لو فيه مستخدم مسجل، ادخل مباشرة بدون أي تحقق
+    // ==================== التحقق الفوري أثناء الكتابة ====================
+    
+    // في نموذج إنشاء الحساب
+    document.getElementById('signup-email').addEventListener('blur', function() {
+        const email = this.value.trim();
+        if (!email) { clearError('signup-email', 'signup-email-error'); return; }
+        if (!isValidEmail(email)) {
+            showError('signup-email', 'signup-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+        } else {
+            clearError('signup-email', 'signup-email-error');
+            markSuccess('signup-email');
+        }
+    });
+
+    document.getElementById('signup-password').addEventListener('input', function() {
+        if (this.value.length > 0 && this.value.length < 6) {
+            showError('signup-password', 'signup-password-error', '⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+        } else if (this.value.length >= 6) {
+            clearError('signup-password', 'signup-password-error');
+            markSuccess('signup-password');
+        } else {
+            clearError('signup-password', 'signup-password-error');
+        }
+    });
+
+    document.getElementById('signup-confirm').addEventListener('input', function() {
+        const password = document.getElementById('signup-password').value;
+        if (this.value && this.value !== password) {
+            showError('signup-confirm', 'signup-confirm-error', '⚠️ كلمتا المرور غير متطابقتين');
+        } else if (this.value && this.value === password) {
+            clearError('signup-confirm', 'signup-confirm-error');
+            markSuccess('signup-confirm');
+        } else {
+            clearError('signup-confirm', 'signup-confirm-error');
+        }
+    });
+
+    // في نموذج تسجيل الدخول
+    document.getElementById('sys-email').addEventListener('blur', function() {
+        const email = this.value.trim();
+        if (!email) { clearError('sys-email', 'sys-email-error'); return; }
+        if (!isValidEmail(email)) {
+            showError('sys-email', 'sys-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+        } else {
+            clearError('sys-email', 'sys-email-error');
+            markSuccess('sys-email');
+        }
+    });
+
+    // ==================== مراقبة حالة الدخول ====================
+    
     onAuthStateChanged(auth, (user) => {
         if (user) {
             loginOverlay.style.display = 'none';
         } else {
             loginOverlay.style.display = 'flex';
-            // الافتراضي = نموذج إنشاء الحساب
             signupForm.style.display = 'block';
             loginForm.style.display = 'none';
         }
     });
 
-    // ===== إنشاء حساب جديد =====
+    // ==================== إنشاء حساب جديد ====================
+    
     signupBtn.addEventListener('click', async () => {
-        const email = document.getElementById('signup-email').value.trim();
-        const password = document.getElementById('signup-password').value;
-        const confirm = document.getElementById('signup-confirm').value;
+        const emailInput = document.getElementById('signup-email');
+        const passwordInput = document.getElementById('signup-password');
+        const confirmInput = document.getElementById('signup-confirm');
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const confirm = confirmInput.value;
 
-        if(!email || !password || !confirm) { alert("⚠️ يرجى ملء جميع الحقول!"); return; }
-        if (password.length < 6) { alert("⚠️ يجب أن تكون كلمة المرور 6 أحرف على الأقل."); return; }
-        if (password !== confirm) { alert("⚠️ كلمتا المرور غير متطابقتين."); return; }
+        // مسح جميع الأخطاء السابقة
+        clearError('signup-email', 'signup-email-error');
+        clearError('signup-password', 'signup-password-error');
+        clearError('signup-confirm', 'signup-confirm-error');
 
+        // ===== فحص الإيميل =====
+        if (!email) {
+            showError('signup-email', 'signup-email-error', '⚠️ يرجى إدخال البريد الإلكتروني');
+            emailInput.focus();
+            return;
+        }
+        if (!isValidEmail(email)) {
+            showError('signup-email', 'signup-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+            emailInput.focus();
+            return;
+        }
+
+        // ===== فحص كلمة المرور =====
+        if (!password) {
+            showError('signup-password', 'signup-password-error', '⚠️ يرجى إدخال كلمة المرور');
+            passwordInput.focus();
+            return;
+        }
+        if (password.length < 6) {
+            showError('signup-password', 'signup-password-error', '⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+            passwordInput.focus();
+            return;
+        }
+
+        // ===== فحص التأكيد =====
+        if (!confirm) {
+            showError('signup-confirm', 'signup-confirm-error', '⚠️ يرجى تأكيد كلمة المرور');
+            confirmInput.focus();
+            return;
+        }
+        if (password !== confirm) {
+            showError('signup-confirm', 'signup-confirm-error', '⚠️ كلمتا المرور غير متطابقتين');
+            confirmInput.focus();
+            return;
+        }
+
+        // ===== محاولة إنشاء الحساب =====
         try {
             signupBtn.innerText = "⏳ جاري إنشاء الحساب...";
             signupBtn.disabled = true;
 
-            // 1. إنشاء الحساب (Firebase يدخل المستخدم تلقائياً بعد الإنشاء)
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 2. حفظ بيانات العميل في قاعدة البيانات
             await set(ref(db, 'users/' + user.uid), {
                 email: user.email,
                 uid: user.uid,
@@ -630,46 +788,126 @@
             });
 
             // سيتم إخفاء الشاشة تلقائياً بواسطة onAuthStateChanged
+
         } catch (error) {
-            let msg = error.message;
-            if (error.code === 'auth/email-already-in-use') msg = "هذا البريد مسجل بالفعل. جرب تسجيل الدخول.";
-            else if (error.code === 'auth/invalid-email') msg = "البريد الإلكتروني غير صالح.";
-            else if (error.code === 'auth/weak-password') msg = "كلمة المرور ضعيفة (6 أحرف على الأقل).";
-            else if (error.code === 'auth/network-request-failed') msg = "تعذر الاتصال بالإنترنت. تحقق من الشبكة.";
-            alert("❌ خطأ في إنشاء الحساب: " + msg);
-        } finally {
             signupBtn.innerText = "إنشاء الحساب";
             signupBtn.disabled = false;
+
+            // ===== معالجة كل أنواع الأخطاء بالعربي =====
+            let emailMsg = null;
+            let passwordMsg = null;
+            let generalMsg = null;
+
+            switch (error.code) {
+                case 'auth/email-already-in-use':
+                    emailMsg = '❌ هذا البريد مسجل بالفعل. جرب تسجيل الدخول بدلاً من ذلك.';
+                    break;
+                case 'auth/invalid-email':
+                    emailMsg = '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)';
+                    break;
+                case 'auth/weak-password':
+                    passwordMsg = '⚠️ كلمة المرور ضعيفة جداً (6 أحرف على الأقل)';
+                    break;
+                case 'auth/operation-not-allowed':
+                    generalMsg = '⚙️ التسجيل غير مفعّل في النظام. تواصل مع الدعم.';
+                    break;
+                case 'auth/network-request-failed':
+                    generalMsg = '📡 تعذر الاتصال بالإنترنت. تحقق من الشبكة وحاول مجدداً.';
+                    break;
+                case 'auth/too-many-requests':
+                    generalMsg = '⏰ محاولات كثيرة جداً. انتظر قليلاً ثم حاول مجدداً.';
+                    break;
+                default:
+                    generalMsg = '❌ حدث خطأ: ' + (error.message || 'غير معروف');
+            }
+
+            if (emailMsg) { showError('signup-email', 'signup-email-error', emailMsg); emailInput.focus(); }
+            if (passwordMsg) { showError('signup-password', 'signup-password-error', passwordMsg); passwordInput.focus(); }
+            if (generalMsg) { showError('signup-email', 'signup-email-error', generalMsg); }
         }
     });
 
-    // ===== تسجيل الدخول =====
+    // ==================== تسجيل الدخول ====================
+    
     loginBtn.addEventListener('click', async () => {
-        const email = document.getElementById('sys-email').value.trim();
-        const password = document.getElementById('sys-password').value;
+        const emailInput = document.getElementById('sys-email');
+        const passwordInput = document.getElementById('sys-password');
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
 
-        if(!email || !password) { alert("⚠️ يرجى إدخال البريد وكلمة المرور!"); return; }
+        // مسح الأخطاء السابقة
+        clearError('sys-email', 'sys-email-error');
+        clearError('sys-password', 'sys-password-error');
+
+        // ===== فحص الإيميل =====
+        if (!email) {
+            showError('sys-email', 'sys-email-error', '⚠️ يرجى إدخال البريد الإلكتروني');
+            emailInput.focus();
+            return;
+        }
+        if (!isValidEmail(email)) {
+            showError('sys-email', 'sys-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+            emailInput.focus();
+            return;
+        }
+
+        // ===== فحص كلمة المرور =====
+        if (!password) {
+            showError('sys-password', 'sys-password-error', '⚠️ يرجى إدخال كلمة المرور');
+            passwordInput.focus();
+            return;
+        }
 
         try {
             loginBtn.innerText = "⏳ جاري تسجيل الدخول...";
             loginBtn.disabled = true;
 
             await signInWithEmailAndPassword(auth, email, password);
-            // سيتم إخفاء الشاشة تلقائياً بواسطة onAuthStateChanged
+            // سيتم إخفاء الشاشة تلقائياً
+
         } catch (error) {
-            let msg = error.message;
-            if (error.code === 'auth/user-not-found') msg = "لا يوجد حساب بهذا البريد. اضغط على إنشاء حساب جديد.";
-            else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = "بيانات الدخول غير صحيحة.";
-            else if (error.code === 'auth/invalid-email') msg = "البريد الإلكتروني غير صالح.";
-            else if (error.code === 'auth/network-request-failed') msg = "تعذر الاتصال بالإنترنت. تحقق من الشبكة.";
-            alert("❌ خطأ في تسجيل الدخول: " + msg);
-        } finally {
             loginBtn.innerText = "تسجيل الدخول";
             loginBtn.disabled = false;
+
+            // ===== معالجة أخطاء الدخول بالعربي =====
+            let emailMsg = null;
+            let passwordMsg = null;
+            let generalMsg = null;
+
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    emailMsg = '❌ لا يوجد حساب بهذا البريد. اضغط على "إنشاء حساب جديد".';
+                    break;
+                case 'auth/wrong-password':
+                    passwordMsg = '❌ كلمة المرور غير صحيحة.';
+                    break;
+                case 'auth/invalid-email':
+                    emailMsg = '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)';
+                    break;
+                case 'auth/invalid-credential':
+                    emailMsg = '❌ البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+                    break;
+                case 'auth/user-disabled':
+                    emailMsg = '🚫 هذا الحساب معطّل. تواصل مع الدعم.';
+                    break;
+                case 'auth/too-many-requests':
+                    generalMsg = '⏰ محاولات كثيرة جداً. انتظر قليلاً ثم حاول مجدداً.';
+                    break;
+                case 'auth/network-request-failed':
+                    generalMsg = '📡 تعذر الاتصال بالإنترنت. تحقق من الشبكة.';
+                    break;
+                default:
+                    generalMsg = '❌ حدث خطأ: ' + (error.message || 'غير معروف');
+            }
+
+            if (emailMsg) { showError('sys-email', 'sys-email-error', emailMsg); emailInput.focus(); }
+            if (passwordMsg) { showError('sys-password', 'sys-password-error', passwordMsg); passwordInput.focus(); }
+            if (generalMsg) { showError('sys-email', 'sys-email-error', generalMsg); }
         }
     });
 
-    // ===== تسجيل الخروج =====
+    // ==================== تسجيل الخروج ====================
+    
     document.getElementById('logout-btn').addEventListener('click', () => {
         if(confirm("هل تريد تسجيل الخروج وقفل المنظومة?")) {
             history.pushState('', document.title, window.location.pathname + window.location.search);
