@@ -56,6 +56,9 @@ u<!DOCTYPE html>
             color: #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
             margin-top: 10px;
         }
+        .login-box button:disabled { opacity: .65; cursor: wait; }
+        .login-hint { line-height: 1.7; }
+        .login-error { color: #dc2626 !important; min-height: 20px; }
 
         /* تنسيقات رئيسية */
         header { 
@@ -137,11 +140,18 @@ u<!DOCTYPE html>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h3>🔐 لوحة تفعيل azemaa proo</h3>
-        <p>سجل دخول بحساب العميل لتنشيط السحابة</p>
-        <input type="email" id="sys-email" placeholder="البريد الإلكتروني للعميل">
-        <input type="password" id="sys-password" placeholder="كلمة المرور السحابية">
-        <button id="login-btn">تفعيل النظام الآمن</button>
+        <h3 id="login-title">🔐 تسجيل الدخول إلى azemaa proo</h3>
+        <p id="login-description" class="login-hint">أدخل بريدك الإلكتروني وكلمة مرور Firebase لأول تفعيل</p>
+        <div id="firebase-login-fields">
+            <input type="email" id="sys-email" placeholder="البريد الإلكتروني" autocomplete="username" inputmode="email">
+            <input type="password" id="sys-password" placeholder="كلمة مرور Firebase" autocomplete="current-password">
+        </div>
+        <div id="pin-fields" style="display:none">
+            <input type="password" id="sys-pin" placeholder="الرقم السري 4 أرقام" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off">
+            <input type="password" id="sys-pin-confirm" placeholder="تأكيد الرقم السري" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" style="display:none">
+        </div>
+        <p id="login-error" class="login-error" role="alert"></p>
+        <button id="login-btn">دخول آمن</button>
     </div>
 </div>
 
@@ -530,8 +540,8 @@ u<!DOCTYPE html>
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getDatabase } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    
+    import { getDatabase, ref, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
         authDomain: "azemaa-proo.firebaseapp.com",
@@ -541,41 +551,149 @@ u<!DOCTYPE html>
         messagingSenderId: "787350492977",
         appId: "1:787350492977:web:84061dcf31622fcb07c210"
     };
-    
-    const app = initializeApp(firebaseConfig); 
+
+    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            document.getElementById('login-overlay').style.display = 'none';
-        } else {
-            document.getElementById('login-overlay').style.display = 'flex';
-        }
-    });
+    const db = getDatabase(app);
+    const overlay = document.getElementById('login-overlay');
+    const title = document.getElementById('login-title');
+    const description = document.getElementById('login-description');
+    const emailInput = document.getElementById('sys-email');
+    const passwordInput = document.getElementById('sys-password');
+    const pinInput = document.getElementById('sys-pin');
+    const pinConfirmInput = document.getElementById('sys-pin-confirm');
+    const firebaseFields = document.getElementById('firebase-login-fields');
+    const pinFields = document.getElementById('pin-fields');
+    const loginBtn = document.getElementById('login-btn');
+    const errorBox = document.getElementById('login-error');
+    let mode = 'firebase';
+    let activeUser = null;
+    let busy = false;
 
-    document.getElementById('login-btn').addEventListener('click', async () => {
-        const email = document.getElementById('sys-email').value;
-        const password = document.getElementById('sys-password').value;
-        const loginBtn = document.getElementById('login-btn');
+    function showError(message) { errorBox.textContent = message || ''; }
+    function setMode(nextMode, email = '') {
+        mode = nextMode;
+        showError('');
+        firebaseFields.style.display = nextMode === 'firebase' ? 'block' : 'none';
+        pinFields.style.display = nextMode === 'firebase' ? 'none' : 'block';
+        pinConfirmInput.style.display = nextMode === 'setup' ? 'block' : 'none';
+        title.textContent = nextMode === 'firebase' ? '🔐 تفعيل الحساب السحابي' :
+            nextMode === 'setup' ? '🔢 إنشاء الرقم السري' : '🔐 أدخل الرقم السري';
+        description.textContent = nextMode === 'firebase'
+            ? 'أدخل بريدك الإلكتروني وكلمة مرور Firebase لأول تفعيل'
+            : nextMode === 'setup'
+                ? 'أنشئ رقماً سرياً من 4 أرقام لفتح التطبيق على هذا الجهاز'
+                : 'أدخل رقمك السري المكوّن من 4 أرقام';
+        loginBtn.textContent = nextMode === 'firebase' ? 'تفعيل الحساب' :
+            nextMode === 'setup' ? 'حفظ الرقم السري' : 'فتح التطبيق';
+        if (email) emailInput.value = email;
+        pinInput.value = '';
+        pinConfirmInput.value = '';
+        overlay.style.display = 'flex';
+    }
 
-        if(!email || !password) { alert("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور!"); return; }
-
+    function bytesToHex(bytes) {
+        return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+    async function hashPin(pin, salt) {
+        const data = new TextEncoder().encode(`${salt}:${pin}`);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return bytesToHex(new Uint8Array(digest));
+    }
+    function pinStorageKey(uid) { return `azemaa_pin_v1_${uid}`; }
+    async function savePin(uid, pin) {
+        const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+        const salt = bytesToHex(saltBytes);
+        const hash = await hashPin(pin, salt);
+        localStorage.setItem(pinStorageKey(uid), JSON.stringify({ salt, hash }));
+    }
+    async function verifyPin(uid, pin) {
+        const saved = localStorage.getItem(pinStorageKey(uid));
+        if (!saved) return false;
         try {
-            loginBtn.innerText = "⏳ جاري تفعيل النظام...";
-            loginBtn.disabled = true;
-            await signInWithEmailAndPassword(auth, email, password);
+            const record = JSON.parse(saved);
+            return (await hashPin(pin, record.salt)) === record.hash;
+        } catch (_) { return false; }
+    }
+    async function saveUserLogin(user, emailFallback = '') {
+        await update(ref(db, `users/${user.uid}`), {
+            email: user.email || emailFallback,
+            lastLoginAt: serverTimestamp()
+        });
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        activeUser = user;
+        if (!user) {
+            setMode('firebase');
+            return;
+        }
+        const savedPin = localStorage.getItem(pinStorageKey(user.uid));
+        if (savedPin) setMode('pin', user.email || '');
+        else setMode('setup', user.email || '');
+    });
+
+    loginBtn.addEventListener('click', async () => {
+        if (busy) return;
+        showError('');
+        busy = true;
+        loginBtn.disabled = true;
+        try {
+            if (mode === 'firebase') {
+                const email = emailInput.value.trim().toLowerCase();
+                const password = passwordInput.value;
+                if (!email || !password) throw new Error('اكتب البريد الإلكتروني وكلمة مرور Firebase.');
+                loginBtn.textContent = '⏳ جارٍ التحقق من الحساب...';
+                const credential = await signInWithEmailAndPassword(auth, email, password);
+                activeUser = credential.user;
+                try {
+                    await saveUserLogin(credential.user, email);
+                } catch (dbError) {
+                    console.error('Firebase Database save error:', dbError);
+                    throw new Error('تم التحقق من الحساب، لكن تعذر حفظ البريد في قاعدة البيانات. راجع قواعد Realtime Database.');
+                }
+                setMode('setup', credential.user.email || email);
+            } else if (mode === 'setup') {
+                const pin = pinInput.value;
+                const confirmation = pinConfirmInput.value;
+                if (!/^\d{4}$/.test(pin)) throw new Error('الرقم السري يجب أن يتكون من 4 أرقام فقط.');
+                if (pin !== confirmation) throw new Error('الرقمان غير متطابقين. أعد التأكيد.');
+                if (!activeUser) throw new Error('انتهت الجلسة. أعد تسجيل الدخول بالبريد وكلمة مرور Firebase.');
+                await savePin(activeUser.uid, pin);
+                overlay.style.display = 'none';
+            } else if (mode === 'pin') {
+                const pin = pinInput.value;
+                if (!/^\d{4}$/.test(pin)) throw new Error('أدخل 4 أرقام بالضبط.');
+                if (!activeUser || !(await verifyPin(activeUser.uid, pin))) throw new Error('الرقم السري غير صحيح. حاول مرة أخرى.');
+                try { await saveUserLogin(activeUser, activeUser.email || ''); }
+                catch (dbError) { console.warn('تعذر تحديث وقت الدخول في Firebase:', dbError); }
+                overlay.style.display = 'none';
+            }
         } catch (error) {
-            alert("❌ خطأ في التفعيل: بيانات حساب العميل غير مطابقة للسيرفر.");
+            console.error('Login error:', error);
+            showError(error.message || 'تعذر إتمام تسجيل الدخول. تحقق من البيانات والاتصال.');
         } finally {
-            loginBtn.innerText = "تفعيل النظام الآمن";
+            busy = false;
             loginBtn.disabled = false;
+            loginBtn.textContent = mode === 'firebase' ? 'تفعيل الحساب' : mode === 'setup' ? 'حفظ الرقم السري' : 'فتح التطبيق';
         }
     });
 
-    document.getElementById('logout-btn').addEventListener('click', () => {
-        if(confirm("هل تريد تسجيل الخروج وقفل المنظومة?")) {
+    [pinInput, pinConfirmInput].forEach(input => input.addEventListener('input', () => {
+        input.value = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+    }));
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        if (confirm('هل تريد تسجيل الخروج من الحساب السحابي وقفل المنظومة؟')) {
             history.pushState('', document.title, window.location.pathname + window.location.search);
-            signOut(auth).then(() => { window.location.reload(); });
+            try {
+                if (activeUser) localStorage.removeItem(pinStorageKey(activeUser.uid));
+                await signOut(auth);
+                window.location.reload();
+            } catch (error) {
+                alert('تعذر تسجيل الخروج. حاول مرة أخرى.');
+                console.error(error);
+            }
         }
     });
 </script>
