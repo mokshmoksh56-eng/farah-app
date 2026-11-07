@@ -123,6 +123,32 @@
 
         .time-date-container { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
+        /* ========== منطقة الخطر - حذف الحساب ========== */
+        .danger-zone {
+            margin-top: 20px;
+            padding: 18px;
+            background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+            border: 2px solid #ef4444;
+            border-radius: var(--card-radius);
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        .danger-zone h3 {
+            color: #fca5a5; margin: 0 0 8px 0; font-size: 15px;
+        }
+        .danger-zone p {
+            color: #fecaca; font-size: 12px; margin: 0 0 15px 0; line-height: 1.6;
+        }
+        .danger-zone button {
+            width: 100%; padding: 14px;
+            background: #ef4444; border: 2px solid #dc2626; color: #fff;
+            border-radius: 10px; font-size: 15px; font-weight: bold;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .danger-zone button:hover { background: #dc2626; }
+        .danger-zone button:active { transform: scale(0.98); }
+        .danger-zone button:disabled { opacity: 0.6; cursor: wait; }
+
         @media (max-width: 550px) {
             header { padding: 12px; }
             .sync-group { grid-template-columns: repeat(2, 1fr); gap: 6px; }
@@ -279,6 +305,13 @@
             <button class="zoom-btn" onclick="toggleZoom(this.closest('.card'), event)">تكبير</button>
         </div>
         <iframe src="takarer.html"></iframe>
+    </div>
+    
+    <!-- ============ منطقة الخطر - حذف الحساب ============ -->
+    <div class="danger-zone">
+        <h3>⚠️ منطقة الخطر</h3>
+        <p>حذف الحساب نهائياً مع جميع بياناته. لا يمكن التراجع عن هذا الإجراء!</p>
+        <button id="delete-account-btn">🗑️ حذف الحساب نهائياً</button>
     </div>
 </div>
 
@@ -582,8 +615,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getDatabase, ref, set, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     
     const firebaseConfig = {
         apiKey: "AIzaSyDmPciW_QPM4vwcMLX2M44_C0a8jqHdPjU",
@@ -607,13 +640,10 @@
 
     // ==================== دوال مساعدة للرسائل ====================
     
-    // فحص صيغة الإيميل + الدومينات المسموحة
     function isValidEmail(email) {
-        // 1. فحص الصيغة الأساسية للإيميل
         const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(email)) return false;
         
-        // 2. قائمة الدومينات المسموحة
         const allowedDomains = [
             '@gmail.com',
             '@yahoo.com',
@@ -624,12 +654,10 @@
             '@me.com'
         ];
         
-        // 3. فحص إن الإيميل ينتهي بأحد الدومينات المسموحة
         const lowerEmail = email.toLowerCase();
         return allowedDomains.some(domain => lowerEmail.endsWith(domain));
     }
 
-    // إظهار رسالة خطأ تحت الحقل
     function showError(inputId, errorId, message) {
         const input = document.getElementById(inputId);
         const errorDiv = document.getElementById(errorId);
@@ -639,7 +667,6 @@
         errorDiv.classList.add('show');
     }
 
-    // إخفاء رسالة الخطأ
     function clearError(inputId, errorId) {
         const input = document.getElementById(inputId);
         const errorDiv = document.getElementById(errorId);
@@ -648,7 +675,6 @@
         errorDiv.innerText = '';
     }
 
-    // تعليم الحقل كصحيح
     function markSuccess(inputId) {
         const input = document.getElementById(inputId);
         input.classList.remove('error');
@@ -674,7 +700,7 @@
         clearError('sys-password', 'sys-password-error');
     });
 
-    // ==================== التحقق الفوري أثناء الكتابة ====================
+    // ==================== التحقق الفوري ====================
     
     document.getElementById('signup-email').addEventListener('blur', function() {
         const email = this.value.trim();
@@ -747,7 +773,6 @@
         clearError('signup-password', 'signup-password-error');
         clearError('signup-confirm', 'signup-confirm-error');
 
-        // ===== فحص الإيميل =====
         if (!email) {
             showError('signup-email', 'signup-email-error', '⚠️ يرجى إدخال البريد الإلكتروني');
             emailInput.focus();
@@ -758,8 +783,6 @@
             emailInput.focus();
             return;
         }
-
-        // ===== فحص كلمة المرور =====
         if (!password) {
             showError('signup-password', 'signup-password-error', '⚠️ يرجى إدخال كلمة المرور');
             passwordInput.focus();
@@ -770,8 +793,6 @@
             passwordInput.focus();
             return;
         }
-
-        // ===== فحص التأكيد =====
         if (!confirm) {
             showError('signup-confirm', 'signup-confirm-error', '⚠️ يرجى تأكيد كلمة المرور');
             confirmInput.focus();
@@ -783,7 +804,6 @@
             return;
         }
 
-        // ===== محاولة إنشاء الحساب =====
         try {
             signupBtn.innerText = "⏳ جاري إنشاء الحساب...";
             signupBtn.disabled = true;
@@ -856,7 +876,6 @@
             emailInput.focus();
             return;
         }
-
         if (!password) {
             showError('sys-password', 'sys-password-error', '⚠️ يرجى إدخال كلمة المرور');
             passwordInput.focus();
@@ -866,9 +885,7 @@
         try {
             loginBtn.innerText = "⏳ جاري تسجيل الدخول...";
             loginBtn.disabled = true;
-
             await signInWithEmailAndPassword(auth, email, password);
-
         } catch (error) {
             loginBtn.innerText = "تسجيل الدخول";
             loginBtn.disabled = false;
@@ -917,6 +934,104 @@
             signOut(auth).then(() => { window.location.reload(); });
         }
     });
+
+    // ==================== حذف الحساب نهائياً ====================
+    
+    document.getElementById('delete-account-btn').addEventListener('click', async () => {
+        const user = auth.currentUser;
+        if (!user) {
+            alert("⚠️ لا يوجد مستخدم مسجل حالياً.");
+            return;
+        }
+
+        // التأكيد الأول
+        const firstConfirm = confirm(
+            "⚠️ تحذير خطير!\n\n" +
+            "سيتم حذف حسابك نهائياً مع جميع بياناتك من النظام.\n" +
+            "لا يمكن التراجع عن هذا الإجراء!\n\n" +
+            "هل أنت متأكد من المتابعة؟"
+        );
+        if (!firstConfirm) return;
+
+        // التأكيد الثاني (نهائي)
+        const finalConfirm = confirm(
+            "🚨 تأكيد نهائي!\n\n" +
+            "هل تريد فعلاً حذف حسابك نهائياً؟\n" +
+            "هذا آخر تحذير!"
+        );
+        if (!finalConfirm) return;
+
+        // طلب كلمة المرور (لأمان Firebase - إعادة مصادقة)
+        const password = prompt(
+            "🔐 لأمان الحذف، يرجى إدخال كلمة المرور الخاصة بحسابك:\n" +
+            "البريد: " + user.email
+        );
+        if (!password) {
+            alert("❌ تم إلغاء عملية الحذف.");
+            return;
+        }
+
+        const btn = document.getElementById('delete-account-btn');
+        const originalText = btn.innerText;
+
+        try {
+            btn.innerText = "⏳ جاري التحقق...";
+            btn.disabled = true;
+
+            // 1. إعادة المصادقة (مطلوبة من Firebase للحذف)
+            const credential = EmailAuthProvider.credential(user.email, password);
+            await reauthenticateWithCredential(user, credential);
+
+            btn.innerText = "⏳ جاري حذف البيانات...";
+
+            // 2. حذف بيانات المستخدم من قاعدة البيانات
+            try {
+                await remove(ref(db, 'users/' + user.uid));
+            } catch (dbErr) {
+                console.warn("تعذر حذف البيانات من Database:", dbErr);
+                // نكمل حذف الحساب من Auth حتى لو فشل حذف Database
+            }
+
+            btn.innerText = "⏳ جاري حذف الحساب...";
+
+            // 3. حذف الحساب من Firebase Auth
+            await deleteUser(user);
+
+            alert(
+                "✅ تم حذف حسابك نهائياً بنجاح.\n\n" +
+                "شكراً لاستخدامك azemaa proo.\n" +
+                "نأمل رؤيتك مرة أخرى قريباً! 👋"
+            );
+
+            // إعادة تحميل الصفحة
+            window.location.reload();
+
+        } catch (error) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+
+            let msg = error.message;
+            switch (error.code) {
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    msg = "كلمة المرور غير صحيحة. حاول مجدداً.";
+                    break;
+                case 'auth/requires-recent-login':
+                    msg = "انتهت صلاحية الجلسة. سجل الخروج ثم الدخول مجدداً وحاول الحذف.";
+                    break;
+                case 'auth/network-request-failed':
+                    msg = "تعذر الاتصال بالإنترنت. تحقق من الشبكة.";
+                    break;
+                case 'auth/too-many-requests':
+                    msg = "محاولات كثيرة جداً. انتظر قليلاً ثم حاول مجدداً.";
+                    break;
+                default:
+                    msg = "حدث خطأ: " + msg;
+            }
+
+            alert("❌ تعذر حذف الحساب:\n" + msg);
+        }
+    });
 </script>
 
 <script>
@@ -945,7 +1060,7 @@
         document.addEventListener('click', function(event) {
             let target = event.target;
             let isClickable = false;
-            const clickableSelectors = ['button', '.btn', '.zoom-btn', '.card', '.overlay', '.h', '.sidebar-item', '#countdown', '#logout-btn', 'header button', '.sync-group button', '.login-box button', '.switch-link a'];
+            const clickableSelectors = ['button', '.btn', '.zoom-btn', '.card', '.overlay', '.h', '.sidebar-item', '#countdown', '#logout-btn', 'header button', '.sync-group button', '.login-box button', '.switch-link a', '.danger-zone button'];
             for (let selector of clickableSelectors) {
                 if (target.matches(selector) || (target.closest && target.closest(selector))) { isClickable = true; break; }
             }
