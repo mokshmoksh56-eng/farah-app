@@ -163,7 +163,7 @@
             <h3>✨ إنشاء حساب جديد</h3>
             <p>أنشئ حسابك للدخول إلى azemaa proo</p>
             
-            <input type="email" id="signup-email" placeholder="البريد الإلكتروني (name@example.com)" autocomplete="email" dir="ltr">
+            <input type="email" id="signup-email" placeholder="البريد الإلكتروني (gmail / yahoo / hotmail / outlook / icloud)" autocomplete="email" dir="ltr">
             <div class="error-msg" id="signup-email-error"></div>
             
             <input type="password" id="signup-password" placeholder="كلمة المرور (6 أحرف على الأقل)" autocomplete="new-password" dir="ltr">
@@ -607,11 +607,26 @@
 
     // ==================== دوال مساعدة للرسائل ====================
     
-    // فحص صيغة الإيميل بـ Regex
+    // فحص صيغة الإيميل + الدومينات المسموحة
     function isValidEmail(email) {
-        // لازم: كلمة + @ + كلمة + . + امتداد (2 حرف على الأقل)
+        // 1. فحص الصيغة الأساسية للإيميل
         const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        return emailRegex.test(email);
+        if (!emailRegex.test(email)) return false;
+        
+        // 2. قائمة الدومينات المسموحة
+        const allowedDomains = [
+            '@gmail.com',
+            '@yahoo.com',
+            '@hotmail.com',
+            '@outlook.com',
+            '@icloud.com',
+            '@live.com',
+            '@me.com'
+        ];
+        
+        // 3. فحص إن الإيميل ينتهي بأحد الدومينات المسموحة
+        const lowerEmail = email.toLowerCase();
+        return allowedDomains.some(domain => lowerEmail.endsWith(domain));
     }
 
     // إظهار رسالة خطأ تحت الحقل
@@ -646,7 +661,6 @@
         e.preventDefault();
         signupForm.style.display = 'none';
         loginForm.style.display = 'block';
-        // مسح الأخطاء عند التبديل
         clearError('signup-email', 'signup-email-error');
         clearError('signup-password', 'signup-password-error');
         clearError('signup-confirm', 'signup-confirm-error');
@@ -662,12 +676,11 @@
 
     // ==================== التحقق الفوري أثناء الكتابة ====================
     
-    // في نموذج إنشاء الحساب
     document.getElementById('signup-email').addEventListener('blur', function() {
         const email = this.value.trim();
         if (!email) { clearError('signup-email', 'signup-email-error'); return; }
         if (!isValidEmail(email)) {
-            showError('signup-email', 'signup-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+            showError('signup-email', 'signup-email-error', '⚠️ البريد الإلكتروني غير صالح. يجب أن ينتهي بـ @gmail.com أو @yahoo.com أو @hotmail.com أو @outlook.com أو @icloud.com');
         } else {
             clearError('signup-email', 'signup-email-error');
             markSuccess('signup-email');
@@ -697,12 +710,11 @@
         }
     });
 
-    // في نموذج تسجيل الدخول
     document.getElementById('sys-email').addEventListener('blur', function() {
         const email = this.value.trim();
         if (!email) { clearError('sys-email', 'sys-email-error'); return; }
         if (!isValidEmail(email)) {
-            showError('sys-email', 'sys-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+            showError('sys-email', 'sys-email-error', '⚠️ البريد الإلكتروني غير صالح. يجب أن ينتهي بـ @gmail.com أو @yahoo.com أو @hotmail.com أو @outlook.com أو @icloud.com');
         } else {
             clearError('sys-email', 'sys-email-error');
             markSuccess('sys-email');
@@ -731,7 +743,6 @@
         const password = passwordInput.value;
         const confirm = confirmInput.value;
 
-        // مسح جميع الأخطاء السابقة
         clearError('signup-email', 'signup-email-error');
         clearError('signup-password', 'signup-password-error');
         clearError('signup-confirm', 'signup-confirm-error');
@@ -743,7 +754,7 @@
             return;
         }
         if (!isValidEmail(email)) {
-            showError('signup-email', 'signup-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+            showError('signup-email', 'signup-email-error', '⚠️ البريد الإلكتروني غير صالح. يجب أن ينتهي بـ @gmail.com أو @yahoo.com أو @hotmail.com أو @outlook.com أو @icloud.com');
             emailInput.focus();
             return;
         }
@@ -787,13 +798,10 @@
                 role: 'client'
             });
 
-            // سيتم إخفاء الشاشة تلقائياً بواسطة onAuthStateChanged
-
         } catch (error) {
             signupBtn.innerText = "إنشاء الحساب";
             signupBtn.disabled = false;
 
-            // ===== معالجة كل أنواع الأخطاء بالعربي =====
             let emailMsg = null;
             let passwordMsg = null;
             let generalMsg = null;
@@ -803,7 +811,7 @@
                     emailMsg = '❌ هذا البريد مسجل بالفعل. جرب تسجيل الدخول بدلاً من ذلك.';
                     break;
                 case 'auth/invalid-email':
-                    emailMsg = '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)';
+                    emailMsg = '⚠️ البريد الإلكتروني غير صالح. يجب أن ينتهي بـ @gmail.com أو @yahoo.com أو @hotmail.com أو @outlook.com أو @icloud.com';
                     break;
                 case 'auth/weak-password':
                     passwordMsg = '⚠️ كلمة المرور ضعيفة جداً (6 أحرف على الأقل)';
@@ -835,23 +843,20 @@
         const email = emailInput.value.trim();
         const password = passwordInput.value;
 
-        // مسح الأخطاء السابقة
         clearError('sys-email', 'sys-email-error');
         clearError('sys-password', 'sys-password-error');
 
-        // ===== فحص الإيميل =====
         if (!email) {
             showError('sys-email', 'sys-email-error', '⚠️ يرجى إدخال البريد الإلكتروني');
             emailInput.focus();
             return;
         }
         if (!isValidEmail(email)) {
-            showError('sys-email', 'sys-email-error', '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)');
+            showError('sys-email', 'sys-email-error', '⚠️ البريد الإلكتروني غير صالح. يجب أن ينتهي بـ @gmail.com أو @yahoo.com أو @hotmail.com أو @outlook.com أو @icloud.com');
             emailInput.focus();
             return;
         }
 
-        // ===== فحص كلمة المرور =====
         if (!password) {
             showError('sys-password', 'sys-password-error', '⚠️ يرجى إدخال كلمة المرور');
             passwordInput.focus();
@@ -863,13 +868,11 @@
             loginBtn.disabled = true;
 
             await signInWithEmailAndPassword(auth, email, password);
-            // سيتم إخفاء الشاشة تلقائياً
 
         } catch (error) {
             loginBtn.innerText = "تسجيل الدخول";
             loginBtn.disabled = false;
 
-            // ===== معالجة أخطاء الدخول بالعربي =====
             let emailMsg = null;
             let passwordMsg = null;
             let generalMsg = null;
@@ -882,7 +885,7 @@
                     passwordMsg = '❌ كلمة المرور غير صحيحة.';
                     break;
                 case 'auth/invalid-email':
-                    emailMsg = '⚠️ البريد الإلكتروني غير صالح (مثال صحيح: name@gmail.com)';
+                    emailMsg = '⚠️ البريد الإلكتروني غير صالح.';
                     break;
                 case 'auth/invalid-credential':
                     emailMsg = '❌ البريد الإلكتروني أو كلمة المرور غير صحيحة.';
