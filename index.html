@@ -47,7 +47,7 @@
         .login-box p { font-size: 13px; color: #64748b; }
         
         .login-box input {
-            width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #cbd5e1;
+            width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #cbd5e1;
             border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: center;
             background: #f8fafc; color: #0f172a;
         }
@@ -55,6 +55,12 @@
             width: 100%; padding: 12px; background: #6e8efb; border: none;
             color: #fff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
             margin-top: 10px;
+        }
+        .switch-link {
+            margin-top: 15px; font-size: 13px; color: #64748b;
+        }
+        .switch-link a {
+            color: #6e8efb; font-weight: bold; text-decoration: none; cursor: pointer;
         }
 
         /* تنسيقات رئيسية */
@@ -137,13 +143,32 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h3>🔐 لوحة تفعيل azemaa proo</h3>
-        <p>سجل دخول بحساب العميل لتنشيط السحابة</p>
-        <input type="email" id="sys-email" placeholder="البريد الإلكتروني للعميل">
-        <input type="password" id="sys-password" placeholder="كلمة المرور السحابية">
-        <button id="login-btn">تفعيل النظام الآمن</button>
-        <button id="signup-btn" style="background: #10b981; margin-top: 8px;">إنشاء حساب جديد ✨</button>
-        <button id="resend-verify-btn" style="background: #f39c12; margin-top: 8px; display: none;">إعادة إرسال رابط التأكيد 📧</button>
+        
+        <!-- ============ نموذج إنشاء الحساب (الافتراضي) ============ -->
+        <div id="signup-form">
+            <h3>✨ إنشاء حساب جديد</h3>
+            <p>أنشئ حسابك للدخول إلى azemaa proo</p>
+            <input type="email" id="signup-email" placeholder="البريد الإلكتروني" autocomplete="email">
+            <input type="password" id="signup-password" placeholder="كلمة المرور (6 أحرف على الأقل)" autocomplete="new-password">
+            <input type="password" id="signup-confirm" placeholder="تأكيد كلمة المرور" autocomplete="new-password">
+            <button id="signup-btn" style="background: #10b981;">إنشاء الحساب</button>
+            <div class="switch-link">
+                لديك حساب بالفعل؟ <a id="goto-login">تسجيل الدخول</a>
+            </div>
+        </div>
+        
+        <!-- ============ نموذج تسجيل الدخول (مخفي افتراضياً) ============ -->
+        <div id="login-form" style="display: none;">
+            <h3>🔐 تسجيل الدخول</h3>
+            <p>سجل دخول بحساب العميل</p>
+            <input type="email" id="sys-email" placeholder="البريد الإلكتروني" autocomplete="email">
+            <input type="password" id="sys-password" placeholder="كلمة المرور" autocomplete="current-password">
+            <button id="login-btn">تسجيل الدخول</button>
+            <div class="switch-link">
+                ليس لديك حساب؟ <a id="goto-signup">إنشاء حساب جديد</a>
+            </div>
+        </div>
+        
     </div>
 </div>
 
@@ -531,7 +556,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     
     const firebaseConfig = {
@@ -549,124 +574,102 @@
     const db = getDatabase(app);
 
     const loginOverlay = document.getElementById('login-overlay');
-    const loginBtn = document.getElementById('login-btn');
+    const signupForm = document.getElementById('signup-form');
+    const loginForm = document.getElementById('login-form');
     const signupBtn = document.getElementById('signup-btn');
-    const resendBtn = document.getElementById('resend-verify-btn');
+    const loginBtn = document.getElementById('login-btn');
 
-    // مراقبة حالة تسجيل الدخول
+    // التبديل بين النماذج
+    document.getElementById('goto-login').addEventListener('click', (e) => {
+        e.preventDefault();
+        signupForm.style.display = 'none';
+        loginForm.style.display = 'block';
+    });
+    document.getElementById('goto-signup').addEventListener('click', (e) => {
+        e.preventDefault();
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+    });
+
+    // مراقبة حالة الدخول — لو فيه مستخدم مسجل، ادخل مباشرة بدون أي تحقق
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            if (user.emailVerified) {
-                // البريد مؤكد → اسمح بالدخول
-                loginOverlay.style.display = 'none';
-                resendBtn.style.display = 'none';
-            } else {
-                // لم يتم التأكيد → أظهر شاشة الدخول + زر إعادة الإرسال
-                loginOverlay.style.display = 'flex';
-                resendBtn.style.display = 'block';
-                // أخفِ زر الدخول لأنه لم يؤكد بعد
-                loginBtn.disabled = true;
-                loginBtn.style.opacity = '0.5';
-                loginBtn.innerText = "⏳ بانتظار تأكيد البريد";
-            }
+            loginOverlay.style.display = 'none';
         } else {
             loginOverlay.style.display = 'flex';
-            resendBtn.style.display = 'none';
-            loginBtn.disabled = false;
-            loginBtn.style.opacity = '1';
-            loginBtn.innerText = "تفعيل النظام الآمن";
+            // الافتراضي = نموذج إنشاء الحساب
+            signupForm.style.display = 'block';
+            loginForm.style.display = 'none';
         }
     });
 
-    // دالة تسجيل الدخول
-    loginBtn.addEventListener('click', async () => {
-        const email = document.getElementById('sys-email').value.trim();
-        const password = document.getElementById('sys-password').value;
-
-        if(!email || !password) { alert("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور!"); return; }
-
-        try {
-            loginBtn.innerText = "⏳ جاري تسجيل الدخول...";
-            loginBtn.disabled = true;
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            
-            if (!userCredential.user.emailVerified) {
-                alert("📧 يرجى تأكيد البريد الإلكتروني أولاً. تم إرسال رابط التأكيد لبريدك عند التسجيل.");
-                resendBtn.style.display = 'block';
-            }
-        } catch (error) {
-            let msg = error.message;
-            if (error.code === 'auth/user-not-found') msg = "لا يوجد حساب بهذا البريد. اضغط على إنشاء حساب جديد.";
-            else if (error.code === 'auth/wrong-password') msg = "كلمة المرور غير صحيحة.";
-            else if (error.code === 'auth/invalid-email') msg = "البريد الإلكتروني غير صالح.";
-            else if (error.code === 'auth/invalid-credential') msg = "بيانات الدخول غير صحيحة.";
-            alert("❌ خطأ في تسجيل الدخول: " + msg);
-        } finally {
-            if (!auth.currentUser || auth.currentUser.emailVerified) {
-                loginBtn.innerText = "تفعيل النظام الآمن";
-                loginBtn.disabled = false;
-            }
-        }
-    });
-
-    // دالة إنشاء حساب جديد
+    // ===== إنشاء حساب جديد =====
     signupBtn.addEventListener('click', async () => {
-        const email = document.getElementById('sys-email').value.trim();
-        const password = document.getElementById('sys-password').value;
+        const email = document.getElementById('signup-email').value.trim();
+        const password = document.getElementById('signup-password').value;
+        const confirm = document.getElementById('signup-confirm').value;
 
-        if(!email || !password) { alert("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور أولاً!"); return; }
+        if(!email || !password || !confirm) { alert("⚠️ يرجى ملء جميع الحقول!"); return; }
         if (password.length < 6) { alert("⚠️ يجب أن تكون كلمة المرور 6 أحرف على الأقل."); return; }
+        if (password !== confirm) { alert("⚠️ كلمتا المرور غير متطابقتين."); return; }
 
         try {
             signupBtn.innerText = "⏳ جاري إنشاء الحساب...";
             signupBtn.disabled = true;
 
-            // 1. إنشاء المستخدم في Firebase Auth
+            // 1. إنشاء الحساب (Firebase يدخل المستخدم تلقائياً بعد الإنشاء)
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 2. حفظ بيانات إضافية في قاعدة البيانات
+            // 2. حفظ بيانات العميل في قاعدة البيانات
             await set(ref(db, 'users/' + user.uid), {
                 email: user.email,
                 uid: user.uid,
                 createdAt: new Date().toISOString(),
-                role: 'client',
-                verified: false
+                role: 'client'
             });
 
-            // 3. إرسال رابط تأكيد البريد
-            await sendEmailVerification(user);
-
-            alert("✅ تم إنشاء الحساب بنجاح!\n📧 تم إرسال رابط تأكيد إلى بريدك الإلكتروني.\n\nافتح بريدك، اضغط على رابط التأكيد، ثم سجل الدخول.");
-
-            // تسجيل الخروج مؤقتاً حتى يتم التأكيد
-            await signOut(auth);
-
+            // سيتم إخفاء الشاشة تلقائياً بواسطة onAuthStateChanged
         } catch (error) {
             let msg = error.message;
-            if (error.code === 'auth/email-already-in-use') msg = "هذا البريد مسجل بالفعل. يمكنك تسجيل الدخول مباشرة.";
+            if (error.code === 'auth/email-already-in-use') msg = "هذا البريد مسجل بالفعل. جرب تسجيل الدخول.";
             else if (error.code === 'auth/invalid-email') msg = "البريد الإلكتروني غير صالح.";
             else if (error.code === 'auth/weak-password') msg = "كلمة المرور ضعيفة (6 أحرف على الأقل).";
+            else if (error.code === 'auth/network-request-failed') msg = "تعذر الاتصال بالإنترنت. تحقق من الشبكة.";
             alert("❌ خطأ في إنشاء الحساب: " + msg);
         } finally {
-            signupBtn.innerText = "إنشاء حساب جديد ✨";
+            signupBtn.innerText = "إنشاء الحساب";
             signupBtn.disabled = false;
         }
     });
 
-    // دالة إعادة إرسال رابط التأكيد
-    resendBtn.addEventListener('click', async () => {
-        const user = auth.currentUser;
-        if (!user) { alert("⚠️ سجل الدخول أولاً ببياناتك."); return; }
+    // ===== تسجيل الدخول =====
+    loginBtn.addEventListener('click', async () => {
+        const email = document.getElementById('sys-email').value.trim();
+        const password = document.getElementById('sys-password').value;
+
+        if(!email || !password) { alert("⚠️ يرجى إدخال البريد وكلمة المرور!"); return; }
+
         try {
-            await sendEmailVerification(user);
-            alert("📧 تم إعادة إرسال رابط التأكيد إلى بريدك.");
+            loginBtn.innerText = "⏳ جاري تسجيل الدخول...";
+            loginBtn.disabled = true;
+
+            await signInWithEmailAndPassword(auth, email, password);
+            // سيتم إخفاء الشاشة تلقائياً بواسطة onAuthStateChanged
         } catch (error) {
-            alert("❌ تعذر إرسال الرابط: " + error.message);
+            let msg = error.message;
+            if (error.code === 'auth/user-not-found') msg = "لا يوجد حساب بهذا البريد. اضغط على إنشاء حساب جديد.";
+            else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = "بيانات الدخول غير صحيحة.";
+            else if (error.code === 'auth/invalid-email') msg = "البريد الإلكتروني غير صالح.";
+            else if (error.code === 'auth/network-request-failed') msg = "تعذر الاتصال بالإنترنت. تحقق من الشبكة.";
+            alert("❌ خطأ في تسجيل الدخول: " + msg);
+        } finally {
+            loginBtn.innerText = "تسجيل الدخول";
+            loginBtn.disabled = false;
         }
     });
 
-    // دالة تسجيل الخروج
+    // ===== تسجيل الخروج =====
     document.getElementById('logout-btn').addEventListener('click', () => {
         if(confirm("هل تريد تسجيل الخروج وقفل المنظومة?")) {
             history.pushState('', document.title, window.location.pathname + window.location.search);
@@ -701,7 +704,7 @@
         document.addEventListener('click', function(event) {
             let target = event.target;
             let isClickable = false;
-            const clickableSelectors = ['button', '.btn', '.zoom-btn', '.card', '.overlay', '.h', '.sidebar-item', '#countdown', '#logout-btn', 'header button', '.sync-group button', '.login-box button'];
+            const clickableSelectors = ['button', '.btn', '.zoom-btn', '.card', '.overlay', '.h', '.sidebar-item', '#countdown', '#logout-btn', 'header button', '.sync-group button', '.login-box button', '.switch-link a'];
             for (let selector of clickableSelectors) {
                 if (target.matches(selector) || (target.closest && target.closest(selector))) { isClickable = true; break; }
             }
