@@ -1,52 +1,136 @@
-const CACHE_NAME = 'azemaa-cache-v2'; // رفعنا رقم الإصدار لكسر الكاش القديم
-const assets = [
+/* AZEMAA PRO Service Worker
+   Network-first for same-origin GET requests, with safe offline fallback.
+*/
+
+const CACHE_NAME = 'azemaa-cache-v3';
+
+const CORE_ASSETS = [
   './',
-  'index.html',
-  'manifest.json',
-  'windows.html' // إضافة ملف الشبابيك
+  './index.html',
+  './manifest.json',
+  './windows.html'
 ];
 
-// تثبيت السيرفس وركر وإجبار المتصفح على استخدامه فوراً
-self.addEventListener('install', e => {
-  self.skipWaiting(); 
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(assets);
-    })
-  );
-});
+// تثبيت Service Worker وتخزين الملفات الأساسية
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
 
-// تفعيل السيرفس وركر وحذف أي كاش قديم (مثل v1)
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(keys
-        .filter(key => key !== CACHE_NAME)
-        .map(key => caches.delete(key))
-      );
-    })
-  );
-  return self.clients.claim();
-});
+    await Promise.all(CORE_ASSETS.map(async asset => {
+      try {
+        const response = await fetch(asset, {
+          cache: 'reload'
+        });
 
-// استراتيجية (الشبكة أولاً، ثم الكاش)
-// هذا يضمن أنك ترى أي تعديل ترفعه على جيت هاب فوراً
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    fetch(e.request)
-      .then(response => {
-        // إذا نجح الاتصال بالإنترنت، نقوم بحفظ نسخة جديدة في الكاش
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(e.request, responseClone);
-          });
+        if (response.ok && response.type === 'basic') {
+          await cache.put(asset, response);
         }
-        return response;
-      })
-      .catch(() => {
-        // إذا انقطع الإنترنت، نستخدم النسخة المحفوظة في الكاش
-        return caches.match(e.request);
-      })
-  );
+
+      } catch (error) {
+        console.warn('Precache skipped:', asset, error);
+      }
+    }));
+
+    await self.skipWaiting();
+
+  })());
+});
+
+
+// تفعيل النسخة الجديدة وتنظيف النسخ القديمة الخاصة بالتطبيق فقط
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+
+    const keys = await caches.keys();
+
+    await Promise.all(
+      keys
+        .filter(key =>
+          key.startsWith('azemaa-cache-') &&
+          key !== CACHE_NAME
+        )
+        .map(key => caches.delete(key))
+    );
+
+    await self.clients.claim();
+
+  })());
+});
+
+
+// التعامل مع طلبات الصفحات والملفات
+self.addEventListener('fetch', event => {
+
+  const request = event.request;
+
+  // تجاهل الطلبات غير GET
+  if (request.method !== 'GET') return;
+
+  const requestUrl = new URL(request.url);
+
+  // عدم التدخل في Firebase أو المواقع الخارجية
+  if (requestUrl.origin !== self.location.origin) return;
+
+  event.respondWith((async () => {
+
+    try {
+
+      // محاولة تحميل أحدث نسخة من الإنترنت
+      const response = await fetch(request);
+
+      // تخزين الملفات الناجحة فقط
+      if (
+        response &&
+        response.ok &&
+        response.type === 'basic' &&
+        !response.headers.get('Cache-Control')?.includes('no-store')
+      ) {
+
+        const cache = await caches.open(CACHE_NAME);
+
+        await cache.put(
+          request,
+          response.clone()
+        ).catch(() => {});
+
+      }
+
+      return response;
+
+    } catch (error) {
+
+      // في حالة انقطاع الإنترنت نبحث في التخزين المحلي
+      const cached = await caches.match(request);
+
+      if (cached) {
+        return cached;
+      }
+
+      // إذا كانت صفحة HTML نعرض الصفحة الرئيسية المحفوظة
+      if (request.mode === 'navigate') {
+
+        const fallback = await caches.match('./index.html');
+
+        if (fallback) {
+          return fallback;
+        }
+
+      }
+
+      // رسالة عند عدم وجود الصفحة في التخزين
+      return new Response(
+        'لا يوجد اتصال بالإنترنت وهذه الصفحة غير محفوظة على الجهاز.',
+        {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8'
+          }
+        }
+      );
+
+    }
+
+  })());
+
 });
