@@ -748,30 +748,52 @@
         }
     });
 
-    // ==================== مراقبة حالة الدخول ====================
-    
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                // ✅ فحص هل الحساب محظور من قبل الإدارة؟
-                const snapshot = await get(ref(db, 'users/' + user.uid));
-                if (snapshot.exists() && snapshot.val().banned === true) {
-                    await signOut(auth);
-                    alert("🚫 تم حظر حسابك من قبل الإدارة.\nيرجى التواصل مع الدعم.");
-                    loginOverlay.style.display = 'flex';
-                    signupForm.style.display = 'block';
-                    loginForm.style.display = 'none';
-                    return;
-                }
-            } catch (e) {
-                console.warn("فشل التحقق من حالة الحظر:", e);
+    // ==================== التحقق الآمن من حالة الحساب ====================
+    // أثناء إنشاء الحساب نؤجل مراقبة الدخول حتى يُحفظ ملف المستخدم أولاً.
+    let accountSetupInProgress = false;
+
+    async function verifyUserAccess(user) {
+        try {
+            const snapshot = await get(ref(db, 'users/' + user.uid));
+
+            // لا نسمح بالدخول إذا تعذر العثور على سجل الحساب.
+            if (!snapshot.exists()) {
+                throw new Error('لم يتم العثور على بيانات الحساب في قاعدة البيانات.');
             }
-            // إذا لم يكن محظوراً، أكمل الدخول
+
+            if (snapshot.val().banned === true) {
+                await signOut(auth);
+                loginOverlay.style.display = 'flex';
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+                alert("🚫 تم حظر حسابك من قبل الإدارة.\nيرجى التواصل مع الدعم.");
+                return false;
+            }
+
             loginOverlay.style.display = 'none';
+            return true;
+        } catch (error) {
+            console.error('تعذر التحقق من صلاحية الحساب:', error);
+            try {
+                if (auth.currentUser) await signOut(auth);
+            } catch (signOutError) {
+                console.error('تعذر إنهاء الجلسة:', signOutError);
+            }
+            loginOverlay.style.display = 'flex';
+            loginForm.style.display = 'block';
+            signupForm.style.display = 'none';
+            alert('⚠️ لم نتمكن من التحقق من حالة حسابك. لم يتم السماح بالدخول. تحقق من الاتصال وحاول مرة أخرى.');
+            return false;
+        }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        if (accountSetupInProgress) return;
+
+        if (user) {
+            await verifyUserAccess(user);
         } else {
             loginOverlay.style.display = 'flex';
-            signupForm.style.display = 'block';
-            loginForm.style.display = 'none';
         }
     });
 
@@ -820,14 +842,17 @@
             return;
         }
 
+        let newlyCreatedUser = null;
         try {
             signupBtn.innerText = "⏳ جاري إنشاء الحساب...";
             signupBtn.disabled = true;
+            accountSetupInProgress = true;
 
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+            newlyCreatedUser = user;
 
-            // ✅ إضافة banned: false عند الإنشاء
+            // إنشاء ملف المستخدم قبل السماح بفتح التطبيق.
             await set(ref(db, 'users/' + user.uid), {
                 email: user.email,
                 uid: user.uid,
@@ -836,7 +861,21 @@
                 banned: false
             });
 
+            accountSetupInProgress = false;
+            await verifyUserAccess(user);
+            signupBtn.innerText = "إنشاء الحساب";
+            signupBtn.disabled = false;
+
         } catch (error) {
+            accountSetupInProgress = false;
+            // منع بقاء حساب Auth يتيم إذا فشل إنشاء ملفه في قاعدة البيانات.
+            if (newlyCreatedUser && auth.currentUser && auth.currentUser.uid === newlyCreatedUser.uid) {
+                try {
+                    await deleteUser(newlyCreatedUser);
+                } catch (cleanupError) {
+                    console.error('تعذر تنظيف الحساب الذي لم يكتمل إنشاؤه:', cleanupError);
+                }
+            }
             signupBtn.innerText = "إنشاء الحساب";
             signupBtn.disabled = false;
 
@@ -1002,18 +1041,60 @@
 
             btn.innerText = "⏳ جاري حذف البيانات...";
 
-            // 2. حذف بيانات المستخدم من قاعدة البيانات
-            try {
-                await remove(ref(db, 'users/' + user.uid));
-            } catch (dbErr) {
-                console.warn("تعذر حذف البيانات من Database:", dbErr);
-                // نكمل حذف الحساب من Auth حتى لو فشل حذف Database
+            // 2. حذف بيانات المستخدم المرتبطة بمعرّف UID فقط.
+            // نحذف النسخ والملفات أولاً، ولا نحذف حساب Auth إذا فشل حذف أي مسار.
+            const uid = user.uid;
+            const userDataPaths = [
+                `backups/users/${uid}`,
+                `backups/yomya_users/${uid}`,
+                `backups/workers_master/${uid}`,
+                `backups/workers_weeks/${uid}`,
+                `backups/workers_archive/${uid}`,
+                `backups/deliveries_users/${uid}`,
+                `backups/notes_users/${uid}`,
+                `backups/invoices_wood/${uid}`,
+                `backups/invoices_alum/${uid}`,
+                `backups/settings_alum/${uid}`,
+                `backups/invoices_acc/${uid}`,
+                `backups/cut_projects/${uid}`,
+                `backups/cut_archive/${uid}`,
+                `backups/cutalum/${uid}`,
+                `backups/farah_agheza_sizes/${uid}`,
+                `backups/azemaa_windows_sizes/${uid}`,
+                `backups/farah_gbs_customers/${uid}`,
+                `backups/kitchen_contracts/${uid}`,
+                `backups/windows_contracts/${uid}`,
+                `backups/zwaya_projects/${uid}`,
+                `backups/zwaya_archive/${uid}`,
+                `backups/zawya2_projects/${uid}`,
+                `backups/zawya2_archive/${uid}`
+            ];
+
+            const profileRef = ref(db, `users/${uid}`);
+            const profileSnapshot = await get(profileRef);
+
+            for (const dataPath of userDataPaths) {
+                await remove(ref(db, dataPath));
             }
+
+            // حذف سجل المستخدم أخيراً، مع الاحتفاظ بنسخة لاستعادته إذا فشل حذف Auth.
+            await remove(profileRef);
 
             btn.innerText = "⏳ جاري حذف الحساب...";
 
             // 3. حذف الحساب من Firebase Auth
-            await deleteUser(user);
+            try {
+                await deleteUser(user);
+            } catch (authDeleteError) {
+                if (profileSnapshot.exists()) {
+                    try {
+                        await set(profileRef, profileSnapshot.val());
+                    } catch (restoreError) {
+                        console.error('تعذر استعادة سجل الحساب بعد فشل حذف Auth:', restoreError);
+                    }
+                }
+                throw authDeleteError;
+            }
 
             alert(
                 "✅ تم حذف حسابك نهائياً بنجاح.\n\n" +
