@@ -227,7 +227,7 @@
         if(!tableBody) return;
         
         const searchVal = document.getElementById('searchBox').value.toLowerCase();
-        tableBody.innerHTML = "";
+        tableBody.replaceChildren();
         
         let totals = { day: 0, month: 0, yearOut: 0, yearNet: 0 };
         const now = new Date();
@@ -268,19 +268,43 @@
                 const displayOut = item.outVal && item.outVal !== 0 ? item.outVal : '-';
                 const displayIn = item.inVal && item.inVal !== 0 ? item.inVal : '-';
 
-                tr.innerHTML = `
-                    <td style="font-size:10px; color:#64748b;">${cleanDate}</td>
-                    <td><span class="badge">${item.shop || '-'}</span></td>
-                    <td style="max-width: 80px; overflow: hidden; text-overflow: ellipsis;">${item.customer || '-'}</td>
-                    <td style="max-width: 90px; overflow: hidden; text-overflow: ellipsis;">${item.desc || '-'}</td>
-                    <td class="${item.outVal ? 'td-out' : ''}">${displayOut}</td>
-                    <td class="${item.inVal ? 'td-in' : ''}">${displayIn}</td>
-                    <td>
-                        <button class="btn-action btn-wa" data-id="${item.id}" title="مشاركة واتساب">🟢</button>
-                        <button class="btn-action btn-edit" data-id="${item.id}" title="تعديل">📝</button>
-                        <button class="btn-action btn-del" data-id="${item.id}" title="حذف">🗑️</button>
-                    </td>
-                `;
+                // إنشاء خلايا الجدول بطريقة آمنة، دون إدخال بيانات Firebase عبر innerHTML.
+                const addCell = (value, options = {}) => {
+                    const td = document.createElement('td');
+                    td.textContent = value == null ? '-' : String(value);
+                    if (options.className) td.className = options.className;
+                    if (options.style) Object.assign(td.style, options.style);
+                    tr.appendChild(td);
+                    return td;
+                };
+
+                addCell(cleanDate, { style: { fontSize: '10px', color: '#64748b' } });
+                const shopCell = addCell('');
+                const shopBadge = document.createElement('span');
+                shopBadge.className = 'badge';
+                shopBadge.textContent = item.shop || '-';
+                shopCell.appendChild(shopBadge);
+                addCell(item.customer || '-', { style: { maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis' } });
+                addCell(item.desc || '-', { style: { maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis' } });
+                addCell(displayOut, { className: item.outVal ? 'td-out' : '' });
+                addCell(displayIn, { className: item.inVal ? 'td-in' : '' });
+
+                const actionsCell = document.createElement('td');
+                const safeId = item.id == null ? '' : String(item.id);
+                [
+                    ['btn-wa', 'مشاركة واتساب', '🟢'],
+                    ['btn-edit', 'تعديل', '📝'],
+                    ['btn-del', 'حذف', '🗑️']
+                ].forEach(([className, title, icon]) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = `btn-action ${className}`;
+                    button.dataset.id = safeId;
+                    button.title = title;
+                    button.textContent = icon;
+                    actionsCell.appendChild(button);
+                });
+                tr.appendChild(actionsCell);
                 tableBody.appendChild(tr);
             }
         });
