@@ -364,6 +364,13 @@
         
         const scaleFactor = 3.5; 
 
+        // حماية النصوص القادمة من المستخدم أو Firebase قبل عرضها داخل HTML
+        function escapeHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;'
+            })[char]);
+        }
+
         // دالة حفظ الأسعار في المتصفح محلياً
         function savePricesLocally() {
             localStorage.setItem('azemaa_alumPrice', document.getElementById('alumPrice').value);
@@ -557,11 +564,20 @@
             const custName = document.getElementById('customerName').value.trim();
             if(!custName) { alert("برجاء إدخال اسم الزبون أولاً!"); return; }
 
-            let count = parseInt(document.getElementById('windowCount').value) || 1;
+            const rawCount = Number(document.getElementById('windowCount').value);
+            let count = Math.floor(rawCount);
             let note = document.getElementById('windowNote').value.trim();
 
-            let w = parseFloat(inlineWidth.value);
-            let h = parseFloat(inlineHeight.value);
+            let w = Number(inlineWidth.value);
+            let h = Number(inlineHeight.value);
+            if (!Number.isFinite(w) || !Number.isFinite(h) || w < 40 || w > 800 || h < 40 || h > 800) {
+                alert('المقاسات يجب أن تكون بين 40 و800 سم.');
+                return;
+            }
+            if (!Number.isFinite(rawCount) || !Number.isInteger(rawCount) || count < 1 || count > 1000) {
+                alert('العدد يجب أن يكون رقماً صحيحاً من 1 إلى 1000.');
+                return;
+            }
             let brandVal = document.getElementById('brandType').value;
             let sysVal = document.getElementById('systemType').value;
             let profVal = document.getElementById('profileType').value;
@@ -646,11 +662,11 @@
 
                 tbody.innerHTML += `
                     <tr>
-                        <td style="font-weight:bold;">${item.profileName}</td>
+                        <td style="font-weight:bold;">${escapeHTML(item.profileName)}</td>
                         <td class="num" style="color:#d84315; font-size:15px;">${item.count}</td>
                         <td class="num" style="direction: ltr;">${item.width} × ${item.height}</td>
-                        <td style="color:#555; font-size:12px;">${item.note || '-'}</td>
-                        <td><button class="btn-delete-row" onclick="removeFromCart('${item.id}')">حذف</button></td>
+                        <td style="color:#555; font-size:12px;">${escapeHTML(item.note || '-')}</td>
+                        <td><button class="btn-delete-row" type="button" data-remove-cart="${escapeHTML(item.id)}">حذف</button></td>
                     </tr>
                 `;
             });
@@ -744,6 +760,7 @@
             currentCart = currentCart.filter(item => item.id !== id);
             renderCart();
         }
+        window.removeFromCart = removeFromCart;
 
         window.addEventListener('DOMContentLoaded', () => {
             let initAlum = localStorage.getItem('azemaa_alumPrice');
@@ -822,22 +839,22 @@
                 html += `
                 <div style="background: #e2e8f0; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #cbd5e1;">
                     <div style="display: flex; flex-direction: column; gap: 10px; border-bottom: 2px solid #c0392b; margin-bottom: 15px; padding-bottom: 10px;">
-                        <h4 style="color: #c0392b; margin: 0; font-size: 16px;">👤 زبون: ${custName}</h4>
+                        <h4 style="color: #c0392b; margin: 0; font-size: 16px;">👤 زبون: ${escapeHTML(custName)}</h4>
                         <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                            <button class="btn-sm" style="background:#2980b9; flex: 1;" onclick="recallCustomerInvoice('${custName}')">استدعاء الفاتورة 📥</button>
-                            <button class="btn-sm" style="background:#e74c3c; flex: 1;" onclick="deleteCustomerInvoice('${custName}')">حذف الفاتورة 🗑️</button>
+                            <button class="btn-sm" type="button" data-invoice-action="recall" data-customer="${escapeHTML(custName)}" style="background:#2980b9; flex: 1;">استدعاء الفاتورة 📥</button>
+                            <button class="btn-sm" type="button" data-invoice-action="delete" data-customer="${escapeHTML(custName)}" style="background:#e74c3c; flex: 1;">حذف الفاتورة 🗑️</button>
                         </div>
                     </div>
                 `;
                 
                 groupedCustomers[custName].forEach(item => {
-                    let dispCount = item.count ? `العدد: <span style="color:#d84315">${item.count}</span> |` : '';
-                    let dispNote = item.note ? ` <br><span style="font-size: 11px; color: #555;">📝 ${item.note}</span>` : '';
+                    let dispCount = item.count ? `العدد: <span style="color:#d84315">${escapeHTML(item.count)}</span> |` : '';
+                    let dispNote = item.note ? ` <br><span style="font-size: 11px; color: #555;">📝 ${escapeHTML(item.note)}</span>` : '';
                     
                     html += `
                     <div class="saved-card">
                         <div class="saved-card-info">
-                            <p>📏 ${dispCount} مقاس: <span style="color:#d84315; direction:ltr;">${item.w} × ${item.h}</span> سم <br><span style="font-size: 11px; color: #888;">(🔧 ${item.profileName || item.system})</span></p>
+                            <p>📏 ${dispCount} مقاس: <span style="color:#d84315; direction:ltr;">${escapeHTML(item.w)} × ${escapeHTML(item.h)}</span> سم <br><span style="font-size: 11px; color: #888;">(🔧 ${escapeHTML(item.profileName || item.system || 'غير محدد')})</span></p>
                             ${dispNote}
                         </div>
                     </div>
@@ -849,6 +866,20 @@
 
             container.innerHTML = html;
         };
+
+        // تنفيذ أزرار المحفوظات دون تمرير أسماء الزبائن داخل كود JavaScript inline
+        document.getElementById('savedList').addEventListener('click', event => {
+            const button = event.target.closest('button[data-invoice-action]');
+            if (!button) return;
+            const customer = button.dataset.customer || '';
+            if (button.dataset.invoiceAction === 'recall') window.recallCustomerInvoice(customer);
+            if (button.dataset.invoiceAction === 'delete') window.deleteCustomerInvoice(customer);
+        });
+
+        document.getElementById('cartTableBody').addEventListener('click', event => {
+            const button = event.target.closest('button[data-remove-cart]');
+            if (button) window.removeFromCart(button.dataset.removeCart);
+        });
 
         window.recallCustomerInvoice = function(customerName) {
             currentCart = [];
@@ -875,9 +906,15 @@
                     let brandVal = item.brand;
                     let sysVal = item.system;
                     let profVal = item.profile;
-                    let profName = item.profileName || windowData[brandVal].systems[sysVal].find(p => p.id === profVal).name;
-                    
-                    let activeProfile = windowData[brandVal].systems[sysVal].find(p => p.id === profVal);
+                    const availableProfiles = windowData[brandVal]?.systems?.[sysVal];
+                    const activeProfile = Array.isArray(availableProfiles)
+                        ? availableProfiles.find(p => p.id === profVal)
+                        : null;
+                    if (!activeProfile || !Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+                        console.warn('تم تخطي سجل محفوظ غير مكتمل أو بنظام غير معروف:', key);
+                        return;
+                    }
+                    let profName = item.profileName || activeProfile.name;
                     if(activeProfile) {
                         let res = activeProfile.calc(w, h);
                         
@@ -929,15 +966,29 @@
                     windowsDataSaved = snapshot.val() || {};
                     window.renderSavedList();
                     document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
+                }, (error) => {
+                    console.error('Firebase read error:', error);
+                    document.getElementById('sync-status').innerText = '⚠️ تعذرت مزامنة المحفوظات';
+                    window.showToast('تعذر تحميل المحفوظات. تحقق من اتصال الإنترنت والصلاحيات.');
                 });
             } else {
-                document.getElementById('auth-loader').innerText = "⚠️ حظر أمني: يرجى تسجيل الدخول من اللوحة الرئيسية أولاً!";
+                windowUserUid = null;
+                document.getElementById('app-content').style.display = 'none';
+                document.getElementById('auth-loader').style.display = 'flex';
+                document.getElementById('auth-loader').innerText = "⚠️ يرجى تسجيل الدخول من اللوحة الرئيسية أولاً.";
             }
+        }, (error) => {
+            console.error('Firebase auth error:', error);
+            document.getElementById('auth-loader').innerText = '⚠️ تعذر التحقق من تسجيل الدخول. حاول الاتصال بالإنترنت مرة أخرى.';
         });
 
         window.saveCartToCloud = function() {
             if(!windowUserUid) return;
             const customer = document.getElementById('customerName').value.trim();
+            if (!customer) {
+                alert('اكتب اسم الزبون قبل حفظ الفاتورة.');
+                return;
+            }
             
             if(currentCart.length === 0) {
                 alert("الفاتورة فارغة، برجاء إضافة شبابيك أولاً!");
@@ -1012,6 +1063,10 @@
                 update(parentRef, updates).then(() => {
                     document.getElementById('sync-status').innerText = "✅ مزامن لحظياً";
                     window.showToast("🗑️ تم حذف الفاتورة بنجاح");
+                }).catch(error => {
+                    console.error('Firebase delete error:', error);
+                    document.getElementById('sync-status').innerText = '⚠️ فشل حذف الفاتورة';
+                    alert('تعذر حذف الفاتورة. تحقق من الاتصال وصلاحيات قاعدة البيانات.');
                 });
             }
         };
