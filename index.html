@@ -285,7 +285,7 @@
             </div>
             
             <div class="input-group">
-                <input type="password" id="sys-password" placeholder="كلمة المرور" autocomplete="current-password" dir="ltr">
+                <input type="password" id="sys-password" placeholder="كلمة المرور (6 أرقام)" autocomplete="current-password" dir="ltr" inputmode="numeric" pattern="[0-9]*" maxlength="6">
                 <div class="error-msg" id="sys-password-error"></div>
             </div>
             
@@ -308,12 +308,12 @@
             </div>
             
             <div class="input-group">
-                <input type="password" id="signup-password" placeholder="كلمة المرور (6 أحرف على الأقل)" autocomplete="new-password" dir="ltr">
+                <input type="password" id="signup-password" placeholder="كلمة المرور (6 أرقام فقط)" autocomplete="new-password" dir="ltr" inputmode="numeric" pattern="[0-9]*" maxlength="6">
                 <div class="error-msg" id="signup-password-error"></div>
             </div>
             
             <div class="input-group">
-                <input type="password" id="signup-confirm" placeholder="تأكيد كلمة المرور" autocomplete="new-password" dir="ltr">
+                <input type="password" id="signup-confirm" placeholder="تأكيد كلمة المرور" autocomplete="new-password" dir="ltr" inputmode="numeric" pattern="[0-9]*" maxlength="6">
                 <div class="error-msg" id="signup-confirm-error"></div>
             </div>
             
@@ -740,6 +740,16 @@
     const signupBtn = document.getElementById('signup-btn');
     const loginBtn = document.getElementById('login-btn');
 
+    // ==================== دالة إجبار الأرقام الإنجليزية ====================
+    function forceNumeric(input) {
+        let val = input.value;
+        const arabicNumbers = [/٠/g,/١/g,/٢/g,/٣/g,/٤/g,/٥/g,/٦/g,/٧/g,/٨/g,/٩/g];
+        for(let i=0; i<10; i++) {
+            val = val.replace(arabicNumbers[i], i);
+        }
+        input.value = val.replace(/[^0-9]/g, '').substring(0, 6);
+    }
+
     function isValidEmail(email) {
         const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(email)) return false;
@@ -804,9 +814,10 @@
     });
 
     document.getElementById('signup-password').addEventListener('input', function() {
-        if (this.value.length > 0 && this.value.length < 6) {
-            showError('signup-password', 'signup-password-error', '⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-        } else if (this.value.length >= 6) {
+        forceNumeric(this); // إجبار أرقام إنجليزية فقط
+        if (this.value.length > 0 && this.value.length !== 6) {
+            showError('signup-password', 'signup-password-error', '⚠️ كلمة المرور يجب أن تكون 6 أرقام بالضبط');
+        } else if (this.value.length === 6) {
             clearError('signup-password', 'signup-password-error');
             markSuccess('signup-password');
         } else {
@@ -815,10 +826,11 @@
     });
 
     document.getElementById('signup-confirm').addEventListener('input', function() {
+        forceNumeric(this); // إجبار أرقام إنجليزية فقط
         const password = document.getElementById('signup-password').value;
         if (this.value && this.value !== password) {
             showError('signup-confirm', 'signup-confirm-error', '⚠️ كلمتا المرور غير متطابقتين');
-        } else if (this.value && this.value === password) {
+        } else if (this.value && this.value === password && this.value.length === 6) {
             clearError('signup-confirm', 'signup-confirm-error');
             markSuccess('signup-confirm');
         } else {
@@ -835,6 +847,10 @@
             clearError('sys-email', 'sys-email-error');
             markSuccess('sys-email');
         }
+    });
+
+    document.getElementById('sys-password').addEventListener('input', function() {
+        forceNumeric(this); // إجبار أرقام إنجليزية فقط في الدخول
     });
 
     let accountSetupInProgress = false;
@@ -885,7 +901,7 @@
         if (!email) { showError('signup-email', 'signup-email-error', '⚠️ يرجى إدخال البريد الإلكتروني'); emailInput.focus(); return; }
         if (!isValidEmail(email)) { showError('signup-email', 'signup-email-error', '⚠️ البريد الإلكتروني غير صالح.'); emailInput.focus(); return; }
         if (!password) { showError('signup-password', 'signup-password-error', '⚠️ يرجى إدخال كلمة المرور'); passwordInput.focus(); return; }
-        if (password.length < 6) { showError('signup-password', 'signup-password-error', '⚠️ كلمة المرور 6 أحرف على الأقل'); passwordInput.focus(); return; }
+        if (!/^\d{6}$/.test(password)) { showError('signup-password', 'signup-password-error', '⚠️ كلمة المرور يجب أن تكون 6 أرقام بالضبط'); passwordInput.focus(); return; }
         if (!confirm) { showError('signup-confirm', 'signup-confirm-error', '⚠️ يرجى تأكيد كلمة المرور'); confirmInput.focus(); return; }
         if (password !== confirm) { showError('signup-confirm', 'signup-confirm-error', '⚠️ كلمتا المرور غير متطابقتين'); confirmInput.focus(); return; }
 
@@ -920,7 +936,6 @@
             switch (error.code) {
                 case 'auth/email-already-in-use': emailMsg = '❌ هذا البريد مسجل بالفعل. سجل الدخول.'; break;
                 case 'auth/invalid-email': emailMsg = '⚠️ البريد الإلكتروني غير صالح.'; break;
-                case 'auth/weak-password': passwordMsg = '⚠️ كلمة المرور ضعيفة جداً.'; break;
                 case 'auth/network-request-failed': generalMsg = '📡 تعذر الاتصال بالإنترنت.'; break;
                 default: generalMsg = '❌ حدث خطأ: ' + (error.message || 'غير معروف');
             }
@@ -941,6 +956,7 @@
 
         if (!email) { showError('sys-email', 'sys-email-error', '⚠️ يرجى إدخال البريد'); emailInput.focus(); return; }
         if (!password) { showError('sys-password', 'sys-password-error', '⚠️ يرجى إدخال كلمة المرور'); passwordInput.focus(); return; }
+        if (!/^\d{6}$/.test(password)) { showError('sys-password', 'sys-password-error', '⚠️ كلمة المرور مكونة من 6 أرقام فقط'); passwordInput.focus(); return; }
 
         try {
             loginBtn.innerText = "⏳ جاري الدخول...";
